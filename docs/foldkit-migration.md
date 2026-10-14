@@ -14,17 +14,18 @@ Every legacy route is ported. Since 2026-10-07 the last unported pieces landed: 
 
 Certification runs (foldkit vs pin `639aa8d26`, `--strict-a11y`, port base 8000):
 
-| Run | Tree | Variants | Identical | Pass | Fail | Behavior diffs | Passes with perceptual px |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| burndown-3 | 4b3d8b2a0 | 707 | 535 | 146 | 26 | 0 | 0 |
-| burndown-4 | 1b35c0235 | 758 | 563 | 175 | 20 | 0 | 0 |
-| burndown-5 | f8a0391a4 | 758 | 558 | 193 | 7 | 0 | 0 |
-| burndown-6 | 272eb5530 (main) | 758 | 565 | 186 | 7 | 0 | 0 |
-| burndown-7 | 2607d8535 (main) | 758 | 576 | 175 | 7 | 0 | 0 |
+| Run        | Tree             | Variants | Identical | Pass | Fail | Behavior diffs | Passes with perceptual px |
+| ---------- | ---------------- | -------- | --------- | ---- | ---- | -------------- | ------------------------- |
+| burndown-3 | 4b3d8b2a0        | 707      | 535       | 146  | 26   | 0              | 0                         |
+| burndown-4 | 1b35c0235        | 758      | 563       | 175  | 20   | 0              | 0                         |
+| burndown-5 | f8a0391a4        | 758      | 558       | 193  | 7    | 0              | 0                         |
+| burndown-6 | 272eb5530 (main) | 758      | 565       | 186  | 7    | 0              | 0                         |
+| burndown-7 | 2607d8535 (main) | 758      | 576       | 175  | 7    | 0              | 0                         |
 
 burndown-7 (main, after the Foldkit 0.167 upgrade, the perf fixes, the review fixes in `docs/foldkit-review/`, typed route builders, the single toast helper and the Foldkit oxlint plugin) is the current certification result, same as burndown-5: the only failures are the 7 accepted legacy quirks below, every pass has 0 perceptual px and no structural deltas, and there are 0 behavioral differences. burndown-3's failures were fixed on `fk/kit-a11y-final`, burndown-4's on `fk/cert-fixes`.
 
 Accepted legacy quirks (not imitated):
+
 - `gallery-table-cell-keys` (2): React Aria's click announcement races the arrow-key announcements, so legacy's order varies per run; Foldkit's is the intended one.
 - `chat-rich-channel` mobile, `chat-heavy-channel`, `chat-heavy-small-channel` (5): legacy measures rows before content loads, so its ARIA tree differs at capture time.
 - `settings-chat-sync-add-connection-exists` and `-link-channel-exists` (pass at 0 px, outline delta in some runs): legacy refocuses the modal button after a failed submit only when the reply beats one animation frame (4 of 9 runs); Foldkit always refocuses.
@@ -37,21 +38,21 @@ Not ported: video playback (left for manual QA by decision on 2026-10-08; a fixt
 
 Budgets: 120fps scrolling (main-thread work per frame under 8.33ms), warm channel switch under 50ms, cold under 100ms, everything else no slower than legacy. Foldkit 0.167; VirtualList was evaluated and rejected (`foldkit-decisions/s4b-virtual-list.md`).
 
-| Metric | Legacy | Foldkit | Met |
-| --- | --- | --- | --- |
-| 10k channel wheel scroll, frame work p95 (slow / medium / fast) | 84-259 | 5.5 / 6.8 / 14.4 | slow and medium yes, fast no |
-| 10k channel fling to top | 0.3 / 1.4 | 1.5 / 16 | no (view patch, layout, layerize) |
-| 10k channel jump to bottom | 0.1 / 3.7 | 0.1 / 8.3 | yes |
-| #general scroll, medium/fast | up to 181 p95 | 0.4-2.8 p95 | yes |
-| Sidebar, 500 channels | 5.2 p95 | 2.6 p95 | yes |
-| Switch heavy workspace, cold / warm | 943 / 443 | 44.6 / 40.6 | yes, 0 blank frames |
-| Switch normal workspace, cold / warm | 667 / 58 | 53.9 / 38.8 | yes, 0 blank frames |
-| Load heavy, ready to use | 1846 | 980 | yes |
-| Composer key to paint | 1.6 / 43.3 | 2.2 / 38 | yes |
-| Thread panel / palette / image viewer, commit frame | 118 / 60 / 31 | 42 / 48 / 30 | yes |
-| Delete modal / emoji picker, commit frame | 26-28 / 26-29 | 23-25 / 27-28 | yes (input probe row is one frame late) |
-| JS heap after 20 switches (MB) | 254 | 65 | yes |
-| JS bundle gzip (KB) | 1536 | 987 | yes |
+| Metric                                                          | Legacy        | Foldkit          | Met                                     |
+| --------------------------------------------------------------- | ------------- | ---------------- | --------------------------------------- |
+| 10k channel wheel scroll, frame work p95 (slow / medium / fast) | 84-259        | 5.5 / 6.8 / 14.4 | slow and medium yes, fast no            |
+| 10k channel fling to top                                        | 0.3 / 1.4     | 1.5 / 16         | no (view patch, layout, layerize)       |
+| 10k channel jump to bottom                                      | 0.1 / 3.7     | 0.1 / 8.3        | yes                                     |
+| #general scroll, medium/fast                                    | up to 181 p95 | 0.4-2.8 p95      | yes                                     |
+| Sidebar, 500 channels                                           | 5.2 p95       | 2.6 p95          | yes                                     |
+| Switch heavy workspace, cold / warm                             | 943 / 443     | 44.6 / 40.6      | yes, 0 blank frames                     |
+| Switch normal workspace, cold / warm                            | 667 / 58      | 53.9 / 38.8      | yes, 0 blank frames                     |
+| Load heavy, ready to use                                        | 1846          | 980              | yes                                     |
+| Composer key to paint                                           | 1.6 / 43.3    | 2.2 / 38         | yes                                     |
+| Thread panel / palette / image viewer, commit frame             | 118 / 60 / 31 | 42 / 48 / 30     | yes                                     |
+| Delete modal / emoji picker, commit frame                       | 26-28 / 26-29 | 23-25 / 27-28    | yes (input probe row is one frame late) |
+| JS heap after 20 switches (MB)                                  | 254           | 65               | yes                                     |
+| JS bundle gzip (KB)                                             | 1536          | 987              | yes                                     |
 
 Frame counting: the bench only counts frames with main-thread work, so any per-frame callback adds near-empty frames and lowers the percentiles without changing total work. The history query briefly polled its window every frame (which also cost one frame of composer input lag); its numbers read 0.3 / 5.1-7.8 for the same total busy time as the event-driven version above. Compare rows only between builds without per-frame callbacks.
 
@@ -209,7 +210,7 @@ Every primitive gets an isolated parity scenario on a component gallery route (�
 | input-otp                                                          | Rewrite (one input plus visual slots)                                                                                                                                                          |                                                                                                                                                                     |
 | Clerk `<SignIn>`, `<SignUp>`, `<CreateOrganization>`               | `Clerk.mountSignIn(el)` and friends in a Mount: clerk-js's own vanilla API                                                                                                                     | Auth state: a Subscription on `Clerk.addListener`; token via web-core `getClerkToken`                                                                               |
 | `@tanstack/react-form` + arktype                                   | `foldkit/fieldValidation` (Schema rules)                                                                                                                                                       | arktype schemas get ported to Effect Schema                                                                                                                         |
-| `@tanstack/react-hotkeys`                                          | `Dom.streamFromKeyBindings` fed from the web-core registry plus user overrides in the Model                                                                                                     |                                                                                                                                                                     |
+| `@tanstack/react-hotkeys`                                          | `Dom.streamFromKeyBindings` fed from the web-core registry plus user overrides in the Model                                                                                                    |                                                                                                                                                                     |
 | effect-atom UI state (modals, panels, command palette, chat state) | Model fields and Submodels                                                                                                                                                                     | e.g. `modal-atoms` becomes a `Modal` union in the root Model                                                                                                        |
 | PostHog provider                                                   | Plain `posthog-js` calls in Commands                                                                                                                                                           |                                                                                                                                                                     |
 
@@ -229,14 +230,14 @@ Each phase ends with a parity milestone. Phases 3 to 5 can be staffed in paralle
 
 Every spike produces a short decision record in `docs/foldkit-decisions/`.
 
-| Spike                                                       | Question                                                    | Exit criterion                                                                                                                          |
-| ----------------------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| S1 Skeleton ✅ ([record](foldkit-decisions/s1-skeleton.md)) | Can Foldkit boot our stack?                                 | `apps/web-foldkit` builds with the parity env; `window.Clerk` auth, RPC `resources`, `user.me`; `settings-team` scenario **identical**  |
-| S2 Data bridge ✅ ([record](foldkit-decisions/s2-data.md)): keep the TanStack DB bridge | TanStack DB bridge vs a normalized Model store              | Benchmark on a `heavy` dataset (10k messages, 500 channels): update latency, render time, memory, dev-mode freeze cost. Decide §3.2     |
-| S3 Editor ✅ ([record](foldkit-decisions/s3-editor.md)): ProseMirror | ProseMirror vs Tiptap vs Lexical in a Mount                 | Composer scenario **identical** (empty, focused, with draft); serializer suite passes against the new model; mention autocomplete works |
-| S4 Chat list ✅ desktop ([record](foldkit-decisions/s4-chat-list.md)); mobile waits on the Phase 2 shell | Bottom-anchored virtualization                              | 10k-message channel scrolls at 60fps, prepend keeps position, sticks to bottom on new message                                           |
+| Spike                                                                                                                 | Question                                                    | Exit criterion                                                                                                                          |
+| --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| S1 Skeleton ✅ ([record](foldkit-decisions/s1-skeleton.md))                                                           | Can Foldkit boot our stack?                                 | `apps/web-foldkit` builds with the parity env; `window.Clerk` auth, RPC `resources`, `user.me`; `settings-team` scenario **identical**  |
+| S2 Data bridge ✅ ([record](foldkit-decisions/s2-data.md)): keep the TanStack DB bridge                               | TanStack DB bridge vs a normalized Model store              | Benchmark on a `heavy` dataset (10k messages, 500 channels): update latency, render time, memory, dev-mode freeze cost. Decide §3.2     |
+| S3 Editor ✅ ([record](foldkit-decisions/s3-editor.md)): ProseMirror                                                  | ProseMirror vs Tiptap vs Lexical in a Mount                 | Composer scenario **identical** (empty, focused, with draft); serializer suite passes against the new model; mention autocomplete works |
+| S4 Chat list ✅ desktop ([record](foldkit-decisions/s4-chat-list.md)); mobile waits on the Phase 2 shell              | Bottom-anchored virtualization                              | 10k-message channel scrolls at 60fps, prepend keeps position, sticks to bottom on new message                                           |
 | S5 Primitive parity ✅ ([record](foldkit-decisions/s5-primitives.md)): 41 primitives, 315 identical + 23 pass, 0 fail | Do custom variants plus `@foldkit/ui` reach pixel identity? | Button, Menu (open), Dialog, Tooltip, Select, Tabs all **identical** in the gallery, in both themes                                     |
-| S6 Effect pin ✅ (runs on 4.0.1, see S1)                    | Foldkit peers `effect@4.0.0` exactly                        | Either Foldkit runs on 4.0.1 (bun `overrides`, verify tests) or Foldkit releases support 4.0.1                                          |
+| S6 Effect pin ✅ (runs on 4.0.1, see S1)                                                                              | Foldkit peers `effect@4.0.0` exactly                        | Either Foldkit runs on 4.0.1 (bun `overrides`, verify tests) or Foldkit releases support 4.0.1                                          |
 
 If S3 or S4 fails badly, stop and reconsider. Those two are the migration's load-bearing walls.
 
@@ -293,7 +294,7 @@ Independent screens. Each is one ticket and one agent-sized unit. Rough size fro
 
 1. Beta: local only for now (§8). The team runs the Foldkit build locally against the real backend.
 2. Parity freeze: every route covered, every scenario identical, no unmocked RPCs, behavioral parity green.
-3. Switch `app.hazel.sh`, keep legacy deployable for a two-week rollback window, then delete `apps/web` and the legacy-only dependencies.
+3. Switch `app.hazel.sh`, keep legacy deployable for a two-week rollback window, then delete `apps/web` and the legacy-only dependencies. Done 2026-10-14: `apps/web` is deleted. The framework-free modules Foldkit still used (collections, actions, theme, RPC client, `*.styles.ts`, styles, `public/`) moved to `apps/web-foldkit/src/core` and `apps/web-foldkit/public`; `~/` now resolves there.
 
 ---
 

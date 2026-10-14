@@ -27,7 +27,7 @@ import BotGateway from "./apps/bot-gateway/alchemy.run.ts"
 import ElectricProxy from "./apps/electric-proxy/alchemy.run.ts"
 import Landing from "./apps/landing/alchemy.run.ts"
 import LinkPreview from "./apps/link-preview-worker/alchemy.run.ts"
-import Web from "./apps/web/alchemy.run.ts"
+import Web from "./apps/web-foldkit/alchemy.run.ts"
 
 // Some secret stores define CLOUDFLARE_DEFAULT_ACCOUNT_ID; alchemy reads CLOUDFLARE_ACCOUNT_ID.
 if (!process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_DEFAULT_ACCOUNT_ID) {

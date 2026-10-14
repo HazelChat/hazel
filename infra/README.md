@@ -5,7 +5,7 @@ version) in `alchemy.run.ts`. Each app declares its own resources:
 
 | App            | Declared in                                 | Runs as                                                                                                                                 |
 | -------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| web            | `apps/web/alchemy.run.ts`                   | `Website.StaticSite` (Vite SPA, assets only)                                                                                            |
+| web            | `apps/web-foldkit/alchemy.run.ts`           | `Website.StaticSite` (Vite SPA, assets only)                                                                                            |
 | landing        | `apps/landing/alchemy.run.ts`               | `Website.StaticSite` (Astro) — prd only                                                                                                 |
 | docs           | `apps/docs/alchemy.run.ts`                  | `Website.Vite` (TanStack Start SSR) — prd only                                                                                          |
 | link-preview   | `apps/link-preview-worker/alchemy.run.ts`   | async Worker + KV                                                                                                                       |

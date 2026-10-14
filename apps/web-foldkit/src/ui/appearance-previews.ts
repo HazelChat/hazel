@@ -1,4 +1,4 @@
-// Generated from apps/web/src/components/modals/appearances.tsx (renderToStaticMarkup + parity codegen). Do not edit.
+// Originally generated from the React app's appearance illustrations. Edit by hand.
 import type { Html, HtmlBuilder } from "foldkit/html"
 
 /** `System` appearance preview. */

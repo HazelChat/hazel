@@ -47,7 +47,7 @@ export const fixtureElectricUrl = `http://localhost:${FIXTURE_ELECTRIC_PORT}/v1/
  */
 export const LEGACY_BASELINE_REF = "639aa8d26"
 
-export type TargetName = "legacy" | "legacy-head" | "foldkit"
+export type TargetName = "legacy" | "foldkit"
 
 export interface Target {
 	readonly name: TargetName
@@ -60,8 +60,6 @@ export interface Target {
 
 export const targets: Record<TargetName, Target> = {
 	legacy: { name: "legacy", port: PORT_BASE + 1, appDir: "apps/web", distDir: "dist" },
-	/** The legacy app from the working tree: refactors of legacy code must stay identical to the pinned `legacy`. */
-	"legacy-head": { name: "legacy-head", port: PORT_BASE + 4, appDir: "apps/web", distDir: "dist" },
 	// Placeholder until the Foldkit app exists; same contract: a Vite app reading the same env vars.
 	foldkit: { name: "foldkit", port: PORT_BASE + 2, appDir: "apps/web-foldkit", distDir: "dist" },
 }

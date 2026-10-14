@@ -2,6 +2,8 @@
 
 Pixel-level comparison of the legacy React frontend (`apps/web`) against the Foldkit frontend (`apps/web-foldkit`). It is the acceptance test for the migration: a screen counts as ported when its scenarios come back `identical`.
 
+`apps/web` has been deleted from the working tree. The legacy side now only exists as the pinned baseline (`LEGACY_BASELINE_REF`), which `build legacy` checks out into a worktree.
+
 ```bash
 bun run parity build legacy                   # the pinned reference UI (LEGACY_BASELINE_REF in src/config.ts)
 bun run parity build foldkit                  # build the Foldkit app from the working tree
@@ -27,7 +29,7 @@ bun run parity run                            # capture both, diff, write the re
 - **Same data in both apps.** Both apps are built with `VITE_BACKEND_URL` / `VITE_ELECTRIC_URL` pointing at the fixture backend (`src/config.ts`). Datasets live in `src/fixtures/datasets/` as typed rows with deterministic IDs (`stableId("user:ada")`).
 - **No Clerk network.** `src/runtime/clerk-stub.ts` defines `window.Clerk` before the app boots. `@clerk/react` sees a loaded instance and never downloads clerk-js, and `getToken()` returns a fixed token. The Foldkit app has to read auth through `window.Clerk` too (as `apps/web/src/lib/clerk-token.ts` already does) for the stub to apply.
 - **One origin.** Every target is captured through `http://localhost:4800`, proxied to the target's port, so UI that prints `location.origin` matches across targets. Playwright fulfils that origin in-browser and nothing binds it.
-- **Parallel runs.** Ports are offsets from `PARITY_PORT_BASE` (default `4790`): backend `+0`, legacy `+1`, foldkit `+2`, Electric `+3`, legacy-head `+4`. Give each worktree or agent its own base (`PARITY_PORT_BASE=4900 bun run parity …`, then 5000, 5100). Builds embed the backend URLs, so a non-default base builds into `.parity/builds-<base>/` and `serve`/`run` refuse a build made for another base. Captures are byte-identical across bases.
+- **Parallel runs.** Ports are offsets from `PARITY_PORT_BASE` (default `4790`): backend `+0`, legacy `+1`, foldkit `+2`, Electric `+3`. Give each worktree or agent its own base (`PARITY_PORT_BASE=4900 bun run parity …`, then 5000, 5100). Builds embed the backend URLs, so a non-default base builds into `.parity/builds-<base>/` and `serve`/`run` refuse a build made for another base. Captures are byte-identical across bases.
 - **Healthy captures only.** A capture that crashes, fails a step, or logs console errors (apart from known noise) marks its variant as `fail`, even when the pixels match. Two identical error screens are not parity.
 - **Determinism.** Frozen clock (`dataset.now`), seeded `Math.random`, UTC, en-US, `deviceScaleFactor: 1`, animations and transitions frozen, carets and scrollbars hidden, service worker blocked, and every request outside the three local origins aborted. A capture waits for fonts and every image to decode, then for 400ms with no DOM mutations, then for two consecutive frames in which no scroll offset, scroll extent or image changes (late images make the chat list re-anchor). Anything that moved restarts the wait, up to the timeout. The screenshot is retaken until two in a row are identical, for motion only the compositor sees (the overscroll bounce after a wheel scroll). Fixture images are rendered when the backend starts, so the first capture of a run doesn't get them later than the rest. Infinite Web Animations (`element.animate`, motion's `repeat: Infinity`) are paused at the last frame of their first iteration, like the CSS freeze, and SMIL animations at t=0.
 - **Behavior.** Capture tags every backend request with `x-parity-capture`, and the fixture backend logs each RPC (tag plus encoded payload) and each HTTP API request (method, path, body) per capture (`src/backend/call-log.ts`). The log as of the screenshot is stored in `<variant>.json` as `calls`. `compare` diffs the two logs (`src/behavior.ts`) and any difference fails the variant, with lines like `rpc: message.create payload differs at .content` or `rpc: channelMember.clearNotifications not sent (1× in baseline)` in `summary.md`:
@@ -36,8 +38,8 @@ bun run parity run                            # capture both, diff, write the re
     - `IGNORED_CALLS` (presence heartbeats, typing indicators) are never compared. `PRESENCE_ONLY_CALLS` (the presence status write on mount, Rivet actor metadata polling) only have to be sent by both apps or by neither, because their count depends on how long the capture ran. On `/dev/gallery/*` both lists are ignored: the Foldkit gallery boots a standalone program without the app root.
 - **Accessibility.** Every capture stores `page.locator("body").ariaSnapshot()` as `aria` in `<variant>.json`. `compare` diffs the trees as multisets of lines (indentation stripped, so wrapper depth doesn't count) and `summary.md` ends with an "a11y deltas" section: differences grouped by role across the run, then per variant. It does not fail variants yet, so existing deltas can be triaged; `--strict-a11y` makes any ARIA difference a `fail`.
 - **Two kinds of diff.**
-  - *Pixels*: strict (any channel differs) and perceptual (pixelmatch, anti-aliasing ignored). Differing pixels are grouped into regions.
-  - *Structure*: every visible text run and accessible control is recorded with its box and the computed styles that determine its look. Records are matched across apps by text or by role and name, never by DOM shape, because the two implementations won't share markup. Output reads like `font-weight: 600 → 500 on 18 text runs`, plus the elements that moved as a result.
+    - _Pixels_: strict (any channel differs) and perceptual (pixelmatch, anti-aliasing ignored). Differing pixels are grouped into regions.
+    - _Structure_: every visible text run and accessible control is recorded with its box and the computed styles that determine its look. Records are matched across apps by text or by role and name, never by DOM shape, because the two implementations won't share markup. Output reads like `font-weight: 600 → 500 on 18 text runs`, plus the elements that moved as a result.
 
 ## Workflows
 
@@ -81,39 +83,28 @@ bun run parity codegen .parity/runs/ref/legacy/settings-team--desktop--light.htm
 
 Every capture also writes `<variant>.html`, an indented dump of the rendered DOM with sorted attributes. Diff the legacy and Foldkit dumps to find attribute-level differences. `codegen` turns any subtree into Foldkit `h(...)` code with class strings kept verbatim. For components, prefer porting the legacy `twMerge`/`tv` call itself (see `docs/foldkit-decisions/s1-skeleton.md`) and use codegen for one-off markup.
 
-### 5. Check that a legacy refactor is visually neutral
-
-```bash
-bun run parity build legacy-head          # working-tree legacy app
-bun run parity run --baseline legacy --candidate legacy-head
-```
-
-Used by the `legacy-ui-guard` subagent (`.claude/agents/legacy-ui-guard.md`) for every change to legacy code.
-
-### 6. Component gallery (UI kit primitives)
+### 5. Component gallery (UI kit primitives)
 
 `/dev/gallery/<name>` renders every state of one primitive in both apps:
 
-- Legacy: `apps/web/src/dev-gallery/entries/<name>.tsx` exports `title` and a `Gallery` component, picked up by a glob in `routes/dev/gallery/$component.tsx`.
+- Legacy (pinned baseline only): `apps/web/src/dev-gallery/entries/<name>.tsx` exports `title` and a `Gallery` component, picked up by a glob in `routes/dev/gallery/$component.tsx`.
 - Foldkit: `apps/web-foldkit/src/gallery/entries/<name>.ts` exports `gallery = defineGallery(title, { Model, init, update, view })`, a self-contained program that `entry.ts` boots instead of the app on that path. Wrap the view in `galleryFrame` and `gallerySection` (`gallery/frame.ts`), the ports of `dev-gallery/frame.tsx`.
 - Scenarios go in `src/scenarios/gallery.ts`. Static states (variants, disabled, invalid) are rendered by the entry; interactive ones (hover, focus-visible, pressed, open) come from steps, so they test behavior too.
 
-A new legacy entry is not in the pinned baseline until the next re-pin. Until then compare against the working tree: `bun run parity build legacy-head && bun run parity run --baseline legacy-head --candidate foldkit --filter gallery`.
-
-### 7. Track what's left
+### 6. Track what's left
 
 ```bash
 bun run parity coverage   # every legacy route, ✓ if a scenario visits it
 bun run parity list       # every scenario × viewport × theme variant
 ```
 
-### 8. Add a scenario
+### 7. Add a scenario
 
 Add an entry to the area file `src/scenarios/<area>.ts` (an `AreaModule`: scenarios, the datasets the area introduces, and area-level canned RPCs). `src/scenarios.ts` only aggregates areas. Steps must use accessible locators (`getByRole`, `getByText`) so the same script drives both apps. If a step works in one app and not the other, that is a parity bug (wrong role or missing label), not a test bug. Add a dataset under `src/fixtures/datasets/` when a screen needs different data (empty org, long names, many unreads), and list it in your area module's `datasets`.
 
 If a capture logs `unmocked RPCs: ...`, add a canned response to your area module's `rpc`, or to `dataset.rpc` if it is dataset-specific. `defaultHandlers` in `src/backend/rpc.ts` is for handlers every screen needs.
 
-### 9. Measure performance
+### 8. Measure performance
 
 ```bash
 bun run parity build legacy && bun run parity build foldkit

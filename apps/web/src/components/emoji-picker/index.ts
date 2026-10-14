@@ -1,6 +1,0 @@
-export { CustomEmojiSection } from "./custom-emoji-section"
-export { EmojiPicker } from "./emoji-picker"
-export { EmojiPickerContent } from "./emoji-picker-content"
-export { EmojiPickerDialog } from "./emoji-picker-dialog"
-export { EmojiPickerFooter } from "./emoji-picker-footer"
-export { EmojiPickerSearch } from "./emoji-picker-search"

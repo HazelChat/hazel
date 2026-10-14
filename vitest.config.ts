@@ -8,7 +8,7 @@ export default defineConfig({
 			"apps/cluster",
 			"apps/electric-proxy",
 			"apps/link-preview-worker",
-			"apps/web",
+			"apps/web-foldkit",
 			"libs/*",
 			"apps/bot-gateway",
 		],

@@ -19,12 +19,6 @@
 	},
 	"overrides": [
 		{
-			"files": ["apps/web/src/hooks/use-mount-effect.ts"],
-			"rules": {
-				"no-restricted-imports": "off"
-			}
-		},
-		{
 			// Foldkit's own lint rules, scoped to the Foldkit app's source. The plugin is a devDependency
 			// of apps/web-foldkit (isolated linker), so it is loaded by path.
 			"files": ["apps/web-foldkit/src/**"],
@@ -117,6 +111,16 @@
 			"files": ["apps/web-foldkit/src/ui/aria/**"],
 			"rules": {
 				"foldkit/no-module-level-mutable-state": "off"
+			}
+		},
+		{
+			// Framework-free modules carried over from the React app: imperative singletons and
+			// helpers, not Foldkit programs, so the Foldkit architecture rules do not apply.
+			"files": ["apps/web-foldkit/src/core/**"],
+			"rules": {
+				"foldkit/no-impure-call-at-decision-time": "off",
+				"foldkit/no-module-level-mutable-state": "off",
+				"foldkit/no-switch-on-message-tag": "off"
 			}
 		}
 	],
