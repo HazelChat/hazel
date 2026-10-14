@@ -2,7 +2,7 @@ import { Option } from "effect"
 import { Submodel } from "foldkit"
 import type { Html, HtmlBuilder } from "foldkit/html"
 import type { Provider } from "../../../auth/client"
-import { IconExternalLink, IconLock } from "../../../icons"
+import { IconExternalLink, IconGitHub, IconGoogle, IconLock, type IconOptions } from "../../../icons"
 import { isDesktop } from "../../../platform/desktop"
 import { AppRoute, hrefOf } from "../../../route"
 import { button } from "../../../ui/button"
@@ -12,17 +12,20 @@ import { authError, authFrame, authHeading } from "../layout"
 import { Message } from "./message"
 import type { Model, Pending } from "./model"
 
-const providers: ReadonlyArray<{ readonly id: Provider; readonly label: string; readonly domain: string }> = [
-	{ id: "github", label: "GitHub", domain: "github.com" },
-	{ id: "google", label: "Google", domain: "google.com" },
+const providers: ReadonlyArray<{
+	readonly id: Provider
+	readonly label: string
+	readonly icon: (h: HtmlBuilder<Message>, options?: IconOptions) => Html
+}> = [
+	{ id: "github", label: "GitHub", icon: IconGitHub },
+	{ id: "google", label: "Google", icon: IconGoogle },
 ]
 
-const brandIcon = (h: HtmlBuilder<Message>, domain: string, theme: "light" | "dark"): Html =>
-	h.img([
-		h.Attribute("src", `https://cdn.brandfetch.io/${domain}/w/64/h/64/theme/${theme}/icon`),
-		h.Attribute("alt", ""),
-		h.Class("size-4"),
-	])
+/** Brand marks keep their own colors, so they skip the button's muted `data-slot="icon"` tint. */
+const brandIconOptions: IconOptions = {
+	className: "size-4 shrink-0",
+	attributes: { "aria-hidden": "true" },
+}
 
 const choice = (
 	h: HtmlBuilder<Message>,
@@ -51,14 +54,14 @@ const divider = (h: HtmlBuilder<Message>): Html =>
 		[h.div([h.Class("h-px flex-1 bg-border")]), "or", h.div([h.Class("h-px flex-1 bg-border")])],
 	)
 
-const choices = (h: HtmlBuilder<Message>, pending: Pending, theme: "light" | "dark"): Html =>
+const choices = (h: HtmlBuilder<Message>, pending: Pending): Html =>
 	h.div(
 		[h.Class("flex flex-col gap-3")],
 		[
-			...providers.map(({ id, label, domain }) =>
+			...providers.map(({ id, label, icon }) =>
 				choice(h, {
 					label: `Continue with ${label}`,
-					icon: brandIcon(h, domain, theme),
+					icon: icon(h, brandIconOptions),
 					isPending: pending === id,
 					isDisabled: pending !== null,
 					onPress: Message.ClickedProvider({ provider: id }),
@@ -129,7 +132,7 @@ export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, 
 					"Create your Hazel account",
 					"Sign up with GitHub or Google. It takes a few seconds.",
 				),
-		choices(h, model.pending, shared.theme.resolved),
+		choices(h, model.pending),
 		authError(h, model.error),
 		switchLink(h, model),
 	]),
