@@ -135,13 +135,13 @@ const panels = (
 }
 
 export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, { shared }, h) => {
-	const groups = model.groups
-	if (groups === null) {
+	if (model.channels._tag === "Loading") {
 		return h.div(
 			[h.Class("flex h-screen items-center justify-center")],
 			[loader(h, { className: "size-8" })],
 		)
 	}
+	const { groups } = model.channels
 	return h.div(
 		[h.Class("flex flex-col gap-6 px-4 py-6 lg:px-8")],
 		[

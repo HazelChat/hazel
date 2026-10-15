@@ -4,15 +4,17 @@ import * as Tabs from "../../ui/tabs"
 import type { PageReturn } from "../contract"
 import { PageOutMessage } from "../out-message"
 import { Message } from "./message"
-import { type Model, TABS_ID } from "./model"
+import { Channels, type Model, TABS_ID } from "./model"
 
 export const init = (): PageReturn<Model, Message> => ({
-	model: { groups: null, presence: {}, tabs: Tabs.init({ id: TABS_ID, selectedKey: "public" }) },
+	model: { channels: Channels.Loading(), presence: {}, tabs: Tabs.init({ id: TABS_ID, selectedKey: "public" }) },
 })
 
 export const update = (model: Model, message: Message): PageReturn<Model, Message> =>
 	Message.match<PageReturn<Model, Message>>(message, {
-		UpdatedChannels: ({ groups }) => ({ model: modifyFields(model, { groups: () => groups }) }),
+		UpdatedChannels: ({ groups }) => ({
+			model: modifyFields(model, { channels: () => Channels.Loaded({ groups }) }),
+		}),
 		UpdatedPresence: ({ presence }) => ({ model: modifyFields(model, { presence: () => presence }) }),
 		GotTabsMessage: ({ message: tabsMessage }) => {
 			const result = Tabs.update(model.tabs, tabsMessage)

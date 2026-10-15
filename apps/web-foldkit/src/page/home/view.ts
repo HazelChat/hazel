@@ -181,12 +181,12 @@ const memberListContent = (
 	model: Model,
 	currentUserId: string | undefined,
 ): ReadonlyArray<Html> => {
-	if (model.members === null) {
+	if (model.members._tag === "Loading") {
 		return [
 			h.div([h.Class("flex items-center justify-center py-8")], [loader(h, { className: "size-8" })]),
 		]
 	}
-	const filtered = filterMembers(model.members, model.searchQuery)
+	const filtered = filterMembers(model.members.members, model.searchQuery)
 	if (filtered.length === 0) {
 		return [
 			h.div(

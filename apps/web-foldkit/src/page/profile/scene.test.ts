@@ -5,7 +5,7 @@ import * as Scene from "foldkit/scene"
 import { describe, test } from "vitest"
 import { makeShared, pageScene, userId, uuid } from "../../test/pages-fixtures"
 import { Message } from "./message"
-import type { ProfileUser } from "./model"
+import { ProfileLookup, type ProfileUser } from "./model"
 import { init, update } from "./update"
 import { view } from "./view"
 
@@ -61,10 +61,21 @@ describe("profile page", () => {
 	test("a user who disappears from the query shows not found", () => {
 		Scene.scene(
 			pageScene(update, view, shared),
-			Scene.given({ userId: graceId, user: grace }),
+			Scene.given({ userId: graceId, user: ProfileLookup.Found({ user: grace }) }),
 			Scene.Subscription.emit(Message.UpdatedProfileUser({ user: null })),
 			Scene.expect(Scene.text("User not found")).toExist(),
 			Scene.expect(Scene.text("Grace Hopper")).toBeAbsent(),
+		)
+	})
+
+	// `null` used to mean both "loading" and "missing", so every visit flashed "User not found".
+	test("the page loads before it can say the user is missing", () => {
+		Scene.scene(
+			pageScene(update, view, shared),
+			Scene.given(init(graceId).model),
+			Scene.expect(Scene.text("User not found")).toBeAbsent(),
+			Scene.Subscription.emit(Message.UpdatedProfileUser({ user: null })),
+			Scene.expect(Scene.text("User not found")).toExist(),
 		)
 	})
 })

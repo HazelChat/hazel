@@ -10,7 +10,7 @@ import { Message } from "./message"
 import { type DirectoryMember, DmRequest, type DmRow, filterMembers, type Model } from "./model"
 import { init, update } from "./update"
 import { sharedDefaults } from "../test-shared"
-import { failureToastFixture } from "../../test/pages-fixtures"
+import { errorToast } from "../../data/actions"
 
 // `ui/aria/interaction` names `document` when its module loads; the update loop never touches it.
 vi.hoisted(() => {
@@ -167,8 +167,15 @@ describe("org home failures and guards", () => {
 			pageUpdate,
 			given(loaded()),
 			message(Message.PressedMessageMember({ userId: grace, name: "Grace Hopper" })),
-			Command.resolve(CreateDm, Message.FailedCreateDm({ toast: failureToastFixture })),
-			expectOutMessage(PageOutMessage.RequestedToast({ toast: { ...failureToastFixture, id: "home-create-dm" } })),
+			Command.resolve(CreateDm, Message.FailedCreateDm({ reason: "Offline" })),
+			expectOutMessage(
+				PageOutMessage.RequestedToast({
+					toast: {
+						...errorToast("Connection lost", "Check your internet connection and try again."),
+						id: "home-create-dm",
+					},
+				}),
+			),
 			model((current) => expect(current.dmRequest).toEqual(DmRequest.Idle())),
 		)
 	})
