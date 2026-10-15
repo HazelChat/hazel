@@ -108,6 +108,8 @@ const KeepTypedValue = Mount.define("KeepComboBoxTypedValue", {
 // VIEW
 
 export type ViewInputs = Readonly<{
+	/** The options, owned by the parent (the same ones it passes to `update`). */
+	items: ReadonlyArray<Item>
 	/** The `Label` inside the ComboBox; TimezoneSelect has none. */
 	label?: string
 	placeholder?: string
@@ -294,7 +296,7 @@ const listbox = (model: Model, open: Open, viewInputs: ViewInputs, h: HtmlBuilde
 			h.Id(listboxId(model.id)),
 			h.Role("listbox"),
 		],
-		Array.map(visibleItems(model, open), (candidate) => option(model, open, candidate, h)),
+		Array.map(visibleItems(model, open, viewInputs.items), (candidate) => option(model, open, candidate, h)),
 	)
 
 const option = (model: Model, open: Open, candidate: Item, h: HtmlBuilder<Message>): Html => {

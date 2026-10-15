@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import * as Scene from "foldkit/scene"
 import { describe, test } from "vitest"
-import { AnnounceComboBox, FocusComboBoxInput, init, item, Message, OutMessage, update } from "./combo-box"
+import { AnnounceComboBox, FocusComboBoxInput, init, item, Message, type Model, OutMessage, update } from "./combo-box"
 import { view } from "./combo-box-view"
 
 /** ComboBox through the view: combobox ARIA, virtual focus via aria-activedescendant, commit and revert. */
@@ -12,8 +12,8 @@ const items = [
 	item("engineering", "Engineering", true),
 	item("cafe", "Café"),
 ]
-const sceneView = Scene.withViewInputs(view, { label: "Channel", placeholder: "Pick a channel" })
-const config = { update, view: sceneView() }
+const sceneView = Scene.withViewInputs(view, { items, label: "Channel", placeholder: "Pick a channel" })
+const config = { update: (model: Model, message: Message) => update(model, message, items), view: sceneView() }
 const input = Scene.role("combobox")
 const button = Scene.label("Show suggestions")
 const listbox = Scene.role("listbox")
@@ -171,7 +171,7 @@ describe("combo box scene", () => {
 
 	test("without a label the listbox is named by the suggestions button", () => {
 		Scene.scene(
-			{ update, view: sceneView({ label: undefined }) },
+			{ update: config.update, view: sceneView({ label: undefined }) },
 			Scene.given(init({ id: "channel", items, isAppleDevice: false })),
 			mounted,
 			Scene.expect(input).not.toHaveAttr("aria-labelledby"),
