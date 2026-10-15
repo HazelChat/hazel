@@ -6,6 +6,7 @@ import {
 	AIResponseParseError,
 	DmChannelAlreadyExistsError,
 	InternalServerError,
+	InvalidChannelRequestError,
 	MessageNotFoundError,
 	NestedThreadError,
 	OriginalMessageNotFoundError,
@@ -151,7 +152,12 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.make("channel.createDm", {
 		payload: CreateDmChannelRequest,
 		success: ChannelResponse,
-		error: Schema.Union([DmChannelAlreadyExistsError, UnauthorizedError, InternalServerError]),
+		error: Schema.Union([
+			DmChannelAlreadyExistsError,
+			InvalidChannelRequestError,
+			UnauthorizedError,
+			InternalServerError,
+		]),
 	})
 		.annotate(RequiredScopes, ["channels:write"])
 		.middleware(AuthMiddleware),
@@ -176,6 +182,7 @@ export class ChannelRpcs extends RpcGroup.make(
 		error: Schema.Union([
 			MessageNotFoundError,
 			NestedThreadError,
+			InvalidChannelRequestError,
 			UnauthorizedError,
 			InternalServerError,
 		]),
@@ -192,8 +199,8 @@ export class ChannelRpcs extends RpcGroup.make(
 	 *
 	 * @param payload - Thread channel ID
 	 * @returns Transaction ID
-	 * @throws ChannelNotFoundError if channel doesn't exist or is not a thread
-	 * @throws MessageNotFoundError if original message is not found
+	 * @throws ChannelNotFoundError if channel doesn't exist
+	 * @throws InvalidChannelRequestError if the channel is not a thread or has no original message
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 * @throws ThreadChannelNotFoundError if thread channel not found in workflow
@@ -209,7 +216,7 @@ export class ChannelRpcs extends RpcGroup.make(
 		success: Schema.Struct({ success: Schema.Boolean }),
 		error: Schema.Union([
 			ChannelNotFoundError,
-			MessageNotFoundError,
+			InvalidChannelRequestError,
 			UnauthorizedError,
 			InternalServerError,
 			WorkflowServiceUnavailableError,

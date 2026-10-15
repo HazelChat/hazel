@@ -113,6 +113,17 @@ export class WorkflowInitializationError extends Schema.TaggedError<WorkflowInit
 	}
 }
 
+/** The request does not fit the channel or is malformed (e.g. naming a channel that is not a thread). */
+export class InvalidChannelRequestError extends Schema.TaggedError<InvalidChannelRequestError>(
+	"InvalidChannelRequestError",
+)(
+	"InvalidChannelRequestError",
+	{
+		message: Schema.String,
+	},
+	{ httpApiStatus: 400 },
+) {}
+
 export class DmChannelAlreadyExistsError extends Schema.TaggedError<DmChannelAlreadyExistsError>(
 	"DmChannelAlreadyExistsError",
 )(

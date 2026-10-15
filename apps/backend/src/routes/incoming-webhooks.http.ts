@@ -5,6 +5,7 @@ import { Database } from "@hazel/db"
 import type { MessageEmbed as DbMessageEmbed } from "@hazel/db"
 import { InternalServerError } from "@hazel/domain"
 import {
+	InvalidWebhookPayloadError,
 	InvalidWebhookTokenError,
 	WebhookDisabledError,
 	WebhookMessageResponse,
@@ -92,9 +93,8 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				// Validate payload has content or embeds
 				if (!payload.content && (!payload.embeds || payload.embeds.length === 0)) {
 					return yield* Effect.fail(
-						new InternalServerError({
+						new InvalidWebhookPayloadError({
 							message: "Message must have content or embeds",
-							detail: "Provide either 'content' or 'embeds' in the payload",
 						}),
 					)
 				}
@@ -102,9 +102,8 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				// Limit number of embeds (like Discord)
 				if (payload.embeds && payload.embeds.length > 10) {
 					return yield* Effect.fail(
-						new InternalServerError({
-							message: "Too many embeds",
-							detail: "Maximum 10 embeds per message",
+						new InvalidWebhookPayloadError({
+							message: "Too many embeds: maximum 10 embeds per message",
 						}),
 					)
 				}
@@ -139,8 +138,10 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 					}),
 				)
 
-				// Update last used timestamp (fire and forget)
-				yield* webhookRepo.updateLastUsed(webhook.id).pipe(Effect.ignore)
+				// Best-effort: a missed lastUsedAt update must not fail the delivery
+				yield* webhookRepo
+					.updateLastUsed(webhook.id)
+					.pipe(Effect.ignore({ log: "Debug", message: "Failed to update webhook lastUsedAt" }))
 
 				return new WebhookMessageResponse({
 					messageId: message.id,
@@ -148,18 +149,18 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				})
 			}).pipe(
 				Effect.catchTags({
-					DatabaseError: (error: unknown) =>
+					DatabaseError: (error) =>
 						Effect.fail(
 							new InternalServerError({
 								message: "Database error while creating message",
 								cause: error,
 							}),
 						),
-					SchemaError: (error: unknown) =>
+					// The message built from the payload failed the message schema (e.g. too long).
+					SchemaError: () =>
 						Effect.fail(
-							new InternalServerError({
-								message: "Invalid request data",
-								cause: error,
+							new InvalidWebhookPayloadError({
+								message: "The payload does not make a valid message",
 							}),
 						),
 				}),
@@ -242,8 +243,10 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 					}),
 				)
 
-				// Update last used timestamp (fire and forget)
-				yield* webhookRepo.updateLastUsed(webhook.id).pipe(Effect.ignore)
+				// Best-effort: a missed lastUsedAt update must not fail the delivery
+				yield* webhookRepo
+					.updateLastUsed(webhook.id)
+					.pipe(Effect.ignore({ log: "Debug", message: "Failed to update webhook lastUsedAt" }))
 
 				return new WebhookMessageResponse({
 					messageId: message.id,
@@ -251,18 +254,18 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				})
 			}).pipe(
 				Effect.catchTags({
-					DatabaseError: (error: unknown) =>
+					DatabaseError: (error) =>
 						Effect.fail(
 							new InternalServerError({
 								message: "Database error while creating message",
 								cause: error,
 							}),
 						),
-					SchemaError: (error: unknown) =>
+					// The message built from the payload failed the message schema (e.g. too long).
+					SchemaError: () =>
 						Effect.fail(
-							new InternalServerError({
-								message: "Invalid request data",
-								cause: error,
+							new InvalidWebhookPayloadError({
+								message: "The payload does not make a valid message",
 							}),
 						),
 				}),
@@ -342,8 +345,10 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 					}),
 				)
 
-				// Update last used timestamp (fire and forget)
-				yield* webhookRepo.updateLastUsed(webhook.id).pipe(Effect.ignore)
+				// Best-effort: a missed lastUsedAt update must not fail the delivery
+				yield* webhookRepo
+					.updateLastUsed(webhook.id)
+					.pipe(Effect.ignore({ log: "Debug", message: "Failed to update webhook lastUsedAt" }))
 
 				return new WebhookMessageResponse({
 					messageId: message.id,
@@ -351,18 +356,18 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				})
 			}).pipe(
 				Effect.catchTags({
-					DatabaseError: (error: unknown) =>
+					DatabaseError: (error) =>
 						Effect.fail(
 							new InternalServerError({
 								message: "Database error while creating message",
 								cause: error,
 							}),
 						),
-					SchemaError: (error: unknown) =>
+					// The message built from the payload failed the message schema (e.g. too long).
+					SchemaError: () =>
 						Effect.fail(
-							new InternalServerError({
-								message: "Invalid request data",
-								cause: error,
+							new InvalidWebhookPayloadError({
+								message: "The payload does not make a valid message",
 							}),
 						),
 				}),
@@ -436,7 +441,9 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 					}),
 				)
 
-				yield* webhookRepo.updateLastUsed(webhook.id).pipe(Effect.ignore)
+				yield* webhookRepo
+					.updateLastUsed(webhook.id)
+					.pipe(Effect.ignore({ log: "Debug", message: "Failed to update webhook lastUsedAt" }))
 
 				return new WebhookMessageResponse({
 					messageId: message.id,
@@ -444,18 +451,18 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				})
 			}).pipe(
 				Effect.catchTags({
-					DatabaseError: (error: unknown) =>
+					DatabaseError: (error) =>
 						Effect.fail(
 							new InternalServerError({
 								message: "Database error while creating message",
 								cause: error,
 							}),
 						),
-					SchemaError: (error: unknown) =>
+					// The message built from the payload failed the message schema (e.g. too long).
+					SchemaError: () =>
 						Effect.fail(
-							new InternalServerError({
-								message: "Invalid request data",
-								cause: error,
+							new InvalidWebhookPayloadError({
+								message: "The payload does not make a valid message",
 							}),
 						),
 				}),

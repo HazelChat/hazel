@@ -10,6 +10,7 @@ import {
 	CurrentUser,
 	DmChannelAlreadyExistsError,
 	InternalServerError,
+	InvalidChannelRequestError,
 	withRemapDbErrors,
 	WorkflowServiceUnavailableError,
 } from "@hazel/domain"
@@ -189,9 +190,8 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							// Validate participant count for single DMs
 							if (payload.type === "single" && payload.participantIds.length !== 1) {
 								return yield* Effect.fail(
-									new InternalServerError({
+									new InvalidChannelRequestError({
 										message: "DM channels must have exactly one other participant",
-										cause: "Invalid participant count",
 									}),
 								)
 							}
@@ -361,9 +361,8 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							// Optional client org must match the derived parent channel org.
 							if (requestedOrganizationId && requestedOrganizationId !== organizationId) {
 								return yield* Effect.fail(
-									new InternalServerError({
-										message: "Thread creation organization mismatch",
-										detail: `messageId=${messageId} parentOrganizationId=${organizationId} requestedOrganizationId=${requestedOrganizationId}`,
+									new InvalidChannelRequestError({
+										message: "The thread's organization does not match the message's",
 									}),
 								)
 							}
@@ -431,16 +430,9 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 				Effect.gen(function* () {
 					yield* channelPolicy.canUpdate(channelId)
 
-					const channel = yield* channelRepo.findById(channelId).pipe(
-						Effect.catchTag("DatabaseError", (err) =>
-							Effect.fail(
-								new InternalServerError({
-									message: "Failed to query channel",
-									cause: err,
-								}),
-							),
-						),
-					)
+					const channel = yield* channelRepo
+						.findById(channelId)
+						.pipe(withRemapDbErrors("Channel", "select", channelId))
 
 					if (Option.isNone(channel)) {
 						return yield* Effect.fail(new ChannelNotFoundError({ channelId }))
@@ -448,38 +440,34 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 
 					if (channel.value.type !== "thread") {
 						return yield* Effect.fail(
-							new InternalServerError({
-								message: "Channel is not a thread",
-								cause: `Channel type: ${channel.value.type}`,
-							}),
+							new InvalidChannelRequestError({ message: "Only threads can be named" }),
 						)
 					}
 
-					const originalMessageResult = yield* db
-						.run(
+					const originalMessage = yield* db
+						.first(
 							PG.from(schema.messagesTable)
 								.select("id")
 								.where(($) => [$.threadChannelId.eq(channelId)])
 								.limit(1),
 						)
-						.pipe(Effect.catchTag("DatabaseError", () => Effect.succeed([])))
+						.pipe(withRemapDbErrors("Message", "select"))
 
-					if (originalMessageResult.length === 0) {
+					if (Option.isNone(originalMessage)) {
 						return yield* Effect.fail(
-							new MessageNotFoundError({
-								messageId: channelId as unknown as MessageId,
+							new InvalidChannelRequestError({
+								message: "This thread has no original message",
 							}),
 						)
 					}
 
-					const originalMessageId = originalMessageResult[0]!.id
+					const originalMessageId = originalMessage.value.id
 
 					const clusterUrl = yield* Config.String("CLUSTER_URL").pipe(
 						Effect.mapError(
 							() =>
 								new WorkflowServiceUnavailableError({
 									message: "CLUSTER_URL not configured",
-									cause: "Missing CLUSTER_URL environment variable",
 								}),
 						),
 					)
@@ -493,13 +481,6 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							},
 						})
 						.pipe(
-							Effect.tapError((err) =>
-								Effect.logError("Failed to execute thread naming workflow", {
-									threadChannelId: channelId,
-									error: String(err),
-									errorTag: "_tag" in err ? err._tag : "unknown",
-								}),
-							),
 							// Workflow errors (ThreadChannelNotFoundError, AIProviderUnavailableError, etc.)
 							// pass through directly since they're in the RPC union - only handle HTTP client errors
 							Effect.catchTag("HttpClientError", (err) =>
