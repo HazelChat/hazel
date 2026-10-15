@@ -1,3 +1,4 @@
+import type { MessageId } from "@hazel/schema"
 import type { Html, HtmlBuilder } from "foldkit/html"
 import { cn } from "~/lib/utils"
 import { formatStatusExpiration } from "~/utils/status"
@@ -63,21 +64,24 @@ const reactedBy = <M>(
 
 export const reactionButton = <M>(
 	h: HtmlBuilder<M>,
-	messageId: string,
+	messageId: MessageId,
 	reaction: AggregatedReaction,
 	context: TooltipContext<M>,
 	onPress?: M,
 ): Html =>
 	TooltipHost.tooltipTrigger(h, {
 		key: `${messageId}:reaction:${reaction.emoji}`,
+		messageId,
 		active: context.active,
 		hoveredKey: context.hoveredKey,
 		delayMs: 300,
 		toMessage: context.toMessage,
 		placement: "top",
 		className: "flex items-center gap-3 px-3 py-2",
+		// Keyed by emoji: a reaction dropping to zero must not hand its hover and focus to the next pill.
 		toTrigger: (attributes, overlay) =>
-			h.button(
+			h.keyed("button")(
+				reaction.emoji,
 				[
 					...attributes,
 					h.Class(
@@ -119,7 +123,7 @@ export const reactionButton = <M>(
 /** `StatusEmojiWithTooltip` (interactive, no quiet hours). */
 export const statusEmojiView = <M>(
 	h: HtmlBuilder<M>,
-	messageId: string,
+	messageId: MessageId,
 	status: StatusEmoji | null,
 	context: TooltipContext<M>,
 ): Html => {
@@ -129,6 +133,7 @@ export const statusEmojiView = <M>(
 	)
 	return TooltipHost.tooltipTrigger(h, {
 		key: `${messageId}:status`,
+		messageId,
 		active: context.active,
 		hoveredKey: context.hoveredKey,
 		delayMs: 300,

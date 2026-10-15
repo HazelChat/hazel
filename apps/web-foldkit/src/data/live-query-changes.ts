@@ -13,9 +13,9 @@ export interface LiveQueryWindow {
 	readonly limit: number
 }
 
-export interface ChangeSet<Row> {
+export interface ChangeSet<Row, Id extends string = string> {
 	/** Every row id of the result, in the query's order (deleted rows are simply absent). */
-	readonly order: ReadonlyArray<string>
+	readonly order: ReadonlyArray<Id>
 	/** Inserted or updated rows; the first emission carries all of them. */
 	readonly upserts: ReadonlyArray<Row>
 	readonly isSnapshot: boolean
@@ -26,13 +26,13 @@ export interface ChangeSet<Row> {
  * moves only the rows that enter or leave the window instead of recompiling the query and re-sending
  * every row. `readWindow` catches a page made before `windows` was subscribed. The query must be ordered.
  */
-export const liveQueryChangeSetStream = <Row, Message>(
+export const liveQueryChangeSetStream = <Row, Message, Id extends string = string>(
 	query: (q: InitialQueryBuilder, window: LiveQueryWindow) => QueryBuilder<any>,
 	window: LiveQueryWindow,
 	readWindow: () => LiveQueryWindow,
 	windows: Stream.Stream<LiveQueryWindow>,
-	idOf: (row: Row) => string,
-	toMessage: (changes: ChangeSet<Row>) => Message,
+	idOf: (row: Row) => Id,
+	toMessage: (changes: ChangeSet<Row, Id>) => Message,
 ): Stream.Stream<Message> =>
 	Stream.callback<Message>((queue) =>
 		Effect.gen(function* () {
@@ -43,7 +43,10 @@ export const liveQueryChangeSetStream = <Row, Message>(
 			}
 			const { collection } = yield* Effect.acquireRelease(
 				Effect.sync(() => {
-					const collection = createLiveQueryCollection({ query: (q) => query(q, window), startSync: true })
+					const collection = createLiveQueryCollection({
+						query: (q) => query(q, window),
+						startSync: true,
+					})
 					let isReady = false
 					// Joined results have composite keys, so the order is read off the rows' own ids.
 					const order = () => (collection.toArray as ReadonlyArray<Row>).map(idOf)
@@ -51,13 +54,19 @@ export const liveQueryChangeSetStream = <Row, Message>(
 						isReady = true
 						Queue.offerUnsafe(
 							queue,
-							toMessage({ order: order(), upserts: collection.toArray as ReadonlyArray<Row>, isSnapshot: true }),
+							toMessage({
+								order: order(),
+								upserts: collection.toArray as ReadonlyArray<Row>,
+								isSnapshot: true,
+							}),
 						)
 					}
 					const subscription = collection.subscribeChanges((changes) => {
 						signal()
 						if (!isReady) return snapshot()
-						const upserts = changes.flatMap((change) => (change.type === "delete" ? [] : [change.value as Row]))
+						const upserts = changes.flatMap((change) =>
+							change.type === "delete" ? [] : [change.value as Row],
+						)
 						Queue.offerUnsafe(queue, toMessage({ order: order(), upserts, isSnapshot: false }))
 					})
 					collection.onFirstReady(() => {

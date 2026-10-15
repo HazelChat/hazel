@@ -1,6 +1,6 @@
 import type { Html, HtmlBuilder } from "foldkit/html"
 import { IconHeart } from "../../icons"
-import type { TweetView, Unfurl } from "../unfurl"
+import { linkPreviewOf, type TweetView, tweetOf, type Unfurl } from "../unfurl"
 
 /**
  * `MessageContent.Embeds`' URL embeds: `TweetEmbed`, `YoutubeEmbed`, `GifEmbed` and `LinkPreview`
@@ -13,8 +13,9 @@ const hostOf = (url: string) => (URL.canParse(url) ? new URL(url).host : "")
 
 /** `LinkPreview`: nothing once the fetch failed, a "Loading preview…" card until it answers. */
 export const linkPreviewView = <M>(h: HtmlBuilder<M>, url: string, unfurl: Unfurl | null): Html => {
-	if (unfurl === null || unfurl._tag === "Failed" || unfurl._tag === "LoadedTweet") return h.empty
-	const og = unfurl._tag === "LoadedLinkPreview" ? unfurl.preview : null
+	const isLoading = unfurl !== null && (unfurl._tag === "Idle" || unfurl._tag === "Loading")
+	const og = linkPreviewOf(unfurl)
+	if (!isLoading && og === null) return h.empty
 	const href = og?.url || url
 	const host = hostOf(href)
 	const imageUrl = og?.image?.url
@@ -31,7 +32,13 @@ export const linkPreviewView = <M>(h: HtmlBuilder<M>, url: string, unfurl: Unfur
 			imageUrl
 				? h.div(
 						[h.Class("aspect-video w-full overflow-hidden bg-muted")],
-						[h.img([h.Attribute("src", imageUrl), h.Attribute("alt", ""), h.Class("h-full w-full object-cover")])],
+						[
+							h.img([
+								h.Attribute("src", imageUrl),
+								h.Attribute("alt", ""),
+								h.Class("h-full w-full object-cover"),
+							]),
+						],
 					)
 				: h.empty,
 			h.div(
@@ -42,14 +49,17 @@ export const linkPreviewView = <M>(h: HtmlBuilder<M>, url: string, unfurl: Unfur
 						[
 							h.div([h.Class("truncate font-semibold text-sm")], [og?.title || host || url]),
 							og?.description
-								? h.div([h.Class("mt-0.5 line-clamp-2 text-[12px] text-fg/70")], [og.description])
+								? h.div(
+										[h.Class("mt-0.5 line-clamp-2 text-[12px] text-fg/70")],
+										[og.description],
+									)
 								: h.empty,
 							h.div([h.Class("mt-1 text-[11px] text-primary-subtle-fg")], [host]),
 						],
 					),
 				],
 			),
-			unfurl._tag === "Loading"
+			isLoading
 				? h.div([h.Class("px-3 pb-3 text-[11px] text-muted-fg")], ["Loading preview…"])
 				: h.empty,
 		],
@@ -93,7 +103,11 @@ export const gifView = <M>(h: HtmlBuilder<M>, mediaUrl: string, isKlipy: boolean
 		[h.Class("mt-1")],
 		[
 			h.button(
-				[h.Attribute("type", "button"), h.Class("cursor-pointer"), ...(onOpen === null ? [] : [h.OnClick(onOpen)])],
+				[
+					h.Attribute("type", "button"),
+					h.Class("cursor-pointer"),
+					...(onOpen === null ? [] : [h.OnClick(onOpen)]),
+				],
 				[
 					h.img([
 						h.Attribute("src", mediaUrl),
@@ -118,8 +132,7 @@ export const gifView = <M>(h: HtmlBuilder<M>, mediaUrl: string, isKlipy: boolean
 
 // MARK: Tweet
 
-const tweetCard =
-	"mt-2 flex max-w-sm flex-col gap-2 rounded-lg border border-fg/15 bg-muted/40 p-4"
+const tweetCard = "mt-2 flex max-w-sm flex-col gap-2 rounded-lg border border-fg/15 bg-muted/40 p-4"
 
 const tweetSkeleton = <M>(h: HtmlBuilder<M>): Html =>
 	h.div(
@@ -149,7 +162,12 @@ const tweetNotFound = <M>(h: HtmlBuilder<M>): Html =>
 const truncate = (value: string, length: number) =>
 	value.length <= length ? value : `${value.slice(0, length - 3)}...`
 
-const externalLink = <M>(h: HtmlBuilder<M>, href: string, className: string | null, children: ReadonlyArray<Html | string>) =>
+const externalLink = <M>(
+	h: HtmlBuilder<M>,
+	href: string,
+	className: string | null,
+	children: ReadonlyArray<Html | string>,
+) =>
 	h.a(
 		[
 			h.Href(href),
@@ -162,7 +180,11 @@ const externalLink = <M>(h: HtmlBuilder<M>, href: string, className: string | nu
 
 const verifiedIcon = <M>(h: HtmlBuilder<M>): Html =>
 	h.svg(
-		[h.Attribute("aria-label", "Verified Account"), h.Attribute("viewBox", "0 0 24 24"), h.Class("ml-1 inline size-4 text-verified")],
+		[
+			h.Attribute("aria-label", "Verified Account"),
+			h.Attribute("viewBox", "0 0 24 24"),
+			h.Class("ml-1 inline size-4 text-verified"),
+		],
 		[
 			h.g(
 				[h.Attribute("fill", "currentColor")],
@@ -225,10 +247,15 @@ const tweetHeader = <M>(h: HtmlBuilder<M>, tweet: TweetView): Html =>
 					h.div(
 						[],
 						[
-							externalLink(h, tweet.user.url, "flex items-center whitespace-nowrap font-semibold text-sm hover:underline", [
-								truncate(tweet.user.name, 20),
-								tweet.user.isVerified ? verifiedIcon(h) : h.empty,
-							]),
+							externalLink(
+								h,
+								tweet.user.url,
+								"flex items-center whitespace-nowrap font-semibold text-sm hover:underline",
+								[
+									truncate(tweet.user.name, 20),
+									tweet.user.isVerified ? verifiedIcon(h) : h.empty,
+								],
+							),
 							h.div(
 								[h.Class("flex items-center space-x-1")],
 								[
@@ -242,7 +269,10 @@ const tweetHeader = <M>(h: HtmlBuilder<M>, tweet: TweetView): Html =>
 					),
 				],
 			),
-			externalLink(h, tweet.url, null, [h.span([h.Class("sr-only")], ["Link to tweet"]), twitterIcon(h)]),
+			externalLink(h, tweet.url, null, [
+				h.span([h.Class("sr-only")], ["Link to tweet"]),
+				twitterIcon(h),
+			]),
 		],
 	)
 
@@ -266,7 +296,11 @@ const tweetBody = <M>(h: HtmlBuilder<M>, tweet: TweetView): Html =>
 		),
 	)
 
-const tweetMedia = <M>(h: HtmlBuilder<M>, tweet: TweetView, toOpenPhoto: ((index: number) => M) | null): Html => {
+const tweetMedia = <M>(
+	h: HtmlBuilder<M>,
+	tweet: TweetView,
+	toOpenPhoto: ((index: number) => M) | null,
+): Html => {
 	if (tweet.video === null && tweet.photos === null) return h.empty
 	return h.div(
 		[h.Class("flex flex-1 items-center justify-center")],
@@ -332,9 +366,16 @@ const tweetMetrics = <M>(h: HtmlBuilder<M>, tweet: TweetView): Html => {
 		[h.Class("flex items-center gap-4 text-fg/70 text-xs")],
 		[
 			replyCount !== null && replyCount > 0 ? metric(h, replyCount, "Replies", h.empty) : h.empty,
-			retweetCount !== null && retweetCount > 0 ? metric(h, retweetCount, "Retweets", h.empty) : h.empty,
+			retweetCount !== null && retweetCount > 0
+				? metric(h, retweetCount, "Retweets", h.empty)
+				: h.empty,
 			favoriteCount !== null && favoriteCount > 0
-				? metric(h, favoriteCount, favoriteCount > 1 ? "Likes" : "Like", IconHeart(h, { className: "size-3 text-primary" }))
+				? metric(
+						h,
+						favoriteCount,
+						favoriteCount > 1 ? "Likes" : "Like",
+						IconHeart(h, { className: "size-3 text-primary" }),
+					)
 				: h.empty,
 		],
 	)
@@ -346,15 +387,20 @@ export const tweetView = <M>(
 	unfurl: Unfurl | null,
 	toOpenPhoto: ((index: number) => M) | null,
 ): Html => {
-	if (unfurl === null || unfurl._tag === "Loading") return tweetSkeleton(h)
-	if (unfurl._tag !== "LoadedTweet") return tweetNotFound(h)
-	const { tweet } = unfurl
+	if (unfurl === null || unfurl._tag === "Idle" || unfurl._tag === "Loading") return tweetSkeleton(h)
+	const tweet = tweetOf(unfurl)
+	if (tweet === null) return tweetNotFound(h)
 	return h.div(
 		[
 			h.Class(
 				"mt-2 flex max-w-sm flex-col gap-2 overflow-hidden rounded-lg border border-fg/15 pressed:border-fg/15 bg-muted/40 pressed:bg-muted p-4 hover:border-fg/15 hover:bg-muted",
 			),
 		],
-		[tweetHeader(h, tweet), tweetBody(h, tweet), tweetMedia(h, tweet, toOpenPhoto), tweetMetrics(h, tweet)],
+		[
+			tweetHeader(h, tweet),
+			tweetBody(h, tweet),
+			tweetMedia(h, tweet, toOpenPhoto),
+			tweetMetrics(h, tweet),
+		],
 	)
 }
