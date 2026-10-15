@@ -10,14 +10,11 @@ import {
 import { twMerge } from "tailwind-merge"
 import {
 	dropdownCheckIndicatorClassName,
-	dropdownDescriptionBase,
 	dropdownItemStyles,
-	dropdownKeyboardBase,
 	dropdownLabelBase,
 	dropdownSectionStyles,
 	dropdownSeparatorBase,
 } from "~/components/ui/dropdown.styles"
-import { keyboardStyles } from "~/components/ui/keyboard.styles"
 import {
 	menuChevronClassName,
 	menuContentStyles,
@@ -204,29 +201,6 @@ export const menuLabel = <M>(
 			h.Attribute("slot", "label"),
 		],
 		typeof text === "string" ? [text] : [...text],
-	)
-
-/** `MenuDescription` (DropdownDescription). */
-export const menuDescription = <M>(h: HtmlBuilder<M>, id: string, key: string, text: string): Html =>
-	h.span(
-		[
-			h.Class(twMerge(dropdownDescriptionBase)),
-			h.Id(descriptionId(id, key)),
-			h.Attribute("slot", "description"),
-		],
-		[text],
-	)
-
-/** `MenuShortcut` (DropdownKeyboard over Keyboard). */
-export const menuShortcut = <M>(h: HtmlBuilder<M>, id: string, key: string, text: string): Html =>
-	h.kbd(
-		[
-			h.Class(twMerge(keyboardStyles, twMerge(dropdownKeyboardBase))),
-			h.Attribute("data-slot", "keyboard"),
-			h.Attribute("dir", "ltr"),
-			h.Id(descriptionId(id, key)),
-		],
-		[text],
 	)
 
 /** `MenuTrigger`'s classes, for an icon trigger that is not a `Button`. */

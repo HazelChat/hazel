@@ -410,15 +410,3 @@ export const pressStyleAttributes = <ParentMessage>(
 		? [h.Attribute("style", "user-select: none;")]
 		: []
 
-/** Everything a React Aria pressable writes for one target: `data-rac`, handlers and state. */
-export const targetAttributes = <ParentMessage>(
-	h: HtmlBuilder<ParentMessage>,
-	wiring: Wiring<ParentMessage>,
-	target: string,
-	options: TargetOptions = {},
-): ReadonlyArray<Attribute<ParentMessage>> => [
-	h.DataAttribute("rac", ""),
-	...handlers(h, wiring, target, options),
-	...stateAttributes(h, stateOf(wiring.model, target)),
-	...pressStyleAttributes(h, wiring.model, target),
-]

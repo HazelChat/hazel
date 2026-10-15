@@ -2,8 +2,6 @@
 export const dialogBase =
 	"peer/dialog group/dialog relative flex max-h-[inherit] flex-col overflow-hidden outline-hidden [--gutter:--spacing(6)] sm:[--gutter:--spacing(8)]"
 
-export const dialogTriggerBase = "cursor-pointer"
-
 export const dialogHeaderBase = "relative space-y-1 p-(--gutter) pb-[calc(var(--gutter)---spacing(3))]"
 
 export const dialogTitleBase = "text-balance font-semibold text-fg text-lg/6 sm:text-base/6"

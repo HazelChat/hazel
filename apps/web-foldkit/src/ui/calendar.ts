@@ -1,5 +1,5 @@
 import { Array, Effect, Option, Schema } from "effect"
-import { Command, Mount, Subscription, type Update } from "foldkit"
+import { Command, Subscription, type Update } from "foldkit"
 import * as Dom from "foldkit/dom"
 import { defineMessageUnion } from "foldkit/message"
 import { modifyFields } from "foldkit/struct"
@@ -9,25 +9,18 @@ import * as D from "./calendar-date"
 import * as Select from "./select"
 
 /**
- * Port of `components/ui/calendar.tsx` and `range-calendar.tsx` (React Aria Calendar and
- * RangeCalendar, one month): selection, keyboard navigation, the month and year Selects and the
- * page buttons. Hover, press and focus-visible come from an embedded interaction Submodel.
+ * A single-date calendar (one month): selection, keyboard navigation, the month and year Selects
+ * and the page buttons. Hover, press and focus-visible come from an embedded interaction Submodel.
  * The views live in `calendar-view.ts`.
  */
 
 // MODEL
 
-const Range = Schema.Struct({ start: Schema.String, end: Schema.String })
-
 export const Model = Schema.Struct({
 	id: Schema.String,
-	mode: Schema.Literals(["Single", "Range"]),
 	today: Schema.String,
 	focusedDate: Schema.String,
 	value: Schema.Option(Schema.String),
-	range: Schema.Option(Range),
-	/** The first click of a range selection, until the second one completes it. */
-	anchor: Schema.Option(Schema.String),
 	minValue: Schema.Option(Schema.String),
 	month: Select.Model,
 	year: Select.Model,
@@ -68,21 +61,16 @@ const clampToMin = (minValue: Option.Option<D.CalendarDate>, date: D.CalendarDat
 export const init = (config: {
 	readonly id: string
 	readonly today: D.CalendarDate
-	readonly mode?: "Single" | "Range"
 	readonly value?: D.CalendarDate
-	readonly range?: { readonly start: D.CalendarDate; readonly end: D.CalendarDate }
 	readonly minValue?: D.CalendarDate
 }): Model => {
 	const minValue = Option.fromNullishOr(config.minValue)
-	const focusedDate = clampToMin(minValue, config.value ?? config.range?.start ?? config.today)
+	const focusedDate = clampToMin(minValue, config.value ?? config.today)
 	return {
 		id: config.id,
-		mode: config.mode ?? "Single",
 		today: config.today,
 		focusedDate,
 		value: Option.fromNullishOr(config.value),
-		range: Option.fromNullishOr(config.range),
-		anchor: Option.none(),
 		minValue,
 		month: monthSelect(config.id, focusedDate),
 		year: yearSelect(config.id, focusedDate),
@@ -100,45 +88,17 @@ export const isOutsideMonth = (model: Model, date: D.CalendarDate) => !D.isSameM
 export const isCellDisabled = (model: Model, date: D.CalendarDate) =>
 	isOutsideMonth(model, date) || isBeforeMin(model, date)
 
-/** The highlighted range: the committed one, or the anchor up to the hovered or focused day. */
-export const highlightedRange = (model: Model): Option.Option<{ start: string; end: string }> =>
-	Option.match(model.anchor, {
-		onNone: () => model.range,
-		onSome: (anchor) => {
-			const other = Option.getOrElse(hoveredDate(model), () => model.focusedDate)
-			return Option.some(
-				D.compare(anchor, other) <= 0 ? { start: anchor, end: other } : { start: other, end: anchor },
-			)
-		},
-	})
-
 export const cellTarget = (date: D.CalendarDate) => `cell-${date}`
-
-const hoveredDate = (model: Model): Option.Option<string> =>
-	Option.map(
-		Array.findFirst(model.interaction.hovered, (target) => target.startsWith("cell-")),
-		(target) => target.slice("cell-".length),
-	)
 
 export const isPreviousDisabled = (model: Model) =>
 	isBeforeMin(model, D.addDays(D.startOfMonth(model.focusedDate), -1))
 
-/** useSelectedDateDescription: the committed date or range, "" while a range is being picked. */
+/** useSelectedDateDescription: the committed date, or "" when none. */
 export const selectedDateDescription = (model: Model): string =>
-	model.mode === "Single"
-		? Option.match(model.value, {
-				onNone: () => "",
-				onSome: (date) => `Selected Date: ${D.formatFull(date)}`,
-			})
-		: Option.isSome(model.anchor)
-			? ""
-			: Option.match(model.range, {
-					onNone: () => "",
-					onSome: ({ start, end }) =>
-						start === end
-							? `Selected Date: ${D.formatFull(start)}`
-							: `Selected Range: ${D.formatRange(start, end)}`,
-				})
+	Option.match(model.value, {
+		onNone: () => "",
+		onSome: (date) => `Selected Date: ${D.formatFull(date)}`,
+	})
 
 // IDS
 
@@ -156,13 +116,11 @@ export const Message = defineMessageUnion({
 	GotInteractionMessage: { message: Interaction.Message },
 	CompletedFocusCell: {},
 	CompletedAnnounce: {},
-	CompletedFocusCellOnPress: {},
 })
 export type Message = typeof Message.Type
 
 export const OutMessage = defineMessageUnion({
 	ChangedValue: { date: Schema.String },
-	ChangedRange: { start: Schema.String, end: Schema.String },
 })
 export type OutMessage = typeof OutMessage.Type
 
@@ -203,38 +161,6 @@ export const FocusCalendarCell = Command.define("FocusCalendarCell", {
 			Effect.ignore,
 			Effect.as(Message.CompletedFocusCell()),
 		),
-})
-
-// MOUNT
-
-/**
- * A RangeCalendar day is focused by script when pressed (useCalendarCell's onPressStart, or
- * preventFocus then onPressUp), never by the mouse, so Chrome gives it `:focus-visible`.
- */
-export const FocusCellOnPress = Mount.define("FocusCalendarCellOnPress", {
-	messages: [Message.CompletedFocusCellOnPress],
-	execute: ({ element }) =>
-		Effect.acquireRelease(
-			Effect.sync(() => {
-				const onPointerDown = (event: Event) => {
-					if (
-						!(event instanceof PointerEvent) ||
-						event.button !== 0 ||
-						event.pointerType === "touch"
-					)
-						return
-					const cell =
-						event.target instanceof Element
-							? event.target.closest("[role=button][tabindex]")
-							: null
-					if (cell instanceof HTMLElement && element.contains(cell))
-						cell.focus({ preventScroll: true })
-				}
-				element.addEventListener("pointerdown", onPointerDown)
-				return () => element.removeEventListener("pointerdown", onPointerDown)
-			}),
-			(release) => Effect.sync(release),
-		).pipe(Effect.as(Message.CompletedFocusCellOnPress())),
 })
 
 // UPDATE
@@ -281,27 +207,10 @@ const focusDate = (model: Model, date: D.CalendarDate): UpdateReturn => {
 
 const selectDate = (model: Model, date: D.CalendarDate): UpdateReturn => {
 	if (isBeforeMin(model, date)) return { model }
-	if (model.mode === "Single")
-		return {
-			model: modifyFields(withFocusedDate(model, date), { value: () => Option.some(date) }),
-			outMessage: OutMessage.ChangedValue({ date }),
-		}
-	return Option.match(model.anchor, {
-		onNone: () => ({
-			model: modifyFields(withFocusedDate(model, date), { anchor: () => Option.some(date) }),
-		}),
-		onSome: (anchor) => {
-			const range =
-				D.compare(anchor, date) <= 0 ? { start: anchor, end: date } : { start: date, end: anchor }
-			return {
-				model: modifyFields(withFocusedDate(model, date), {
-					anchor: () => Option.none(),
-					range: () => Option.some(range),
-				}),
-				outMessage: OutMessage.ChangedRange(range),
-			}
-		},
-	})
+	return {
+		model: modifyFields(withFocusedDate(model, date), { value: () => Option.some(date) }),
+		outMessage: OutMessage.ChangedValue({ date }),
+	}
 }
 
 const keyOffsets: Readonly<Record<string, (date: D.CalendarDate) => D.CalendarDate>> = {
@@ -395,7 +304,6 @@ const updateCalendar = (model: Model, message: Message): UpdateReturn =>
 		}),
 		CompletedFocusCell: () => ({ model }),
 		CompletedAnnounce: () => ({ model }),
-		CompletedFocusCellOnPress: () => ({ model }),
 	})
 
 // SUBSCRIPTION

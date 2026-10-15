@@ -29,13 +29,6 @@ export const fieldStyles = tv({
 	],
 })
 
-/** FieldErrors: `twMerge(fieldErrorStyles(), list, className)`, one `item` per error with a `bullet`. */
-export const fieldErrorsStyles = {
-	list: "m-0 list-none space-y-1 p-0",
-	item: "flex items-start gap-1.5",
-	bullet: "mt-1.5 size-1 shrink-0 rounded-full bg-danger-subtle-fg",
-} as const
-
 export const fieldsetStyles = "*:data-[slot=text]:mt-1 [&>*+[data-slot=control]]:mt-6"
 
 export const legendStyles = "font-semibold text-base/6 data-disabled:opacity-50"

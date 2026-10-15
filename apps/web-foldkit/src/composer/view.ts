@@ -1,6 +1,5 @@
 import { Mount } from "foldkit"
 import { type Attribute, type ChildAttribute, childAttributes, type Html, type HtmlBuilder } from "foldkit/html"
-import { defineView } from "foldkit/submodel"
 import { cn } from "~/lib/utils"
 import { cx } from "~/utils/cx"
 import { IconEmoji1, IconGif, IconPaperclip2 } from "../icons"
@@ -18,7 +17,7 @@ const PICKER_BUTTON_CLASS =
 
 const ACCEPT = "image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
 
-/** What a draft adds around the bare editor; the gallery composer passes none of it. */
+/** What a draft adds around the bare editor. */
 export interface BoxExtras<M> {
 	readonly toMessage: (message: Message) => M
 	/** Attachment previews, reply and edit indicators, above the frame. */
@@ -152,8 +151,3 @@ export const composerBoxView = <M>(h: HtmlBuilder<M>, model: Model, extras: BoxE
 			),
 		],
 	)
-
-const identity = (message: Message) => message
-
-/** The bare composer (the gallery entry). */
-export const view = defineView<Model, Message>((model, h) => composerBoxView(h, model, { toMessage: identity }))

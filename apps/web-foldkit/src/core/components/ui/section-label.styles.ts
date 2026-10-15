@@ -14,5 +14,4 @@ export const sectionLabelStyles = {
 	required: "hidden text-primary",
 	requiredShown: "block",
 	description: "text-muted-fg",
-	actions: "mt-3 flex gap-2",
 } as const

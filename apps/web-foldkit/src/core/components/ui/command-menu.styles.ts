@@ -36,7 +36,6 @@ export const commandMenuModalBase = (size: CommandMenuSize) =>
 export const commandMenuDialogClassName = "flex max-h-[inherit] flex-col overflow-hidden outline-hidden"
 export const commandMenuContentsClassName = "contents"
 export const commandMenuSearchBase = "flex w-full items-center px-2.5 py-1"
-export const commandMenuLoaderClassName = "size-4.5"
 export const commandMenuSearchIconClassName = "size-5 shrink-0 text-muted-fg"
 export const commandMenuInputClassName =
 	"w-full min-w-0 bg-transparent px-2.5 py-2 text-base text-fg placeholder-muted-fg outline-hidden focus:outline-hidden sm:px-2 sm:py-1.5 sm:text-sm [&::-ms-reveal]:hidden [&::-webkit-search-cancel-button]:hidden"
@@ -51,10 +50,5 @@ export const commandMenuSectionHeaderClassName =
 export const commandMenuItemBase = "items-center gap-y-0.5"
 export const commandMenuDescriptionBase = "col-start-3 row-start-1 ml-auto"
 export const commandMenuEmptyClassName = "col-span-full p-4 text-center text-muted-fg text-sm"
-export const commandMenuSeparatorBase = "-mx-2"
-export const commandMenuFooterBase = [
-	"col-span-full flex-none border-t px-2 py-1.5 text-muted-fg text-sm",
-	"*:[kbd]:inset-ring *:[kbd]:inset-ring-fg/10 *:[kbd]:mx-1 *:[kbd]:inline-grid *:[kbd]:h-4 *:[kbd]:min-w-4 *:[kbd]:place-content-center *:[kbd]:rounded-xs *:[kbd]:bg-secondary",
-] as const
 export const commandMenuShortcutBase =
 	"gap-0.5 font-sans text-[10.5px] uppercase *:inset-ring *:inset-ring-muted-fg/20 *:grid *:size-5.5 *:place-content-center *:rounded-xs *:bg-bg"

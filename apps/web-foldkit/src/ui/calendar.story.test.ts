@@ -1,11 +1,9 @@
 import { Option } from "effect"
 import { Command, expectNoOutMessage, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
-import * as Interaction from "./aria/interaction"
 import {
 	AnnounceCalendar,
 	FocusCalendarCell,
-	highlightedRange,
 	init,
 	Message,
 	OutMessage,
@@ -13,13 +11,12 @@ import {
 } from "./calendar"
 import * as Select from "./select"
 
-/** Calendar and RangeCalendar update: grid keys, paging, minimum date, selection and announcements. */
+/** Calendar update: grid keys, paging, minimum date, selection and announcements. */
 
 // March 2026 starts on a Sunday; the 18th is a Wednesday. Every date is fixed, nothing reads the clock.
 const today = "2026-03-05"
 const event = init({ id: "event", today, value: "2026-03-18" })
 const deadline = init({ id: "deadline", today, minValue: "2026-03-10" })
-const trip = init({ id: "trip", mode: "Range", today, range: { start: "2026-03-09", end: "2026-03-13" } })
 
 const key = (pressed: string) => message(Message.PressedGridKey({ key: pressed }))
 const focusCell = (label: string, grid = "event-grid") => FocusCalendarCell({ gridId: grid, label })
@@ -238,108 +235,6 @@ describe("calendar story: single selection", () => {
 				expect(next.focusedDate).toBe("2027-03-18")
 				expect(next.year.selectedKey).toEqual(Option.some("20"))
 			}),
-		)
-	})
-})
-
-describe("range calendar story", () => {
-	test("the first click starts a range without telling the parent or announcing", () => {
-		story(
-			update,
-			given(trip),
-			message(Message.ClickedCell({ date: "2026-03-16" })),
-			expectNoOutMessage(),
-			Command.expectNone(),
-			model((next) => {
-				expect(next.anchor).toEqual(Option.some("2026-03-16"))
-				expect(highlightedRange(next)).toEqual(
-					Option.some({ start: "2026-03-16", end: "2026-03-16" }),
-				)
-			}),
-		)
-	})
-
-	test("hovering a day previews the range from the anchor, in date order", () => {
-		story(
-			update,
-			given(trip),
-			message(Message.ClickedCell({ date: "2026-03-16" })),
-			message(
-				Message.GotInteractionMessage({
-					message: Interaction.Message.EnteredTarget({ target: "cell-2026-03-11" }),
-				}),
-			),
-			model((next) =>
-				expect(highlightedRange(next)).toEqual(
-					Option.some({ start: "2026-03-11", end: "2026-03-16" }),
-				),
-			),
-			message(
-				Message.GotInteractionMessage({
-					message: Interaction.Message.LeftTarget({ target: "cell-2026-03-11" }),
-				}),
-			),
-			model((next) =>
-				expect(highlightedRange(next)).toEqual(
-					Option.some({ start: "2026-03-16", end: "2026-03-16" }),
-				),
-			),
-		)
-	})
-
-	test("the second click completes the range, emits it and announces it", () => {
-		story(
-			update,
-			given(trip),
-			message(Message.ClickedCell({ date: "2026-03-20" })),
-			message(Message.ClickedCell({ date: "2026-03-17" })),
-			expectOutMessage(OutMessage.ChangedRange({ start: "2026-03-17", end: "2026-03-20" })),
-			Command.expectExact(
-				AnnounceCalendar({
-					message: "Selected Range: Tuesday, March 17 to Friday, March 20, 2026",
-					timeout: 4000,
-					assertiveness: "polite",
-				}),
-			),
-			resolveAnnounce,
-			model((next) => {
-				expect(next.anchor).toEqual(Option.none())
-				expect(next.range).toEqual(Option.some({ start: "2026-03-17", end: "2026-03-20" }))
-			}),
-		)
-	})
-
-	test("a range of one day is announced as a single date", () => {
-		story(
-			update,
-			given(trip),
-			key("Enter"),
-			key("Enter"),
-			expectOutMessage(OutMessage.ChangedRange({ start: "2026-03-09", end: "2026-03-09" })),
-			Command.expectExact(
-				AnnounceCalendar({
-					message: "Selected Date: Monday, March 9, 2026",
-					timeout: 4000,
-					assertiveness: "polite",
-				}),
-			),
-			resolveAnnounce,
-		)
-	})
-
-	test("arrowing after the first click extends the preview to the focused day", () => {
-		story(
-			update,
-			given(trip),
-			key("Enter"),
-			key("ArrowDown"),
-			Command.expectExact(focusCell("Monday, March 16, 2026", "trip-grid")),
-			resolveFocus,
-			model((next) =>
-				expect(highlightedRange(next)).toEqual(
-					Option.some({ start: "2026-03-09", end: "2026-03-16" }),
-				),
-			),
 		)
 	})
 })

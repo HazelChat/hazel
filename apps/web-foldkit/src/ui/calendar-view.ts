@@ -8,29 +8,22 @@ import {
 	calendarMonthSelectTriggerClassName,
 	calendarNavButtonClassName,
 	calendarYearSelectTriggerClassName,
-	rangeCalendarCellClassName,
-	rangeCalendarCellInnerClassName,
-	rangeCalendarGridClassName,
-	rangeCalendarGridsClassName,
 } from "~/components/ui/calendar.styles"
 import * as Interaction from "./aria/interaction"
 import { button } from "./button"
 import {
 	cellTarget,
-	FocusCellOnPress,
 	gridId,
-	highlightedRange,
 	isCellDisabled,
 	isOutsideMonth,
 	isPreviousDisabled,
 	Message,
 	type Model,
-	selectedDateDescription,
 } from "./calendar"
 import * as D from "./calendar-date"
 import { view as selectView } from "./select-view"
 
-/** Calendar and RangeCalendar markup, React Aria's DOM included. */
+/** Calendar markup: an application region, the month header and a day grid. */
 
 const visuallyHidden =
 	"border: 0px; clip: rect(0px, 0px, 0px, 0px); clip-path: inset(50%); height: 1px; margin: -1px; overflow: hidden; padding: 0px; position: absolute; width: 1px; white-space: nowrap;"
@@ -127,11 +120,9 @@ const header = (h: HtmlBuilder<Message>, model: Model, monthYear: string): Html 
 	)
 }
 
-/** useCalendarCell's label: range description, today, selected, then the minimum date. */
-const cellLabel = (model: Model, date: D.CalendarDate, isSelected: boolean, isEdge: boolean) => {
-	const isRangeEdge = model.mode === "Range" && isSelected && isEdge && Option.isNone(model.anchor)
-	const description = isRangeEdge ? selectedDateDescription(model) : ""
-	const dated = `${description === "" ? "" : `${description}, `}${D.formatFull(date)}`
+/** A day's accessible name: today, the full date, selected, then the minimum date. */
+const cellLabel = (model: Model, date: D.CalendarDate, isSelected: boolean) => {
+	const dated = D.formatFull(date)
 	const withToday = date === model.today ? `Today, ${dated}` : dated
 	const label = isSelected ? `${withToday} selected` : withToday
 	return Option.contains(model.minValue, date) ? `${label}, First available date` : label
@@ -140,17 +131,7 @@ const cellLabel = (model: Model, date: D.CalendarDate, isSelected: boolean, isEd
 const cell = (h: HtmlBuilder<Message>, model: Model, date: D.CalendarDate): Html => {
 	const isDisabled = isCellDisabled(model, date)
 	const isOutside = isOutsideMonth(model, date)
-	const highlighted = model.mode === "Range" ? highlightedRange(model) : Option.none()
-	const isSelected =
-		!isOutside &&
-		(model.mode === "Single"
-			? Option.contains(model.value, date)
-			: Option.exists(
-					highlighted,
-					({ start, end }) => D.compare(start, date) <= 0 && D.compare(date, end) <= 0,
-				))
-	const isStart = isSelected && Option.exists(highlighted, ({ start }) => start === date)
-	const isEnd = isSelected && Option.exists(highlighted, ({ end }) => end === date)
+	const isSelected = !isOutside && Option.contains(model.value, date)
 	const isToday = date === model.today
 	const target = cellTarget(date)
 	const state = isDisabled ? Interaction.idleState : Interaction.stateOf(model.interaction, target)
@@ -159,17 +140,14 @@ const cell = (h: HtmlBuilder<Message>, model: Model, date: D.CalendarDate): Html
 		toParentMessage: (message) => Message.GotInteractionMessage({ message }),
 	}
 	const flag = (name: string, isOn: boolean) => (isOn ? [h.Attribute(name, "true")] : [])
-	const className =
-		model.mode === "Single"
-			? calendarCellClassName({ isSelected, isDisabled, isToday }, undefined)
-			: rangeCalendarCellClassName(isToday)
+	const className = calendarCellClassName({ isSelected, isDisabled, isToday }, undefined)
 	return h.td(
 		[...flag("aria-disabled", isDisabled), ...flag("aria-selected", isSelected), h.Role("gridcell")],
 		[
 			h.div(
 				[
 					...flag("aria-disabled", isDisabled),
-					h.AriaLabel(cellLabel(model, date, isSelected, isStart || isEnd)),
+					h.AriaLabel(cellLabel(model, date, isSelected)),
 					h.Class(className),
 					...flag("data-disabled", isDisabled),
 					...flag("data-outside-month", isOutside),
@@ -177,8 +155,6 @@ const cell = (h: HtmlBuilder<Message>, model: Model, date: D.CalendarDate): Html
 					h.Attribute("data-rac", ""),
 					h.Attribute("data-react-aria-pressable", "true"),
 					...flag("data-selected", isSelected),
-					...flag("data-selection-end", isEnd),
-					...flag("data-selection-start", isStart),
 					...flag("data-today", isToday),
 					...Interaction.stateAttributes(h, state),
 					h.Role("button"),
@@ -190,22 +166,7 @@ const cell = (h: HtmlBuilder<Message>, model: Model, date: D.CalendarDate): Html
 								h.OnClick(Message.ClickedCell({ date })),
 							]),
 				],
-				[
-					model.mode === "Single"
-						? D.formatDay(date)
-						: h.span(
-								[
-									h.Class(
-										rangeCalendarCellInnerClassName({
-											isSelected,
-											isSelectionEdge: isStart || isEnd,
-											isDisabled,
-										}),
-									),
-								],
-								[D.formatDay(date)],
-							),
-				],
+				[D.formatDay(date)],
 			),
 		],
 	)
@@ -215,15 +176,13 @@ const grid = (h: HtmlBuilder<Message>, model: Model, label: string): Html =>
 	h.table(
 		[
 			h.AriaLabel(label),
-			...(model.mode === "Range" ? [h.Attribute("aria-multiselectable", "true")] : []),
 			h.Attribute("cellpadding", "0"),
-			h.Class(model.mode === "Single" ? "react-aria-CalendarGrid" : rangeCalendarGridClassName),
+			h.Class("react-aria-CalendarGrid"),
 			h.Id(gridId(model.id)),
 			h.Role("grid"),
 			h.OnKeyDownPreventDefault((key) =>
 				key === "Tab" ? Option.none() : Option.some(Message.PressedGridKey({ key })),
 			),
-			...(model.mode === "Range" ? [h.OnMount(FocusCellOnPress())] : []),
 		],
 		[
 			h.thead(
@@ -238,7 +197,7 @@ const grid = (h: HtmlBuilder<Message>, model: Model, label: string): Html =>
 				],
 			),
 			h.tbody(
-				[h.Class(model.mode === "Single" ? "react-aria-CalendarGridBody" : "snap-start")],
+				[h.Class("react-aria-CalendarGridBody")],
 				Array.map(D.monthWeeks(model.focusedDate), (week) =>
 					h.tr(
 						[],
@@ -255,7 +214,7 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 	return h.div(
 		[
 			h.AriaLabel(label),
-			h.Class(model.mode === "Single" ? "react-aria-Calendar" : "react-aria-RangeCalendar"),
+			h.Class("react-aria-Calendar"),
 			h.Attribute("data-rac", ""),
 			h.Attribute("data-slot", "calendar"),
 			h.Id(model.id),
@@ -264,9 +223,7 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 		[
 			h.div([h.Attribute("style", visuallyHidden)], [h.h2([], [label])]),
 			header(h, model, monthYear),
-			model.mode === "Single"
-				? grid(h, model, label)
-				: h.div([h.Class(rangeCalendarGridsClassName)], [grid(h, model, label)]),
+			grid(h, model, label),
 			h.div(
 				[h.Attribute("style", visuallyHidden)],
 				[h.button([h.AriaLabel("Next"), h.Tabindex(-1), h.OnClick(Message.ClickedNext())])],
