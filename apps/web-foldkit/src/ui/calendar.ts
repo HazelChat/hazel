@@ -30,26 +30,27 @@ export type Model = typeof Model.Type
 
 const YEAR_SPAN = 20
 
-const monthSelect = (id: string, focusedDate: D.CalendarDate) =>
-	Select.init({
-		id: `${id}-month`,
-		items: Array.makeBy(12, (index) =>
-			Select.item(
-				String(index + 1),
-				D.formatShortMonth(D.withMonth(focusedDate, D.parts(focusedDate).year, index + 1)),
-			),
+/** The month Select's items around the focused date (keys are month numbers). */
+export const monthItems = (focusedDate: D.CalendarDate): ReadonlyArray<Select.Item> =>
+	Array.makeBy(12, (index) =>
+		Select.item(
+			String(index + 1),
+			D.formatShortMonth(D.withMonth(focusedDate, D.parts(focusedDate).year, index + 1)),
 		),
-		selectedKey: String(D.parts(focusedDate).month),
-	})
+	)
 
-const yearSelect = (id: string, focusedDate: D.CalendarDate) =>
-	Select.init({
-		id: `${id}-year`,
-		items: Array.makeBy(YEAR_SPAN * 2 + 1, (index) =>
-			Select.item(String(index), D.formatYear(D.addYears(focusedDate, index - YEAR_SPAN))),
-		),
-		selectedKey: String(YEAR_SPAN),
-	})
+/** The year Select's items, `YEAR_SPAN` years either side of the focused date (keys are offsets). */
+export const yearItems = (focusedDate: D.CalendarDate): ReadonlyArray<Select.Item> =>
+	Array.makeBy(YEAR_SPAN * 2 + 1, (index) =>
+		Select.item(String(index), D.formatYear(D.addYears(focusedDate, index - YEAR_SPAN))),
+	)
+
+const monthKey = (focusedDate: D.CalendarDate) => String(D.parts(focusedDate).month)
+
+const monthSelect = (id: string, focusedDate: D.CalendarDate) =>
+	Select.init({ id: `${id}-month`, selectedKey: monthKey(focusedDate) })
+
+const yearSelect = (id: string) => Select.init({ id: `${id}-year`, selectedKey: String(YEAR_SPAN) })
 
 /** useCalendarState's constrainValue: the focused date never precedes `minValue`. */
 const clampToMin = (minValue: Option.Option<D.CalendarDate>, date: D.CalendarDate): D.CalendarDate =>
@@ -73,7 +74,7 @@ export const init = (config: {
 		value: Option.fromNullishOr(config.value),
 		minValue,
 		month: monthSelect(config.id, focusedDate),
-		year: yearSelect(config.id, focusedDate),
+		year: yearSelect(config.id),
 		interaction: Interaction.init(),
 	}
 }
@@ -167,21 +168,13 @@ export const FocusCalendarCell = Command.define("FocusCalendarCell", {
 
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage>
 
-/** Moves the focused date (clamped to `minValue`), rebuilding the header Selects around it. */
+/** Moves the focused date (clamped to `minValue`); the year Select stays centred on it. */
 const withFocusedDate = (model: Model, date: D.CalendarDate): Model => {
 	const focusedDate = clampToMin(model.minValue, date)
 	return modifyFields(model, {
 		focusedDate: () => focusedDate,
-		month: (month) =>
-			modifyFields(monthSelect(model.id, focusedDate), {
-				popup: () => month.popup,
-				isTriggerFocused: () => month.isTriggerFocused,
-			}),
-		year: (year) =>
-			modifyFields(yearSelect(model.id, focusedDate), {
-				popup: () => year.popup,
-				isTriggerFocused: () => year.isTriggerFocused,
-			}),
+		month: (month) => modifyFields(month, { selectedKey: () => Option.some(monthKey(focusedDate)) }),
+		year: (year) => modifyFields(year, { selectedKey: () => Option.some(String(YEAR_SPAN)) }),
 	})
 }
 

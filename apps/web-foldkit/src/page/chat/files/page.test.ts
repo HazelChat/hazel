@@ -3,7 +3,7 @@ import { Schema } from "effect"
 import { describe, expect, test, vi } from "vitest"
 import * as Select from "../../../ui/select"
 import { documentsOf, filterAttachments, formatRelativeTime, mediaOf, visibleCountFor } from "./derive"
-import { init, Message, setView, update } from "./page"
+import { filterItems, init, Message, setView, update } from "./page"
 import type { FileAttachment } from "./queries"
 
 /** Files tab update loop and derivations: search, type filter, relative dates, route resets. */
@@ -72,7 +72,7 @@ describe("update", () => {
 		).model
 		const picked = update(
 			opened,
-			Message.GotFilterSelectMessage({ message: Select.Message.ClickedOption({ key: "image" }) }),
+			Message.GotFilterSelectMessage({ message: Select.Message.ClickedOption({ key: "image", items: filterItems }) }),
 		).model
 		expect(picked.filterType).toBe("image")
 		expect(picked.filter.popup._tag).toBe("Closed")

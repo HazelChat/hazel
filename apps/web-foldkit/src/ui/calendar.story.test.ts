@@ -8,6 +8,7 @@ import {
 	Message,
 	OutMessage,
 	update,
+	yearItems,
 } from "./calendar"
 import * as Select from "./select"
 
@@ -225,7 +226,7 @@ describe("calendar story: single selection", () => {
 			update,
 			given(event),
 			message(
-				Message.GotYearMessage({ message: Select.Message.PressedTriggerKey({ key: "ArrowRight" }) }),
+				Message.GotYearMessage({ message: Select.Message.PressedTriggerKey({ key: "ArrowRight", items: yearItems(event.focusedDate) }) }),
 			),
 			Command.expectExact(
 				AnnounceCalendar({ message: "March 2027", timeout: 7000, assertiveness: "assertive" }),

@@ -13,7 +13,7 @@ import { Dark, Light, System } from "./illustrations"
 import { Message } from "./message"
 import type { Model, ThemeMode } from "./model"
 import { RADIUS_PRESETS, SWATCH_COLOR_NAMES, toGrayPalette } from "./presets"
-import { GENERATE_TARGET, interaction, toGrayPaletteMessage } from "./update"
+import { GENERATE_TARGET, GRAY_PALETTE_ITEMS, interaction, toGrayPaletteMessage } from "./update"
 
 /** Port of `routes/_app/$orgSlug/my-settings/index.tsx` (Appearance). */
 
@@ -166,6 +166,7 @@ export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, 
 		model: model.grayPalette,
 		view: selectView,
 		viewInputs: {
+			items: GRAY_PALETTE_ITEMS,
 			label: "",
 			ariaLabel: "Gray palette",
 			className: "w-full",

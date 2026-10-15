@@ -19,6 +19,8 @@ import {
 	isPreviousDisabled,
 	Message,
 	type Model,
+	monthItems,
+	yearItems,
 } from "./calendar"
 import * as D from "./calendar-date"
 import { view as selectView } from "./select-view"
@@ -86,6 +88,7 @@ const header = (h: HtmlBuilder<Message>, model: Model, monthYear: string): Html 
 						model: model.month,
 						view: selectView,
 						viewInputs: {
+							items: monthItems(model.focusedDate),
 							ariaLabel: "Month",
 							className: "[popover-width:8rem]",
 							style: "flex: 1 1 0%; width: fit-content;",
@@ -100,6 +103,7 @@ const header = (h: HtmlBuilder<Message>, model: Model, monthYear: string): Html 
 						model: model.year,
 						view: selectView,
 						viewInputs: {
+							items: yearItems(model.focusedDate),
 							ariaLabel: "Year",
 							triggerClassName: calendarYearSelectTriggerClassName,
 							isHiddenOptionTextless: true,
