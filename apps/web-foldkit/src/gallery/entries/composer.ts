@@ -1,3 +1,4 @@
+import { ChannelId } from "@hazel/schema"
 import { and, eq } from "@tanstack/db"
 import { Effect, Schema, Stream } from "effect"
 import { Command, Subscription, type Update } from "foldkit"
@@ -9,6 +10,7 @@ import { mentionMembersStream, presenceStream } from "../../composer/data"
 import * as ComposerUpdate from "../../composer/update"
 import * as ComposerView from "../../composer/view"
 import { liveQueryStream } from "../../data/live-query"
+import type { EditorRegistry } from "../../editor/registry"
 import { HazelRpc } from "../../rpc"
 import { defineGallery } from "../define"
 import { galleryFrame, gallerySection } from "../frame"
@@ -19,7 +21,7 @@ import { galleryFrame, gallerySection } from "../frame"
 
 const Model = Schema.Struct({
 	organizationId: Schema.NullOr(Schema.String),
-	channelId: Schema.NullOr(Schema.String),
+	channelId: Schema.NullOr(ChannelId),
 	composer: Composer.Model,
 })
 type Model = typeof Model.Type
@@ -29,7 +31,7 @@ type Model = typeof Model.Type
 const Message = defineMessageUnion({
 	SucceededFetchCurrentUser: { organizationId: Schema.NullOr(Schema.String) },
 	FailedFetchCurrentUser: { reason: Schema.String },
-	UpdatedChannel: { channelId: Schema.NullOr(Schema.String) },
+	UpdatedChannel: { channelId: Schema.NullOr(ChannelId) },
 	GotComposerMessage: { message: Composer.Message },
 })
 type Message = typeof Message.Type
@@ -49,7 +51,7 @@ const FetchCurrentUser = Command.define("FetchCurrentUser", {
 
 // UPDATE
 
-type Return = Update.Return<Model, Message, HazelRpc>
+type Return = Update.Return<Model, Message, HazelRpc | EditorRegistry>
 
 const update = (model: Model, message: Message): Return =>
 	Message.match<Return>(message, {
@@ -79,7 +81,7 @@ const subscriptions = Subscription.make<Model, Message>()((entry) => ({
 			dependenciesToStream: ({ organizationId }) =>
 				organizationId === null
 					? Stream.empty
-					: liveQueryStream<{ id: string }, Message>(
+					: liveQueryStream<{ id: ChannelId }, Message>(
 							(q) =>
 								q
 									.from({ channel: channelCollection })
@@ -95,7 +97,7 @@ const subscriptions = Subscription.make<Model, Message>()((entry) => ({
 		},
 	),
 	mentionMembers: entry(
-		{ channelId: Schema.NullOr(Schema.String) },
+		{ channelId: Schema.NullOr(ChannelId) },
 		{
 			modelToDependencies: (model) => ({ channelId: model.channelId }),
 			dependenciesToStream: ({ channelId }) =>

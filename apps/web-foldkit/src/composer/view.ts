@@ -1,22 +1,24 @@
 import { Mount } from "foldkit"
-import { type Attribute, type ChildAttribute, childAttributes, type Html, type HtmlBuilder } from "foldkit/html"
+import {
+	type Attribute,
+	type ChildAttribute,
+	childAttributes,
+	type Html,
+	type HtmlBuilder,
+} from "foldkit/html"
 import { defineView } from "foldkit/submodel"
 import { cn } from "~/lib/utils"
 import { cx } from "~/utils/cx"
 import { IconEmoji1, IconGif, IconPaperclip2 } from "../icons"
+import { ACCEPT_ATTRIBUTE } from "../editor/file-types"
 import { autocompletePopover } from "./autocomplete-view"
 import { commandInputPanel } from "./trigger-views"
 import { type Message, type Model, MountEditor } from "./composer"
 
 /** Port of `SlateMessageComposer`: DropZone > (previews, indicators) > Frame > (Editor, Actions). */
 
-const VISUALLY_HIDDEN =
-	"border: 0px; clip: rect(0px, 0px, 0px, 0px); clip-path: inset(50%); height: 1px; margin: -1px; overflow: hidden; padding: 0px; position: absolute; width: 1px; white-space: nowrap;"
-
 const PICKER_BUTTON_CLASS =
 	"inline-flex items-center gap-1.5 rounded-xs p-0 font-semibold text-muted-fg text-xs outline-none transition-colors hover:text-fg"
-
-const ACCEPT = "image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
 
 /** What a draft adds around the bare editor; the gallery composer passes none of it. */
 export interface BoxExtras<M> {
@@ -36,20 +38,29 @@ export interface BoxExtras<M> {
 
 export type PickerButton = (attributes: ReadonlyArray<ChildAttribute>, overlay: Html) => Html
 
-/** The GIF and Emoji `AriaButton`s (DialogTrigger children). */
+/** The GIF and Emoji `AriaButton`s (DialogTrigger children); the picker renders beside its button, not in it. */
 const pickerButton =
 	<M>(h: HtmlBuilder<M>, label: "GIF" | "Emoji"): PickerButton =>
 	(attributes, overlay) =>
-		h.button(
+		h.div(
+			[h.Class("contents")],
 			[
-				...attributes,
-				h.Class(PICKER_BUTTON_CLASS),
-				h.Attribute("data-rac", ""),
-				h.Attribute("data-react-aria-pressable", "true"),
-				h.Attribute("tabindex", "0"),
-				h.Attribute("type", "button"),
+				h.button(
+					[
+						...attributes,
+						h.Class(PICKER_BUTTON_CLASS),
+						h.Attribute("data-rac", ""),
+						h.Attribute("data-react-aria-pressable", "true"),
+						h.Attribute("tabindex", "0"),
+						h.Attribute("type", "button"),
+					],
+					[
+						(label === "GIF" ? IconGif : IconEmoji1)(h, { className: "size-4 text-muted-fg" }),
+						label,
+					],
+				),
+				overlay,
 			],
-			[(label === "GIF" ? IconGif : IconEmoji1)(h, { className: "size-4 text-muted-fg" }), label, overlay],
 		)
 
 const closedPicker =
@@ -63,7 +74,7 @@ const actions = <M>(h: HtmlBuilder<M>, extras: BoxExtras<M>): Array<Html> => [
 		h.Attribute("type", "file"),
 		h.Attribute("multiple", ""),
 		h.Class("hidden"),
-		h.Attribute("accept", ACCEPT),
+		h.Attribute("accept", ACCEPT_ATTRIBUTE),
 		h.Attribute("aria-label", "File upload"),
 		...(extras.fileInputAttributes ?? []),
 	]),
@@ -97,17 +108,6 @@ export const composerBoxView = <M>(h: HtmlBuilder<M>, model: Model, extras: BoxE
 		[h.Class("relative"), h.Attribute("data-rac", ""), ...(extras.dropZoneAttributes ?? [])],
 		[
 			h.div(
-				[h.Attribute("style", VISUALLY_HIDDEN)],
-				[
-					h.button([
-						h.Attribute("aria-label", "DropZone"),
-						h.Attribute("data-react-aria-pressable", "true"),
-						h.Attribute("tabindex", "0"),
-						h.Attribute("type", "button"),
-					]),
-				],
-			),
-			h.div(
 				[h.Class("relative flex h-max items-center gap-3")],
 				[
 					extras.dropOverlay ?? h.empty,
@@ -127,16 +127,33 @@ export const composerBoxView = <M>(h: HtmlBuilder<M>, model: Model, extras: BoxE
 								[
 									h.div(
 										// Command input replaces the editor in legacy; ours stays mounted, hidden.
-										[h.Class(cx("relative w-full", model.commandInput !== null && "[&>[role=combobox]]:hidden"))],
+										[
+											h.Class(
+												cx(
+													"relative w-full",
+													model.commandInput !== null &&
+														"[&>[role=combobox]]:hidden",
+												),
+											),
+										],
 										[
 											model.commandInput === null
 												? autocompletePopover(h, model, extras.toMessage)
-												: commandInputPanel(h, model.editorId, model.commandInput, extras.toMessage),
+												: commandInputPanel(
+														h,
+														model.editorId,
+														model.commandInput,
+														extras.toMessage,
+													),
 											// ProseMirror owns this element's attributes and children.
 											h.keyed("div")("editor", [
 												h.OnMount(
 													Mount.mapMessage(
-														MountEditor({ editorId: model.editorId, placeholder: model.placeholder }),
+														MountEditor({
+															editorId: model.editorId,
+															placeholder: model.placeholder,
+															initialMarkdown: model.markdown,
+														}),
 														extras.toMessage,
 													),
 												),
@@ -156,4 +173,6 @@ export const composerBoxView = <M>(h: HtmlBuilder<M>, model: Model, extras: BoxE
 const identity = (message: Message) => message
 
 /** The bare composer (the gallery entry). */
-export const view = defineView<Model, Message>((model, h) => composerBoxView(h, model, { toMessage: identity }))
+export const view = defineView<Model, Message>((model, h) =>
+	composerBoxView(h, model, { toMessage: identity }),
+)

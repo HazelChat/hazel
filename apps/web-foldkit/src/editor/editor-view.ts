@@ -4,7 +4,14 @@ import { EditorState } from "prosemirror-state"
 import { EditorView } from "prosemirror-view"
 import { cx } from "~/utils/cx"
 import { type BehaviorEvent, behaviorPlugin } from "./behavior"
-import { blocksOf, isValueEmpty, serializeToMarkdown, toDoc, createEmptyValue } from "./markdown"
+import {
+	blocksOf,
+	createEmptyValue,
+	deserializeFromMarkdown,
+	isValueEmpty,
+	serializeToMarkdown,
+	toDoc,
+} from "./markdown"
 import {
 	type AutocompleteState,
 	autocompleteKey,
@@ -19,8 +26,8 @@ import { schema } from "./schema"
 
 /**
  * A vanilla ProseMirror editor configured as the legacy composer. Framework-free: the
- * Foldkit Mount (`composer/mount.ts`) owns its lifetime and turns `EditorEvent`s into
- * Messages. Commands reach a live editor through `editorById`.
+ * Foldkit Mount (`composer/composer.ts`) owns its lifetime and turns `EditorEvent`s into
+ * Messages. Commands reach a live editor through the `EditorRegistry` (`registry.ts`).
  */
 
 export type EditorEvent =
@@ -33,8 +40,11 @@ export type EditorEvent =
 
 export interface EditorOptions {
 	readonly placeholder: string
+	/** The draft the Model holds when the editor mounts: a remount restores it. */
+	readonly initialMarkdown: string
+	/** The autocomplete listbox's id (`aria-controls`). */
+	readonly listboxId: string
 	readonly emit: (event: EditorEvent) => void
-	readonly isUploading?: () => boolean
 }
 
 /** Legacy `Editable` className, composed with the same `cx` (tailwind-merge) arguments. */
@@ -68,11 +78,14 @@ const atomView = (node: ProseMirrorNode) => {
 const sameAutocomplete = (a: AutocompleteState, b: AutocompleteState) =>
 	a.trigger?.id === b.trigger?.id && a.search === b.search
 
+const initialBlocks = (markdown: string) =>
+	markdown.trim() === "" ? createEmptyValue() : deserializeFromMarkdown(markdown)
+
 export const createComposerEditor = (element: HTMLElement, options: EditorOptions): EditorView => {
 	const state = EditorState.create({
-		doc: toDoc(createEmptyValue()),
+		doc: toDoc(initialBlocks(options.initialMarkdown)),
 		plugins: [
-			behaviorPlugin(options.emit, options.isUploading ?? (() => false)),
+			behaviorPlugin(options.emit),
 			autocompletePlugin,
 			placeholderPlugin(options.placeholder),
 			markdownDecorationsPlugin,
@@ -86,11 +99,18 @@ export const createComposerEditor = (element: HTMLElement, options: EditorOption
 			nodeViews: { mention: atomView, "custom-emoji": atomView },
 			attributes: (current) => {
 				const autocomplete = autocompleteKey.getState(current) ?? closedAutocomplete
+				const isExpanded = autocomplete.trigger !== null && autocomplete.optionCount > 0
+				const activeOption: Record<string, string> =
+					isExpanded && autocomplete.activeOptionId !== null
+						? { "aria-activedescendant": autocomplete.activeOptionId }
+						: {}
 				return {
 					class: EDITABLE_CLASS,
 					role: "combobox",
 					"aria-autocomplete": "list",
-					"aria-expanded": String(autocomplete.trigger !== null && autocomplete.optionCount > 0),
+					"aria-controls": options.listboxId,
+					"aria-expanded": String(isExpanded),
+					...activeOption,
 					"aria-haspopup": "listbox",
 					"aria-multiline": "true",
 					style: "position: relative; white-space: pre-wrap; overflow-wrap: break-word;",
@@ -101,7 +121,11 @@ export const createComposerEditor = (element: HTMLElement, options: EditorOption
 				view.updateState(view.state.apply(tr))
 				if (tr.docChanged) {
 					const blocks = blocksOf(view.state.doc)
-					options.emit({ _tag: "ChangedDoc", markdown: serializeToMarkdown(blocks), isEmpty: isValueEmpty(blocks) })
+					options.emit({
+						_tag: "ChangedDoc",
+						markdown: serializeToMarkdown(blocks),
+						isEmpty: isValueEmpty(blocks),
+					})
 				}
 				const next = autocompleteKey.getState(view.state) ?? closedAutocomplete
 				if (!sameAutocomplete(previous, next)) {
@@ -116,24 +140,24 @@ export const createComposerEditor = (element: HTMLElement, options: EditorOption
 	return view
 }
 
-const editors = new Map<string, EditorView>()
-
-export const registerEditor = (editorId: string, view: EditorView) => editors.set(editorId, view)
-export const unregisterEditor = (editorId: string, view: EditorView) => {
-	if (editors.get(editorId) === view) editors.delete(editorId)
-}
-export const editorById = (editorId: string) => editors.get(editorId)
-
 /** Legacy `handleSelectByIndex` for a mention option. */
 export const insertMention = (view: EditorView, userId: string, displayName: string) => {
 	insertAutocompleteResult(view, schema.nodes.mention.create({ userId, displayName }))
 	view.focus()
 }
 
-/** Tell the editor how many options the popover shows, so it only captures keys when there are some. */
-export const syncAutocompleteOptionCount = (view: EditorView, optionCount: number) => {
+/**
+ * Tell the editor how many options the popover shows, so it only captures keys when there are some,
+ * and which one is highlighted (`aria-activedescendant`).
+ */
+export const syncAutocompleteOptions = (
+	view: EditorView,
+	optionCount: number,
+	activeOptionId: string | null,
+) => {
 	const current = autocompleteKey.getState(view.state) ?? closedAutocomplete
-	if (current.optionCount !== optionCount) view.dispatch(view.state.tr.setMeta(autocompleteKey, { optionCount }))
+	if (current.optionCount !== optionCount || current.activeOptionId !== activeOptionId)
+		view.dispatch(view.state.tr.setMeta(autocompleteKey, { optionCount, activeOptionId }))
 }
 
 export const closeAutocomplete = (view: EditorView) =>

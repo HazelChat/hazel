@@ -6,6 +6,7 @@ import * as Live from "../../../chat/live-state"
 import * as Unfurl from "../../../chat/unfurl"
 import * as Draft from "../../../composer/draft"
 import * as MessageList from "../../../mount/message-list"
+import type { EditorRegistry } from "../../../editor/registry"
 import type { HazelApiClient, HazelRpc } from "../../../rpc"
 import type { PageOutMessage } from "../../out-message"
 import {
@@ -137,5 +138,10 @@ export const Message = defineMessageUnion({
 })
 export type Message = typeof Message.Type
 
-export type PageReturn = Update.ReturnWithOutMessage<Model, Message, PageOutMessage, HazelRpc | HazelApiClient>
+export type PageReturn = Update.ReturnWithOutMessage<
+	Model,
+	Message,
+	PageOutMessage,
+	HazelRpc | HazelApiClient | EditorRegistry
+>
 

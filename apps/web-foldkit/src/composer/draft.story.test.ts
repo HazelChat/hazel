@@ -1,22 +1,33 @@
-import { AttachmentId, ChannelId, ChannelMemberId, MessageId, OrganizationId, TypingIndicatorId, UserId } from "@hazel/schema"
+import {
+	AttachmentId,
+	BotCommandId,
+	BotId,
+	ChannelId,
+	ChannelMemberId,
+	MessageId,
+	OrganizationId,
+	TypingIndicatorId,
+	UserId,
+} from "@hazel/schema"
 import { Schema } from "effect"
 import { Command, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { describe, expect, test, vi } from "vitest"
 import * as Composer from "./composer"
 import * as Draft from "./draft"
 import * as DraftUpdate from "./draft-update"
-import { DropEvent } from "./drop"
+import { DragState, DropEvent } from "./drop"
 import * as EditorCommands from "./editor-commands"
 import * as Typing from "./typing"
 import { UploadEvent } from "./upload"
-import type { ToastRequest } from "../overlay/toasts"
 
 /** One draft's update (reply, edit, uploads, slash commands, typing), outside any page. */
 
 // ProseMirror's view reads `document` at import; node has none.
 vi.hoisted(() => {
 	if (!("document" in globalThis))
-		Object.assign(globalThis, { document: Object.assign(new EventTarget(), { documentElement: { style: {} } }) })
+		Object.assign(globalThis, {
+			document: Object.assign(new EventTarget(), { documentElement: { style: {} } }),
+		})
 })
 
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`
@@ -35,59 +46,191 @@ const context: Draft.Context = { currentUserId: ada, organizationId, memberId, l
 const signedOut: Draft.Context = { ...context, currentUserId: null }
 
 const update = (current: Draft.Model, next: Draft.Message) => DraftUpdate.update(current, next, context)
-const updateSignedOut = (current: Draft.Model, next: Draft.Message) => DraftUpdate.update(current, next, signedOut)
+const updateSignedOut = (current: Draft.Model, next: Draft.Message) =>
+	DraftUpdate.update(current, next, signedOut)
 
 const fresh = () => Draft.init(channelId, editorId)
+const replying = (): Draft.Model => ({
+	...fresh(),
+	composeMode: Draft.ComposeMode.Replying({ messageId: replyId }),
+})
+const editing = (): Draft.Model => ({
+	...fresh(),
+	composeMode: Draft.ComposeMode.Editing({ messageId: editId }),
+})
 const { Message } = Draft
 const composer = (inner: Composer.Message) => Message.GotComposerMessage({ message: inner })
 const pngA = new File(["a"], "a.png", { type: "image/png" })
 const pngB = new File(["bb"], "b.png", { type: "image/png" })
+const uploadingA = (): Draft.Model => ({
+	...fresh(),
+	currentUpload: { fileId: "f1", file: pngA, progress: 30 },
+})
 
 describe("reply and edit", () => {
 	test("Cancel on the reply indicator drops the reply", () => {
 		story(
 			update,
-			given({ ...fresh(), replyToMessageId: replyId }),
+			given(replying()),
 			message(Message.ClickedCancelReply()),
 			Command.expectNone(),
-			model((current) => expect(current.replyToMessageId).toBeNull()),
+			model((current) => expect(current.composeMode).toEqual(Draft.ComposeMode.Plain())),
 		)
 	})
 
 	test("replying while editing leaves edit mode (one indicator at a time)", () => {
-		const replying = DraftUpdate.setReply({ ...fresh(), editingMessageId: editId }, replyId)
-		expect(replying.editingMessageId).toBeNull()
-		expect(replying.replyToMessageId).toBe(replyId)
+		const next = DraftUpdate.setReply(editing(), replyId)
+		expect(next.composeMode).toEqual(Draft.ComposeMode.Replying({ messageId: replyId }))
 	})
 
-	test("Cancel on the edit indicator leaves edit mode and clears the editor", () => {
+	test("Cancel on the edit indicator leaves edit mode and clears the draft", () => {
 		story(
 			update,
-			given({ ...fresh(), editingMessageId: editId }),
+			given({ ...editing(), composer: { ...fresh().composer, markdown: "old text" } }),
 			message(Message.ClickedCancelEdit()),
 			Command.expectExact(EditorCommands.ClearEditor({ editorId })),
 			Command.resolve(EditorCommands.ClearEditor, Composer.Message.CompletedClearEditor()),
-			model((current) => expect(current.editingMessageId).toBeNull()),
+			model((current) => {
+				expect(current.composeMode).toEqual(Draft.ComposeMode.Plain())
+				expect(current.composer.markdown).toBe("")
+			}),
 		)
 	})
 
 	test("an empty edit is not sent and keeps edit mode", () => {
 		story(
 			update,
-			given({ ...fresh(), editingMessageId: editId }),
+			given(editing()),
 			message(composer(Composer.Message.SubmittedDraft({ markdown: "   " }))),
 			Command.expectNone(),
-			model((current) => expect(current.editingMessageId).toBe(editId)),
+			model((current) => expect(Draft.editingMessageIdOf(current)).toBe(editId)),
 		)
 	})
 
 	test("a failed edit raises its toast", () => {
-		const toast: ToastRequest = { intent: "error", title: "Message not found", description: null }
 		story(
 			update,
 			given(fresh()),
-			message(Message.CompletedEditMessage({ toast })),
-			expectOutMessage(Draft.OutMessage.RequestedToast({ toast })),
+			message(Message.FailedEditMessage({ reason: "MessageNotFound" })),
+			expectOutMessage(
+				Draft.OutMessage.RequestedToast({
+					toast: {
+						intent: "error",
+						title: "Message not found",
+						description: "This message may have been deleted.",
+					},
+				}),
+			),
+		)
+	})
+})
+
+describe("the draft survives its editor (P0: Files tab round-trip)", () => {
+	test("editing loads the message into the Model, so a remounted editor shows it; Enter still edits", () => {
+		const content = "Shipped the onboarding copy"
+		const withLastOwn = (current: Draft.Model, next: Draft.Message) =>
+			DraftUpdate.update(current, next, { ...context, lastOwnMessage: { id: editId, content } })
+		story(
+			withLastOwn,
+			given(fresh()),
+			// Arrow Up in an empty editor starts editing the last own message.
+			message(composer(Composer.Message.PressedArrowUpInEmpty())),
+			Command.expectExact(EditorCommands.SetEditorContent({ editorId, markdown: content })),
+			// The Messages tab is left before the editor took the content: the Command reports it.
+			Command.resolve(
+				EditorCommands.SetEditorContent,
+				Composer.Message.FailedSetEditorContent({ reason: "EditorNotMounted" }),
+			),
+			model((current) => {
+				expect(Draft.editingMessageIdOf(current)).toBe(editId)
+				// The composer view mounts the editor with this as `initialMarkdown`.
+				expect(current.composer.markdown).toBe(content)
+			}),
+			message(composer(Composer.Message.SubmittedDraft({ markdown: `${content}!` }))),
+			Command.expectExact(
+				EditorCommands.ClearEditor({ editorId }),
+				Draft.EditMessage({ messageId: editId, content: `${content}!` }),
+			),
+			Command.resolve(EditorCommands.ClearEditor, Composer.Message.CompletedClearEditor()),
+			Command.resolve(Draft.EditMessage, Message.SucceededEditMessage()),
+			model((current) => {
+				expect(current.composeMode).toEqual(Draft.ComposeMode.Plain())
+				expect(current.composer.markdown).toBe("")
+			}),
+		)
+	})
+
+	test("typed text is kept in the Model as the editor reports it", () => {
+		story(
+			// No membership, so no typing indicator to send.
+			(current: Draft.Model, next: Draft.Message) =>
+				DraftUpdate.update(current, next, { ...context, memberId: null }),
+			given(fresh()),
+			message(composer(Composer.Message.UpdatedDraft({ markdown: "Hi there", isEmpty: false }))),
+			Command.expectNone(),
+			model((current) => expect(current.composer.markdown).toBe("Hi there")),
+		)
+	})
+
+	test("a failed send restores its text into the Model even without a mounted editor", () => {
+		story(
+			update,
+			given(fresh()),
+			message(
+				Message.FailedSendMessage({
+					content: "On it",
+					restoreContent: true,
+					replyToMessageId: replyId,
+					attachmentIds: [firstAttachment],
+					reason: "Offline",
+				}),
+			),
+			Command.expectExact(EditorCommands.SetEditorContent({ editorId, markdown: "On it" })),
+			expectOutMessage(
+				Draft.OutMessage.RequestedToast({
+					toast: {
+						intent: "error",
+						title: "Connection lost",
+						description: "Check your internet connection and try again.",
+					},
+				}),
+			),
+			Command.resolve(
+				EditorCommands.SetEditorContent,
+				Composer.Message.FailedSetEditorContent({ reason: "EditorNotMounted" }),
+			),
+			model((current) => {
+				expect(current.composer.markdown).toBe("On it")
+				expect(current.composeMode).toEqual(Draft.ComposeMode.Replying({ messageId: replyId }))
+				expect(current.attachmentIds).toEqual([firstAttachment])
+			}),
+		)
+	})
+
+	test("a send whose sync is delayed was delivered: nothing is restored", () => {
+		story(
+			update,
+			given(fresh()),
+			message(
+				Message.FailedSendMessage({
+					content: "On it",
+					restoreContent: true,
+					replyToMessageId: null,
+					attachmentIds: [],
+					reason: "SyncDelayed",
+				}),
+			),
+			Command.expectNone(),
+			expectOutMessage(
+				Draft.OutMessage.RequestedToast({
+					toast: {
+						intent: "warning",
+						title: "Message sent",
+						description: "Sync is delayed but your message was delivered.",
+					},
+				}),
+			),
+			model((current) => expect(current.composer.markdown).toBe("")),
 		)
 	})
 })
@@ -99,59 +242,105 @@ describe("attachments", () => {
 			given(fresh()),
 			message(Message.SelectedFiles({ files: [pngA, pngB] })),
 			Command.expectExact(Draft.GenerateUploadFileId()),
-			Command.resolve(Draft.GenerateUploadFileId, Message.CompletedGenerateUploadFileId({ fileId: "f1" })),
+			Command.resolve(
+				Draft.GenerateUploadFileId,
+				Message.CompletedGenerateUploadFileId({ fileId: "f1" }),
+			),
 			model((current) => {
-				expect(current.currentUpload?.fileId).toBe("f1")
+				expect(current.currentUpload).toEqual({ fileId: "f1", file: pngA, progress: 0 })
 				expect(current.pendingFiles).toHaveLength(1)
 				expect(Draft.isUploading(current)).toBe(true)
 			}),
 			message(
 				Message.ReceivedUploadEvent({
-					event: UploadEvent.FinishedUpload({ fileId: "f1", attachmentId: firstAttachment, toast: null }),
+					event: UploadEvent.ProgressedUpload({ fileId: "f1", progress: 60 }),
+				}),
+			),
+			model((current) => expect(current.currentUpload?.progress).toBe(60)),
+			message(
+				Message.ReceivedUploadEvent({
+					event: UploadEvent.SucceededUpload({ fileId: "f1", attachmentId: firstAttachment }),
 				}),
 			),
 			Command.expectExact(Draft.GenerateUploadFileId()),
-			Command.resolve(Draft.GenerateUploadFileId, Message.CompletedGenerateUploadFileId({ fileId: "f2" })),
+			Command.resolve(
+				Draft.GenerateUploadFileId,
+				Message.CompletedGenerateUploadFileId({ fileId: "f2" }),
+			),
 			message(
 				Message.ReceivedUploadEvent({
-					event: UploadEvent.FinishedUpload({ fileId: "f2", attachmentId: secondAttachment, toast: null }),
+					event: UploadEvent.SucceededUpload({ fileId: "f2", attachmentId: secondAttachment }),
 				}),
 			),
 			Command.expectNone(),
 			model((current) => {
 				expect(current.attachmentIds).toEqual([firstAttachment, secondAttachment])
-				expect(current.uploadingFiles).toEqual([])
+				expect(current.currentUpload).toBeNull()
 				expect(Draft.isUploading(current)).toBe(false)
 			}),
 		)
 	})
 
-	test("a failed upload toasts and adds no attachment", () => {
-		const toast: ToastRequest = { intent: "error", title: "Upload failed", description: null }
+	test("a failed upload toasts its reason's copy and adds no attachment", () => {
 		story(
 			update,
-			given({
-				...fresh(),
-				currentUpload: { fileId: "f1", file: pngA },
-				uploadingFiles: [{ fileId: "f1", fileName: "a.png", fileSize: 1, progress: 30 }],
-			}),
-			message(Message.ReceivedUploadEvent({ event: UploadEvent.FinishedUpload({ fileId: "f1", attachmentId: null, toast }) })),
-			expectOutMessage(Draft.OutMessage.RequestedToast({ toast })),
+			given(uploadingA()),
+			message(
+				Message.ReceivedUploadEvent({
+					event: UploadEvent.FailedUpload({ fileId: "f1", reason: "StorageTimeout" }),
+				}),
+			),
+			expectOutMessage(
+				Draft.OutMessage.RequestedToast({
+					toast: {
+						intent: "error",
+						title: "Upload failed",
+						description: "Upload timed out. Try a smaller file or check your connection.",
+					},
+				}),
+			),
 			model((current) => {
 				expect(current.attachmentIds).toEqual([])
-				expect(current.uploadingFiles).toEqual([])
+				expect(current.currentUpload).toBeNull()
 			}),
 		)
 	})
 
-	test("while a file uploads, Enter and the Attach button do nothing", () => {
+	test("an event of an upload that is no longer current changes nothing", () => {
+		const current = uploadingA()
 		story(
 			update,
-			given({ ...fresh(), currentUpload: { fileId: "f1", file: pngA } }),
+			given(current),
+			message(
+				Message.ReceivedUploadEvent({
+					event: UploadEvent.SucceededUpload({ fileId: "stale", attachmentId: firstAttachment }),
+				}),
+			),
+			Command.expectNone(),
+			model((next) => expect(next).toBe(current)),
+		)
+	})
+
+	test("the upload Subscription depends on the file, not on its progress", () => {
+		const current = uploadingA()
+		const progressed: Draft.Model = {
+			...current,
+			currentUpload: { fileId: "f1", file: pngA, progress: 90 },
+		}
+		expect(Draft.currentUploadOf(progressed)).toEqual(Draft.currentUploadOf(current))
+	})
+
+	test("while a file uploads, Enter, the Attach button and drops do nothing", () => {
+		story(
+			update,
+			given(uploadingA()),
 			message(composer(Composer.Message.SubmittedDraft({ markdown: "caption" }))),
 			Command.expectNone(),
 			message(Message.ClickedAttach()),
 			Command.expectNone(),
+			message(Message.ReceivedDropEvent({ event: DropEvent.DroppedFiles({ files: [pngB] }) })),
+			Command.expectNone(),
+			model((current) => expect(current.pendingFiles).toEqual([])),
 		)
 	})
 
@@ -169,11 +358,33 @@ describe("attachments", () => {
 		story(
 			update,
 			given(fresh()),
-			message(Message.ReceivedDropEvent({ event: DropEvent.ChangedDragState({ isDraggingOnPage: true, isDropTarget: true }) })),
-			model((current) => expect(current.isDropTarget).toBe(true)),
+			message(
+				Message.ReceivedDropEvent({
+					event: DropEvent.ChangedDragState({ drag: DragState.OverDropZone() }),
+				}),
+			),
+			model((current) => expect(current.drag).toEqual(DragState.OverDropZone())),
 			message(Message.ReceivedDropEvent({ event: DropEvent.DroppedFiles({ files: [pngA] }) })),
 			Command.expectExact(Draft.GenerateUploadFileId()),
-			Command.resolve(Draft.GenerateUploadFileId, Message.CompletedGenerateUploadFileId({ fileId: "f1" })),
+			Command.resolve(
+				Draft.GenerateUploadFileId,
+				Message.CompletedGenerateUploadFileId({ fileId: "f1" }),
+			),
+		)
+	})
+
+	test("files of a type a message cannot carry are left out", () => {
+		const binary = new File(["x"], "tool.exe", { type: "application/x-msdownload" })
+		story(
+			update,
+			given(fresh()),
+			message(Message.SelectedFiles({ files: [binary] })),
+			Command.expectNone(),
+			expectOutMessage(
+				Draft.OutMessage.RequestedToast({
+					toast: { intent: "error", title: "Unsupported file type", description: null },
+				}),
+			),
 		)
 	})
 
@@ -209,13 +420,13 @@ describe("typing indicator", () => {
 	test("leaving the window deletes the live indicator", () => {
 		story(
 			update,
-			given({ ...fresh(), typing: { ...Typing.init(), isTyping: true, sessionId: 1, indicatorId, lastContent: "H" } }),
+			given({
+				...fresh(),
+				typing: { ...Typing.init(), isTyping: true, sessionId: 1, indicatorId, lastContent: "H" },
+			}),
 			message(Message.LeftWindow()),
 			Command.expectExact(Typing.DeleteTypingIndicator({ id: indicatorId })),
-			Command.resolve(
-				Typing.DeleteTypingIndicator,
-				Typing.Message.CompletedDeleteTypingIndicator(),
-			),
+			Command.resolve(Typing.DeleteTypingIndicator, Typing.Message.CompletedDeleteTypingIndicator()),
 			model((current) => expect(current.typing.isTyping).toBe(false)),
 		)
 	})
@@ -230,16 +441,14 @@ describe("typing indicator", () => {
 				}),
 			),
 			Command.expectExact(Typing.DeleteTypingIndicator({ id: indicatorId })),
-			Command.resolve(
-				Typing.DeleteTypingIndicator,
-				Typing.Message.CompletedDeleteTypingIndicator(),
-			),
+			Command.resolve(Typing.DeleteTypingIndicator, Typing.Message.CompletedDeleteTypingIndicator()),
 		)
 	})
 
 	test("without a channel membership typing sends nothing", () => {
 		story(
-			(current: Draft.Model, next: Draft.Message) => DraftUpdate.update(current, next, { ...context, memberId: null }),
+			(current: Draft.Model, next: Draft.Message) =>
+				DraftUpdate.update(current, next, { ...context, memberId: null }),
 			given(fresh()),
 			message(composer(Composer.Message.UpdatedDraft({ markdown: "H", isEmpty: false }))),
 			Command.expectNone(),
@@ -248,17 +457,29 @@ describe("typing indicator", () => {
 })
 
 describe("slash command execution", () => {
+	const botId = Schema.decodeSync(BotId)(uuid(6))
 	const command: Composer.BotCommand = {
-		id: "command-deploy",
+		id: Schema.decodeSync(BotCommandId)(uuid(3)),
 		name: "deploy",
 		description: "Deploy",
-		bot: { id: "bot-ci", name: "CI", avatarUrl: null },
+		bot: { id: botId, name: "CI", avatarUrl: null },
 		arguments: [{ name: "branch", description: null, required: true, placeholder: null, type: "string" }],
 	}
-	const inCommand = (values: Record<string, string>): Draft.Model => {
+	const inCommand = (
+		values: Record<string, string>,
+		submission: Composer.CommandSubmission = "Idle",
+	): Draft.Model => {
 		const base = fresh()
-		return { ...base, composer: { ...base.composer, commandInput: { command, values, focusedFieldIndex: 0 } } }
+		return { ...base, composer: { ...base.composer, commandInput: { command, values, submission } } }
 	}
+	const execute = Draft.ExecuteBotCommand({
+		orgId: organizationId,
+		botId,
+		commandName: "deploy",
+		botName: "CI",
+		channelId,
+		arguments: [{ name: "branch", value: "main" }],
+	})
 
 	test("a missing required argument toasts and runs nothing", () => {
 		story(
@@ -267,48 +488,79 @@ describe("slash command execution", () => {
 			message(composer(Composer.Message.ClickedExecuteCommand())),
 			Command.expectNone(),
 			expectOutMessage(
-				Draft.OutMessage.RequestedToast({ toast: { intent: "error", title: "Missing required: branch", description: null } }),
+				Draft.OutMessage.RequestedToast({
+					toast: { intent: "error", title: "Missing required: branch", description: null },
+				}),
 			),
 		)
 	})
 
 	test("Enter in a field executes; success leaves command mode and focuses the editor", () => {
-		const toast: ToastRequest = { intent: "success", title: "Executed /deploy", description: null }
 		story(
 			update,
 			given(inCommand({ branch: "main" })),
-			message(composer(Composer.Message.PressedCommandFieldKey({ index: 0, key: "Enter", shiftKey: false }))),
-			Command.expectExact(
-				Draft.ExecuteBotCommand({
-					orgId: organizationId,
-					botId: "bot-ci",
-					commandName: "deploy",
-					botName: "CI",
-					channelId,
-					arguments: [{ name: "branch", value: "main" }],
+			message(
+				composer(
+					Composer.Message.PressedCommandFieldKey({ index: 0, key: "Enter", shiftKey: false }),
+				),
+			),
+			Command.expectExact(execute),
+			model((current) => expect(current.composer.commandInput?.submission).toBe("Executing")),
+			Command.resolve(
+				Draft.ExecuteBotCommand,
+				Message.SucceededExecuteBotCommand({ commandName: "deploy" }),
+			),
+			expectOutMessage(
+				Draft.OutMessage.RequestedToast({
+					toast: { intent: "success", title: "Executed /deploy", description: null },
 				}),
 			),
-			Command.resolve(Draft.ExecuteBotCommand, Message.CompletedExecuteBotCommand({ succeeded: true, toast })),
-			expectOutMessage(Draft.OutMessage.RequestedToast({ toast })),
 			Command.expectExact(EditorCommands.FocusEditor({ editorId })),
 			Command.resolve(EditorCommands.FocusEditor, Composer.Message.CompletedFocusEditor()),
 			model((current) => expect(current.composer.commandInput).toBeNull()),
 		)
 	})
 
-	test("a failed command keeps the argument panel open", () => {
-		const toast: ToastRequest = { intent: "error", title: "Command failed", description: null }
+	test("pressing Execute again while the command runs does not run it twice", () => {
 		story(
 			update,
-			given(inCommand({ branch: "main" })),
-			message(Message.CompletedExecuteBotCommand({ succeeded: false, toast })),
-			expectOutMessage(Draft.OutMessage.RequestedToast({ toast })),
-			model((current) => expect(current.composer.commandInput?.command.name).toBe("deploy")),
+			given(inCommand({ branch: "main" }, "Executing")),
+			message(composer(Composer.Message.ClickedExecuteCommand())),
+			Command.expectNone(),
+			message(
+				composer(
+					Composer.Message.PressedCommandFieldKey({ index: 0, key: "Enter", shiftKey: false }),
+				),
+			),
+			Command.expectNone(),
+		)
+	})
+
+	test("a failed command keeps the argument panel open, ready again, and names the failure", () => {
+		story(
+			update,
+			given(inCommand({ branch: "main" }, "Executing")),
+			message(
+				Message.FailedExecuteBotCommand({
+					commandName: "deploy",
+					botName: "CI",
+					reason: "BotNotInstalled",
+				}),
+			),
+			expectOutMessage(
+				Draft.OutMessage.RequestedToast({
+					toast: { intent: "error", title: 'Bot "CI" is not installed', description: null },
+				}),
+			),
+			model((current) => {
+				expect(current.composer.commandInput?.command.name).toBe("deploy")
+				expect(current.composer.commandInput?.submission).toBe("Idle")
+			}),
 		)
 	})
 })
 
-describe("emoji", () => {
+describe("emoji and GIFs", () => {
 	test("a unicode emoji is typed into the editor; a custom one is inserted inline", () => {
 		story(
 			update,
@@ -316,11 +568,50 @@ describe("emoji", () => {
 			message(Message.SelectedEmoji({ emoji: "🎉", label: "party", imageUrl: null })),
 			Command.expectExact(EditorCommands.InsertEditorText({ editorId, text: "🎉" })),
 			Command.resolve(EditorCommands.InsertEditorText, Composer.Message.CompletedInsertEditorText()),
-			message(Message.SelectedEmoji({ emoji: ":hazel:", label: "hazel", imageUrl: "https://cdn/hazel.png" })),
+			message(
+				Message.SelectedEmoji({
+					emoji: ":hazel:",
+					label: "hazel",
+					imageUrl: "https://cdn/hazel.png",
+				}),
+			),
 			Command.expectExact(
-				EditorCommands.InsertCustomEmoji({ editorId, name: "hazel", imageUrl: "https://cdn/hazel.png" }),
+				EditorCommands.InsertCustomEmoji({
+					editorId,
+					name: "hazel",
+					imageUrl: "https://cdn/hazel.png",
+				}),
 			),
 			Command.resolve(EditorCommands.InsertCustomEmoji, Composer.Message.CompletedInsertCustomEmoji()),
+		)
+	})
+
+	test("a GIF answers the reply but leaves an edit in progress alone", () => {
+		const send = (replyToMessageId: MessageId | null) =>
+			Draft.SendMessage({
+				channelId,
+				authorId: ada,
+				content: "https://media.klipy.com/cat.gif",
+				replyToMessageId,
+				threadChannelId: null,
+				attachmentIds: [],
+				restoreContent: false,
+			})
+		story(
+			update,
+			given(replying()),
+			message(Message.SelectedGif({ url: "https://media.klipy.com/cat.gif" })),
+			Command.expectExact(send(replyId)),
+			Command.resolve(Draft.SendMessage, Message.SucceededSendMessage()),
+			model((current) => expect(current.composeMode).toEqual(Draft.ComposeMode.Plain())),
+		)
+		story(
+			update,
+			given(editing()),
+			message(Message.SelectedGif({ url: "https://media.klipy.com/cat.gif" })),
+			Command.expectExact(send(null)),
+			Command.resolve(Draft.SendMessage, Message.SucceededSendMessage()),
+			model((current) => expect(Draft.editingMessageIdOf(current)).toBe(editId)),
 		)
 	})
 })

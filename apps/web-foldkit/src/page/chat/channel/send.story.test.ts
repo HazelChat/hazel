@@ -70,9 +70,9 @@ describe("send", () => {
 			updateWithShared,
 			given(loadedModel()),
 			message(overlays(Overlays.Message.ClickedReply({ messageId: graceMessageId }))),
-			model((current) => expect(current.draft.replyToMessageId).toBe(graceMessageId)),
+			model((current) => expect(Draft.replyToMessageIdOf(current.draft)).toBe(graceMessageId)),
 			message(composer(Composer.Message.SubmittedDraft({ markdown: "On it" }))),
-			model((current) => expect(current.draft.replyToMessageId).toBeNull()),
+			model((current) => expect(Draft.replyToMessageIdOf(current.draft)).toBeNull()),
 			Command.expectHas(
 				Draft.SendMessage({
 					channelId,
@@ -105,11 +105,11 @@ describe("send", () => {
 					restoreContent: true,
 					replyToMessageId: graceMessageId,
 					attachmentIds: [],
-					toast,
+					reason: "ChannelNotFound",
 				}),
 			),
 			expectOutMessage(PageOutMessage.RequestedToast({ toast })),
-			model((current) => expect(current.draft.replyToMessageId).toBe(graceMessageId)),
+			model((current) => expect(Draft.replyToMessageIdOf(current.draft)).toBe(graceMessageId)),
 			Command.expectHas(EditorCommands.SetEditorContent({ editorId, markdown: "On it" })),
 			Command.resolve(EditorCommands.SetEditorContent, Composer.Message.CompletedSetEditorContent()),
 		)
@@ -143,17 +143,17 @@ describe("edit", () => {
 			updateWithShared,
 			given(loadedModel()),
 			message(composer(Composer.Message.PressedArrowUpInEmpty())),
-			model((current) => expect(current.draft.editingMessageId).toBe(adaMessageId)),
+			model((current) => expect(Draft.editingMessageIdOf(current.draft)).toBe(adaMessageId)),
 			Command.expectExact(EditorCommands.SetEditorContent({ editorId, markdown: "Shipped the onboarding copy" })),
 			Command.resolve(EditorCommands.SetEditorContent, Composer.Message.CompletedSetEditorContent()),
 			message(composer(Composer.Message.SubmittedDraft({ markdown: "Shipped the new onboarding copy" }))),
-			model((current) => expect(current.draft.editingMessageId).toBeNull()),
+			model((current) => expect(Draft.editingMessageIdOf(current.draft)).toBeNull()),
 			Command.expectExact(
 				EditorCommands.ClearEditor({ editorId }),
 				Draft.EditMessage({ messageId: adaMessageId, content: "Shipped the new onboarding copy" }),
 			),
 			Command.resolve(EditorCommands.ClearEditor, Composer.Message.CompletedClearEditor()),
-			Command.resolve(Draft.EditMessage, Draft.Message.CompletedEditMessage({ toast: null })),
+			Command.resolve(Draft.EditMessage, Draft.Message.SucceededEditMessage()),
 		)
 	})
 
@@ -164,7 +164,7 @@ describe("edit", () => {
 			message(overlays(Overlays.Message.ClickedEdit({ messageId: adaMessageId }))),
 			Command.resolve(EditorCommands.SetEditorContent, Composer.Message.CompletedSetEditorContent()),
 			message(composer(Composer.Message.PressedEscape())),
-			model((current) => expect(current.draft.editingMessageId).toBeNull()),
+			model((current) => expect(Draft.editingMessageIdOf(current.draft)).toBeNull()),
 			Command.expectExact(EditorCommands.ClearEditor({ editorId })),
 			Command.resolve(EditorCommands.ClearEditor, Composer.Message.CompletedClearEditor()),
 		)
@@ -206,18 +206,18 @@ describe("uploads", () => {
 			given(loadedModel()),
 			message(draft(Draft.Message.SelectedFiles({ files: [file] }))),
 			Command.resolve(Draft.GenerateUploadFileId, Draft.Message.CompletedGenerateUploadFileId({ fileId: "f1" })),
-			model((current) => expect(current.draft.uploadingFiles).toEqual([{ fileId: "f1", fileName: "diagram.png", fileSize: 3, progress: 0 }])),
+			model((current) => expect(current.draft.currentUpload).toEqual({ fileId: "f1", file, progress: 0 })),
 			message(draft(Draft.Message.ReceivedUploadEvent({ event: UploadEvent.ProgressedUpload({ fileId: "f1", progress: 40 }) }))),
-			model((current) => expect(current.draft.uploadingFiles[0]?.progress).toBe(40)),
+			model((current) => expect(current.draft.currentUpload?.progress).toBe(40)),
 			message(
 				draft(
 					Draft.Message.ReceivedUploadEvent({
-						event: UploadEvent.FinishedUpload({ fileId: "f1", attachmentId, toast: null }),
+						event: UploadEvent.SucceededUpload({ fileId: "f1", attachmentId }),
 					}),
 				),
 			),
 			model((current) => {
-				expect(current.draft.uploadingFiles).toEqual([])
+				expect(current.draft.currentUpload).toBeNull()
 				expect(current.draft.attachmentIds).toEqual([attachmentId])
 			}),
 			message(composer(Composer.Message.SubmittedDraft({ markdown: "" }))),
