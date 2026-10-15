@@ -12,6 +12,12 @@ interface CachedToken {
 	readonly expiresAtMs: number
 }
 
+/**
+ * Dispatched on `window` when the API refuses to exchange the session for a token: the session
+ * has likely ended. The app re-reads the session and, if it has, sends the user to sign-in.
+ */
+export const SESSION_REJECTED_EVENT = "hazel:session-rejected"
+
 /** Renew this long before expiry, so a token is never sent seconds from expiring. */
 const RENEW_BEFORE_MS = 60_000
 
@@ -29,7 +35,13 @@ const isTokenResponse = (value: unknown): value is { token: string; expiresIn: n
 	"expiresIn" in value &&
 	typeof value.expiresIn === "number"
 
-const exchange = async (startedGeneration: number): Promise<string | null> => {
+/** Attempts per exchange: a network error or 5xx right after sign-in is usually momentary. */
+const EXCHANGE_ATTEMPTS = 3
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+/** `null` means the API answered and there is no session; `"retry"` means it could not answer. */
+const exchangeOnce = async (startedGeneration: number): Promise<string | null | "retry"> => {
 	try {
 		const authorization = await sessionAuthorization()
 		const response = await fetch(`${backendUrl()}/auth/token`, {
@@ -40,8 +52,10 @@ const exchange = async (startedGeneration: number): Promise<string | null> => {
 				: { credentials: "omit" as const, headers: { authorization } }),
 		})
 		if (startedGeneration !== generation) return null
+		if (response.status >= 500) return "retry"
 		if (!response.ok) {
 			cached = null
+			if (response.status === 401) window.dispatchEvent(new Event(SESSION_REJECTED_EVENT))
 			return null
 		}
 		const body: unknown = await response.json()
@@ -49,7 +63,16 @@ const exchange = async (startedGeneration: number): Promise<string | null> => {
 		cached = { token: body.token, expiresAtMs: Date.now() + body.expiresIn * 1000 }
 		return body.token
 	} catch {
-		return null
+		return "retry"
+	}
+}
+
+const exchange = async (startedGeneration: number): Promise<string | null> => {
+	for (let attempt = 1; ; attempt++) {
+		const result = await exchangeOnce(startedGeneration)
+		if (result !== "retry") return result
+		if (attempt >= EXCHANGE_ATTEMPTS || startedGeneration !== generation) return null
+		await sleep(250 * 2 ** attempt)
 	}
 }
 
@@ -64,6 +87,11 @@ export const getAccessToken = async (): Promise<string | null> => {
 		pending = request
 	}
 	return pending
+}
+
+/** Forgets the cached token so the next request exchanges a new one, after a host rejected it. */
+export const invalidateAccessToken = (rejected: string) => {
+	if (cached?.token === rejected) cached = null
 }
 
 /** Drops the cached token, for sign-out. */

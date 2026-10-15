@@ -11,6 +11,7 @@ import { formatStatusExpirationAt } from "../shell/menus"
 import type { ShellContext } from "../shell/context"
 import {
 	appLoader,
+	organizationNotFound,
 	type ChannelSettingsTab,
 	channelSettingsLayout,
 	contentColumnLayout,
@@ -146,6 +147,10 @@ const secondarySidebar = (model: Model, h: HtmlBuilder<Message>, context: ShellC
 	)
 }
 
+/** The app loader; once loading has stalled it also offers a reload. */
+const loader = (h: HtmlBuilder<Message>, isStalled: boolean): Html =>
+	appLoader(h, isStalled ? Message.PressedReload() : undefined)
+
 const appRoot = (h: HtmlBuilder<Message>, model: Model, children: ReadonlyArray<Html>): Html =>
 	h.div([h.Id("app")], [toaster(h, model), ...children])
 
@@ -154,13 +159,16 @@ const body = (model: Model, h: HtmlBuilder<Message>): Html => {
 	if (route._tag === "NotFound") return h.div([h.Id("app")], [`Not found: ${route.path}`])
 	if (isPublicRoute(route)) return appRoot(h, model, [pageBody(model, h, false)])
 	// `_app/layout.tsx`: a loader until the API answers for the session; signed out redirects to sign-in.
-	if (model.auth !== "SignedIn") return appRoot(h, model, [appLoader(h)])
+	if (model.auth !== "SignedIn") return appRoot(h, model, [loader(h, model.isSessionStalled)])
 	// `AppShell`: a loader until `user.me` answers.
-	if (model.currentUser === null) return appRoot(h, model, [appLoader(h)])
+	if (model.currentUser === null) return appRoot(h, model, [loader(h, model.isCurrentUserStalled)])
 	const orgSlug = orgSlugOf(route)
 	if (orgSlug === undefined) return appRoot(h, model, [pageBody(model, h, false)])
 	// `$orgSlug/layout.tsx`: a loader while `useOrganization()` loads the route's organization.
-	if (model.loadedOrgSlug !== orgSlug) return appRoot(h, model, [appLoader(h)])
+	const orgLoad = model.orgLoad?.slug === orgSlug ? model.orgLoad.status : "Loading"
+	if (orgLoad === "Loading" || orgLoad === "Stalled")
+		return appRoot(h, model, [loader(h, orgLoad === "Stalled")])
+	if (orgLoad === "NotFound") return appRoot(h, model, [organizationNotFound(h, orgSlug)])
 	const context = shellContextOf(model, orgSlug)
 	return orgShell(h, context, {
 		page: sectionBody(model, h),

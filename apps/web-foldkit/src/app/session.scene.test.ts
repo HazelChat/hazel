@@ -4,7 +4,7 @@ import { describe, test } from "vitest"
 import { boot, rootScene, sessionMessages } from "../test/root-fixtures"
 import * as Menu from "../ui/menu"
 import { FocusTriggerOnPress } from "../ui/menu-view"
-import { FetchCurrentUser } from "./command"
+import { FetchCurrentUser, RetryFetchCurrentUser } from "./command"
 import { Message } from "./message"
 
 /** What the root renders for each session state, and how a session arriving changes it. */
@@ -31,12 +31,18 @@ describe("session states", () => {
 		)
 	})
 
-	test("a failed user.me keeps the loader (no error screen)", () => {
+	test("a failed user.me keeps the loader (no error screen) and asks again", () => {
+		const [, user] = sessionMessages()
 		scene(
 			rootScene,
 			given(boot("/hazel/settings/team")),
 			Subscription.emit(Message.ChangedAuth({ auth: "SignedIn" })),
-			Command.resolve(FetchCurrentUser, Message.FailedFetchCurrentUser({ reason: "offline" })),
+			Command.resolve(
+				FetchCurrentUser,
+				Message.FailedFetchCurrentUser({ reason: "offline", isUnauthorized: false }),
+			),
+			sceneExpect(loader).toExist(),
+			Command.resolve(RetryFetchCurrentUser, user),
 			sceneExpect(loader).toExist(),
 		)
 	})

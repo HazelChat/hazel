@@ -6,7 +6,10 @@ import { toString as urlToString, type Url } from "foldkit/url"
 import {
 	ApplyTheme,
 	CheckSession,
+	Reload,
+	RetryCheckSession,
 	FetchCurrentUser,
+	RetryFetchCurrentUser,
 	LoadExternal,
 	NavigateInternal,
 	DeliverNotifications,
@@ -395,7 +398,9 @@ export const init: Runtime.RoutingApplicationInit<Model, Message, Flags, Resourc
 			auth: "Loading",
 			currentUser: null,
 			organization: null,
-			loadedOrgSlug: null,
+			orgLoad: null,
+			isSessionStalled: false,
+			isCurrentUserStalled: false,
 			member: null,
 			nowMs: 0,
 			themePreference: flags.themePreference,
@@ -450,7 +455,7 @@ export const update = (model: Model, message: Message): Return =>
 		}),
 		CompletedDeliverNotifications: () => ({ model }),
 		ChangedAuth: ({ auth }) => {
-			const next = modifyFields(model, { auth: () => auth })
+			const next = modifyFields(model, { auth: () => auth, isSessionStalled: () => false })
 			// Legacy `userAtom` runs wherever `useAuth()` mounts: the join page queries it signed out too.
 			const isUserQueried =
 				(auth === "SignedIn" && model.auth !== "SignedIn") ||
@@ -462,19 +467,48 @@ export const update = (model: Model, message: Message): Return =>
 				(m) => ({ model: m, commands: fetchUser }),
 			])
 		},
+		RejectedSession: () => ({ model, commands: [CheckSession()] }),
+		FailedCheckSession: () => ({
+			model: modifyFields(model, { isSessionStalled: () => true }),
+			commands: [RetryCheckSession()],
+		}),
 		SucceededFetchCurrentUser: ({ user }) =>
-			Update.combine<Model, Message, Resources>(modifyFields(model, { currentUser: () => user }), [
-				informPage,
-				informShell,
-			]),
-		FailedFetchCurrentUser: () => ({ model }),
+			Update.combine<Model, Message, Resources>(
+				modifyFields(model, { currentUser: () => user, isCurrentUserStalled: () => false }),
+				[informPage, informShell],
+			),
+		// A signed-in shell has nothing to show without its user, so it keeps asking. Unauthorized
+		// also re-reads the session: if it has ended, ChangedAuth sends the browser to sign-in.
+		FailedFetchCurrentUser: ({ isUnauthorized }) =>
+			model.auth !== "SignedIn" || model.currentUser !== null
+				? { model }
+				: {
+						model: modifyFields(model, { isCurrentUserStalled: () => true }),
+						commands: [...(isUnauthorized ? [CheckSession()] : []), RetryFetchCurrentUser()],
+					},
 		CompletedSignOut: () => ({ model }),
 		FailedSignOut: () => withToasts(model, Toasts.push(model.toasts, errorToast("Failed to sign out", "Please try again."))),
 		UpdatedOrganization: ({ orgSlug, organization }) =>
 			Update.combine<Model, Message, Resources>(
-				modifyFields(model, { organization: () => organization, loadedOrgSlug: () => orgSlug }),
+				modifyFields(model, {
+					organization: () => organization,
+					orgLoad: () => ({ slug: orgSlug, status: organization === null ? "NotFound" : "Found" }),
+					// The role belongs to one organization; another one's must not show until its own arrives.
+					member: (member) => (organization?.id === model.organization?.id ? member : null),
+				}),
 				[informPage, informShell],
 			),
+		// Only a slug still loading counts: data already on screen stays when its sync hiccups.
+		StalledOrganization: ({ orgSlug }) =>
+			model.orgLoad?.slug === orgSlug && model.orgLoad.status !== "Stalled"
+				? { model }
+				: {
+						model: modifyFields(model, {
+							orgLoad: () => ({ slug: orgSlug, status: "Stalled" as const }),
+						}),
+					},
+		PressedReload: () => ({ model, commands: [Reload()] }),
+		CompletedReload: () => ({ model }),
 		UpdatedMember: ({ member }) =>
 			Update.combine<Model, Message, Resources>(modifyFields(model, { member: () => member }), [
 				informPage,

@@ -74,6 +74,9 @@ export const publicJwk = (key: SigningKey) =>
 		return yield* Jwk.exportPublic(imported)
 	})
 
+/** Seconds of clock difference between the API and a verifier that `exp` tolerates. */
+export const clockToleranceSeconds = 30
+
 /** Verification used by electric-proxy / actors. Requires `Jwks` (local or remote). */
 export const verifyAccessToken = (issuer: string, token: string) =>
 	Jwt.verifyWithKeySet(AccessClaims, Redacted.make(token), {
@@ -81,6 +84,7 @@ export const verifyAccessToken = (issuer: string, token: string) =>
 		issuer,
 		audience,
 		typ: "at+jwt",
+		clockTolerance: clockToleranceSeconds,
 		requiredClaims: ["iss", "sub", "aud", "exp", "iat"],
 	})
 
@@ -181,9 +185,15 @@ export class AccessTokenVerifier extends Context.Service<
 						}).pipe(Effect.map(Jwks.layerLocal)),
 					),
 				onNone: () =>
-					Jwks.layerRemote({ url: `${issuer}/.well-known/jwks.json` }).pipe(
-						Layer.provide(FetchHttpClient.layer),
-					),
+					// After a failed fetch the verifier answers "unavailable" (503) for `cooldownMs`; the
+					// default 30s outlasts the clients' retries, so a cold isolate whose first fetch
+					// failed would refuse every shape for half a minute. Every shape of a client
+					// verifies at once on boot, so allow more concurrent waiters than the default 64.
+					Jwks.layerRemote({
+						url: `${issuer}/.well-known/jwks.json`,
+						cooldownMs: 2_000,
+						maxWaiters: 1_024,
+					}).pipe(Layer.provide(FetchHttpClient.layer)),
 			})
 			return Layer.effect(AccessTokenVerifier, makeVerifier(issuer)).pipe(
 				Layer.provide(Layer.merge(keySet, VerifierCryptoLive)),

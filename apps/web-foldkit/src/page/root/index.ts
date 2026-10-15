@@ -34,12 +34,20 @@ const targetOf = (model: Model, user: CurrentUser): string =>
 		? model.returnTo
 		: rootRedirect(user, Option.fromNullishOr(model.membership))
 
-/** Redirects once the user, their membership and the remembered page are known. */
+export const Reload = Command.define("Reload", {
+	messages: [Message.CompletedReload],
+	execute: Effect.sync(() => window.location.reload()).pipe(Effect.as(Message.CompletedReload())),
+})
+
+/** The membership matters only without a page to return to, or before onboarding. */
+const needsMembership = (model: Model, user: CurrentUser): boolean => !(model.returnTo && user.isOnboarded)
+
+/** Redirects once the user and the remembered page are known, and the membership if it decides. */
 const redirectWhenReady = (model: Model, shared: Shared): Return =>
 	model.hasRedirected ||
-	model.membership === undefined ||
 	model.returnTo === undefined ||
-	shared.currentUser === null
+	shared.currentUser === null ||
+	(model.membership === undefined && needsMembership(model, shared.currentUser))
 		? { model }
 		: {
 				model: modifyFields(model, { hasRedirected: () => true }),
@@ -89,20 +97,27 @@ const subscriptions = Subscription.make<PageSubscriptionInput<Model>, Message>()
 										: null,
 								})
 							},
+							{ onStalled: () => Message.StalledMembership() },
 						),
 		},
 	),
 }))
 
 export const init = (): Return => ({
-	model: { membership: undefined, returnTo: undefined, hasRedirected: false },
+	model: { membership: undefined, returnTo: undefined, hasRedirected: false, isStalled: false },
 	commands: [TakeReturnTo()],
 })
 
 export const update = (model: Model, message: Message, shared: Shared): Return =>
 	Message.match<Return>(message, {
 		UpdatedMembership: ({ membership }) =>
-			redirectWhenReady(modifyFields(model, { membership: () => membership }), shared),
+			redirectWhenReady(
+				modifyFields(model, { membership: () => membership, isStalled: () => false }),
+				shared,
+			),
+		StalledMembership: () => ({ model: modifyFields(model, { isStalled: () => true }) }),
+		PressedReload: () => ({ model, commands: [Reload()] }),
+		CompletedReload: () => ({ model }),
 		TookReturnTo: ({ returnTo }) =>
 			redirectWhenReady(modifyFields(model, { returnTo: () => returnTo }), shared),
 	})
@@ -114,7 +129,9 @@ export const page = definePage(
 		routes: ["Root"],
 		init,
 		update,
-		view: Submodel.defineView<Model, Message, PageViewInputs>((_model, _inputs, h) => appLoader(h)),
+		view: Submodel.defineView<Model, Message, PageViewInputs>((model, _inputs, h) =>
+			appLoader(h, model.isStalled ? Message.PressedReload() : undefined),
+		),
 		subscriptions,
 		sharedChanged: redirectWhenReady,
 	},

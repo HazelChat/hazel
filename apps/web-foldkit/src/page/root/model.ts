@@ -13,11 +13,16 @@ export const Model = Schema.Struct({
 	/** The page sign-in started from (`auth/return-to.ts`); `undefined` until read, `null` if none. */
 	returnTo: Schema.UndefinedOr(Schema.NullOr(Schema.String)),
 	hasRedirected: Schema.Boolean,
+	/** The membership query has not loaded after a while: the loader offers a reload. */
+	isStalled: Schema.Boolean,
 })
 export type Model = typeof Model.Type
 
 export const Message = defineMessageUnion({
 	UpdatedMembership: { membership: Schema.NullOr(RootMembership) },
 	TookReturnTo: { returnTo: Schema.NullOr(Schema.String) },
+	StalledMembership: {},
+	PressedReload: {},
+	CompletedReload: {},
 })
 export type Message = typeof Message.Type

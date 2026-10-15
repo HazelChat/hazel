@@ -278,6 +278,8 @@ describe("Hazel sign-in in the backend", () => {
 		const response = await send("/probe/rpc", { method: "POST" })
 		expect(response.status).toBe(401)
 		expect(cookies.has("effect-auth-session")).toBe(false)
+		// No session is a definite answer (401), unlike a session store that did not answer (503).
+		expect((await post("/auth/token")).status).toBe(401)
 	})
 
 	it("a Clerk user's first GitHub sign-in lands in their existing account by verified email", async () => {

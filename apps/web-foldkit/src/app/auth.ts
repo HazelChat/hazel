@@ -10,7 +10,7 @@ import type { Auth } from "../session"
  * (`getSession`); the desktop app holds its own session in the OS keychain.
  */
 
-/** Retried while the API is unreachable; auth stays `Loading` (the app loader) meanwhile. */
+/** Retried a few times while the API is unreachable; auth stays `Loading` (the app loader) meanwhile. */
 const retryUnavailable = Schedule.min([
 	Schedule.exponential("500 millis").pipe(Schedule.jittered),
 	Schedule.spaced("30 seconds"),
@@ -31,10 +31,13 @@ const read: Effect.Effect<Auth, unknown, HazelAuthClient> = isDesktop
 	? readDesktopSession
 	: readBrowserSession
 
-export const readSession: Effect.Effect<Auth, never, HazelAuthClient> = read.pipe(
+/**
+ * Fails only when the API could not answer at all. An unreachable API says nothing about the
+ * session, so it must not count as signed out: that would send a signed-in user to sign-in.
+ */
+export const readSession: Effect.Effect<Auth, unknown, HazelAuthClient> = read.pipe(
 	Effect.tapError((error) => Effect.logWarning("[auth] session check failed", error)),
 	Effect.retry({ schedule: retryUnavailable, times: 3 }),
-	Effect.orElseSucceed(() => "SignedOut" as const),
 )
 
 /** The API rejected sign-out or could not be reached; the user stays signed in. */

@@ -1,6 +1,14 @@
 import { ConfigProvider, Effect, Exit, Layer, Redacted } from "effect"
+import { TestClock } from "effect/testing"
 import { describe, expect, test } from "vitest"
-import { AccessTokenVerifier, generateSigningKey, makeIssuer, publicJwk } from "./access-token.ts"
+import {
+	AccessTokenVerifier,
+	clockToleranceSeconds,
+	generateSigningKey,
+	lifetimeSeconds,
+	makeIssuer,
+	publicJwk,
+} from "./access-token.ts"
 import { CryptoLive } from "./server.ts"
 
 /** The verifier the Electric proxy and actors use, configured as they are on a stage. */
@@ -13,10 +21,14 @@ const keyPair = async (kid: string) => {
 	return { kid, privateJwk: pair.privateKey }
 }
 
-const mint = async (issuer: string, key: Awaited<ReturnType<typeof keyPair>>) => {
+/** A token as the API mints it; with `issuedAtMs`, as if minted then. */
+const mint = async (issuer: string, key: Awaited<ReturnType<typeof keyPair>>, issuedAtMs?: number) => {
 	const tokens = await Effect.runPromise(makeIssuer(issuer, key).pipe(Effect.provide(CryptoLive)))
+	const minting = tokens.mint({ subjectId: userId, sessionId: "s1" }).pipe(Effect.provide(CryptoLive))
 	const token = await Effect.runPromise(
-		tokens.mint({ subjectId: userId, sessionId: "s1" }).pipe(Effect.provide(CryptoLive)),
+		issuedAtMs === undefined
+			? minting
+			: TestClock.setTime(issuedAtMs).pipe(Effect.andThen(minting), Effect.provide(TestClock.layer())),
 	)
 	return Redacted.value(token)
 }
@@ -52,6 +64,20 @@ describe("AccessTokenVerifier", () => {
 	test("another stage's token is rejected", async () => {
 		const key = await keyPair("k1")
 		const exit = await verify(await mint("https://api.other.test", key), key)
+		expect(failureTag(exit)).toEqual(["AccessTokenInvalid"])
+	})
+
+	test("a token just past its expiry still verifies, within the clock tolerance", async () => {
+		const key = await keyPair("k1")
+		const issuedAtMs = Date.now() - (lifetimeSeconds + clockToleranceSeconds / 2) * 1000
+		const exit = await verify(await mint(api, key, issuedAtMs), key)
+		expect(exit).toEqual(Exit.succeed({ userId, sessionId: "s1" }))
+	})
+
+	test("a token expired beyond the clock tolerance is rejected", async () => {
+		const key = await keyPair("k1")
+		const issuedAtMs = Date.now() - (lifetimeSeconds + clockToleranceSeconds * 2) * 1000
+		const exit = await verify(await mint(api, key, issuedAtMs), key)
 		expect(failureTag(exit)).toEqual(["AccessTokenInvalid"])
 	})
 

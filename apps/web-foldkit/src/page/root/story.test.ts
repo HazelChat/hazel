@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-import { Command, expectOutMessage, given, message, story } from "foldkit/story"
+import { Command, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
 import { currentUser, makeShared, organizationId, storyUpdate } from "../../test/pages-fixtures"
 import { PageOutMessage } from "../out-message"
-import { init, TakeReturnTo, update } from "./index"
+import { init, Reload, TakeReturnTo, update } from "./index"
 import { Message } from "./model"
 
 /** `/` forwards once the user, their membership and the page sign-in started from are known. */
@@ -29,13 +29,28 @@ describe("root redirect", () => {
 		)
 	})
 
-	test("back to the page sign-in started from", () => {
+	test("back to the page sign-in started from, without waiting for the membership", () => {
 		story(
 			signedIn,
 			given(init().model),
 			message(Message.TookReturnTo({ returnTo: "/join/acme" })),
-			message(Message.UpdatedMembership({ membership: null })),
 			go("/join/acme"),
+		)
+	})
+
+	test("a stalled membership query offers a reload until it loads", () => {
+		story(
+			signedIn,
+			given(init().model),
+			message(Message.TookReturnTo({ returnTo: null })),
+			message(Message.StalledMembership()),
+			model((m) => expect(m.isStalled).toBe(true)),
+			message(Message.PressedReload()),
+			Command.expectExact(Reload()),
+			Command.resolve(Reload, Message.CompletedReload()),
+			message(Message.UpdatedMembership({ membership })),
+			model((m) => expect(m.isStalled).toBe(false)),
+			go("/hazel"),
 		)
 	})
 

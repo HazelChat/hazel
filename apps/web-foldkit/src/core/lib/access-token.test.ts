@@ -1,11 +1,23 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { clearAccessToken, getAccessToken } from "./access-token"
+import {
+	clearAccessToken,
+	getAccessToken,
+	invalidateAccessToken,
+	SESSION_REJECTED_EVENT,
+} from "./access-token"
 
 afterEach(() => {
 	clearAccessToken()
 	vi.unstubAllGlobals()
+	vi.useRealTimers()
 })
+
+const rejections = () => {
+	const seen = vi.fn()
+	window.addEventListener(SESSION_REJECTED_EVENT, seen)
+	return { seen, stop: () => window.removeEventListener(SESSION_REJECTED_EVENT, seen) }
+}
 describe("session token exchange", () => {
 	it("sends the browser CSRF header", async () => {
 		const fetch = vi.fn<typeof globalThis.fetch>(async () =>
@@ -37,5 +49,55 @@ describe("session token exchange", () => {
 		finish(Response.json({ token: "old", expiresIn: 300 }))
 		expect(await old).toBeNull()
 		expect(await getAccessToken()).toBe("new")
+	})
+
+	it("retries an API that did not answer, then hands out the token", async () => {
+		vi.useFakeTimers()
+		const fetch = vi
+			.fn<typeof globalThis.fetch>()
+			.mockResolvedValueOnce(new Response(null, { status: 503 }))
+			.mockRejectedValueOnce(new TypeError("Failed to fetch"))
+			.mockResolvedValue(Response.json({ token: "late", expiresIn: 300 }))
+		vi.stubGlobal("fetch", fetch)
+		const token = getAccessToken()
+		await vi.runAllTimersAsync()
+		expect(await token).toBe("late")
+		expect(fetch).toHaveBeenCalledTimes(3)
+	})
+
+	it("gives up after three unanswered attempts without reporting the session as refused", async () => {
+		vi.useFakeTimers()
+		const { seen, stop } = rejections()
+		const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response(null, { status: 503 }))
+		vi.stubGlobal("fetch", fetch)
+		const token = getAccessToken()
+		await vi.runAllTimersAsync()
+		expect(await token).toBeNull()
+		expect(fetch).toHaveBeenCalledTimes(3)
+		expect(seen).not.toHaveBeenCalled()
+		stop()
+	})
+
+	it("reports a refused session once, without retrying", async () => {
+		const { seen, stop } = rejections()
+		const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response(null, { status: 401 }))
+		vi.stubGlobal("fetch", fetch)
+		expect(await getAccessToken()).toBeNull()
+		expect(fetch).toHaveBeenCalledOnce()
+		expect(seen).toHaveBeenCalledOnce()
+		stop()
+	})
+
+	it("a rejected token is exchanged again; a token already replaced is left alone", async () => {
+		const fetch = vi
+			.fn<typeof globalThis.fetch>()
+			.mockResolvedValueOnce(Response.json({ token: "first", expiresIn: 300 }))
+			.mockResolvedValue(Response.json({ token: "second", expiresIn: 300 }))
+		vi.stubGlobal("fetch", fetch)
+		expect(await getAccessToken()).toBe("first")
+		invalidateAccessToken("stale")
+		expect(await getAccessToken()).toBe("first")
+		invalidateAccessToken("first")
+		expect(await getAccessToken()).toBe("second")
 	})
 })

@@ -1,12 +1,13 @@
 import { ChannelId, type NotificationId, OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import { eq } from "@tanstack/db"
-import { Option, Schema, Stream } from "effect"
+import { Duration, Option, Schema, Stream } from "effect"
 import { Dom, ManagedResource, Subscription } from "foldkit"
 import {
 	notificationCollection,
 	organizationCollection,
 	organizationMemberCollection,
 } from "~/db/collections"
+import { SESSION_REJECTED_EVENT } from "~/lib/access-token"
 import { liveQueryStream } from "../data/live-query"
 import { pageSubscriptions } from "../page/registry"
 import { SoundSettings } from "../notification-sound"
@@ -37,6 +38,25 @@ const rootSubscriptions = Subscription.make<Model, Message>()((entry) => ({
 			Stream.map(() => Message.TickedPresenceClock({ nowMs: Date.now() })),
 		),
 	),
+	// Every shape retries a refused token at once; one session check covers them all.
+	sessionRejected: entry(
+		{ isSignedIn: Schema.Boolean },
+		{
+			modelToDependencies: (model) => ({ isSignedIn: model.auth === "SignedIn" }),
+			dependenciesToStream: ({ isSignedIn }) =>
+				isSignedIn
+					? Stream.fromEventListener(window, SESSION_REJECTED_EVENT).pipe(
+							Stream.throttle({
+								cost: () => 1,
+								units: 1,
+								duration: Duration.seconds(30),
+								strategy: "enforce",
+							}),
+							Stream.map(() => Message.RejectedSession()),
+						)
+					: Stream.empty,
+		},
+	),
 	// `useOrganization()`: the org named by the route's slug.
 	organization: entry(
 		{ orgSlug: Schema.NullOr(Schema.String) },
@@ -66,6 +86,7 @@ const rootSubscriptions = Subscription.make<Model, Message>()((entry) => ({
 										: null,
 								})
 							},
+							{ onStalled: () => Message.StalledOrganization({ orgSlug }) },
 						),
 		},
 	),
@@ -180,7 +201,9 @@ const shellSubscriptions = Subscription.lift(ShellSubscription.subscriptions)<Mo
 /** `PresenceProvider` runs inside the loaded `$orgSlug` layout, once `user.me` answered. */
 const presenceUserIdOf = (model: Model): UserId | null => {
 	const orgSlug = orgSlugOf(model.route)
-	return orgSlug !== undefined && model.loadedOrgSlug === orgSlug ? (model.currentUser?.id ?? null) : null
+	const isLoaded =
+		orgSlug !== undefined && model.orgLoad?.slug === orgSlug && model.orgLoad.status === "Found"
+	return isLoaded ? (model.currentUser?.id ?? null) : null
 }
 
 const platformSubscriptions = Subscription.lift(Platform.subscriptions)<Model, Message>({
