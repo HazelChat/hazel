@@ -1,5 +1,6 @@
 import { Schema } from "effect"
 import { defineMessageUnion } from "foldkit/message"
+import { AuthFailure } from "../../../auth/flows"
 
 export const Message = defineMessageUnion({
 	ChangedFirstName: { value: Schema.String },
@@ -7,6 +8,6 @@ export const Message = defineMessageUnion({
 	SubmittedRegistration: {},
 	/** The account exists and the browser is loading the app. */
 	LeftForApp: {},
-	FailedRegistration: { message: Schema.NullOr(Schema.String) },
+	FailedRegistration: { reason: AuthFailure },
 })
 export type Message = typeof Message.Type

@@ -13,7 +13,7 @@ import { catchCommon, errorToastOf, reasonToast, successToast } from "../../../d
 import type { PageReturn, PageSubscriptionInput, Shared } from "../../contract"
 import { PageOutMessage, requestedOrgNavigation } from "../../out-message"
 import * as ConfirmAction from "../../shared/confirm-action"
-import { addMenuEntries, Connections, type DeleteTarget, Message, type Model, Submission } from "./model"
+import { Connections, type DeleteTarget, Message, type Model, Submission } from "./model"
 import { DiscordGuilds, fetchDiscordGuilds } from "./discord"
 import { fetchConnections } from "./rpc"
 import { ADD_CONNECTION_MODAL_ID, CreateConnection, FocusGuildSearch } from "./add-connection"
@@ -97,12 +97,8 @@ export const init = (_route: unknown, shared: Shared): Return =>
 		{
 			requestedOrganizationId: null,
 			connections: Connections.Loading(),
-			addMenu: Menu.init({ id: "chat-sync-add", entries: addMenuEntries, placement: "bottom end" }),
-			emptyAddMenu: Menu.init({
-				id: "chat-sync-add-empty",
-				entries: addMenuEntries,
-				placement: "bottom end",
-			}),
+			addMenu: Menu.init({ id: "chat-sync-add", placement: "bottom end" }),
+			emptyAddMenu: Menu.init({ id: "chat-sync-add-empty", placement: "bottom end" }),
 			addModal: Modal.init(ADD_CONNECTION_MODAL_ID),
 			discordGuilds: DiscordGuilds.Loading(),
 			guildsVersion: 0,

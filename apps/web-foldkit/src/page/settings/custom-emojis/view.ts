@@ -32,7 +32,6 @@ const fileInput = (h: HtmlBuilder<Message>, id: string): Html =>
 		h.Type("file"),
 		h.Attribute("accept", ALLOWED_EMOJI_TYPES.join(",")),
 		h.Attribute("class", ""),
-		h.DataAttribute("rac", ""),
 		h.Attribute("style", "display: none;"),
 		h.OnFileChange((files) => Message.SelectedFiles({ files })),
 	])
@@ -43,7 +42,6 @@ const dropZone = (h: HtmlBuilder<Message>, model: Model, isDisabled: boolean): H
 			h.Class(
 				"rounded-lg focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
 			),
-			h.DataAttribute("rac", ""),
 			...(isDisabled
 				? [h.DataAttribute("disabled", "true")]
 				: DropZone.zoneAttributes(
@@ -77,7 +75,6 @@ const dropZone = (h: HtmlBuilder<Message>, model: Model, isDisabled: boolean): H
 							isDisabled && "pointer-events-none opacity-50",
 						),
 					),
-					h.DataAttribute("rac", ""),
 					h.DataAttribute("react-aria-pressable", "true"),
 					h.Tabindex(0),
 					h.Type("button"),
@@ -299,10 +296,8 @@ const emojiRow = (h: HtmlBuilder<Message>, emoji: Emoji, isAdmin: boolean, nowMs
 										{
 											intent: "danger",
 											size: "sq-sm",
-											onPress: Message.ClickedDeleteEmoji({
-												id: emoji.id,
-												name: emoji.name,
-											}),
+											onPress: Message.ClickedDeleteEmoji({ id: emoji.id, name: emoji.name }),
+											attributes: [h.AriaLabel(`Delete :${emoji.name}:`)],
 										},
 										[IconTrash(h, { attributes: { "data-slot": "icon" } })],
 									),

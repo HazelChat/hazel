@@ -1,37 +1,25 @@
 import { Effect, Queue, Schema, Stream } from "effect"
 import { File, Mount } from "foldkit"
 import { defineMessageUnion } from "foldkit/message"
+import { defineTaggedUnion } from "foldkit/schema"
+import { isAcceptedMimeType } from "../editor/file-types"
 
 /**
  * `ComposerDropZone`: React Aria's `DropZone` (drop target, accepted types) plus `useDragDetection`
- * (files dragged anywhere on the page), as one Mount on the drop zone element.
+ * (files dragged anywhere on the page), as one Mount on the drop zone element. Whether a drop is
+ * taken (not while a file uploads) is the update's call: the Mount reports every drop.
  */
 
-/** `getDropOperation`: the concrete types React Aria checks for the wildcard entries. */
-const ACCEPTED_TYPES = [
-	"image/jpeg",
-	"image/png",
-	"image/gif",
-	"image/webp",
-	"image/svg+xml",
-	"video/mp4",
-	"video/webm",
-	"video/quicktime",
-	"audio/mpeg",
-	"audio/wav",
-	"audio/ogg",
-	"audio/webm",
-	"application/pdf",
-	"application/msword",
-	"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-	"application/vnd.ms-excel",
-	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-	"text/plain",
-	"text/csv",
-]
+/** Files dragged over the page (a subtle overlay) or over the drop zone itself (a strong one). */
+export const DragState = defineTaggedUnion({
+	Idle: {},
+	DraggingOnPage: {},
+	OverDropZone: {},
+})
+export type DragState = typeof DragState.Type
 
 export const DropEvent = defineMessageUnion({
-	ChangedDragState: { isDraggingOnPage: Schema.Boolean, isDropTarget: Schema.Boolean },
+	ChangedDragState: { drag: DragState },
 	DroppedFiles: { files: Schema.Array(File.File) },
 })
 export type DropEvent = typeof DropEvent.Type
@@ -39,12 +27,20 @@ export type DropEvent = typeof DropEvent.Type
 const hasFiles = (event: DragEvent) => event.dataTransfer?.types.includes("Files") ?? false
 
 const isAccepted = (event: DragEvent) =>
-	Array.from(event.dataTransfer?.items ?? []).some((item) => item.kind === "file" && ACCEPTED_TYPES.includes(item.type))
+	Array.from(event.dataTransfer?.items ?? []).some(
+		(item) => item.kind === "file" && isAcceptedMimeType(item.type),
+	)
+
+const dragStateOf = (pageCounter: number, targetCounter: number): DragState =>
+	targetCounter > 0
+		? DragState.OverDropZone()
+		: pageCounter > 0
+			? DragState.DraggingOnPage()
+			: DragState.Idle()
 
 export const TrackFileDrop = Mount.defineStream("TrackFileDrop", {
-	args: { isDisabled: Schema.Boolean },
 	messages: [DropEvent.ChangedDragState, DropEvent.DroppedFiles],
-	execute: ({ element, isDisabled }) =>
+	execute: ({ element }) =>
 		Stream.callback<DropEvent>((queue) =>
 			Effect.acquireRelease(
 				Effect.sync(() => {
@@ -53,7 +49,7 @@ export const TrackFileDrop = Mount.defineStream("TrackFileDrop", {
 					const emit = () =>
 						Queue.offerUnsafe(
 							queue,
-							DropEvent.ChangedDragState({ isDraggingOnPage: pageCounter > 0, isDropTarget: targetCounter > 0 }),
+							DropEvent.ChangedDragState({ drag: dragStateOf(pageCounter, targetCounter) }),
 						)
 					const reset = () => {
 						pageCounter = 0
@@ -70,7 +66,7 @@ export const TrackFileDrop = Mount.defineStream("TrackFileDrop", {
 						emit()
 					}
 					const onEnter = (event: DragEvent) => {
-						if (isDisabled || !isAccepted(event)) return
+						if (!isAccepted(event)) return
 						targetCounter++
 						emit()
 					}
@@ -78,11 +74,11 @@ export const TrackFileDrop = Mount.defineStream("TrackFileDrop", {
 						targetCounter = Math.max(0, targetCounter - 1)
 						emit()
 					}
+					// `preventDefault` has to happen in the listener for the element to accept the drop.
 					const onOver = (event: DragEvent) => {
-						if (!isDisabled && isAccepted(event)) event.preventDefault()
+						if (isAccepted(event)) event.preventDefault()
 					}
 					const onDrop = (event: DragEvent) => {
-						if (isDisabled) return
 						event.preventDefault()
 						const files = Array.from(event.dataTransfer?.files ?? [])
 						reset()

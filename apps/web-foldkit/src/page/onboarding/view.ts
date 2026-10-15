@@ -1,13 +1,16 @@
+import { Option } from "effect"
 import { Submodel } from "foldkit"
 import type { Html, HtmlBuilder } from "foldkit/html"
 import { appLoader } from "../../shell/layouts"
 import { link } from "../../ui/link"
+import { failureMessage } from "~/lib/error-messages"
+import { button } from "../../ui/button"
 import { loader } from "../../ui/loader"
 import type { PageViewInputs, Shared } from "../contract"
 import { backgroundImage, logoContent, panelCard, panelFrame } from "./brand-panel"
 import { stepNumber, totalSteps } from "./flow"
 import { Message, toInteractionMessage } from "./message"
-import type { Model } from "./model"
+import { type Model, Phase, type Running, type StepOf, StepState, stepOf } from "./model"
 import { enterAnimation } from "./enter-animation"
 import { MOTION_END_STYLE } from "./motion"
 import { roleStep, useCaseStep } from "./steps/choice"
@@ -19,23 +22,26 @@ import { timezoneStep } from "./timezone/view"
 
 /** `routes/_app/onboarding/index.tsx` inside `onboarding-layout.tsx`. */
 
-const stepCounter = (h: HtmlBuilder<Message>, model: Model): Array<Html | string> => [
-	"Step",
-	" ",
-	h.span(
-		[
-			h.Key(`step-number-${stepNumber(model.step, model.userType)}`),
-			h.Class("inline-block font-mono"),
-			...enterAnimation(h, model.direction === "forward" ? "NumberForward" : "NumberBackward"),
-		],
-		[String(stepNumber(model.step, model.userType))],
-	),
-	" ",
-	"of ",
-	String(totalSteps(model.userType)),
-]
+const stepCounter = (h: HtmlBuilder<Message>, running: Running): Array<Html | string> => {
+	const number = stepNumber(stepOf(running.step), running.flow.userType)
+	return [
+		"Step",
+		" ",
+		h.span(
+			[
+				h.Key(`step-number-${number}`),
+				h.Class("inline-block font-mono"),
+				...enterAnimation(h, running.direction === "forward" ? "NumberForward" : "NumberBackward"),
+			],
+			[String(number)],
+		),
+		" ",
+		"of ",
+		String(totalSteps(running.flow.userType)),
+	]
+}
 
-const leftPanel = (h: HtmlBuilder<Message>, model: Model, nowMs: number): Html =>
+const leftPanel = (h: HtmlBuilder<Message>, running: Running, nowMs: number): Html =>
 	panelFrame(h, [
 		backgroundImage(h, nowMs, "Onboarding background"),
 		link(
@@ -55,66 +61,81 @@ const leftPanel = (h: HtmlBuilder<Message>, model: Model, nowMs: number): Html =
 						[h.Class("text-lg text-white")],
 						["Welcome to your new workspace. Let's get you set up in just a few steps."],
 					),
-					h.div([h.Class("font-mono text-sm text-white/80")], stepCounter(h, model)),
+					h.div([h.Class("font-mono text-sm text-white/80")], stepCounter(h, running)),
 				],
 			),
 		]),
 	])
 
-const finalizationView = (h: HtmlBuilder<Message>, error: string | null): Html =>
-	h.div(
-		[h.Class("flex flex-col items-center justify-center space-y-4 py-12 text-center")],
-		[
-			loader(h, { className: "size-12" }),
-			h.p([h.Class("font-medium text-lg")], ["Setting up your workspace..."]),
-			h.p([h.Class("text-muted-fg text-sm")], ["This will just take a moment"]),
-			...(error ? [h.p([h.Class("text-danger text-sm")], [error])] : []),
-		],
-	)
+/** Setting up, or (after a failed finalize) why it stopped and a way to try again. No spinner while failed. */
+const finalizationView = (h: HtmlBuilder<Message>, step: StepOf<"Finalizing">): Html =>
+	Option.match(step.failure, {
+		onNone: () =>
+			h.div(
+				[h.Class("flex flex-col items-center justify-center space-y-4 py-12 text-center")],
+				[
+					loader(h, { className: "size-12" }),
+					h.p([h.Class("font-medium text-lg")], ["Setting up your workspace..."]),
+					h.p([h.Class("text-muted-fg text-sm")], ["This will just take a moment"]),
+				],
+			),
+		onSome: (reason) => {
+			const message = failureMessage(reason, {})
+			return h.div(
+				[h.Class("flex flex-col items-center justify-center space-y-4 py-12 text-center")],
+				[
+					h.p([h.Class("font-medium text-lg")], ["Couldn't finish setting up your workspace"]),
+					h.p(
+						[h.Class("text-danger text-sm"), h.Role("alert")],
+						[message.description === undefined ? message.title : `${message.title}. ${message.description}`],
+					),
+					button(h, { intent: "primary", onPress: Message.ClickedRetryFinalize() }, ["Try again"]),
+				],
+			)
+		},
+	})
 
-const stepBody = (h: HtmlBuilder<Message>, model: Model, shared: Shared): Html | null => {
-	const { form } = model
-	if (model.step === "welcome")
-		return welcomeStep(h, {
-			isCreatingOrg: model.userType === "creator",
-			organizationName: model.membership?.name,
-		})
-	if (model.step === "finalization") return finalizationView(h, model.error)
+const stepBody = (h: HtmlBuilder<Message>, model: Model, running: Running, shared: Shared): Html => {
 	const interaction = { model: model.interaction, toParentMessage: toInteractionMessage }
-	if (form._tag === "Profile") return profileStep(h, form, interaction)
-	if (form._tag === "Timezone")
-		return timezoneStep(h, form, { browserTimezone: model.browserTimezone ?? "UTC", nowMs: shared.nowMs })
-	if (form._tag === "Theme") return themeStep(h, shared.theme)
-	if (form._tag === "Choice")
-		return model.step === "useCases" ? useCaseStep(h, form.box) : roleStep(h, form.box)
-	if (form._tag === "Invite") return inviteStep(h, form, interaction)
-	return null
+	return StepState.match(running.step, {
+		Welcome: () =>
+			welcomeStep(h, {
+				isCreatingOrg: running.flow.userType === "creator",
+				organizationName: running.flow.membership?.name,
+			}),
+		Profile: (form) => profileStep(h, form, interaction),
+		Timezone: (form) =>
+			timezoneStep(h, form, { browserTimezone: running.flow.browserTimezone || "UTC", nowMs: shared.nowMs }),
+		Theme: () => themeStep(h, shared.theme),
+		UseCases: ({ box }) => useCaseStep(h, box),
+		Role: ({ box }) => roleStep(h, box),
+		Invite: (form) => inviteStep(h, form, interaction),
+		Finalizing: (step) => finalizationView(h, step),
+		Completed: () => finalizationView(h, StepState.Finalizing({ failure: Option.none() })),
+	})
 }
 
 /** The motion.div around each step, keyed by step so a new step enters with its transition. */
-const animatedStep = (h: HtmlBuilder<Message>, model: Model, body: Html): Html =>
+const animatedStep = (h: HtmlBuilder<Message>, running: Running, body: Html): Html =>
 	h.div(
 		[
-			h.Key(`step-${model.step}`),
-			...(model.animatesStep
-				? enterAnimation(h, model.direction === "forward" ? "StepForward" : "StepBackward")
+			h.Key(`step-${stepOf(running.step)}`),
+			...(running.animatesStep
+				? enterAnimation(h, running.direction === "forward" ? "StepForward" : "StepBackward")
 				: [h.Attribute("style", MOTION_END_STYLE)]),
 		],
 		[body],
 	)
 
-export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, { shared }, h) => {
-	// `AppShell` waits for `user.me`; onboarding also waits for its flow to be known.
-	if (!model.isInitialized || shared.currentUser === null) return appLoader(h)
-	const body = stepBody(h, model, shared)
-	return h.main(
+const running = (h: HtmlBuilder<Message>, model: Model, running: Running, shared: Shared): Html =>
+	h.main(
 		[
 			h.Class(
 				"relative grid h-dvh grid-cols-1 flex-col items-center justify-center overflow-y-auto lg:max-w-none lg:grid-cols-2 lg:overflow-hidden",
 			),
 		],
 		[
-			leftPanel(h, model, shared.nowMs),
+			leftPanel(h, running, shared.nowMs),
 			h.div(
 				[
 					h.Class(
@@ -124,10 +145,20 @@ export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, 
 				[
 					h.div(
 						[h.Class("m-auto w-full max-w-2xl space-y-4 py-4 sm:space-y-6 sm:py-6")],
-						body === null ? [] : [animatedStep(h, model, body)],
+						[animatedStep(h, running, stepBody(h, model, running, shared))],
 					),
 				],
 			),
 		],
 	)
-})
+
+export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, { shared }, h) =>
+	// `AppShell` waits for `user.me`; onboarding also waits for its flow to be known.
+	shared.currentUser === null
+		? appLoader(h)
+		: Phase.match(model.phase, {
+				Starting: () => appLoader(h),
+				Leaving: () => appLoader(h),
+				Running: (phase) => running(h, model, phase, shared),
+			}),
+)

@@ -56,20 +56,11 @@ const syncQuietHours = (model: Model): Model => {
 	})
 }
 
-/** The slider follows the stored volume and is disabled with the sounds. */
-const syncVolume = (model: Model, sound: SoundSettings): Model =>
-	modifyFields(model, {
-		volume: (volume) =>
-			volume.values[0] === sound.volume && volume.isDisabled === !sound.enabled
-				? volume
-				: { ...volume, values: [sound.volume], isDisabled: !sound.enabled },
-	})
-
 /** `updateSettings(patch)`: the root stores it and informs the page (`sharedChanged`). */
 const withSound = (model: Model, shared: Shared, patch: Partial<SoundSettings>): Return => {
 	const settings = { ...shared.soundSettings, ...patch }
 	return {
-		model: syncVolume(model, settings),
+		model,
 		outMessage: PageOutMessage.RequestedSoundSettings({ settings }),
 	}
 }
@@ -137,54 +128,35 @@ const foldQuietHours = (field: QuietHoursField) =>
 		toParentMessage: toQuietHoursMessage(field),
 	})
 
-const foldVolume = Update.foldChild({
-	update: Slider.update,
-	read: (model: Model) => Option.some(model.volume),
-	write: (model: Model, volume: Slider.Model): Model => modifyFields(model, { volume: () => volume }),
-	toParentMessage: toVolumeMessage,
-})
+/** The volume lives in `Shared.soundSettings`; the Slider holds only the drag and reports changes. */
+const volumeChanged = (model: Model, shared: Shared, message: Slider.Message): Return => {
+	const result = Slider.update(model.volume, message)
+	const next = modifyFields(model, { volume: () => result.model })
+	const changed = result.outMessage
+	return changed === undefined || changed.value === shared.soundSettings.volume
+		? { model: next }
+		: withSound(next, shared, { volume: changed.value })
+}
 
-export const init = (_route: unknown, shared: Shared): Return => ({
-	model: syncVolume(
-		{
-			settings: null,
-			optimisticSettings: null,
-			settingsWrite: "Idle",
-			volume: Slider.init({
-				id: "notification-volume",
-				values: [0.5],
-				minValue: 0,
-				maxValue: 1,
-				step: 0.1,
-			}),
-			quietHoursStart: Segments.init({
-				id: "quiet-hours-start",
-				kind: "time",
-				value: DEFAULT_QUIET_START,
-			}),
-			quietHoursEnd: Segments.init({ id: "quiet-hours-end", kind: "time", value: DEFAULT_QUIET_END }),
-			notificationStatus: "idle",
-			notificationStatusVersion: 0,
-			interaction: Interaction.init(),
-		},
-		shared.soundSettings,
-	),
-})
-
-export const sharedChanged = (model: Model, shared: Shared): Return => ({
-	model: syncVolume(model, shared.soundSettings),
+export const init = (): Return => ({
+	model: {
+		settings: null,
+		optimisticSettings: null,
+		settingsWrite: "Idle",
+		volume: Slider.init({ id: "notification-volume", min: 0, max: 1, step: 0.1 }),
+		quietHoursStart: Segments.init({ id: "quiet-hours-start", kind: "time", value: DEFAULT_QUIET_START }),
+		quietHoursEnd: Segments.init({ id: "quiet-hours-end", kind: "time", value: DEFAULT_QUIET_END }),
+		notificationStatus: "idle",
+		notificationStatusVersion: 0,
+		interaction: Interaction.init(),
+	},
 })
 
 export const update = (model: Model, message: Message, shared: Shared): Return =>
 	Message.match<Return>(message, {
 		ToggledSounds: ({ isSelected }) => withSound(model, shared, { enabled: isSelected }),
 		SelectedSound: ({ soundFile }) => withSound(model, shared, { soundFile }),
-		GotVolumeMessage: ({ message: child }) => {
-			const result = foldVolume(model, child)
-			const volume = result.model.volume.values[0]
-			if (volume === undefined || volume === shared.soundSettings.volume) return result
-			return { ...withSound(result.model, shared, { volume }), commands: result.commands ?? [] }
-		},
+		GotVolumeMessage: ({ message: child }) => volumeChanged(model, shared, child),
 		ClickedTestSound: () => ({ model, commands: [PlayTestSound()] }),
 		CompletedTestSound: () => ({ model }),
 		ClickedTestNotification: () => ({ model, commands: [SendTestNotification()] }),

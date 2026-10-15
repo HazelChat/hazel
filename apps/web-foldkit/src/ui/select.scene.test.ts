@@ -12,7 +12,7 @@ const items = [
 	item("1h", "1 hour", true),
 	item("today", "Today"),
 ]
-const sceneView = Scene.withViewInputs(view, { label: "Clear after", placeholder: "Choose a time" })
+const sceneView = Scene.withViewInputs(view, { items, label: "Clear after", placeholder: "Choose a time" })
 const config = { update, view: sceneView() }
 const trigger = Scene.selector("#clear-trigger")
 const listbox = Scene.role("listbox")
@@ -26,7 +26,7 @@ describe("select scene", () => {
 	test("a closed select shows its label, placeholder and a collapsed listbox trigger", () => {
 		Scene.scene(
 			config,
-			Scene.given(init({ id: "clear", items })),
+			Scene.given(init({ id: "clear" })),
 			mounted,
 			Scene.expect(Scene.text("Clear after")).toExist(),
 			Scene.expect(trigger).toContainText("Choose a time"),
@@ -40,7 +40,7 @@ describe("select scene", () => {
 	test("pressing the trigger opens the listbox with the selection marked", () => {
 		Scene.scene(
 			config,
-			Scene.given(init({ id: "clear", items, selectedKey: "30m" })),
+			Scene.given(init({ id: "clear", selectedKey: "30m" })),
 			mounted,
 			Scene.pointerDown(trigger),
 			portalled,
@@ -57,7 +57,7 @@ describe("select scene", () => {
 	test("ArrowDown on the trigger opens on the first option and arrows move the focus", () => {
 		Scene.scene(
 			config,
-			Scene.given(init({ id: "clear", items })),
+			Scene.given(init({ id: "clear" })),
 			mounted,
 			Scene.keydown(trigger, "ArrowDown"),
 			Scene.expectHandled(),
@@ -74,7 +74,7 @@ describe("select scene", () => {
 	test("clicking an option selects it, closes the listbox and shows its label", () => {
 		Scene.scene(
 			config,
-			Scene.given(init({ id: "clear", items })),
+			Scene.given(init({ id: "clear" })),
 			mounted,
 			Scene.pointerDown(trigger),
 			portalled,
@@ -90,7 +90,7 @@ describe("select scene", () => {
 	test("Escape closes the listbox and Tab is left to the browser", () => {
 		Scene.scene(
 			config,
-			Scene.given(init({ id: "clear", items })),
+			Scene.given(init({ id: "clear" })),
 			mounted,
 			Scene.keydown(trigger, "Enter"),
 			portalled,
@@ -106,7 +106,7 @@ describe("select scene", () => {
 	test("ArrowRight on the closed trigger changes the shown value without opening", () => {
 		Scene.scene(
 			config,
-			Scene.given(init({ id: "clear", items, selectedKey: "never" })),
+			Scene.given(init({ id: "clear", selectedKey: "never" })),
 			mounted,
 			Scene.keydown(trigger, "ArrowRight"),
 			Scene.expectOutMessage(OutMessage.ChangedSelection({ key: "30m" })),
@@ -118,7 +118,7 @@ describe("select scene", () => {
 	test("focusing the trigger marks the field focused until it blurs", () => {
 		Scene.scene(
 			config,
-			Scene.given(init({ id: "clear", items })),
+			Scene.given(init({ id: "clear" })),
 			mounted,
 			Scene.focus(trigger),
 			Scene.expect(Scene.selector("[data-focused]")).toHaveAttr("data-slot", "control"),
@@ -130,7 +130,7 @@ describe("select scene", () => {
 	test("a disabled select disables its trigger and hidden native select", () => {
 		Scene.scene(
 			config,
-			Scene.given(init({ id: "clear", items, isDisabled: true })),
+			Scene.given(init({ id: "clear", isDisabled: true })),
 			mounted,
 			Scene.expect(trigger).toBeDisabled(),
 			Scene.expect(trigger).toHaveAttr("data-disabled", "true"),
@@ -142,7 +142,7 @@ describe("select scene", () => {
 	test("an aria-label-only select does not label its listbox by a missing element", () => {
 		Scene.scene(
 			{ update, view: sceneView({ label: undefined, ariaLabel: "Clear after" }) },
-			Scene.given(init({ id: "clear", items })),
+			Scene.given(init({ id: "clear" })),
 			mounted,
 			Scene.expect(trigger).toHaveAttr("aria-label", "Clear after"),
 			Scene.pointerDown(trigger),

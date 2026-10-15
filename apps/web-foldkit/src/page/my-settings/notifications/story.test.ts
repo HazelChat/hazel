@@ -10,7 +10,8 @@ import { UserRow } from "../user"
 import { ExpireNotificationStatus, SendTestNotification, UpdateUserSettings } from "./command"
 import { Message } from "./message"
 import { settingsOf } from "./model"
-import { init, sharedChanged, update } from "./update"
+import * as Slider from "../../../ui/slider"
+import { init, update } from "./update"
 import { sharedDefaults } from "../../test-shared"
 
 /** Update-loop tests for notification preferences: optimistic user settings and the sound settings. */
@@ -47,7 +48,7 @@ describe("notification preferences", () => {
 	test("the synced quiet hours drive the time fields", () => {
 		story(
 			pageUpdate,
-			given(init(undefined, shared).model),
+			given(init().model),
 			message(Message.UpdatedUserRow({ row: Schema.decodeUnknownSync(UserRow)(row) })),
 			model((current) => {
 				expect(current.quietHoursStart.committed).toBe("21:30:00")
@@ -59,7 +60,7 @@ describe("notification preferences", () => {
 	test("do not disturb is written optimistically with the other settings kept", () => {
 		story(
 			pageUpdate,
-			given(init(undefined, shared).model),
+			given(init().model),
 			message(Message.UpdatedUserRow({ row: Schema.decodeUnknownSync(UserRow)(row) })),
 			message(Message.ToggledDoNotDisturb({ isSelected: true })),
 			model((current) =>
@@ -86,9 +87,8 @@ describe("notification preferences", () => {
 	test("turning sounds off asks the root to store them", () => {
 		story(
 			pageUpdate,
-			given(init(undefined, shared).model),
+			given(init().model),
 			message(Message.ToggledSounds({ isSelected: false })),
-			model((current) => expect(current.volume.isDisabled).toBe(true)),
 			expectOutMessage(
 				PageOutMessage.RequestedSoundSettings({
 					settings: { ...shared.soundSettings, enabled: false },
@@ -97,13 +97,24 @@ describe("notification preferences", () => {
 		)
 	})
 
-	test("the volume slider follows Shared.soundSettings", () => {
-		const next = sharedChanged(init(undefined, shared).model, {
-			...shared,
-			soundSettings: { ...shared.soundSettings, volume: 0.8, enabled: false },
-		}).model
-		expect(next.volume.values).toEqual([0.8])
-		expect(next.volume.isDisabled).toBe(true)
+	test("the volume slider reports a step from Shared.soundSettings and the root stores it", () => {
+		story(
+			pageUpdate,
+			given(init().model),
+			message(
+				Message.GotVolumeMessage({
+					message: Slider.Message.PressedKeyboardNavigation({
+						direction: "StepIncrement",
+						value: shared.soundSettings.volume,
+					}),
+				}),
+			),
+			expectOutMessage(
+				PageOutMessage.RequestedSoundSettings({
+					settings: { ...shared.soundSettings, volume: Slider.snapAndClamp(shared.soundSettings.volume + 0.1, 0, 1, 0.1) },
+				}),
+			),
+		)
 	})
 })
 
@@ -111,7 +122,7 @@ describe("user settings writes", () => {
 	test("a saved setting stays optimistic until the synced row replaces it", () => {
 		story(
 			pageUpdate,
-			given(init(undefined, shared).model),
+			given(init().model),
 			message(Message.UpdatedUserRow({ row: Schema.decodeUnknownSync(UserRow)(row) })),
 			message(Message.ToggledShowQuietHours({ isSelected: true })),
 			Command.resolve(UpdateUserSettings, Message.SucceededUpdateUserSettings()),
@@ -133,12 +144,8 @@ describe("user settings writes", () => {
 	})
 
 	const synced = () =>
-		pageUpdate(
-			init(undefined, shared).model,
-			Message.UpdatedUserRow({ row: Schema.decodeUnknownSync(UserRow)(row) }),
-		).model
-	const settingsWith = (patch: object) =>
-		Schema.decodeUnknownSync(User.UserSettingsSchema)({ ...row.settings, ...patch })
+		pageUpdate(init().model, Message.UpdatedUserRow({ row: Schema.decodeUnknownSync(UserRow)(row) })).model
+	const settingsWith = (patch: object) => Schema.decodeUnknownSync(User.UserSettingsSchema)({ ...row.settings, ...patch })
 	const writeOf = (result: ReturnType<typeof pageUpdate>) =>
 		result.commands?.map((command) => ({ name: command.name, args: command.args }))
 
@@ -204,7 +211,7 @@ describe("user settings writes", () => {
 		const signedOut = { ...shared, currentUser: null }
 		story(
 			(current: Parameters<typeof update>[0], next: Message) => update(current, next, signedOut),
-			given(init(undefined, signedOut).model),
+			given(init().model),
 			message(Message.ToggledDoNotDisturb({ isSelected: true })),
 			Command.expectNone(),
 			model((current) => expect(current.optimisticSettings).toBeNull()),
@@ -216,7 +223,7 @@ describe("test notification", () => {
 	test("a sent notification shows the confirmation, then expires back to idle", () => {
 		story(
 			pageUpdate,
-			given(init(undefined, shared).model),
+			given(init().model),
 			message(Message.ClickedTestNotification()),
 			Command.expectExact(SendTestNotification()),
 			Command.resolve(SendTestNotification, Message.SucceededSendTestNotification()),
@@ -228,7 +235,7 @@ describe("test notification", () => {
 	})
 
 	test("an older expiry timer leaves a newer result showing", () => {
-		const first = pageUpdate(init(undefined, shared).model, Message.SucceededSendTestNotification()).model
+		const first = pageUpdate(init().model, Message.SucceededSendTestNotification()).model
 		const second = pageUpdate(first, Message.FailedSendTestNotification({ reason: "SendFailed" })).model
 		const expiredFirst = pageUpdate(second, Message.ExpiredNotificationStatus({ version: 1 })).model
 		expect(expiredFirst.notificationStatus).toBe("unavailable")

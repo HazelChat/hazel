@@ -104,6 +104,7 @@ const selectedChip = (h: HtmlBuilder<Message>, workspace: Workspace): Html =>
 				[
 					h.Type("button"),
 					h.OnClick(Message.ClickedClearWorkspace()),
+					h.AriaLabel("Clear workspace"),
 					h.Class("ml-auto text-muted-fg hover:text-fg"),
 				],
 				[IconClose(h, { className: "size-4" })],

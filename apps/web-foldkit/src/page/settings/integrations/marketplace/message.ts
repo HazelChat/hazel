@@ -6,7 +6,7 @@ import * as Interaction from "../../../../ui/aria/interaction"
 import { PublicBot } from "../shared/bots"
 
 /** What can go wrong installing a bot, beyond the shared reasons. */
-export const InstallFailure = Schema.Union([Schema.Literals(["NotFound", "AlreadyInstalled"]), CommonReason])
+export const InstallFailure = Schema.Union([Schema.Literals(["NotFound", "AlreadyInstalled", "NoActiveOrganization"]), CommonReason])
 export type InstallFailure = typeof InstallFailure.Type
 
 export const Message = defineMessageUnion({

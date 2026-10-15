@@ -141,7 +141,6 @@ export const searchField = <Message>(
 	return h.div(
 		[
 			h.Class(twMerge(twMerge(fieldStyles({ className: searchFieldStyles.field })), options.className)),
-			h.DataAttribute("rac", ""),
 			...(isEmpty ? [h.DataAttribute("empty", "true")] : []),
 			...(isDisabled ? [h.DataAttribute("disabled", "true")] : []),
 			...(isInvalid ? [h.DataAttribute("invalid", "true")] : []),

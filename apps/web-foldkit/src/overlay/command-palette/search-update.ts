@@ -1,3 +1,4 @@
+import { Match } from "effect"
 import { modifyFields } from "foldkit/struct"
 import { parseSearchInput } from "~/lib/search-filter-parser"
 import type { Shared } from "../../page/contract"
@@ -35,6 +36,7 @@ type SearchMessage = Extract<
 	}
 >
 type SearchPage = Extract<PageState, { _tag: "Search" }>
+type SearchKey = Extract<SearchMessage, { _tag: "PressedSearchKey" }>["key"]
 
 const MAX_RECENT_SEARCHES = 10
 
@@ -45,7 +47,7 @@ const withPage = (model: Model, page: SearchPage): Model => modifyFields(model, 
 
 /** Filters changed: the placeholder follows, and focus goes back to the editor. */
 const withFilters = (model: Model, page: SearchPage, filters: ReadonlyArray<SearchFilter>): Return => {
-	const next = { ...page, filters, selectedIndex: 0 }
+	const next = modifyFields(page, { filters: () => filters, selectedIndex: () => 0 })
 	return {
 		model: withPage(model, next),
 		commands: [SetSearchPlaceholder({ placeholder: searchPlaceholder(next) }), FocusSearchEditor()],
@@ -90,7 +92,12 @@ const loadRecent = (model: Model, page: SearchPage, index: number): Return => {
 	const recent = model.recentSearches[index]
 	if (recent === undefined) return { model }
 	const rawInput = [filterString(recent.filters), recent.query].filter(Boolean).join(" ")
-	const next = { ...page, query: recent.query, rawInput, filters: recent.filters, selectedIndex: 0 }
+	const next = modifyFields(page, {
+		query: () => recent.query,
+		rawInput: () => rawInput,
+		filters: () => recent.filters,
+		selectedIndex: () => 0,
+	})
 	return {
 		model: withPage(model, next),
 		commands: [SetSearchText({ text: rawInput }), SetSearchPlaceholder({ placeholder: searchPlaceholder(next) })],
@@ -101,7 +108,7 @@ const moveSelection = (model: Model, page: SearchPage, step: 1 | -1): Return => 
 	const count = model.search.hasQuery ? model.search.results.length : model.recentSearches.length
 	if (step === 1 && count === 0) return { model }
 	const selectedIndex = step === 1 ? Math.min(page.selectedIndex + 1, count - 1) : Math.max(page.selectedIndex - 1, 0)
-	return { model: withPage(model, { ...page, selectedIndex }) }
+	return { model: withPage(model, modifyFields(page, { selectedIndex: () => selectedIndex })) }
 }
 
 const pressedAutocompleteKey = (model: Model, page: SearchPage, key: string): Return => {
@@ -113,55 +120,80 @@ const pressedAutocompleteKey = (model: Model, page: SearchPage, key: string): Re
 	return { model: modifyFields(model, { suggestionIndex: () => suggestionIndex }) }
 }
 
-const searchStep = (model: Model, page: SearchPage, message: SearchMessage, shared: Shared): Return => {
-	if (message._tag === "EditedSearch") {
-		const isSameTrigger = model.searchAutocomplete?.filterType === message.autocomplete?.filterType
-		return {
-			model: modifyFields(withPage(model, { ...page, rawInput: message.text, query: parseSearchInput(message.text).textQuery, selectedIndex: 0 }), {
-				searchAutocomplete: () => message.autocomplete,
-				suggestionIndex: (index) => (message.autocomplete !== null && isSameTrigger ? index : 0),
-			}),
-		}
+const editedSearch = (model: Model, page: SearchPage, message: Extract<SearchMessage, { _tag: "EditedSearch" }>) => {
+	const isSameTrigger = model.searchAutocomplete?.filterType === message.autocomplete?.filterType
+	const next = modifyFields(page, {
+		rawInput: () => message.text,
+		query: () => parseSearchInput(message.text).textQuery,
+		selectedIndex: () => 0,
+	})
+	return {
+		model: modifyFields(withPage(model, next), {
+			searchAutocomplete: () => message.autocomplete,
+			suggestionIndex: (index) => (message.autocomplete !== null && isSameTrigger ? index : 0),
+		}),
 	}
-	if (message._tag === "PressedSearchKey")
-		return message.key === "ArrowDown"
-			? moveSelection(model, page, 1)
-			: message.key === "ArrowUp"
-				? moveSelection(model, page, -1)
-				: message.key === "BackspaceAtStart"
-					? page.filters.length > 0
-						? withFilters(model, page, page.filters.slice(0, -1))
-						: { model }
-					: model.search.hasQuery
-						? openResult(model, page, page.selectedIndex, shared)
-						: loadRecent(model, page, page.selectedIndex)
-	if (message._tag === "PressedAutocompleteKey") return pressedAutocompleteKey(model, page, message.key)
-	if (message._tag === "HoveredSuggestion") return { model: modifyFields(model, { suggestionIndex: () => message.index }) }
-	if (message._tag === "ClickedSuggestion") return selectSuggestion(model, page, model.suggestions[message.index])
-	if (message._tag === "UpdatedSuggestions") {
-		const count = message.suggestions.length
-		return {
-			model: modifyFields(model, {
-				suggestions: () => message.suggestions,
-				// The legacy clamp effect: keep the active option inside the list.
-				suggestionIndex: (index) => (count > 0 && index >= count ? count - 1 : index),
-			}),
-			commands: [SyncSuggestionCount({ count })],
-		}
-	}
-	if (message._tag === "ClickedRemoveFilter")
-		return withFilters(model, page, page.filters.filter((_, index) => index !== message.index))
-	if (message._tag === "ClickedClearSearch") {
-		const next = { ...page, query: "", rawInput: "", filters: [], selectedIndex: 0 }
-		return {
-			model: withPage(model, next),
-			commands: [SetSearchText({ text: "" }), SetSearchPlaceholder({ placeholder: searchPlaceholder(next) })],
-		}
-	}
-	if (message._tag === "ClickedSearchResult") return openResult(model, page, message.index, shared)
-	if (message._tag === "ClickedRecentSearch") return loadRecent(model, page, message.index)
-	return { model: modifyFields(model, { recentSearches: () => [] }), commands: [SaveRecentSearches({ searches: [] })] }
 }
+
+const pressedSearchKey = (model: Model, page: SearchPage, key: SearchKey, shared: Shared): Return =>
+	Match.value(key).pipe(
+		Match.withReturnType<Return>(),
+		Match.when("ArrowDown", () => moveSelection(model, page, 1)),
+		Match.when("ArrowUp", () => moveSelection(model, page, -1)),
+		Match.when("BackspaceAtStart", () =>
+			page.filters.length > 0 ? withFilters(model, page, page.filters.slice(0, -1)) : { model },
+		),
+		Match.when("Enter", () =>
+			model.search.hasQuery
+				? openResult(model, page, page.selectedIndex, shared)
+				: loadRecent(model, page, page.selectedIndex),
+		),
+		Match.exhaustive,
+	)
+
+const updatedSuggestions = (model: Model, suggestions: ReadonlyArray<Suggestion>): Return => {
+	const count = suggestions.length
+	return {
+		model: modifyFields(model, {
+			suggestions: () => suggestions,
+			// The legacy clamp effect: keep the active option inside the list.
+			suggestionIndex: (index) => (count > 0 && index >= count ? count - 1 : index),
+		}),
+		commands: [SyncSuggestionCount({ count })],
+	}
+}
+
+const clearedSearch = (model: Model, page: SearchPage): Return => {
+	const next = modifyFields(page, {
+		query: () => "",
+		rawInput: () => "",
+		filters: () => [],
+		selectedIndex: () => 0,
+	})
+	return {
+		model: withPage(model, next),
+		commands: [SetSearchText({ text: "" }), SetSearchPlaceholder({ placeholder: searchPlaceholder(next) })],
+	}
+}
+
+const searchStep = (model: Model, page: SearchPage, message: SearchMessage, shared: Shared): Return =>
+	Match.valueTags(message, {
+		EditedSearch: (edited): Return => editedSearch(model, page, edited),
+		PressedSearchKey: ({ key }) => pressedSearchKey(model, page, key, shared),
+		PressedAutocompleteKey: ({ key }) => pressedAutocompleteKey(model, page, key),
+		HoveredSuggestion: ({ index }): Return => ({ model: modifyFields(model, { suggestionIndex: () => index }) }),
+		ClickedSuggestion: ({ index }) => selectSuggestion(model, page, model.suggestions[index]),
+		UpdatedSuggestions: ({ suggestions }) => updatedSuggestions(model, suggestions),
+		ClickedRemoveFilter: ({ index }) =>
+			withFilters(model, page, page.filters.filter((_, filterIndex) => filterIndex !== index)),
+		ClickedClearSearch: () => clearedSearch(model, page),
+		ClickedSearchResult: ({ index }) => openResult(model, page, index, shared),
+		ClickedRecentSearch: ({ index }) => loadRecent(model, page, index),
+		ClickedClearRecentSearches: (): Return => ({
+			model: modifyFields(model, { recentSearches: () => [] }),
+			commands: [SaveRecentSearches({ searches: [] })],
+		}),
+	})
 
 export const updateSearch = (model: Model, message: SearchMessage, shared: Shared): Return =>
 	model.page._tag === "Search" ? searchStep(model, model.page, message, shared) : { model }

@@ -1,12 +1,12 @@
 import { Option } from "effect"
 import { Command } from "foldkit"
-import * as CreateWorkspace from "../create-workspace"
 import { modifyFields } from "foldkit/struct"
 import { AppRoute, hrefOf, organizationHref } from "../../route"
 import type { PageReturn } from "../contract"
+import * as CreateWorkspace from "../create-workspace"
 import { PageOutMessage } from "../out-message"
 import { Message } from "./message"
-import type { Model } from "./model"
+import { type Model, Organizations } from "./model"
 
 type Return = PageReturn<Model, Message>
 
@@ -16,22 +16,27 @@ const navigate = (model: Model, href: string): Return => ({
 })
 
 export const init = (): Return => ({
-	model: { organizations: null, hasRedirected: false, createWorkspace: CreateWorkspace.init() },
+	model: { organizations: Organizations.Loading(), createWorkspace: CreateWorkspace.init() },
 })
 
 export const update = (model: Model, message: Message): Return =>
 	Message.match<Return>(message, {
 		UpdatedOrganizations: ({ organizations }) => {
-			const next = modifyFields(model, { organizations: () => organizations })
+			// The live query re-emits after the redirect; the page is already leaving.
+			if (model.organizations._tag === "Redirected") return { model }
 			const [single] = organizations
 			// `<Navigate>` with a single organization: there is nothing to pick.
-			return organizations.length === 1 && single && !model.hasRedirected
-				? navigate(modifyFields(next, { hasRedirected: () => true }), organizationHref(single))
-				: { model: next }
+			return organizations.length === 1 && single
+				? navigate(
+						modifyFields(model, { organizations: () => Organizations.Redirected() }),
+						organizationHref(single),
+					)
+				: { model: modifyFields(model, { organizations: () => Organizations.Loaded({ organizations }) }) }
 		},
 		ClickedOrganization: ({ organization }) => navigate(model, organizationHref(organization)),
+		// Not `/onboarding`: it sends an onboarded user (anyone with organizations to pick) back to `/`.
 		ClickedCreateNew: () =>
-			navigate(model, hrefOf(AppRoute.Onboarding({ orgId: Option.none(), step: Option.none() }))),
+			navigate(model, hrefOf(AppRoute.OnboardingSetupOrganization({ orgId: Option.none() }))),
 		GotCreateWorkspaceMessage: ({ message: child }) => {
 			const result = CreateWorkspace.update(model.createWorkspace, child)
 			return {

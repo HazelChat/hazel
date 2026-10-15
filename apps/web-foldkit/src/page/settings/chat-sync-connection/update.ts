@@ -32,7 +32,6 @@ import {
 	foundConnection,
 	type LinkFailure,
 	type LinkTarget,
-	linkMenuEntries,
 	linkMenuId,
 	listedLinks,
 	listLinksFailureMessage,
@@ -125,12 +124,7 @@ const reflectLinkMenus = (model: Model, links: ReadonlyArray<ChannelLink>): Mode
 			links.map((link) =>
 				Option.getOrElse(
 					Array.findFirst(menus, (menu) => menu.id === linkMenuId(link.id)),
-					() =>
-						Menu.init({
-							id: linkMenuId(link.id),
-							entries: linkMenuEntries,
-							placement: "bottom end",
-						}),
+					() => Menu.init({ id: linkMenuId(link.id), placement: "bottom end" }),
 				),
 			),
 	})

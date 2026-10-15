@@ -1,15 +1,17 @@
 import { Effect } from "effect"
 import { Mount, Submodel } from "foldkit"
 import type { Html, HtmlBuilder } from "foldkit/html"
+import { type CommonReason, commonMessage } from "~/lib/error-messages"
+import { AppRoute, hrefOf } from "../../route"
 import { avatar } from "../../ui/avatar"
-import { button } from "../../ui/button"
+import { button, buttonClassName } from "../../ui/button"
 import { loader } from "../../ui/loader"
-import type { PageViewInputs, Shared } from "../contract"
-import { backgroundImage, logoContent, panelCard, panelFrame } from "../onboarding/brand-panel"
+import { authShell } from "../auth/layout"
+import { isSessionLoading, type PageViewInputs, type Shared } from "../contract"
+import { initialsOf } from "../initials"
 import { animateEnter, endStyleOf } from "../onboarding/motion"
 import { Message } from "./message"
-import type { Model, PublicOrganization } from "./model"
-import { AppRoute, hrefOf } from "../../route"
+import { Lookup, type Model, type PublicOrganization } from "./model"
 
 /** `cardVariants`: the card fades, rises and unblurs in. */
 export const CardEnterAnimation = Mount.define("JoinCardEnterAnimation", {
@@ -20,35 +22,6 @@ export const CardEnterAnimation = Mount.define("JoinCardEnterAnimation", {
 			return Message.CompletedEnterAnimation()
 		}),
 })
-
-const homeLink = <M>(h: HtmlBuilder<M>, className: string, children: ReadonlyArray<Html>): Html =>
-	h.a([h.Class(className), h.Href(hrefOf(AppRoute.Root()))], [...children])
-
-const leftPanel = (h: HtmlBuilder<Message>, nowMs: number, card: ReadonlyArray<Html>): Html =>
-	panelFrame(h, [
-		backgroundImage(h, nowMs, "Background"),
-		homeLink(
-			h,
-			"relative z-20 flex items-center gap-2",
-			logoContent(h, { logoClassName: "size-8 text-white" }),
-		),
-		...card,
-	])
-
-const mobileLogo = (h: HtmlBuilder<Message>): Html =>
-	h.div(
-		[h.Class("mb-8 lg:hidden")],
-		[
-			homeLink(
-				h,
-				"flex items-center gap-2",
-				logoContent(h, { logoClassName: "size-8", textClassName: "text-fg" }),
-			),
-		],
-	)
-
-const page = (h: HtmlBuilder<Message>, left: Html, right: Html): Html =>
-	h.main([h.Class("grid h-dvh grid-cols-1 lg:grid-cols-2")], [left, right])
 
 const animatedCard = (h: HtmlBuilder<Message>, children: ReadonlyArray<Html>): Html =>
 	h.div(
@@ -61,21 +34,14 @@ const animatedCard = (h: HtmlBuilder<Message>, children: ReadonlyArray<Html>): H
 	)
 
 const loadingView = (h: HtmlBuilder<Message>, nowMs: number): Html =>
-	page(
+	authShell(
 		h,
-		leftPanel(h, nowMs, []),
+		nowMs,
 		h.div(
-			[h.Class("flex h-full flex-col items-center justify-center p-6 lg:p-12")],
-			[
-				h.div(
-					[h.Class("flex flex-col items-center gap-4")],
-					[
-						loader(h, { className: "size-8" }),
-						h.p([h.Class("text-muted-fg")], ["Loading workspace..."]),
-					],
-				),
-			],
+			[h.Class("m-auto flex flex-col items-center gap-4")],
+			[loader(h, { className: "size-8" }), h.p([h.Class("text-muted-fg")], ["Loading workspace..."])],
 		),
+		{ tagline: null },
 	)
 
 const warningIcon = (h: HtmlBuilder<Message>): Html =>
@@ -99,39 +65,48 @@ const warningIcon = (h: HtmlBuilder<Message>): Html =>
 		],
 	)
 
-const notFoundView = (h: HtmlBuilder<Message>, nowMs: number): Html =>
-	page(
-		h,
-		leftPanel(h, nowMs, []),
+const problemCard = (
+	h: HtmlBuilder<Message>,
+	options: { readonly title: string; readonly description: string; readonly action: Html },
+): Html =>
+	animatedCard(h, [
 		h.div(
-			[h.Class("flex h-full flex-col p-6 lg:p-12")],
-			[
-				mobileLogo(h),
-				animatedCard(h, [
-					h.div(
-						[h.Class("mb-6 flex size-20 items-center justify-center rounded-2xl bg-danger/10")],
-						[warningIcon(h)],
-					),
-					h.h1([h.Class("mb-2 font-semibold text-2xl text-fg")], ["Workspace Not Found"]),
-					h.p(
-						[h.Class("mb-8 text-muted-fg")],
-						["This invite link is invalid or the workspace doesn't have public invites enabled."],
-					),
-					// `<Link to="/"><Button/></Link>`: a button nested in the anchor.
-					h.a(
-						[h.Href(hrefOf(AppRoute.Root()))],
-						[button(h, { intent: "secondary" }, ["Go to Home"])],
-					),
-				]),
-			],
+			[h.Class("mb-6 flex size-20 items-center justify-center rounded-2xl bg-danger/10")],
+			[warningIcon(h)],
 		),
+		h.h1([h.Class("mb-2 font-semibold text-2xl text-fg")], [options.title]),
+		h.p([h.Class("mb-8 text-muted-fg")], [options.description]),
+		options.action,
+	])
+
+const notFoundView = (h: HtmlBuilder<Message>, nowMs: number): Html =>
+	authShell(
+		h,
+		nowMs,
+		problemCard(h, {
+			title: "Workspace Not Found",
+			description: "This invite link is invalid or the workspace doesn't have public invites enabled.",
+			action: h.a(
+				[h.Class(buttonClassName({ intent: "secondary" })), h.Href(hrefOf(AppRoute.Root()))],
+				["Go to Home"],
+			),
+		}),
+		{ tagline: null },
 	)
 
-const initialsOf = (name: string) => {
-	const words = name.split(" ")
-	return words.length >= 2
-		? `${words[0]?.charAt(0)}${words[1]?.charAt(0)}`.toUpperCase()
-		: name.substring(0, 2).toUpperCase()
+/** The lookup itself failed: not a verdict on the link, so it can be retried. */
+const failedView = (h: HtmlBuilder<Message>, nowMs: number, reason: CommonReason): Html => {
+	const message = commonMessage(reason)
+	return authShell(
+		h,
+		nowMs,
+		problemCard(h, {
+			title: "Couldn't load this workspace",
+			description: message.description === undefined ? message.title : `${message.title}. ${message.description}`,
+			action: button(h, { intent: "secondary", onPress: Message.ClickedRetryLookup() }, ["Try again"]),
+		}),
+		{ tagline: null },
+	)
 }
 
 const actions = (h: HtmlBuilder<Message>, model: Model, isSignedIn: boolean): Html =>
@@ -186,46 +161,36 @@ const actions = (h: HtmlBuilder<Message>, model: Model, isSignedIn: boolean): Ht
 	)
 
 const inviteView = (h: HtmlBuilder<Message>, model: Model, org: PublicOrganization, shared: Shared): Html =>
-	page(
+	authShell(
 		h,
-		leftPanel(h, shared.nowMs, [
-			panelCard(h, [
-				h.p(
-					[h.Class("text-lg text-white")],
-					[
-						"You've been invited to join a workspace. Accept the invitation to start collaborating with your team.",
-					],
-				),
-			]),
+		shared.nowMs,
+		animatedCard(h, [
+			avatar(h, {
+				src: org.logoUrl,
+				initials: initialsOf(org.name),
+				size: "4xl",
+				className: "mb-6 shadow-lg",
+			}),
+			h.h1([h.Class("mb-2 font-semibold text-3xl text-fg")], [org.name]),
+			h.p(
+				[h.Class("mb-8 text-muted-fg")],
+				[String(org.memberCount), " ", org.memberCount === 1 ? "member" : "members"],
+			),
+			actions(h, model, shared.currentUser !== null),
 		]),
-		h.div(
-			[h.Class("flex h-full flex-col p-6 lg:p-12")],
-			[
-				mobileLogo(h),
-				animatedCard(h, [
-					avatar(h, {
-						src: org.logoUrl,
-						initials: initialsOf(org.name),
-						size: "4xl",
-						className: "mb-6 shadow-lg",
-					}),
-					h.h1([h.Class("mb-2 font-semibold text-3xl text-fg")], [org.name]),
-					h.p(
-						[h.Class("mb-8 text-muted-fg")],
-						[String(org.memberCount), " ", org.memberCount === 1 ? "member" : "members"],
-					),
-					actions(h, model, shared.currentUser !== null),
-				]),
-			],
-		),
+		{
+			tagline:
+				"You've been invited to join a workspace. Accept the invitation to start collaborating with your team.",
+		},
 	)
 
-/** `useAuth().isLoading`: the session check is pending, or signed in while `user.me` is pending. */
-const isAuthLoading = (shared: Shared) =>
-	shared.auth === "Loading" || (shared.auth === "SignedIn" && shared.currentUser === null)
-
-export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, { shared }, h) => {
-	if (model.lookup._tag === "Loading" || isAuthLoading(shared)) return loadingView(h, shared.nowMs)
-	const organization = model.lookup._tag === "Loaded" ? model.lookup.organization : null
-	return organization ? inviteView(h, model, organization, shared) : notFoundView(h, shared.nowMs)
-})
+export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, { shared }, h) =>
+	isSessionLoading(shared)
+		? loadingView(h, shared.nowMs)
+		: Lookup.match(model.lookup, {
+				Loading: () => loadingView(h, shared.nowMs),
+				Found: ({ organization }) => inviteView(h, model, organization, shared),
+				NotFound: () => notFoundView(h, shared.nowMs),
+				Failed: ({ reason }) => failedView(h, shared.nowMs, reason),
+			}),
+)

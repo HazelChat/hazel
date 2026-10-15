@@ -1,16 +1,34 @@
 import { Schema } from "effect"
+import { defineTaggedUnion } from "foldkit/schema"
+import { AuthFailure } from "../../../auth/flows"
 
-export const Model = Schema.Struct({
-	/** From the OAuth callback's redirect; either missing means the link is unusable. */
-	flowId: Schema.NullOr(Schema.String),
-	reference: Schema.NullOr(Schema.String),
+/**
+ * `Invalid`: a submit was blocked by a missing name, so field errors show from then on (not while the
+ * visitor is still typing). `Submitting` stays until the browser navigates away.
+ */
+export const Submission = defineTaggedUnion({
+	NotSubmitted: {},
+	Invalid: {},
+	Submitting: {},
+	Failed: { reason: AuthFailure },
+})
+export type Submission = typeof Submission.Type
+
+export const Form = Schema.Struct({
+	/** From the OAuth callback's redirect. */
+	flowId: Schema.String,
+	reference: Schema.String,
 	firstName: Schema.String,
 	lastName: Schema.String,
-	/** Errors show after the first submit, not while the visitor is still typing. */
-	hasSubmitted: Schema.Boolean,
-	isSubmitting: Schema.Boolean,
-	error: Schema.NullOr(Schema.String),
+	submission: Submission,
+})
+export type Form = typeof Form.Type
+
+/** `BrokenLink`: the callback's `flowId` or `reference` is missing, so the link is unusable. */
+export const Model = defineTaggedUnion({
+	BrokenLink: {},
+	Ready: { form: Form },
 })
 export type Model = typeof Model.Type
 
-export const isFirstNameMissing = (model: Model) => model.firstName.trim().length === 0
+export const isFirstNameMissing = (form: Form) => form.firstName.trim().length === 0

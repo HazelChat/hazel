@@ -3,7 +3,7 @@ import { IconMagnifier3, IconMapPin } from "../../../icons"
 import { button } from "../../../ui/button"
 import { input, inputGroup } from "../../../ui/input"
 import { Message } from "../message"
-import type { StepForm } from "../model"
+import type { StepOf } from "../model"
 import { onboardingNavigation, stepHeader } from "../navigation"
 import { cityCard } from "./city-card"
 import { cityFor, filterCities } from "./data"
@@ -12,7 +12,7 @@ import { timeRibbon } from "./ribbon"
 
 /** `timezone-selection-step.tsx` */
 
-type TimezoneForm = Extract<StepForm, { _tag: "Timezone" }>
+type TimezoneForm = StepOf<"Timezone">
 
 const toQuery = (value: string) => Message.ChangedTimezoneQuery({ value })
 

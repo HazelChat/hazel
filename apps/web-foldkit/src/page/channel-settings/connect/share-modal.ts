@@ -27,7 +27,7 @@ export const SearchResults = AsyncData.Schema(Schema.Array(Workspace), CommonRea
 
 /** What can go wrong sending the invite, beyond the shared reasons. */
 export const CreateInviteFailure = Schema.Union([
-	Schema.Literals(["WorkspaceNotFound", "AlreadyShared"]),
+	Schema.Literals(["WorkspaceNotFound", "AlreadyShared", "ChannelNotFound"]),
 	CommonReason,
 ])
 export type CreateInviteFailure = typeof CreateInviteFailure.Type
@@ -125,6 +125,8 @@ export const CreateInvite = Command.define("CreateInvite", {
 					Effect.succeed(Message.FailedCreateInvite({ reason: "WorkspaceNotFound" })),
 				ConnectChannelAlreadySharedError: () =>
 					Effect.succeed(Message.FailedCreateInvite({ reason: "AlreadyShared" })),
+				ChannelNotFoundError: () =>
+					Effect.succeed(Message.FailedCreateInvite({ reason: "ChannelNotFound" })),
 			}),
 			catchCommon((reason) => Message.FailedCreateInvite({ reason })),
 		),
@@ -244,6 +246,10 @@ export const update = (model: Model, message: Message, context: Context): Return
 						AlreadyShared: {
 							title: "Already shared",
 							description: "This channel is already shared with that organization.",
+						},
+						ChannelNotFound: {
+							title: "Channel not found",
+							description: "This channel may have been deleted.",
 						},
 					}),
 				),

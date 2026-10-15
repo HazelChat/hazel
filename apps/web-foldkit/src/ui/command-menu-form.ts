@@ -54,6 +54,7 @@ export const commandMenuFormHeader = <M>(
 						h.button(
 							[
 								...options.backAttributes,
+								h.AriaLabel("Back"),
 								h.Class(commandMenuFormBackClassName),
 								h.Attribute("data-react-aria-pressable", "true"),
 								h.Attribute("tabindex", "0"),
@@ -63,6 +64,7 @@ export const commandMenuFormHeader = <M>(
 								h.svg(
 									[
 										h.Attribute("xmlns", "http://www.w3.org/2000/svg"),
+										h.AriaHidden(true),
 										h.Attribute("viewBox", "0 0 16 16"),
 										h.Attribute("fill", "currentColor"),
 										h.Class(commandMenuFormBackIconClassName),

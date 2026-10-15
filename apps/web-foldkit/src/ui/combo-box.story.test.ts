@@ -22,17 +22,18 @@ const items = [
 	item("cafe", "Café"),
 ]
 const comboBox = init({ id: "channel", items, isAppleDevice: false })
+const run = (model: Model, message: Message) => update(model, message, items)
 const inputKey = (key: string) => message(Message.PressedInputKey({ key }))
 const focusOf = (next: Model) => (next.popup._tag === "Open" ? next.popup.focusedKey : Option.none())
 const visibleKeys = (next: Model) =>
-	next.popup._tag === "Open" ? visibleItems(next, next.popup).map((found) => found.key) : []
+	next.popup._tag === "Open" ? visibleItems(next, next.popup, items).map((found) => found.key) : []
 const announced = (text: string) =>
 	Command.resolve(AnnounceComboBox({ message: text }), Message.CompletedAnnounce())
 
 describe("combo box story", () => {
 	test("typing filters the options ignoring accents, opens the list and announces the count", () => {
 		story(
-			update,
+			run,
 			given(comboBox),
 			message(Message.ChangedInput({ value: "cafe" })),
 			Command.expectExact(AnnounceComboBox({ message: "1 option available." })),
@@ -46,7 +47,7 @@ describe("combo box story", () => {
 
 	test("typing text that matches nothing closes the list", () => {
 		story(
-			update,
+			run,
 			given(comboBox),
 			message(Message.ChangedInput({ value: "zzz" })),
 			Command.expectNone(),
@@ -59,7 +60,7 @@ describe("combo box story", () => {
 
 	test("ArrowDown on a closed input shows every option and focuses the first, ArrowUp the last", () => {
 		story(
-			update,
+			run,
 			given(comboBox),
 			inputKey("ArrowDown"),
 			Command.expectNone(),
@@ -75,7 +76,7 @@ describe("combo box story", () => {
 
 	test("arrow keys skip the disabled option and stop at the ends", () => {
 		story(
-			update,
+			run,
 			given(comboBox),
 			inputKey("ArrowDown"),
 			inputKey("ArrowDown"),
@@ -88,7 +89,7 @@ describe("combo box story", () => {
 
 	test("Enter commits the focused option, closes the list and fills the input with its label", () => {
 		story(
-			update,
+			run,
 			given(comboBox),
 			inputKey("ArrowUp"),
 			inputKey("Enter"),
@@ -103,7 +104,7 @@ describe("combo box story", () => {
 
 	test("Enter with nothing focused closes the list and reverts the typed text", () => {
 		story(
-			update,
+			run,
 			given(init({ id: "channel", items, selectedKey: "design", isAppleDevice: false })),
 			message(Message.ChangedInput({ value: "gen" })),
 			announced("1 option available."),
@@ -118,7 +119,7 @@ describe("combo box story", () => {
 
 	test("Escape and blur both close the list and restore the selected label", () => {
 		story(
-			update,
+			run,
 			given(init({ id: "channel", items, selectedKey: "general", isAppleDevice: false })),
 			message(Message.ChangedInput({ value: "des" })),
 			announced("1 option available."),
@@ -138,7 +139,7 @@ describe("combo box story", () => {
 
 	test("the button toggles every option open on the selection and keeps focus in the input", () => {
 		story(
-			update,
+			run,
 			given(init({ id: "channel", items, selectedKey: "design", isAppleDevice: false })),
 			message(Message.ChangedInput({ value: "Des" })),
 			announced("1 option available."),
@@ -158,7 +159,7 @@ describe("combo box story", () => {
 
 	test("clicking a disabled option selects nothing, clicking an enabled one commits it", () => {
 		story(
-			update,
+			run,
 			given(comboBox),
 			inputKey("ArrowDown"),
 			message(Message.ClickedOption({ key: "engineering" })),
@@ -172,7 +173,7 @@ describe("combo box story", () => {
 
 	test("on Apple devices opening also announces the focused option for VoiceOver", () => {
 		story(
-			update,
+			run,
 			given(init({ id: "channel", items, selectedKey: "design", isAppleDevice: true })),
 			inputKey("ArrowDown"),
 			Command.expectExact(

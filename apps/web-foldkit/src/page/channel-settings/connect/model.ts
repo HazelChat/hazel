@@ -33,6 +33,10 @@ export type Invite = typeof Invite.Type
 export const Invites = AsyncData.Schema(Schema.Array(Invite), CommonReason)
 
 /** What can go wrong revoking an invite, beyond the shared reasons. */
+/** Why disconnecting failed: the connection may already be gone. */
+export const DisconnectFailure = Schema.Union([Schema.Literals(["NotFound"]), CommonReason])
+export type DisconnectFailure = typeof DisconnectFailure.Type
+
 export const RevokeInviteFailure = Schema.Union([Schema.Literals(["NotFound", "NotRevokable"]), CommonReason])
 export type RevokeInviteFailure = typeof RevokeInviteFailure.Type
 
@@ -66,7 +70,7 @@ export const Message = defineMessageUnion({
 	FailedRevokeInvite: { inviteId: ConnectInviteId, reason: RevokeInviteFailure },
 	ClickedDisconnect: { mountId: Schema.String },
 	SucceededDisconnect: { mountId: Schema.String, successMessage: Schema.String },
-	FailedDisconnect: { mountId: Schema.String, reason: CommonReason },
+	FailedDisconnect: { mountId: Schema.String, reason: DisconnectFailure },
 	GotShareModalMessage: { message: ShareModal.Message },
 })
 export type Message = typeof Message.Type

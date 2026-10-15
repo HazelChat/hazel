@@ -24,6 +24,8 @@ export const InstallBot = Command.define("InstallBot", {
 					Effect.succeed(Message.FailedInstallBot({ botId, reason: "NotFound" })),
 				BotAlreadyInstalledError: () =>
 					Effect.succeed(Message.FailedInstallBot({ botId, reason: "AlreadyInstalled" })),
+				ActiveOrganizationRequiredError: () =>
+					Effect.succeed(Message.FailedInstallBot({ botId, reason: "NoActiveOrganization" })),
 			}),
 			catchCommon((reason) => Message.FailedInstallBot({ botId, reason })),
 		),
@@ -88,6 +90,10 @@ export const update = (model: Model, message: Message): Return =>
 						AlreadyInstalled: {
 							title: "Already installed",
 							description: "This application is already installed in your workspace.",
+						},
+						NoActiveOrganization: {
+							title: "No workspace selected",
+							description: "Open a workspace and try again.",
 						},
 					}),
 				),

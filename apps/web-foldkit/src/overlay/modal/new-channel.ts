@@ -19,7 +19,7 @@ import { closed, completed, ModalOutMessage } from "../out-message"
 import { ToastRequest } from "../toasts"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalViewInputs } from "./contract"
-import { Frame, Message as FrameMessage, frameView, initFrame, isFrameClosed, modalDescription, modalTitle } from "./frame"
+import { Frame, Message as FrameMessage, frameView, initFrame, isCloseRequest, modalDescription, modalTitle } from "./frame"
 import { failureToast, successToast } from "../../data/actions"
 
 /** `components/modals/create-channel-modal.tsx` (legacy `useModal("new-channel")`). */
@@ -71,6 +71,8 @@ const validateName = (name: string) =>
 
 const ID = "create-channel-modal"
 
+const CHANNEL_TYPE_ITEMS = [Select.item("public", "Public"), Select.item("private", "Private")]
+
 type Return = ModalReturn<Model, Message>
 
 const submitted = (model: Model, shared: Shared): Return => {
@@ -94,7 +96,7 @@ const submitted = (model: Model, shared: Shared): Return => {
 
 const update = (model: Model, message: Message, shared: Shared): Return =>
 	Message.match<Return>(message, {
-		GotFrameMessage: ({ message }) => (isFrameClosed(model.frame, message) ? { model, outMessage: closed } : { model }),
+		GotFrameMessage: ({ message }) => (isCloseRequest(message) ? { model, outMessage: closed } : { model }),
 		GotChannelTypeMessage: ({ message }) => {
 			const result = Select.update(model.channelType, message)
 			return {
@@ -168,7 +170,7 @@ const view = Submodel.defineView<Model, Message, ModalViewInputs>((model, _input
 								slotId: `${ID}-type`,
 								model: model.channelType,
 								view: selectView,
-								viewInputs: {},
+								viewInputs: { items: CHANNEL_TYPE_ITEMS },
 								toParentMessage: toChannelTypeMessage,
 							}),
 							checkbox(
@@ -211,11 +213,7 @@ export const modal = defineModal(
 				frame: initFrame(ID),
 				name: "",
 				nameError: null,
-				channelType: Select.init({
-					id: `${ID}-type`,
-					items: [Select.item("public", "Public"), Select.item("private", "Private")],
-					selectedKey: "public",
-				}),
+				channelType: Select.init({ id: `${ID}-type`, selectedKey: "public" }),
 				addAllMembers: false,
 				isSubmitting: false,
 			},

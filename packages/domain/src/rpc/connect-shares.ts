@@ -10,6 +10,7 @@ import {
 } from "@hazel/schema"
 import { ConnectConversation, ConnectConversationChannel, ConnectInvite, ConnectParticipant } from "../models"
 import { InternalServerError, UnauthorizedError } from "../errors"
+import { ChannelNotFoundError } from "./channels"
 import { AuthMiddleware } from "./middleware"
 import { RequiredScopes } from "../scopes/required-scopes"
 
@@ -77,6 +78,15 @@ export class ConnectWorkspaceNotFoundError extends Schema.TaggedError<ConnectWor
 	},
 ) {}
 
+/** The conversation does not exist, or the channel is not shared through one. */
+export class ConnectConversationNotFoundError extends Schema.TaggedError<ConnectConversationNotFoundError>()(
+	"ConnectConversationNotFoundError",
+	{
+		conversationId: Schema.optional(ConnectConversationId),
+		message: Schema.String,
+	},
+) {}
+
 export class ConnectChannelAlreadySharedError extends Schema.TaggedError<ConnectChannelAlreadySharedError>()(
 	"ConnectChannelAlreadySharedError",
 	{
@@ -110,6 +120,7 @@ export class ConnectShareRpcs extends RpcGroup.make(
 		}),
 		success: ConnectInviteResponse,
 		error: Schema.Union([
+			ChannelNotFoundError,
 			ConnectWorkspaceNotFoundError,
 			ConnectChannelAlreadySharedError,
 			UnauthorizedError,
@@ -130,6 +141,8 @@ export class ConnectShareRpcs extends RpcGroup.make(
 			ConnectInviteInvalidStateError,
 			ConnectWorkspaceNotFoundError,
 			ConnectChannelAlreadySharedError,
+			ConnectConversationNotFoundError,
+			ChannelNotFoundError,
 			UnauthorizedError,
 			InternalServerError,
 		]),
@@ -195,7 +208,7 @@ export class ConnectShareRpcs extends RpcGroup.make(
 			status: Schema.optional(ConnectConversation.ConnectConversationStatus),
 		}),
 		success: ConnectConversationResponse,
-		error: Schema.Union([UnauthorizedError, InternalServerError]),
+		error: Schema.Union([ConnectConversationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channels:write"])
 		.middleware(AuthMiddleware),
@@ -206,7 +219,13 @@ export class ConnectShareRpcs extends RpcGroup.make(
 			userId: UserId,
 		}),
 		success: ConnectParticipantResponse,
-		error: Schema.Union([ConnectWorkspaceNotFoundError, UnauthorizedError, InternalServerError]),
+		error: Schema.Union([
+			ChannelNotFoundError,
+			ConnectConversationNotFoundError,
+			ConnectWorkspaceNotFoundError,
+			UnauthorizedError,
+			InternalServerError,
+		]),
 	})
 		.annotate(RequiredScopes, ["channel-members:write"])
 		.middleware(AuthMiddleware),
@@ -217,7 +236,13 @@ export class ConnectShareRpcs extends RpcGroup.make(
 			userId: UserId,
 		}),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union([ConnectWorkspaceNotFoundError, UnauthorizedError, InternalServerError]),
+		error: Schema.Union([
+			ChannelNotFoundError,
+			ConnectConversationNotFoundError,
+			ConnectWorkspaceNotFoundError,
+			UnauthorizedError,
+			InternalServerError,
+		]),
 	})
 		.annotate(RequiredScopes, ["channel-members:write"])
 		.middleware(AuthMiddleware),
@@ -228,7 +253,7 @@ export class ConnectShareRpcs extends RpcGroup.make(
 			organizationId: OrganizationId,
 		}),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union([UnauthorizedError, InternalServerError]),
+		error: Schema.Union([ConnectConversationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["organizations:write"])
 		.middleware(AuthMiddleware),

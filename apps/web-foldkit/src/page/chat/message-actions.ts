@@ -4,93 +4,134 @@ import { Command } from "foldkit"
 import { defineMessageUnion } from "foldkit/message"
 import {
 	createThreadAction,
-	deleteMessageAction,
+	joinChannelAction,
 	pinMessageAction,
 	toggleReactionAction,
 	unpinMessageAction,
 } from "~/db/actions"
-import { ToastRequest } from "../../overlay/toasts"
+import { CommonReason } from "~/lib/error-messages"
 import { HazelRpc } from "../../rpc"
-import { toastOfExit } from "../../data/actions"
-import { notRetryable, rateLimited } from "./action-effects"
+import { catchCommon } from "../../data/actions"
 
 /**
  * The message actions of `ChatProvider` and `useMessageActions`: each Command runs the same
- * optimistic action (`db/actions.ts`) with the same variables, and reports its `exitToast`.
+ * optimistic action (`db/actions.ts`) with the same variables and reports a typed reason on failure
+ * (`docs/foldkit-decisions/s6-errors.md`); `write.ts` turns it into copy.
  */
+
+// MODEL
+
+/** What can go wrong creating a thread, beyond the shared reasons. */
+export const CreateThreadFailure = Schema.Union([
+	Schema.Literals(["MessageNotFound", "NestedThread", "InvalidRequest"]),
+	CommonReason,
+])
+export type CreateThreadFailure = typeof CreateThreadFailure.Type
+
+/** What can go wrong naming a thread with AI, beyond the shared reasons. */
+export const GenerateThreadNameFailure = Schema.Union([
+	Schema.Literals([
+		"ThreadNotFound",
+		"NotAThread",
+		"OriginalMessageNotFound",
+		"ThreadContextUnavailable",
+		"AIUnavailable",
+		"AIRateLimited",
+		"AIResponseInvalid",
+		"SaveFailed",
+	]),
+	CommonReason,
+])
+export type GenerateThreadNameFailure = typeof GenerateThreadNameFailure.Type
+
+/** `navigator.clipboard.writeText` refused (no permission, no focus, insecure context). */
+export const CopyTextFailure = Schema.Literals(["ClipboardDenied"])
+export type CopyTextFailure = typeof CopyTextFailure.Type
+
+/** What a copy was of: the success toast names it. */
+export const CopiedContent = Schema.Literals(["MessageText", "MessageId", "ImageUrl"])
+export type CopiedContent = typeof CopiedContent.Type
+
+/** What can go wrong joining a channel, beyond the shared reasons. */
+export const JoinChannelFailure = Schema.Union([Schema.Literals(["NotFound"]), CommonReason])
+export type JoinChannelFailure = typeof JoinChannelFailure.Type
+
+/** What can go wrong reacting to or pinning a message, beyond the shared reasons. */
+export const MessageActionFailure = Schema.Union([Schema.Literals(["MessageNotFound"]), CommonReason])
+export type MessageActionFailure = typeof MessageActionFailure.Type
+
+/** What can go wrong unpinning, beyond the shared reasons. */
+export const UnpinMessageFailure = Schema.Union([Schema.Literals(["PinNotFound"]), CommonReason])
+export type UnpinMessageFailure = typeof UnpinMessageFailure.Type
 
 // MESSAGE
 
 export const ActionMessage = defineMessageUnion({
-	CompletedToggleReaction: { toast: Schema.NullOr(ToastRequest) },
-	CompletedPinMessage: { toast: Schema.NullOr(ToastRequest) },
-	CompletedUnpinMessage: { toast: Schema.NullOr(ToastRequest) },
-	CompletedDeleteMessage: { toast: Schema.NullOr(ToastRequest) },
+	SucceededToggleReaction: {},
+	FailedToggleReaction: { reason: MessageActionFailure },
+	SucceededPinMessage: {},
+	FailedPinMessage: { reason: MessageActionFailure },
+	SucceededUnpinMessage: {},
+	FailedUnpinMessage: { reason: UnpinMessageFailure },
 	CompletedGenerateThreadChannelId: { messageId: MessageId, threadChannelId: ChannelId },
 	SucceededCreateThread: { threadChannelId: ChannelId },
-	FailedCreateThread: { threadChannelId: ChannelId, toast: ToastRequest },
-	CompletedCopyText: {},
+	FailedCreateThread: { threadChannelId: ChannelId, reason: CreateThreadFailure },
+	SucceededCopyText: { content: CopiedContent },
+	FailedCopyText: { reason: CopyTextFailure },
 	CompletedDownloadImage: {},
 	CompletedOpenUrl: {},
-	CompletedGenerateThreadName: { threadChannelId: ChannelId, toast: Schema.NullOr(ToastRequest) },
+	SucceededGenerateThreadName: { threadChannelId: ChannelId },
+	FailedGenerateThreadName: { threadChannelId: ChannelId, reason: GenerateThreadNameFailure },
+	SucceededJoinChannel: {},
+	FailedJoinChannel: { reason: JoinChannelFailure },
 })
 export type ActionMessage = typeof ActionMessage.Type
 /** `ActionMessage` under the Submodel name, so a parent's Got wrapper imports it as `Message`. */
 export { ActionMessage as Message }
-
-
-const messageNotFound = notRetryable("Message not found", "This message may have been deleted.")
 
 // COMMAND
 
 /** `addReaction`: `toggleReactionAction` inserts or deletes the reaction, then `messageReaction.toggle`. */
 export const ToggleReaction = Command.define("ToggleReaction", {
 	args: { messageId: MessageId, channelId: ChannelId, emoji: Schema.String, userId: UserId },
-	messages: [ActionMessage.CompletedToggleReaction],
+	messages: [ActionMessage.SucceededToggleReaction, ActionMessage.FailedToggleReaction],
 	execute: (args) =>
-		toastOfExit(toggleReactionAction(args), "exitToast", {
-			handlers: { MessageNotFoundError: messageNotFound },
-		}).pipe(Effect.map((toast) => ActionMessage.CompletedToggleReaction({ toast }))),
+		toggleReactionAction(args).pipe(
+			Effect.as(ActionMessage.SucceededToggleReaction()),
+			Effect.catchTags({
+				MessageNotFoundError: () =>
+					Effect.succeed(ActionMessage.FailedToggleReaction({ reason: "MessageNotFound" })),
+			}),
+			catchCommon((reason) => ActionMessage.FailedToggleReaction({ reason })),
+		),
 })
 
 export const PinMessage = Command.define("PinMessage", {
 	args: { messageId: MessageId, channelId: ChannelId, userId: UserId },
-	messages: [ActionMessage.CompletedPinMessage],
+	messages: [ActionMessage.SucceededPinMessage, ActionMessage.FailedPinMessage],
 	execute: (args) =>
-		toastOfExit(pinMessageAction(args), "exitToast", {
-			success: "Message pinned",
-			handlers: { MessageNotFoundError: messageNotFound },
-		}).pipe(Effect.map((toast) => ActionMessage.CompletedPinMessage({ toast }))),
+		pinMessageAction(args).pipe(
+			Effect.as(ActionMessage.SucceededPinMessage()),
+			Effect.catchTags({
+				MessageNotFoundError: () =>
+					Effect.succeed(ActionMessage.FailedPinMessage({ reason: "MessageNotFound" })),
+			}),
+			catchCommon((reason) => ActionMessage.FailedPinMessage({ reason })),
+		),
 })
 
 export const UnpinMessage = Command.define("UnpinMessage", {
 	args: { pinnedMessageId: PinnedMessageId },
-	messages: [ActionMessage.CompletedUnpinMessage],
+	messages: [ActionMessage.SucceededUnpinMessage, ActionMessage.FailedUnpinMessage],
 	execute: (args) =>
-		toastOfExit(unpinMessageAction(args), "exitToast", {
-			success: "Message unpinned",
-			handlers: {
-				PinnedMessageNotFoundError: notRetryable(
-					"Pin not found",
-					"This message may have already been unpinned.",
-				),
-			},
-		}).pipe(Effect.map((toast) => ActionMessage.CompletedUnpinMessage({ toast }))),
-})
-
-export const DeleteMessage = Command.define("DeleteMessage", {
-	args: { messageId: MessageId },
-	messages: [ActionMessage.CompletedDeleteMessage],
-	execute: (args) =>
-		toastOfExit(deleteMessageAction(args), "exitToast", {
-			handlers: {
-				RateLimitExceededError: rateLimited("trying again"),
-				MessageNotFoundError: notRetryable(
-					"Message not found",
-					"This message may have already been deleted.",
-				),
-			},
-		}).pipe(Effect.map((toast) => ActionMessage.CompletedDeleteMessage({ toast }))),
+		unpinMessageAction(args).pipe(
+			Effect.as(ActionMessage.SucceededUnpinMessage()),
+			Effect.catchTags({
+				PinnedMessageNotFoundError: () =>
+					Effect.succeed(ActionMessage.FailedUnpinMessage({ reason: "PinNotFound" })),
+			}),
+			catchCommon((reason) => ActionMessage.FailedUnpinMessage({ reason })),
+		),
 })
 
 /** `createThread` generates the thread id up front so the panel opens before the RPC answers. */
@@ -115,32 +156,39 @@ export const CreateThread = Command.define("CreateThread", {
 		currentUserId: UserId,
 	},
 	messages: [ActionMessage.SucceededCreateThread, ActionMessage.FailedCreateThread],
-	execute: (args) =>
-		toastOfExit(createThreadAction(args), "exitToast", {
-			handlers: {
-				MessageNotFoundError: notRetryable("Message not found", "The message no longer exists"),
-				NestedThreadError: notRetryable(
-					"Cannot create thread",
-					"Threads cannot be created within threads",
-				),
-			},
-		}).pipe(
-			Effect.map((toast) =>
-				toast === null
-					? ActionMessage.SucceededCreateThread({ threadChannelId: args.threadChannelId })
-					: ActionMessage.FailedCreateThread({ threadChannelId: args.threadChannelId, toast }),
-			),
-		),
+	execute: (args) => {
+		const failed = (reason: CreateThreadFailure) =>
+			ActionMessage.FailedCreateThread({ threadChannelId: args.threadChannelId, reason })
+		return createThreadAction(args).pipe(
+			Effect.as(ActionMessage.SucceededCreateThread({ threadChannelId: args.threadChannelId })),
+			Effect.catchTags({
+				MessageNotFoundError: () => Effect.succeed(failed("MessageNotFound")),
+				NestedThreadError: () => Effect.succeed(failed("NestedThread")),
+				InvalidChannelRequestError: () => Effect.succeed(failed("InvalidRequest")),
+			}),
+			catchCommon(failed),
+		)
+	},
 })
 
-/** `navigator.clipboard.writeText`; legacy toasts without waiting for it. */
+class ClipboardError extends Schema.TaggedError<ClipboardError>()("ClipboardError", {
+	cause: Schema.Defect(),
+}) {}
+
+/** `navigator.clipboard.writeText`; the toast waits for the browser's answer. */
 export const CopyText = Command.define("CopyText", {
-	args: { text: Schema.String },
-	messages: [ActionMessage.CompletedCopyText],
-	execute: ({ text }) =>
-		Effect.tryPromise(() => navigator.clipboard.writeText(text)).pipe(
-			Effect.ignore,
-			Effect.as(ActionMessage.CompletedCopyText()),
+	args: { text: Schema.String, content: CopiedContent },
+	messages: [ActionMessage.SucceededCopyText, ActionMessage.FailedCopyText],
+	execute: ({ text, content }) =>
+		Effect.tryPromise({
+			try: () => navigator.clipboard.writeText(text),
+			catch: (cause) => new ClipboardError({ cause }),
+		}).pipe(
+			Effect.as(ActionMessage.SucceededCopyText({ content })),
+			Effect.catchTags({
+				ClipboardError: () =>
+					Effect.succeed(ActionMessage.FailedCopyText({ reason: "ClipboardDenied" })),
+			}),
 		),
 })
 
@@ -172,44 +220,43 @@ export const OpenUrl = Command.define("OpenUrl", {
 		}),
 })
 
-/** The thread panel's "Generate thread name" (`channel.generateName`). */
+/** The thread panel's "Generate thread name" (`channel.generateName`); the name arrives through sync. */
 export const GenerateThreadName = Command.define("GenerateThreadName", {
 	args: { channelId: ChannelId },
-	messages: [ActionMessage.CompletedGenerateThreadName],
-	execute: ({ channelId }) =>
-		toastOfExit(
-			Effect.gen(function* () {
-				const client = yield* HazelRpc
-				return yield* client("channel.generateName", { channelId })
+	messages: [ActionMessage.SucceededGenerateThreadName, ActionMessage.FailedGenerateThreadName],
+	execute: ({ channelId }) => {
+		const failed = (reason: GenerateThreadNameFailure) =>
+			ActionMessage.FailedGenerateThreadName({ threadChannelId: channelId, reason })
+		const fail = (reason: GenerateThreadNameFailure) => () => Effect.succeed(failed(reason))
+		return HazelRpc.use((rpc) => rpc("channel.generateName", { channelId })).pipe(
+			Effect.as(ActionMessage.SucceededGenerateThreadName({ threadChannelId: channelId })),
+			Effect.catchTags({
+				ChannelNotFoundError: fail("ThreadNotFound"),
+				ThreadChannelNotFoundError: fail("ThreadNotFound"),
+				InvalidChannelRequestError: fail("NotAThread"),
+				OriginalMessageNotFoundError: fail("OriginalMessageNotFound"),
+				ThreadContextQueryError: fail("ThreadContextUnavailable"),
+				AIProviderUnavailableError: fail("AIUnavailable"),
+				AIRateLimitError: fail("AIRateLimited"),
+				AIResponseParseError: fail("AIResponseInvalid"),
+				ThreadNameUpdateError: fail("SaveFailed"),
 			}),
-			"exitToast",
-			{ handlers: generateNameHandlers },
-		).pipe(
-			Effect.map((toast) => ActionMessage.CompletedGenerateThreadName({ threadChannelId: channelId, toast })),
-		),
+			catchCommon(failed),
+		)
+	},
 })
 
-const retryable = (title: string, description: string) => () => ({ title, description, isRetryable: true })
-
-/** `handleGenerateName`'s `onErrorTag` and `onCommonErrorTag` overrides. */
-const generateNameHandlers = {
-	ChannelNotFoundError: notRetryable("Thread not found", "This thread may have been deleted."),
-	MessageNotFoundError: notRetryable(
-		"Original message not found",
-		"The message that started this thread could not be found.",
-	),
-	ThreadChannelNotFoundError: notRetryable("Thread not found", "This thread may have been deleted."),
-	OriginalMessageNotFoundError: notRetryable("Message not found", "The original message could not be found."),
-	ThreadContextQueryError: retryable("Database error", "Failed to load thread data. Please try again."),
-	AIProviderUnavailableError: retryable(
-		"AI service unavailable",
-		"The AI service is temporarily unavailable. Please try again later.",
-	),
-	AIRateLimitError: retryable("AI rate limited", "Please wait a moment and try again."),
-	AIResponseParseError: retryable(
-		"AI response error",
-		"The AI returned an unexpected response. Please try again.",
-	),
-	ThreadNameUpdateError: retryable("Update failed", "Failed to save the thread name. Please try again."),
-	WorkflowServiceUnavailableError: retryable("Service temporarily unavailable", "Please try again later."),
-}
+/** `ChannelJoinBanner`'s "Join #channel": `joinChannelAction`, as the join modal runs it. */
+export const JoinChannel = Command.define("JoinChannel", {
+	args: { channelId: ChannelId, userId: UserId },
+	messages: [ActionMessage.SucceededJoinChannel, ActionMessage.FailedJoinChannel],
+	execute: (args) =>
+		joinChannelAction(args).pipe(
+			Effect.as(ActionMessage.SucceededJoinChannel()),
+			Effect.catchTags({
+				ChannelNotFoundError: () =>
+					Effect.succeed(ActionMessage.FailedJoinChannel({ reason: "NotFound" })),
+			}),
+			catchCommon((reason) => ActionMessage.FailedJoinChannel({ reason })),
+		),
+})

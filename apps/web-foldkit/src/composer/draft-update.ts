@@ -1,84 +1,111 @@
 import type { MessageId } from "@hazel/schema"
-import { Match } from "effect"
-import { Command, type Update } from "foldkit"
-import { errorToast } from "../data/actions"
+import { Match, Option } from "effect"
+import { Update } from "foldkit"
+import { modifyFields } from "foldkit/struct"
+import { failureMessage, type UserErrorMessage } from "~/lib/error-messages"
+import { uploadErrorMessages } from "~/lib/upload-to-storage"
+import { errorToast, errorToastOf, successToast, warningToast } from "../data/actions"
+import type { EditorRegistry } from "../editor/registry"
+import { isAcceptedFile } from "../editor/file-types"
+import type { ToastRequest } from "../overlay/toasts"
 import type { HazelApiClient, HazelRpc } from "../rpc"
 import * as Composer from "./composer"
 import * as EditorCommands from "./editor-commands"
 import {
+	type BotCommandFailure,
+	ComposeMode,
 	type Context,
 	EditMessage,
+	editingMessageIdOf,
+	ExecuteBotCommand,
+	fileInputId,
 	GenerateUploadFileId,
 	isUploading,
 	Message,
 	type Model,
 	OpenFilePicker,
 	OutMessage,
+	replyToMessageIdOf,
+	type SendFailure,
 	SendMessage,
-	ExecuteBotCommand,
-	fileInputId,
 } from "./draft"
 import * as EmojiDialog from "../emoji-picker/dialog"
 import * as GifPicker from "../gif-picker/picker"
 import * as ComposerUpdate from "./update"
 import * as Typing from "./typing"
 import { DropEvent } from "./drop"
-import { UploadEvent } from "./upload"
+import { MAX_FILE_SIZE, type UploadFailure, UploadEvent } from "./upload"
 
 /** The draft's update: `ComposerEditor`'s submit, edit and escape handling plus the upload queue. */
 
-export type Return = Update.ReturnWithOutMessage<Model, Message, OutMessage, HazelRpc | HazelApiClient>
+type Requirements = HazelRpc | HazelApiClient | EditorRegistry
+export type Return = Update.ReturnWithOutMessage<Model, Message, OutMessage, Requirements>
+type Step = Update.Step<Model, Message, Requirements>
+/** A result that raises nothing to the page. */
+type PlainReturn = Update.Return<Model, Message, Requirements>
 
-const editorIdOf = (model: Model) => model.composer.editorId
+// CHILDREN
 
-const toComposerCommands = (commands: ReadonlyArray<Command.Command<Composer.Message>>) =>
-	Command.mapMessages(commands, (message) => Message.GotComposerMessage({ message }))
-
-const liftComposer = (model: Model, result: Update.Return<Composer.Model, Composer.Message>): Return => ({
-	model: { ...model, composer: result.model },
-	commands: Command.mapMessages(result.commands ?? [], (message) => Message.GotComposerMessage({ message })),
+/** Runs a composer step (its update, `setDraft`, `cancelCommand` …) inside the draft. */
+const foldComposer = Update.foldChild({
+	update: (composer: Composer.Model, step: (composer: Composer.Model) => ComposerUpdate.Return) =>
+		step(composer),
+	read: (model: Model) => Option.some(model.composer),
+	write: (model: Model, composer: Composer.Model) => modifyFields(model, { composer: () => composer }),
+	toParentMessage: (message: Composer.Message) => Message.GotComposerMessage({ message }),
 })
 
-const liftTyping = (model: Model, result: Typing.Return): Return => ({
-	model: { ...model, typing: result.model },
-	commands: Command.mapMessages(result.commands ?? [], (message) => Message.GotTypingMessage({ message })),
+const foldTyping = Update.foldChild({
+	update: (typing: Typing.Model, step: (typing: Typing.Model) => Typing.Return) => step(typing),
+	read: (model: Model) => Option.some(model.typing),
+	write: (model: Model, typing: Typing.Model) => modifyFields(model, { typing: () => typing }),
+	toParentMessage: (message: Typing.Message) => Message.GotTypingMessage({ message }),
 })
 
-const withCommands = (result: Return, commands: ReadonlyArray<Command.Command<Message, never, HazelRpc | HazelApiClient>>): Return => ({
-	...result,
-	commands: [...(result.commands ?? []), ...commands],
-})
+const setDraft = (markdown: string): Step =>
+	foldComposer((composer) => ComposerUpdate.setDraft(composer, markdown))
+const clearDraft: Step = foldComposer(ComposerUpdate.clearDraft)
+const stopTyping: Step = foldTyping(Typing.stop)
 
-const toast = (model: Model, request: Parameters<typeof OutMessage.RequestedToast>[0]["toast"]): Return => ({
+const setMode =
+	(composeMode: ComposeMode): Step =>
+	(model) => ({ model: modifyFields(model, { composeMode: () => composeMode }) })
+
+const toast = (model: Model, request: ToastRequest): Return => ({
 	model,
 	outMessage: OutMessage.RequestedToast({ toast: request }),
 })
 
-/** `setReplyToMessageId`: entering reply clears edit. */
-export const setReply = (model: Model, replyToMessageId: MessageId | null): Model => ({
-	...model,
-	replyToMessageId,
-	editingMessageId: replyToMessageId === null ? model.editingMessageId : null,
-})
+// COMPOSE MODE
+
+/** `setReplyToMessageId`: entering reply leaves edit mode; clearing it leaves an edit alone. */
+export const setReply = (model: Model, replyToMessageId: MessageId | null): Model =>
+	modifyFields(model, {
+		composeMode: (mode) =>
+			replyToMessageId !== null
+				? ComposeMode.Replying({ messageId: replyToMessageId })
+				: mode._tag === "Replying"
+					? ComposeMode.Plain()
+					: mode,
+	})
 
 /** `setEditingMessageId` plus `onEditingMessageIdChange`: load the message into the editor. */
-export const startEditing = (model: Model, messageId: MessageId, content: string): Return => ({
-	model: { ...model, editingMessageId: messageId, replyToMessageId: null },
-	commands: toComposerCommands([EditorCommands.SetEditorContent({ editorId: editorIdOf(model), markdown: content })]),
-})
+export const startEditing = (model: Model, messageId: MessageId, content: string): Return =>
+	Update.combine(model, [setMode(ComposeMode.Editing({ messageId })), setDraft(content)])
 
-const clearEditor = (model: Model) => toComposerCommands([EditorCommands.ClearEditor({ editorId: editorIdOf(model) })])
+const leaveEditing: Step = Update.combine([setMode(ComposeMode.Plain()), clearDraft])
 
 /** `handleSubmit` of the editor and of `ComposerEditor`. */
 const submit = (model: Model, markdown: string, context: Context): Return => {
 	if (isUploading(model)) return { model }
 	const content = markdown.trim()
-	if (model.editingMessageId !== null) {
+	const editingId = editingMessageIdOf(model)
+	if (editingId !== null) {
 		if (!content) return { model }
-		return {
-			model: { ...model, editingMessageId: null },
-			commands: [...clearEditor(model), EditMessage({ messageId: model.editingMessageId, content })],
-		}
+		return Update.combine(model, [
+			leaveEditing,
+			(next) => ({ model: next, commands: [EditMessage({ messageId: editingId, content })] }),
+		])
 	}
 	if (!content && model.attachmentIds.length === 0) return { model }
 	if (context.currentUserId === null) return { model }
@@ -86,27 +113,48 @@ const submit = (model: Model, markdown: string, context: Context): Return => {
 		channelId: model.channelId,
 		authorId: context.currentUserId,
 		content,
-		replyToMessageId: model.replyToMessageId,
+		replyToMessageId: replyToMessageIdOf(model),
 		threadChannelId: null,
 		attachmentIds: model.attachmentIds,
 		restoreContent: true,
 	})
-	const cleared: Model = { ...model, replyToMessageId: null, attachmentIds: [] }
-	return withCommands(liftTyping(cleared, Typing.stop(cleared.typing)), [...clearEditor(model), send])
+	return Update.combine(model, [
+		(next) => ({
+			model: modifyFields(next, { composeMode: () => ComposeMode.Plain(), attachmentIds: () => [] }),
+		}),
+		stopTyping,
+		clearDraft,
+		(next) => ({ model: next, commands: [send] }),
+	])
 }
 
-/** `handleCommandExecute`: validate the arguments, then run the bot command. */
+// BOT COMMANDS
+
+const botCommandMessage = (reason: BotCommandFailure, commandName: string, botName: string) =>
+	failureMessage(reason, {
+		BotNotFound: { title: `Bot "${botName}" was not found` },
+		BotNotInstalled: { title: `Bot "${botName}" is not installed` },
+		CommandNotFound: { title: `Command /${commandName} not found` },
+		ExecutionFailed: {
+			title: `/${commandName} failed`,
+			description: "The bot reported an error running the command.",
+		},
+	})
+
+/** `handleCommandExecute`: validate the arguments, then run the bot command (once at a time). */
 const executeCommand = (model: Model, context: Context): Return => {
 	const input = model.composer.commandInput
-	if (input === null) return { model }
-	const error = (title: string) => toast(model, errorToast(title))
-	if (context.organizationId === null) return error("Cannot execute command without an organization")
+	if (input === null || input.submission === "Executing") return { model }
+	if (context.organizationId === null)
+		return toast(model, errorToast("Cannot execute command without an organization"))
 	const missing = input.command.arguments
 		.filter((arg) => arg.required && !input.values[arg.name])
 		.map((arg) => arg.name)
-	if (missing.length > 0) return error(`Missing required: ${missing.join(", ")}`)
+	if (missing.length > 0) return toast(model, errorToast(`Missing required: ${missing.join(", ")}`))
 	return {
-		model,
+		model: modifyFields(model, {
+			composer: (composer) => ComposerUpdate.setCommandSubmission(composer, "Executing"),
+		}),
 		commands: [
 			ExecuteBotCommand({
 				orgId: context.organizationId,
@@ -122,59 +170,166 @@ const executeCommand = (model: Model, context: Context): Return => {
 	}
 }
 
+// UPLOADS
+
+const uploadMessage = (reason: UploadFailure) =>
+	failureMessage(reason, {
+		FileTooLarge: {
+			title: "File too large",
+			description: `File size exceeds ${MAX_FILE_SIZE / 1024 / 1024}MB limit`,
+		},
+		Rejected: { title: "Upload failed", description: "Failed to get upload URL. Please try again." },
+		StorageNetwork: { title: "Upload failed", description: uploadErrorMessages.network },
+		StorageTimeout: { title: "Upload failed", description: uploadErrorMessages.timeout },
+		StorageServer: { title: "Upload failed", description: uploadErrorMessages.server },
+		NotCompleted: { title: "Upload failed", description: "Failed to finalize upload. Please try again." },
+	})
+
 /** The next queued file starts once it has an id. */
-const startNextUpload = (model: Model): Return =>
+const startNextUpload = (model: Model): PlainReturn =>
 	model.currentUpload !== null || model.pendingFiles.length === 0
 		? { model }
 		: { model, commands: [GenerateUploadFileId()] }
 
-const handleUploadEvent = (model: Model, event: UploadEvent): Return =>
-	UploadEvent.match<Return>(event, {
-		ProgressedUpload: ({ fileId, progress }) => ({
-			model: {
-				...model,
-				uploadingFiles: model.uploadingFiles.map((file) => (file.fileId === fileId ? { ...file, progress } : file)),
-			},
+/** The current upload ended: the next one starts. */
+const finishUpload = (model: Model, attachmentIds: Model["attachmentIds"]): PlainReturn =>
+	startNextUpload(modifyFields(model, { currentUpload: () => null, attachmentIds: () => attachmentIds }))
+
+const handleUploadEvent = (model: Model, event: UploadEvent): Return => {
+	// A late event of an upload that is no longer current changes nothing.
+	if (model.currentUpload?.fileId !== event.fileId) return { model }
+	return UploadEvent.match<Return>(event, {
+		ProgressedUpload: ({ progress }) => ({
+			model: modifyFields(model, {
+				currentUpload: (upload) =>
+					upload === null ? null : modifyFields(upload, { progress: () => progress }),
+			}),
 		}),
-		FinishedUpload: ({ fileId, attachmentId, toast: request }) => {
-			if (model.currentUpload?.fileId !== fileId) return { model }
-			const next = startNextUpload({
-				...model,
-				currentUpload: null,
-				uploadingFiles: model.uploadingFiles.filter((file) => file.fileId !== fileId),
-				attachmentIds: attachmentId === null ? model.attachmentIds : [...model.attachmentIds, attachmentId],
-			})
-			return request === null ? next : { ...next, outMessage: OutMessage.RequestedToast({ toast: request }) }
+		SucceededUpload: ({ attachmentId }) => finishUpload(model, [...model.attachmentIds, attachmentId]),
+		FailedUpload: ({ reason }) =>
+			Update.withOutMessage(
+				finishUpload(model, model.attachmentIds),
+				OutMessage.RequestedToast({ toast: errorToastOf(uploadMessage(reason)) }),
+			),
+	})
+}
+
+const selectFiles = (model: Model, files: ReadonlyArray<File>, context: Context): Return => {
+	if (files.length === 0) return { model }
+	if (context.currentUserId === null)
+		return toast(model, errorToast("Authentication required", "You must be logged in to upload files"))
+	const accepted = files.filter(isAcceptedFile)
+	if (accepted.length === 0) return toast(model, errorToast("Unsupported file type"))
+	return startNextUpload(modifyFields(model, { pendingFiles: (pending) => [...pending, ...accepted] }))
+}
+
+// SEND
+
+const sendFailureMessage = (failure: SendFailure) =>
+	failureMessage(failure, {
+		ChannelNotFound: { title: "Channel not found", description: "This channel may have been deleted." },
+		SyncDelayed: {
+			title: "Message sent",
+			description: "Sync is delayed but your message was delivered.",
 		},
 	})
 
+const warningToastOf = (message: UserErrorMessage): ToastRequest =>
+	warningToast(message.title, message.description ?? null)
+
+// PICKERS
+
+/** `ComposerActions.handleEmojiSelect`: custom emoji inline, unicode as text. */
+const insertEmoji =
+	(emoji: string, label: string, imageUrl: string | null): Step =>
+	(model) =>
+		foldComposer(model, (composer) => ({
+			model: composer,
+			commands: [
+				imageUrl === null
+					? EditorCommands.InsertEditorText({ editorId: composer.editorId, text: emoji })
+					: EditorCommands.InsertCustomEmoji({
+							editorId: composer.editorId,
+							name: label,
+							imageUrl,
+						}),
+			],
+		}))
+
+/** `handleGifSelect` sends the GIF URL as a message of its own; it answers a reply, an edit stays. */
+const sendGif =
+	(url: string, context: Context): Step =>
+	(model) =>
+		context.currentUserId === null
+			? { model }
+			: {
+					model: modifyFields(setReply(model, null), { attachmentIds: () => [] }),
+					commands: [
+						SendMessage({
+							channelId: model.channelId,
+							authorId: context.currentUserId,
+							content: url,
+							replyToMessageId: replyToMessageIdOf(model),
+							threadChannelId: null,
+							attachmentIds: model.attachmentIds,
+							restoreContent: false,
+						}),
+					],
+				}
+
+const foldEmojiPicker = Update.foldChild({
+	update: EmojiDialog.update,
+	read: (model: Model) => Option.some(model.emojiPicker),
+	write: (model: Model, emojiPicker: EmojiDialog.Model) =>
+		modifyFields(model, { emojiPicker: () => emojiPicker }),
+	toParentMessage: (message: EmojiDialog.Message) => Message.GotEmojiPickerMessage({ message }),
+	foldOutMessage: (selected: EmojiDialog.OutMessage) =>
+		insertEmoji(selected.emoji, selected.label, selected.imageUrl),
+})
+
+const foldGifPicker = (context: Context) =>
+	Update.foldChild({
+		update: GifPicker.update,
+		read: (model: Model) => Option.some(model.gifPicker),
+		write: (model: Model, gifPicker: GifPicker.Model) =>
+			modifyFields(model, { gifPicker: () => gifPicker }),
+		toParentMessage: (message: GifPicker.Message) => Message.GotGifPickerMessage({ message }),
+		foldOutMessage: (selected: GifPicker.OutMessage) => sendGif(selected.url, context),
+	})
+
+// UPDATE
+
 const handleComposer = (model: Model, message: Composer.Message, context: Context): Return => {
-	const delegated = liftComposer(model, ComposerUpdate.update(model.composer, message))
+	const delegated = foldComposer(model, (composer) => ComposerUpdate.update(composer, message))
+	const then = (step: (model: Model) => Return): Return => {
+		const next = step(delegated.model)
+		return { ...next, commands: [...(delegated.commands ?? []), ...(next.commands ?? [])] }
+	}
 	return Match.value(message).pipe(
+		Match.withReturnType<Return>(),
 		Match.tags({
 			UpdatedDraft: ({ markdown }) =>
-				withCommands(
-					liftTyping(
-						delegated.model,
-						Typing.contentChanged(delegated.model.typing, markdown, {
+				then((next) =>
+					foldTyping(next, (typing) =>
+						Typing.contentChanged(typing, markdown, {
 							channelId: model.channelId,
 							memberId: context.memberId,
 						}),
 					),
-					delegated.commands ?? [],
 				),
-			SubmittedDraft: ({ markdown }) => submit(model, markdown, context),
+			SubmittedDraft: ({ markdown }) => then((next) => submit(next, markdown, context)),
 			PressedEscape: () =>
-				model.editingMessageId === null
-					? { model }
-					: { model: { ...model, editingMessageId: null }, commands: clearEditor(model) },
+				then((next) => (editingMessageIdOf(next) === null ? { model: next } : leaveEditing(next))),
 			PressedArrowUpInEmpty: () =>
-				context.lastOwnMessage === null
-					? { model }
-					: startEditing(model, context.lastOwnMessage.id, context.lastOwnMessage.content),
-			PastedFiles: ({ files }) => update(model, Message.SelectedFiles({ files }), context),
-			ClickedExecuteCommand: () => executeCommand(model, context),
-			PressedCommandFieldKey: ({ key }) => (key === "Enter" ? executeCommand(model, context) : delegated),
+				then((next) =>
+					context.lastOwnMessage === null
+						? { model: next }
+						: startEditing(next, context.lastOwnMessage.id, context.lastOwnMessage.content),
+				),
+			PastedFiles: ({ files }) => then((next) => selectFiles(next, files, context)),
+			ClickedExecuteCommand: () => then((next) => executeCommand(next, context)),
+			PressedCommandFieldKey: ({ key }) =>
+				key === "Enter" ? then((next) => executeCommand(next, context)) : delegated,
 		}),
 		Match.orElse(() => delegated),
 	)
@@ -183,109 +338,81 @@ const handleComposer = (model: Model, message: Composer.Message, context: Contex
 export const update = (model: Model, message: Message, context: Context): Return =>
 	Message.match<Return>(message, {
 		GotComposerMessage: ({ message: composerMessage }) => handleComposer(model, composerMessage, context),
-		GotTypingMessage: ({ message: typingMessage }) => liftTyping(model, Typing.update(model.typing, typingMessage)),
+		GotTypingMessage: ({ message: typingMessage }) =>
+			foldTyping(model, (typing) => Typing.update(typing, typingMessage)),
 		ClickedCancelReply: () => ({ model: setReply(model, null) }),
 		// `ComposerEditIndicator.handleCancel`: leave edit mode and clear the editor.
-		ClickedCancelEdit: () => ({ model: { ...model, editingMessageId: null }, commands: clearEditor(model) }),
+		ClickedCancelEdit: () => leaveEditing(model),
 		ClickedAttach: () =>
-			isUploading(model) ? { model } : { model, commands: [OpenFilePicker({ inputId: fileInputId(model) })] },
-		SelectedFiles: ({ files }) => {
-			if (files.length === 0) return { model }
-			if (context.currentUserId === null)
-				return toast(model, errorToast("Authentication required", "You must be logged in to upload files"))
-			return startNextUpload({ ...model, pendingFiles: [...model.pendingFiles, ...files] })
-		},
+			isUploading(model)
+				? { model }
+				: { model, commands: [OpenFilePicker({ inputId: fileInputId(model) })] },
+		SelectedFiles: ({ files }) => selectFiles(model, files, context),
 		CompletedGenerateUploadFileId: ({ fileId }) => {
 			const [file, ...rest] = model.pendingFiles
 			if (file === undefined || model.currentUpload !== null) return { model }
 			return {
-				model: {
-					...model,
-					pendingFiles: rest,
-					currentUpload: { fileId, file },
-					uploadingFiles: [
-						...model.uploadingFiles,
-						{ fileId, fileName: file.name, fileSize: file.size, progress: 0 },
-					],
-				},
+				model: modifyFields(model, {
+					pendingFiles: () => rest,
+					currentUpload: () => ({ fileId, file, progress: 0 }),
+				}),
 			}
 		},
 		ReceivedUploadEvent: ({ event }) => handleUploadEvent(model, event),
 		ReceivedDropEvent: ({ event }) =>
 			DropEvent.match<Return>(event, {
-				ChangedDragState: ({ isDraggingOnPage, isDropTarget }) => ({
-					model: { ...model, isDraggingOnPage, isDropTarget },
-				}),
-				DroppedFiles: ({ files }) => update(model, Message.SelectedFiles({ files }), context),
+				ChangedDragState: ({ drag }) => ({ model: modifyFields(model, { drag: () => drag }) }),
+				// Legacy disables the drop zone while a file uploads.
+				DroppedFiles: ({ files }) =>
+					isUploading(model) ? { model } : selectFiles(model, files, context),
 			}),
 		ClickedRemoveAttachment: ({ attachmentId }) => ({
-			model: { ...model, attachmentIds: model.attachmentIds.filter((id) => id !== attachmentId) },
+			model: modifyFields(model, { attachmentIds: (ids) => ids.filter((id) => id !== attachmentId) }),
 		}),
 		CompletedOpenFilePicker: () => ({ model }),
 		SucceededSendMessage: () => ({ model, outMessage: OutMessage.SentMessage() }),
-		// Restore what the optimistic send cleared, then toast.
-		FailedSendMessage: ({ content, restoreContent, replyToMessageId, attachmentIds, toast: request }) => ({
-			model: { ...setReply(model, replyToMessageId), attachmentIds },
-			commands: restoreContent
-				? toComposerCommands([EditorCommands.SetEditorContent({ editorId: editorIdOf(model), markdown: content })])
-				: [],
-			outMessage: OutMessage.RequestedToast({ toast: request }),
-		}),
-		CompletedEditMessage: ({ toast: request }) => (request === null ? { model } : toast(model, request)),
-		LeftWindow: () => liftTyping(model, Typing.stop(model.typing)),
-		// Success leaves command input mode and focuses the editor; failure keeps the panel.
-		CompletedExecuteBotCommand: ({ succeeded, toast: request }) => {
-			const result = succeeded ? liftComposer(model, ComposerUpdate.cancelCommand(model.composer)) : { model }
-			return { ...result, outMessage: OutMessage.RequestedToast({ toast: request }) }
-		},
-		// `ComposerActions.handleEmojiSelect`: custom emoji inline, unicode as text.
-		SelectedEmoji: ({ emoji, label, imageUrl }) => ({
-			model,
-			commands: toComposerCommands([
-				imageUrl === null
-					? EditorCommands.InsertEditorText({ editorId: editorIdOf(model), text: emoji })
-					: EditorCommands.InsertCustomEmoji({ editorId: editorIdOf(model), name: label, imageUrl }),
-			]),
-		}),
-		GotEmojiPickerMessage: ({ message: dialogMessage }) => {
-			const result = EmojiDialog.update(model.emojiPicker, dialogMessage)
-			const next: Return = {
-				model: { ...model, emojiPicker: result.model },
-				commands: Command.mapMessages(result.commands ?? [], (inner) =>
-					Message.GotEmojiPickerMessage({ message: inner }),
-				),
-			}
-			if (result.outMessage === undefined) return next
-			const { emoji, label, imageUrl } = result.outMessage
-			const inserted = update(next.model, Message.SelectedEmoji({ emoji, label, imageUrl }), context)
-			return { ...inserted, commands: [...(next.commands ?? []), ...(inserted.commands ?? [])] }
-		},
-		GotGifPickerMessage: ({ message: gifMessage }) => {
-			const result = GifPicker.update(model.gifPicker, gifMessage)
-			const next: Return = {
-				model: { ...model, gifPicker: result.model },
-				commands: Command.mapMessages(result.commands ?? [], (inner) => Message.GotGifPickerMessage({ message: inner })),
-			}
-			if (result.outMessage === undefined) return next
-			const sent = update(next.model, Message.SelectedGif({ url: result.outMessage.url }), context)
-			return { ...sent, commands: [...(next.commands ?? []), ...(sent.commands ?? [])] }
-		},
-		// `handleGifSelect` sends the GIF URL as a message of its own.
-		SelectedGif: ({ url }) =>
-			context.currentUserId === null
-				? { model }
-				: {
-						model: { ...model, replyToMessageId: null, attachmentIds: [] },
-						commands: [
-							SendMessage({
-								channelId: model.channelId,
-								authorId: context.currentUserId,
-								content: url,
-								replyToMessageId: model.replyToMessageId,
-								threadChannelId: null,
-								attachmentIds: model.attachmentIds,
-								restoreContent: false,
+		// Restore what the optimistic send cleared, then toast. A delayed sync was delivered: nothing to restore.
+		FailedSendMessage: ({ content, restoreContent, replyToMessageId, attachmentIds, reason }) =>
+			reason === "SyncDelayed"
+				? toast(model, warningToastOf(sendFailureMessage(reason)))
+				: Update.withOutMessage(
+						Update.combine(
+							modifyFields(setReply(model, replyToMessageId), {
+								attachmentIds: () => attachmentIds,
 							}),
-						],
-					},
+							restoreContent ? [setDraft(content)] : [],
+						),
+						OutMessage.RequestedToast({ toast: errorToastOf(sendFailureMessage(reason)) }),
+					),
+		SucceededEditMessage: () => ({ model }),
+		FailedEditMessage: ({ reason }) =>
+			toast(
+				model,
+				errorToastOf(
+					failureMessage(reason, {
+						MessageNotFound: {
+							title: "Message not found",
+							description: "This message may have been deleted.",
+						},
+					}),
+				),
+			),
+		LeftWindow: () => stopTyping(model),
+		// Success leaves command input mode and focuses the editor; failure keeps the panel.
+		SucceededExecuteBotCommand: ({ commandName }) =>
+			Update.withOutMessage(
+				foldComposer(model, ComposerUpdate.cancelCommand),
+				OutMessage.RequestedToast({ toast: successToast(`Executed /${commandName}`) }),
+			),
+		FailedExecuteBotCommand: ({ commandName, botName, reason }) =>
+			toast(
+				modifyFields(model, {
+					composer: (composer) => ComposerUpdate.setCommandSubmission(composer, "Idle"),
+				}),
+				errorToastOf(botCommandMessage(reason, commandName, botName)),
+			),
+		SelectedEmoji: ({ emoji, label, imageUrl }) => insertEmoji(emoji, label, imageUrl)(model),
+		GotEmojiPickerMessage: ({ message: dialogMessage }) => foldEmojiPicker(model, dialogMessage),
+		GotGifPickerMessage: ({ message: gifMessage }) => foldGifPicker(context)(model, gifMessage),
+		SelectedGif: ({ url }) => sendGif(url, context)(model),
 	})

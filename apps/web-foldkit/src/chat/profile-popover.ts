@@ -58,7 +58,6 @@ const actionBar = <M>(h: HtmlBuilder<M>, inputs: ProfileInputs): ReadonlyArray<H
 						h.Attribute("aria-expanded", "false"),
 						h.Attribute("aria-haspopup", "true"),
 						h.Class(menuTriggerClassName()),
-						h.Attribute("data-rac", ""),
 						h.Attribute("data-react-aria-pressable", "true"),
 						h.Attribute("data-slot", "menu-trigger"),
 						h.Attribute("tabindex", "0"),

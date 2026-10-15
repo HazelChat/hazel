@@ -72,6 +72,9 @@ export const AcceptInvite = Command.define("AcceptInvite", {
 				ConnectInviteInvalidStateError: () => failed("InvalidState"),
 				ConnectWorkspaceNotFoundError: () => failed("WorkspaceNotFound"),
 				ConnectChannelAlreadySharedError: () => failed("AlreadyShared"),
+				ChannelNotFoundError: () => failed("ChannelNotFound"),
+				// The invite's shared conversation is gone: the invite is as good as revoked.
+				ConnectConversationNotFoundError: () => failed("NotFound"),
 			}),
 			catchCommon((reason) => Message.FailedAccept({ inviteId, reason })),
 		)
@@ -207,6 +210,10 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 						AlreadyShared: {
 							title: "Already shared",
 							description: "This channel is already shared with that organization.",
+						},
+						ChannelNotFound: {
+							title: "Channel not found",
+							description: "The shared channel may have been deleted.",
 						},
 					}),
 				),

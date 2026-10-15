@@ -29,13 +29,9 @@ export const reflectRowMenus = (model: Model): Model =>
 		rowMenus: (menus) =>
 			rowKeys(model).map(([kind, id]) => {
 				const menuId = rowMenuId(kind, id)
-				const entries = rowEntries(kind, model.togglingRowIds.includes(id))
-				return Option.match(
+				return Option.getOrElse(
 					Array.findFirst(menus, (menu) => menu.id === menuId),
-					{
-						onNone: () => Menu.init({ id: menuId, entries, placement: "bottom end" }),
-						onSome: (menu) => Menu.reflectEntries(menu, entries),
-					},
+					() => Menu.init({ id: menuId, placement: "bottom end" }),
 				)
 			}),
 	})

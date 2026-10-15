@@ -44,7 +44,7 @@ export const RevokeInvitation = Command.define("RevokeInvitation", {
 
 // MENUS
 
-const menuEntries = (isRevoking: boolean) => [
+export const rowMenuEntries = (isRevoking: boolean): ReadonlyArray<Menu.Entry> => [
 	Menu.item(REVOKE_KEY, { intent: "Danger", isDisabled: isRevoking }),
 ]
 
@@ -53,33 +53,19 @@ export const invitationsOf = (model: Model): ReadonlyArray<Invitation> =>
 	Option.getOrElse(AsyncData.getData(model.invitations), () => [])
 
 /** One row menu per invitation, keeping open state for rows that stay. */
-const reflectMenus = (
-	menus: ReadonlyArray<RowMenu>,
-	invitations: ReadonlyArray<Invitation>,
-	revokingId: InvitationId | null,
-): ReadonlyArray<RowMenu> =>
-	invitations.map((invitation) => {
-		const entries = menuEntries(revokingId === invitation.id)
-		return Option.match(
+const reflectMenus = (menus: ReadonlyArray<RowMenu>, invitations: ReadonlyArray<Invitation>): ReadonlyArray<RowMenu> =>
+	invitations.map((invitation) =>
+		Option.getOrElse(
 			Array.findFirst(menus, (row) => row.invitationId === invitation.id),
-			{
-				onNone: () => ({
-					invitationId: invitation.id,
-					menu: Menu.init({ id: `invitation-${invitation.id}`, entries, placement: "bottom end" }),
-				}),
-				onSome: (row) => ({
-					invitationId: row.invitationId,
-					menu: Menu.reflectEntries(row.menu, entries),
-				}),
-			},
-		)
-	})
+			() => ({
+				invitationId: invitation.id,
+				menu: Menu.init({ id: `invitation-${invitation.id}`, placement: "bottom end" }),
+			}),
+		),
+	)
 
 const withRevokingId = (model: Model, revokingId: InvitationId | null): Model =>
-	modifyFields(model, {
-		revokingId: () => revokingId,
-		menus: (menus) => reflectMenus(menus, invitationsOf(model), revokingId),
-	})
+	modifyFields(model, { revokingId: () => revokingId })
 
 // INIT
 
@@ -150,7 +136,7 @@ export const update = (model: Model, message: Message): Return =>
 				: {
 						model: modifyFields(model, {
 							invitations: () => Invitations.Success({ data: invitations }),
-							menus: (menus) => reflectMenus(menus, invitations, model.revokingId),
+							menus: (menus) => reflectMenus(menus, invitations),
 						}),
 					},
 		// A failed refetch keeps the rows it had (`Stale`); a failed first load shows the error.

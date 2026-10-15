@@ -25,7 +25,8 @@ const ready = informContext(init(), context).model
 const userMenu = (inner: Menu.Message) => Message.GotUserMenuMessage({ message: inner })
 const orgSwitcher = (inner: Menu.Message) => Message.GotOrgSwitcherMessage({ message: inner })
 const opened = Menu.Message.PressedTrigger({ pointerType: "mouse" })
-const clicked = (key: string) => Menu.Message.ClickedItem({ key })
+/** A click on `key`, with the entries the view passes the menu (the shell Model's, as `app/view.ts` does). */
+const clicked = (key: string, entries: ReadonlyArray<Menu.Entry>) => Menu.Message.ClickedItem({ key, entries })
 
 const otherOrgId = Schema.decodeSync(OrganizationId)("00000000-0000-4000-8000-0000000000a2")
 const unfinishedOrgId = Schema.decodeSync(OrganizationId)("00000000-0000-4000-8000-0000000000a3")
@@ -37,7 +38,7 @@ const organizations = [
 
 describe("user menu", () => {
 	test("its links follow the route's org and the signed-in user", () => {
-		const hrefs = ready.userMenu.entries.flatMap((entry) =>
+		const hrefs = ready.userMenuEntries.flatMap((entry) =>
 			entry._tag === "Item" && entry.item.href._tag === "Some" ? [entry.item.href.value] : [],
 		)
 		expect(hrefs).toEqual([`/hazel/profile/${ada.id}`, "/hazel/my-settings"])
@@ -52,7 +53,7 @@ describe("user menu", () => {
 			run,
 			given(ready),
 			message(userMenu(opened)),
-			message(userMenu(clicked(key))),
+			message(userMenu(clicked(key, ready.userMenuEntries))),
 			Command.expectNone(),
 			expectOutMessage(outMessage),
 		)
@@ -60,12 +61,15 @@ describe("user menu", () => {
 })
 
 describe("org switcher", () => {
+	const withOrganizations = run(ready, Message.UpdatedUserOrganizations({ organizations })).model
+	const switcherEntries = withOrganizations.orgSwitcherEntries
+
 	test("Invite people opens the email invite modal", () => {
 		story(
 			run,
 			given(ready),
 			message(orgSwitcher(opened)),
-			message(orgSwitcher(clicked("invite-people"))),
+			message(orgSwitcher(clicked("invite-people", ready.orgSwitcherEntries))),
 			expectOutMessage(PageOutMessage.RequestedModal({ modal: { _tag: "EmailInvite" } })),
 		)
 	})
@@ -73,10 +77,10 @@ describe("org switcher", () => {
 	test("on desktop, an organization in the Switch server submenu navigates to its slug", () => {
 		story(
 			run,
-			given(run(ready, Message.UpdatedUserOrganizations({ organizations })).model),
+			given(withOrganizations),
 			message(orgSwitcher(opened)),
-			message(orgSwitcher(clicked("switch-server"))),
-			message(orgSwitcher(clicked(`org:${otherOrgId}`))),
+			message(orgSwitcher(clicked("switch-server", switcherEntries))),
+			message(orgSwitcher(clicked(`org:${otherOrgId}`, switcherEntries))),
 			expectOutMessage(PageOutMessage.RequestedNavigation({ href: "/acme", replace: false })),
 		)
 	})
@@ -84,10 +88,10 @@ describe("org switcher", () => {
 	test("on desktop, the current organization in the submenu does nothing (legacy `SwitchServerMenu`)", () => {
 		story(
 			run,
-			given(run(ready, Message.UpdatedUserOrganizations({ organizations })).model),
+			given(withOrganizations),
 			message(orgSwitcher(opened)),
-			message(orgSwitcher(clicked("switch-server"))),
-			message(orgSwitcher(clicked(`org:${hazelOrg.id}`))),
+			message(orgSwitcher(clicked("switch-server", switcherEntries))),
+			message(orgSwitcher(clicked(`org:${hazelOrg.id}`, switcherEntries))),
 			expectNoOutMessage(),
 		)
 	})
@@ -109,7 +113,7 @@ describe("org switcher", () => {
 				run,
 				given(mobile),
 				message(orgSwitcher(opened)),
-				message(orgSwitcher(clicked(`org:${otherOrgId}`))),
+				message(orgSwitcher(clicked(`org:${otherOrgId}`, mobile.orgSwitcherEntries))),
 				expectOutMessage(PageOutMessage.RequestedNavigation({ href: "/acme", replace: false })),
 			)
 		})
@@ -119,7 +123,7 @@ describe("org switcher", () => {
 				run,
 				given(mobile),
 				message(orgSwitcher(opened)),
-				message(orgSwitcher(clicked(`org:${unfinishedOrgId}`))),
+				message(orgSwitcher(clicked(`org:${unfinishedOrgId}`, mobile.orgSwitcherEntries))),
 				expectOutMessage(
 					PageOutMessage.RequestedNavigation({
 						href: `/onboarding/setup-organization?orgId=${unfinishedOrgId}`,
@@ -134,7 +138,7 @@ describe("org switcher", () => {
 				run,
 				given(mobile),
 				message(orgSwitcher(opened)),
-				message(orgSwitcher(clicked(`org:${hazelOrg.id}`))),
+				message(orgSwitcher(clicked(`org:${hazelOrg.id}`, mobile.orgSwitcherEntries))),
 				expectNoOutMessage(),
 			)
 		})
@@ -158,7 +162,7 @@ describe("context", () => {
 	test("switching organization rebuilds the menus with the new slug", () => {
 		const acme = informContext(ready, { ...context, orgSlug: "acme", organizationId: otherOrgId }).model
 		expect(acme.menuSignature).not.toBe(ready.menuSignature)
-		const mySettings = acme.userMenu.entries.flatMap((entry) =>
+		const mySettings = acme.userMenuEntries.flatMap((entry) =>
 			entry._tag === "Item" && entry.item.key === "my-settings" && entry.item.href._tag === "Some"
 				? [entry.item.href.value]
 				: [],

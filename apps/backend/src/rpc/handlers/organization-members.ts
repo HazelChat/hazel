@@ -1,6 +1,6 @@
 import { OrganizationMemberRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
+import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
 import {
 	OrganizationMemberNotFoundError,
 	OrganizationMemberResponse,
@@ -134,17 +134,7 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 							return { transactionId: txid }
 						}),
 					)
-					.pipe(
-						Effect.catchTags({
-							DatabaseError: (err) =>
-								Effect.fail(
-									new InternalServerError({
-										message: "Error Deleting Organization Member",
-										cause: err,
-									}),
-								),
-						}),
-					),
+					.pipe(withRemapDbErrors("OrganizationMember", "delete")),
 		}
 	}),
 )

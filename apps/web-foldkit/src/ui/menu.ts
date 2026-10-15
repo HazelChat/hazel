@@ -6,9 +6,9 @@ import { modifyFields } from "foldkit/struct"
 import { Placement } from "./aria/placement"
 
 /**
- * Port of `components/ui/menu.tsx` (React Aria MenuTrigger, Menu, SubmenuTrigger). The Model holds
- * the menu's structure and interaction state; item content comes from the view's `content` callback.
- * The view lives in `menu-view.ts`.
+ * Menu, context menu and one submenu level. The parent owns the menu's structure: it passes `entries`
+ * to the view, which attaches them to the Messages that navigate, so the Model holds only the popup
+ * state and the selection. Item content comes from the view's `content` callback (`menu-view.ts`).
  */
 
 // MODEL
@@ -64,7 +64,6 @@ type Open = Extract<typeof Popup.Type, { _tag: "Open" }>
 
 export const Model = Schema.Struct({
 	id: Schema.String,
-	entries: Schema.Array(Entry),
 	selectionMode: SelectionMode,
 	selectedKeys: Schema.Array(Schema.String),
 	placement: Placement,
@@ -77,12 +76,12 @@ export type Model = typeof Model.Type
 
 export const Message = defineMessageUnion({
 	PressedTrigger: { pointerType: Schema.String },
-	PressedTriggerKey: { key: Schema.String },
+	PressedTriggerKey: { key: Schema.String, entries: Schema.Array(Entry) },
 	PressedContextMenu: { offset: Schema.Number, crossOffset: Schema.Number },
-	PressedMenuKey: { key: Schema.String, isModified: Schema.Boolean },
-	HoveredItem: { key: Schema.String },
+	PressedMenuKey: { key: Schema.String, isModified: Schema.Boolean, entries: Schema.Array(Entry) },
+	HoveredItem: { key: Schema.String, entries: Schema.Array(Entry) },
 	UnhoveredItem: { key: Schema.String },
-	ClickedItem: { key: Schema.String },
+	ClickedItem: { key: Schema.String, entries: Schema.Array(Entry) },
 	PressedOutside: {},
 	ClickedDismiss: {},
 	CompletedFocusElement: {},
@@ -146,7 +145,6 @@ export const separator: Entry = { _tag: "Separator" }
 
 export const init = (config: {
 	readonly id: string
-	readonly entries: ReadonlyArray<Entry>
 	readonly selectionMode?: "None" | "Single"
 	readonly selectedKeys?: ReadonlyArray<string>
 	/** MenuContent `placement`; MenuTrigger's own default is `bottom start`. */
@@ -155,17 +153,12 @@ export const init = (config: {
 	readonly anchor?: "Trigger" | "Pointer"
 }): Model => ({
 	id: config.id,
-	entries: config.entries,
 	selectionMode: config.selectionMode ?? "None",
 	selectedKeys: config.selectedKeys ?? [],
 	placement: config.placement ?? "bottom start",
 	anchor: config.anchor ?? "Trigger",
 	popup: { _tag: "Closed" },
 })
-
-/** The parent owns the menu's structure (it follows data), so it reflects it in; state is kept. */
-export const reflectEntries = (model: Model, entries: ReadonlyArray<Entry>): Model =>
-	modifyFields(model, { entries: () => entries })
 
 // IDS
 
@@ -180,8 +173,8 @@ export const headerId = (id: string, key: string) => `${id}-header-${key}`
 
 // COLLECTION
 
-export const rootItems = (model: Model): ReadonlyArray<Item> =>
-	Array.flatMap(model.entries, (entry) =>
+export const rootItems = (entries: ReadonlyArray<Entry>): ReadonlyArray<Item> =>
+	Array.flatMap(entries, (entry) =>
 		Match.value(entry).pipe(
 			Match.tagsExhaustive({
 				Item: ({ item }) => [item],
@@ -191,11 +184,11 @@ export const rootItems = (model: Model): ReadonlyArray<Item> =>
 		),
 	)
 
-const findItem = (model: Model, key: string): Option.Option<Item> =>
-	Array.findFirst(rootItems(model), (candidate) => candidate.key === key)
+const findItem = (entries: ReadonlyArray<Entry>, key: string): Option.Option<Item> =>
+	Array.findFirst(rootItems(entries), (candidate) => candidate.key === key)
 
-const submenuItems = (model: Model, triggerKey: string): ReadonlyArray<Leaf> =>
-	Option.match(findItem(model, triggerKey), { onNone: () => [], onSome: (found) => found.submenu })
+const submenuItems = (entries: ReadonlyArray<Entry>, triggerKey: string): ReadonlyArray<Leaf> =>
+	Option.match(findItem(entries, triggerKey), { onNone: () => [], onSome: (found) => found.submenu })
 
 const enabledKeys = (items: ReadonlyArray<Leaf>): ReadonlyArray<string> =>
 	Array.map(
@@ -289,8 +282,13 @@ const withOpen = (model: Model, open: Open, isFocusMoved: boolean): UpdateReturn
 	return isFocusMoved ? { model: nextModel, commands: [focusFor(nextModel, open)] } : { model: nextModel }
 }
 
-const opened = (model: Model, strategy: "None" | "First" | "Last", modality: Modality): UpdateReturn => {
-	const items = rootItems(model)
+const opened = (
+	model: Model,
+	entries: ReadonlyArray<Entry>,
+	strategy: "None" | "First" | "Last",
+	modality: Modality,
+): UpdateReturn => {
+	const items = rootItems(entries)
 	const strategyKey =
 		strategy === "None"
 			? Option.none<string>()
@@ -314,12 +312,18 @@ const opened = (model: Model, strategy: "None" | "First" | "Last", modality: Mod
 
 const closed = (model: Model): Model => modifyFields(model, { popup: () => ({ _tag: "Closed" as const }) })
 
-const activated = (model: Model, open: Open, key: string, modality: Modality): UpdateReturn => {
-	const isSubmenuTrigger = Option.exists(findItem(model, key), (found) =>
+const activated = (
+	model: Model,
+	entries: ReadonlyArray<Entry>,
+	open: Open,
+	key: string,
+	modality: Modality,
+): UpdateReturn => {
+	const isSubmenuTrigger = Option.exists(findItem(entries, key), (found) =>
 		Array.isReadonlyArrayNonEmpty(found.submenu),
 	)
 	if (isSubmenuTrigger) {
-		const first = stepKey(submenuItems(model, key), Option.none(), 1)
+		const first = stepKey(submenuItems(entries, key), Option.none(), 1)
 		return withOpen(
 			model,
 			{
@@ -335,7 +339,7 @@ const activated = (model: Model, open: Open, key: string, modality: Modality): U
 		)
 	}
 	const selectedKeys = model.selectionMode === "Single" ? [key] : model.selectedKeys
-	const href = Option.flatMap(findItem(model, key), (found) => found.href)
+	const href = Option.flatMap(findItem(entries, key), (found) => found.href)
 	return {
 		model: modifyFields(closed(model), { selectedKeys: () => selectedKeys }),
 		outMessage:
@@ -345,12 +349,18 @@ const activated = (model: Model, open: Open, key: string, modality: Modality): U
 	}
 }
 
-const pressedMenuKey = (model: Model, open: Open, key: string, isModified: boolean): UpdateReturn => {
+const pressedMenuKey = (
+	model: Model,
+	entries: ReadonlyArray<Entry>,
+	open: Open,
+	key: string,
+	isModified: boolean,
+): UpdateReturn => {
 	const keyboard: Open = { ...open, modality: "Keyboard" }
 	const inSubmenu = Option.filter(open.submenu, (submenu) => Option.isSome(submenu.focusedKey))
 	const items: ReadonlyArray<Leaf> = Option.match(inSubmenu, {
-		onNone: () => rootItems(model),
-		onSome: (submenu) => submenuItems(model, submenu.triggerKey),
+		onNone: () => rootItems(entries),
+		onSome: (submenu) => submenuItems(entries, submenu.triggerKey),
 	})
 	const current = Option.match(inSubmenu, {
 		onNone: () => open.focusedKey,
@@ -389,20 +399,20 @@ const pressedMenuKey = (model: Model, open: Open, key: string, isModified: boole
 			() =>
 				Option.match(current, {
 					onNone: () => ({ model }),
-					onSome: (focusedKey) => activated(model, keyboard, focusedKey, "Keyboard"),
+					onSome: (focusedKey) => activated(model, entries, keyboard, focusedKey, "Keyboard"),
 				}),
 		),
 		Match.when("ArrowRight", () => {
 			const submenuTrigger = Option.filter(
 				Option.filter(current, () => Option.isNone(inSubmenu)),
 				(focusedKey) =>
-					Option.exists(findItem(model, focusedKey), (found) =>
+					Option.exists(findItem(entries, focusedKey), (found) =>
 						Array.isReadonlyArrayNonEmpty(found.submenu),
 					),
 			)
 			return Option.match(submenuTrigger, {
 				onNone: () => ({ model }),
-				onSome: (focusedKey) => activated(model, keyboard, focusedKey, "Keyboard"),
+				onSome: (focusedKey) => activated(model, entries, keyboard, focusedKey, "Keyboard"),
 			})
 		}),
 		Match.orElse(() => {
@@ -428,12 +438,12 @@ export const update = (model: Model, message: Message): UpdateReturn => {
 	return Message.match<UpdateReturn>(message, {
 		PressedTrigger: ({ pointerType }) =>
 			model.popup._tag === "Closed" && pointerType !== "touch"
-				? opened(model, "None", "Pointer")
+				? opened(model, [], "None", "Pointer")
 				: { model },
-		PressedTriggerKey: ({ key }) =>
+		PressedTriggerKey: ({ key, entries }) =>
 			Match.value(key).pipe(
-				Match.whenOr("Enter", " ", "ArrowDown", () => opened(model, "First", "Keyboard")),
-				Match.when("ArrowUp", () => opened(model, "Last", "Keyboard")),
+				Match.whenOr("Enter", " ", "ArrowDown", () => opened(model, entries, "First", "Keyboard")),
+				Match.when("ArrowUp", () => opened(model, entries, "Last", "Keyboard")),
 				Match.orElse(() => ({ model })),
 			),
 		PressedContextMenu: ({ offset, crossOffset }) =>
@@ -450,13 +460,13 @@ export const update = (model: Model, message: Message): UpdateReturn => {
 				},
 				false,
 			),
-		PressedMenuKey: ({ key, isModified }) =>
-			ifOpen((open) => pressedMenuKey(model, open, key, isModified)),
-		HoveredItem: ({ key }) =>
+		PressedMenuKey: ({ key, isModified, entries }) =>
+			ifOpen((open) => pressedMenuKey(model, entries, open, key, isModified)),
+		HoveredItem: ({ key, entries }) =>
 			ifOpen((open) => {
 				const pointer: Open = { ...open, modality: "Pointer", hoveredKey: Option.some(key) }
 				const inSubmenu = Option.exists(open.submenu, (submenu) =>
-					Array.some(submenuItems(model, submenu.triggerKey), (candidate) => candidate.key === key),
+					Array.some(submenuItems(entries, submenu.triggerKey), (candidate) => candidate.key === key),
 				)
 				if (inSubmenu)
 					return withOpen(
@@ -470,7 +480,7 @@ export const update = (model: Model, message: Message): UpdateReturn => {
 						},
 						true,
 					)
-				const hovered = findItem(model, key)
+				const hovered = findItem(entries, key)
 				if (Option.exists(hovered, (found) => found.isDisabled))
 					return withOpen(model, pointer, false)
 				const hasSubmenu = Option.exists(hovered, (found) =>
@@ -489,18 +499,18 @@ export const update = (model: Model, message: Message): UpdateReturn => {
 					false,
 				),
 			),
-		ClickedItem: ({ key }) =>
+		ClickedItem: ({ key, entries }) =>
 			ifOpen((open) => {
-				const clicked = Option.orElse(findItem(model, key), () =>
+				const clicked = Option.orElse(findItem(entries, key), () =>
 					Option.flatMap(open.submenu, (submenu) =>
 						Array.findFirst(
-							submenuItems(model, submenu.triggerKey),
+							submenuItems(entries, submenu.triggerKey),
 							(candidate) => candidate.key === key,
 						),
 					),
 				)
 				return Option.exists(clicked, (found) => !found.isDisabled)
-					? activated(model, open, key, "Pointer")
+					? activated(model, entries, open, key, "Pointer")
 					: { model }
 			}),
 		PressedOutside: () => ({ model: closed(model) }),

@@ -1,7 +1,5 @@
 import { tv, type VariantProps } from "tailwind-variants"
 
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
-
 // ============================================================================
 // Shared Embed Styles
 // ============================================================================

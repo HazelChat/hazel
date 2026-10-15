@@ -135,23 +135,8 @@ export const DisplayRow = defineTaggedUnion({
 export type DisplayRow = typeof DisplayRow.Type
 export type MessageRow = Extract<DisplayRow, { readonly _tag: "MessageRow" }>
 
-/** Structural equality for row data (small objects), used to keep unchanged rows' identity. */
-export const deepEqual = (a: unknown, b: unknown): boolean => {
-	if (a === b) return true
-	if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false
-	if (Array.isArray(a)) {
-		if (!Array.isArray(b) || a.length !== b.length) return false
-		return a.every((item, index) => deepEqual(item, b[index]))
-	}
-	if (Array.isArray(b)) return false
-	const aKeys = Object.keys(a)
-	const bRecord = b as Record<string, unknown>
-	const aRecord = a as Record<string, unknown>
-	return (
-		aKeys.length === Object.keys(b).length &&
-		aKeys.every((key) => key in bRecord && deepEqual(aRecord[key], bRecord[key]))
-	)
-}
+/** Field equality of two messages, used to keep unchanged messages' identity. */
+const isSameMessage = Schema.toEquivalence(ChatMessage)
 
 /** Reuses the previous object for every message whose fields did not change. */
 export const shareMessages = (
@@ -161,7 +146,7 @@ export const shareMessages = (
 	const previousById = new Map(previous.map((message) => [message.id, message]))
 	return next.map((message) => {
 		const old = previousById.get(message.id)
-		return old !== undefined && deepEqual(old, message) ? old : message
+		return old !== undefined && isSameMessage(old, message) ? old : message
 	})
 }
 
@@ -174,7 +159,7 @@ export const applyMessageChanges = (
 	const byId = new Map(previous.map((message) => [message.id, message]))
 	for (const message of upserts) {
 		const old = byId.get(message.id)
-		byId.set(message.id, old !== undefined && deepEqual(old, message) ? old : message)
+		byId.set(message.id, old !== undefined && isSameMessage(old, message) ? old : message)
 	}
 	const next = order.flatMap((id) => {
 		const message = byId.get(id)

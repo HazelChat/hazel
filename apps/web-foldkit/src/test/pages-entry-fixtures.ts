@@ -2,7 +2,7 @@ import { OrganizationId, OrganizationMemberId } from "@hazel/schema"
 import { Option, Schema } from "effect"
 import type { Shared } from "../page/contract"
 import { Message } from "../page/onboarding/message"
-import type { Membership, Model, StepForm } from "../page/onboarding/model"
+import type { Membership, Model, Running, StepState } from "../page/onboarding/model"
 import { init, update } from "../page/onboarding/update"
 import { currentUser, makeShared, uuid } from "./pages-fixtures"
 
@@ -44,5 +44,14 @@ export const onboardingAt = (
 		Message.UpdatedMembership({ membership }),
 	].reduce((model, message) => update(model, message, shared).model, init(onboardingRoute(urlStep), shared).model)
 
-/** Replaces the current step's form, for states a test reaches faster by construction. */
-export const withForm = (model: Model, form: StepForm): Model => ({ ...model, form })
+/** The running flow; fails the test when the page is still starting or leaving. */
+export const runningOf = (model: Model): Running => {
+	if (model.phase._tag !== "Running") throw new Error(`onboarding is ${model.phase._tag}, not Running`)
+	return model.phase
+}
+
+/** Replaces the current step's state, for states a test reaches faster by construction. */
+export const withStep = (model: Model, step: StepState): Model => ({
+	...model,
+	phase: { ...runningOf(model), step },
+})

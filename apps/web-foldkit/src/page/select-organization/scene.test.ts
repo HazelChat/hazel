@@ -7,7 +7,7 @@ import { makeShared, pageScene, uuid } from "../../test/pages-fixtures"
 import * as CreateWorkspace from "../create-workspace"
 import { PageOutMessage } from "../out-message"
 import { Message } from "./message"
-import type { Model, UserOrganization } from "./model"
+import { type Model, Organizations, type UserOrganization } from "./model"
 import { init, update } from "./update"
 import { view } from "./view"
 
@@ -17,8 +17,7 @@ const shared = makeShared()
 const hazel: UserOrganization = { id: Schema.decodeSync(OrganizationId)(uuid(1)), name: "Hazel Labs", slug: "hazel", logoUrl: null, role: "owner" }
 const acme: UserOrganization = { id: Schema.decodeSync(OrganizationId)(uuid(2)), name: "Acme Corp", slug: null, logoUrl: null, role: "member" }
 const withOrganizations = (organizations: ReadonlyArray<UserOrganization>): Model => ({
-	organizations: [...organizations],
-	hasRedirected: false,
+	organizations: Organizations.Loaded({ organizations: [...organizations] }),
 	createWorkspace: CreateWorkspace.init(),
 })
 
@@ -35,7 +34,9 @@ describe("select organization view", () => {
 				PageOutMessage.RequestedNavigation({ href: `/onboarding/setup-organization?orgId=${acme.id}`, replace: false }),
 			),
 			Scene.click(Scene.role("button", { name: "Create a new one" })),
-			Scene.expectOutMessage(PageOutMessage.RequestedNavigation({ href: "/onboarding", replace: false })),
+			Scene.expectOutMessage(
+				PageOutMessage.RequestedNavigation({ href: "/onboarding/setup-organization", replace: false }),
+			),
 		)
 	})
 

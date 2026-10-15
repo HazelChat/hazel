@@ -7,6 +7,7 @@ import { makeShared, uuid } from "../../../test/pages-fixtures"
 import { Message } from "./message"
 import type { Invitation } from "./model"
 import { init, REVOKE_KEY, update } from "./update"
+import { rowMenuEntries } from "./update"
 
 const inv1 = Schema.decodeSync(InvitationId)(uuid(11))
 
@@ -23,7 +24,7 @@ describe("pending invitations", () => {
 	test("every invitation gets a row menu with a revoke item", () => {
 		const model = loaded()
 		expect(model.menus).toHaveLength(1)
-		expect(model.menus[0]?.menu.entries).toEqual([
+		expect(rowMenuEntries(model.revokingId === invitation.id)).toEqual([
 			Menu.item(REVOKE_KEY, { intent: "Danger", isDisabled: false }),
 		])
 	})

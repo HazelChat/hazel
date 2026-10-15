@@ -36,7 +36,13 @@ export const Model = Schema.Struct({
 	channelsSidebar: ChannelsSidebar.Model,
 	userMenu: Menu.Model,
 	orgSwitcher: Menu.Model,
-	/** The inputs the menus' entries were last built from; rebuilt only when this changes. */
+	/**
+	 * The menus' structure, which the views pass to the menus. Kept here (not rebuilt per render) so the
+	 * memoized sidebars see a stable reference; rebuilt only when `menuSignature` changes.
+	 */
+	userMenuEntries: Schema.Array(Menu.Entry),
+	orgSwitcherEntries: Schema.Array(Menu.Entry),
+	/** The inputs the menus' entries were last built from. */
 	menuSignature: Schema.String,
 	userOrganizations: Schema.Array(SwitcherOrg),
 	userStatus: Schema.NullOr(UserStatus),

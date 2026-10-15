@@ -1,3 +1,4 @@
+import { Schema, Struct } from "effect"
 import type { ChannelId, MessageId, UserId } from "@hazel/schema"
 import {
 	extractGiphyMediaUrl,
@@ -15,12 +16,12 @@ import {
 	type AuthorIdentity,
 	type ChatMessage,
 	type ChatReaction,
-	deepEqual,
 	type DisplayRow,
 	type GroupPosition,
 	type LiveRow,
 	type MarkdownRefs,
-	type MessageRowData,
+	MessageRowData,
+	type MessageRow,
 	type ReplyPreview,
 	type StatusEmoji,
 	type ThreadPreview,
@@ -190,7 +191,8 @@ const urlEmbedsOf = (context: DeriveContext, message: ChatMessage): ReadonlyArra
 	const embeds: UrlEmbed[] = []
 	for (const url of urls.tweetUrls) {
 		const tweetId = extractTweetId(url)
-		if (tweetId) embeds.push({ _tag: "Tweet", url, tweetId, unfurl: context.unfurls[tweetKey(tweetId)] ?? null })
+		if (tweetId)
+			embeds.push({ _tag: "Tweet", url, tweetId, unfurl: context.unfurls[tweetKey(tweetId)] ?? null })
 	}
 	for (const url of urls.youtubeUrls) {
 		const videoId = extractYoutubeVideoId(url)
@@ -206,7 +208,11 @@ const urlEmbedsOf = (context: DeriveContext, message: ChatMessage): ReadonlyArra
 	}
 	const previewUrl = urls.otherUrls[urls.otherUrls.length - 1]
 	if (previewUrl)
-		embeds.push({ _tag: "LinkPreview", url: previewUrl, unfurl: context.unfurls[linkPreviewKey(previewUrl)] ?? null })
+		embeds.push({
+			_tag: "LinkPreview",
+			url: previewUrl,
+			unfurl: context.unfurls[linkPreviewKey(previewUrl)] ?? null,
+		})
 	return embeds
 }
 
@@ -313,28 +319,62 @@ export const toDisplayRows = (
 			reactionsByMessage.get(message.id) ?? NO_REACTIONS,
 			context,
 		)
-		const old = previousByKey.get(message.id)
-		rows.push(
-			old !== undefined && old._tag === "MessageRow" && old.message === message && sameData(old, data)
-				? old
-				: { _tag: "MessageRow", ...data },
-		)
+		rows.push(sharedRow(previousByKey.get(message.id), data))
 	}
 	return rows
 }
 
-const sameData = (old: MessageRowData, data: MessageRowData) =>
-	old.groupPosition === data.groupPosition &&
-	deepEqual(old.reactions, data.reactions) &&
-	deepEqual(old.author, data.author) &&
-	deepEqual(old.status, data.status) &&
-	old.isDiscordSynced === data.isDiscordSynced &&
-	deepEqual(old.reply, data.reply) &&
-	deepEqual(old.thread, data.thread) &&
-	deepEqual(old.attachments, data.attachments) &&
-	deepEqual(old.refs, data.refs) &&
-	deepEqual(old.urlEmbeds, data.urlEmbeds) &&
-	deepEqual(old.live, data.live)
+/** Row data equality past the message, which callers compare by reference first. */
+const isSameRowData = Schema.toEquivalence(Schema.Struct(Struct.omit(MessageRowData.fields, ["message"])))
+
+/** The previous row when nothing it shows changed, so its memo hits; else a new row. */
+const sharedRow = (old: DisplayRow | undefined, data: MessageRowData): MessageRow =>
+	old !== undefined && old._tag === "MessageRow" && old.message === data.message && isSameRowData(old, data)
+		? old
+		: { _tag: "MessageRow", ...data }
+
+/** `ThreadMessageListContent`'s grouping (oldest first). */
+const threadGroupPositionAt = (messages: ReadonlyArray<ChatMessage>, index: number): GroupPosition => {
+	const message = messages[index]!
+	const previous = index > 0 ? messages[index - 1]! : null
+	const next = index < messages.length - 1 ? messages[index + 1]! : null
+	const isStart =
+		previous === null ||
+		message.authorId !== previous.authorId ||
+		message.createdAtMs - previous.createdAtMs > GROUP_THRESHOLD_MS ||
+		previous.replyToMessageId !== null
+	const isEnd =
+		next === null ||
+		message.authorId !== next.authorId ||
+		next.createdAtMs - message.createdAtMs > GROUP_THRESHOLD_MS
+	return toGroupPosition(isStart, isEnd)
+}
+
+/**
+ * The thread panel's rows (oldest first, no reactions or nested threads), sharing every unchanged
+ * row with `previousRows`; the same array comes back when no row changed.
+ */
+export const toThreadRows = (
+	messagesOldestFirst: ReadonlyArray<ChatMessage>,
+	context: DeriveContext,
+	previousRows: ReadonlyArray<MessageRow>,
+): ReadonlyArray<MessageRow> => {
+	const previousByKey = new Map(previousRows.map((row) => [row.key, row]))
+	const rows = messagesOldestFirst.map((message, index) =>
+		sharedRow(previousByKey.get(message.id), {
+			...messageRowData(
+				message,
+				threadGroupPositionAt(messagesOldestFirst, index),
+				NO_REACTIONS,
+				context,
+			),
+			thread: null,
+		}),
+	)
+	return rows.length === previousRows.length && rows.every((row, index) => row === previousRows[index])
+		? previousRows
+		: rows
+}
 
 /** Ids the reply and thread lookups need for this window. */
 export const replyIdsOf = (messages: ReadonlyArray<ChatMessage>): ReadonlyArray<MessageId> =>

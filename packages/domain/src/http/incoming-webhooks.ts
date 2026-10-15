@@ -180,6 +180,15 @@ export class InvalidWebhookTokenError extends Schema.TaggedError<InvalidWebhookT
 	{ httpApiStatus: 401 },
 ) {}
 
+// Error: the payload is valid JSON for the endpoint but cannot become a message
+export class InvalidWebhookPayloadError extends Schema.TaggedError<InvalidWebhookPayloadError>()(
+	"InvalidWebhookPayloadError",
+	{
+		message: Schema.String,
+	},
+	{ httpApiStatus: 400 },
+) {}
+
 // Public endpoint - no auth middleware, uses webhook token in URL
 export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 	.add(
@@ -194,6 +203,7 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 				WebhookNotFoundError,
 				WebhookDisabledError,
 				InvalidWebhookTokenError,
+				InvalidWebhookPayloadError,
 				InternalServerError,
 			],
 		})
@@ -219,6 +229,7 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 				WebhookNotFoundError,
 				WebhookDisabledError,
 				InvalidWebhookTokenError,
+				InvalidWebhookPayloadError,
 				InternalServerError,
 			],
 		})
@@ -244,6 +255,7 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 				WebhookNotFoundError,
 				WebhookDisabledError,
 				InvalidWebhookTokenError,
+				InvalidWebhookPayloadError,
 				InternalServerError,
 			],
 		})
@@ -269,6 +281,7 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 				WebhookNotFoundError,
 				WebhookDisabledError,
 				InvalidWebhookTokenError,
+				InvalidWebhookPayloadError,
 				InternalServerError,
 			],
 		})

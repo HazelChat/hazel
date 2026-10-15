@@ -45,7 +45,6 @@
 		"test:once": "vitest run",
 		"test:debug": "vitest --inspect-brk --no-file-parallelism",
 		"test:coverage": "vitest run --coverage --coverage.reporter=text",
-		"parity": "bun run --cwd packages/ui-parity src/cli.ts",
 		"alchemy:deploy:prd": "alchemy deploy --yes --adopt --stage ${HAZEL_STAGE:-prd}",
 		"alchemy:plan:prd:local": "infisical run --env prod -- alchemy plan --adopt --stage prd",
 		"alchemy:deploy:prd:local": "infisical run --env prod -- alchemy deploy --yes --adopt --stage prd",

@@ -87,7 +87,9 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 				Effect.gen(function* () {
 					// Skip if no message IDs provided
 					if (messageIds.length === 0) {
-						const txid = yield* generateTransactionId()
+						const txid = yield* generateTransactionId().pipe(
+							withRemapDbErrors("Notification", "select"),
+						)
 						return { deletedCount: 0, transactionId: txid }
 					}
 

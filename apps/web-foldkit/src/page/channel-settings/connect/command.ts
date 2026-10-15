@@ -65,6 +65,10 @@ export const DisconnectOrganization = Command.define("DisconnectOrganization", {
 					successMessage: isLeaving ? "Left shared channel" : "Organization disconnected",
 				}),
 			),
+			Effect.catchTags({
+				ConnectConversationNotFoundError: () =>
+					Effect.succeed(Message.FailedDisconnect({ mountId, reason: "NotFound" })),
+			}),
 			catchCommon((reason) => Message.FailedDisconnect({ mountId, reason })),
 		),
 })

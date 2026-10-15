@@ -26,6 +26,7 @@ import {
 import { ChannelLinks, ConnectionLookup, Message, Submission } from "./model"
 import { init, update } from "./update"
 import { sharedDefaults } from "../../test-shared"
+import { linkMenuEntries } from "./model"
 
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`
 const organizationId = Schema.decodeSync(OrganizationId)(uuid(1))
@@ -83,7 +84,7 @@ describe("chat sync connection", () => {
 			),
 			Command.resolveAll(),
 			message(
-				Message.GotLinkMenuMessage({ linkId, message: Menu.Message.ClickedItem({ key: "remove" }) }),
+				Message.GotLinkMenuMessage({ linkId, message: Menu.Message.ClickedItem({ key: "remove", entries: linkMenuEntries }) }),
 			),
 			model((current) => {
 				expect(current.removeLinkConfirm.state).toEqual({
@@ -327,7 +328,7 @@ describe("chat sync connection guards and link actions", () => {
 		message: Menu.Message.PressedTrigger({ pointerType: "mouse" }),
 	})
 	const pick = (key: string) =>
-		Message.GotLinkMenuMessage({ linkId, message: Menu.Message.ClickedItem({ key }) })
+		Message.GotLinkMenuMessage({ linkId, message: Menu.Message.ClickedItem({ key, entries: linkMenuEntries }) })
 
 	test("Pause sync from the row menu pauses the link, toasts and reloads", () => {
 		story(

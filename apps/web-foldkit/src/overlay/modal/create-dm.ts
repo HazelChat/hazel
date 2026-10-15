@@ -1,8 +1,7 @@
 import { ChannelId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect, Schema, Stream } from "effect"
-import { Command, Submodel, Subscription } from "foldkit"
+import { Command, Subscription } from "foldkit"
 import * as Dom from "foldkit/dom"
-import { defineMessageUnion } from "foldkit/message"
 import { modifyFields } from "foldkit/struct"
 import { HazelRpc } from "../../rpc"
 import type { Shared } from "../../page/contract"
@@ -13,7 +12,7 @@ import { defineModal, type ModalReturn, type ModalSubscriptionInput } from "./co
 import { findExistingDmChannel, organizationUsersStream } from "./create-dm-data"
 import { Message, Model, SEARCH_ID } from "./create-dm-model"
 import { view } from "./create-dm-view"
-import { initFrame, isFrameClosed } from "./frame"
+import { initFrame, isCloseRequest, isPortalReady } from "./frame"
 import { failureToast, successToast } from "../../data/actions"
 
 /** `components/modals/create-dm-modal.tsx` (legacy `useModal("create-dm")`). */
@@ -88,9 +87,9 @@ const update = (model: Model, message: Message, shared: Shared): Return =>
 	Message.match<Return>(message, {
 		// `autoFocus`: after the frame has portaled and focused its dialog.
 		GotFrameMessage: ({ message }) =>
-			isFrameClosed(model.frame, message)
+			isCloseRequest(message)
 				? { model, outMessage: closed }
-				: message._tag === "CompletedPortalModal"
+				: isPortalReady(message)
 					? { model, commands: [FocusSearch()] }
 					: { model },
 		ChangedSearch: ({ value }) => ({ model: modifyFields(model, { searchQuery: () => value }) }),

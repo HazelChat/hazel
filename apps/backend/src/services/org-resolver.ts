@@ -2,6 +2,7 @@ import { ChannelMemberRepo, ChannelRepo, MessageRepo, OrganizationMemberRepo } f
 import { PermissionError } from "@hazel/domain"
 import * as CurrentUser from "@hazel/domain/current-user"
 import { type ApiScope, CurrentBotScopes, scopesForRole } from "@hazel/domain/scopes"
+import type { DatabaseError } from "@hazel/db"
 import type { ChannelId, MessageId, OrganizationId } from "@hazel/schema"
 import { Context, Effect, Layer, Option } from "effect"
 import { isAdminOrOwner, type OrganizationRole } from "../lib/policy-utils"
@@ -10,6 +11,9 @@ import { isAdminOrOwner, type OrganizationRole } from "../lib/policy-utils"
  * OrgResolver centralizes organization membership lookup + scope validation.
  * It replaces ad-hoc role checks across individual policy services with a single
  * point of scope resolution.
+ *
+ * Lookups fail with the repositories' typed `DatabaseError`; policy boundaries
+ * (`refailUnauthorized`) turn it into an `InternalServerError`, never a 401.
  */
 export class OrgResolver extends Context.Service<OrgResolver>()("OrgResolver", {
 	make: Effect.gen(function* () {
@@ -43,9 +47,7 @@ export class OrgResolver extends Context.Service<OrgResolver>()("OrgResolver", {
 		) =>
 			Effect.gen(function* () {
 				const actor = yield* CurrentUser.Context
-				const member = yield* organizationMemberRepo
-					.findByOrgAndUser(organizationId, actor.id)
-					.pipe(Effect.orDie)
+				const member = yield* organizationMemberRepo.findByOrgAndUser(organizationId, actor.id)
 
 				if (Option.isNone(member)) {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
@@ -69,9 +71,7 @@ export class OrgResolver extends Context.Service<OrgResolver>()("OrgResolver", {
 		) =>
 			Effect.gen(function* () {
 				const actor = yield* CurrentUser.Context
-				const member = yield* organizationMemberRepo
-					.findByOrgAndUser(organizationId, actor.id)
-					.pipe(Effect.orDie)
+				const member = yield* organizationMemberRepo.findByOrgAndUser(organizationId, actor.id)
 
 				if (Option.isNone(member)) {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
@@ -93,9 +93,7 @@ export class OrgResolver extends Context.Service<OrgResolver>()("OrgResolver", {
 		) =>
 			Effect.gen(function* () {
 				const actor = yield* CurrentUser.Context
-				const member = yield* organizationMemberRepo
-					.findByOrgAndUser(organizationId, actor.id)
-					.pipe(Effect.orDie)
+				const member = yield* organizationMemberRepo.findByOrgAndUser(organizationId, actor.id)
 
 				if (Option.isNone(member) || member.value.role !== "owner") {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
@@ -117,7 +115,7 @@ export class OrgResolver extends Context.Service<OrgResolver>()("OrgResolver", {
 		 */
 		const fromChannel = (channelId: ChannelId, scope: ApiScope, entity: string, action: string) =>
 			Effect.gen(function* () {
-				const channel = yield* channelRepo.findById(channelId).pipe(Effect.orDie)
+				const channel = yield* channelRepo.findById(channelId)
 				if (Option.isNone(channel)) {
 					return yield* Effect.fail(
 						new PermissionError({ message: `Channel not found: ${channelId}` }),
@@ -138,7 +136,7 @@ export class OrgResolver extends Context.Service<OrgResolver>()("OrgResolver", {
 		) =>
 			Effect.gen(function* () {
 				const actor = yield* CurrentUser.Context
-				const channel = yield* channelRepo.findById(channelId).pipe(Effect.orDie)
+				const channel = yield* channelRepo.findById(channelId)
 				if (Option.isNone(channel)) {
 					return yield* Effect.fail(
 						new PermissionError({ message: `Channel not found: ${channelId}` }),
@@ -146,9 +144,7 @@ export class OrgResolver extends Context.Service<OrgResolver>()("OrgResolver", {
 				}
 
 				const ch = channel.value
-				const orgMember = yield* organizationMemberRepo
-					.findByOrgAndUser(ch.organizationId, actor.id)
-					.pipe(Effect.orDie)
+				const orgMember = yield* organizationMemberRepo.findByOrgAndUser(ch.organizationId, actor.id)
 
 				if (Option.isNone(orgMember)) {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
@@ -177,7 +173,7 @@ export class OrgResolver extends Context.Service<OrgResolver>()("OrgResolver", {
 		 */
 		const fromMessage = (messageId: MessageId, scope: ApiScope, entity: string, action: string) =>
 			Effect.gen(function* () {
-				const message = yield* messageRepo.findById(messageId).pipe(Effect.orDie)
+				const message = yield* messageRepo.findById(messageId)
 				if (Option.isNone(message)) {
 					return yield* Effect.fail(
 						new PermissionError({ message: `Message not found: ${messageId}` }),
@@ -194,7 +190,7 @@ export class OrgResolver extends Context.Service<OrgResolver>()("OrgResolver", {
 			channel: { type: string; parentChannelId?: string | null; id: string; organizationId: string },
 			actor: CurrentUser.Schema,
 			orgMember: { role: string },
-		): Effect.Effect<boolean> =>
+		): Effect.Effect<boolean, DatabaseError> =>
 			Effect.gen(function* () {
 				if (channel.type === "public") {
 					return true
@@ -204,16 +200,18 @@ export class OrgResolver extends Context.Service<OrgResolver>()("OrgResolver", {
 					if (isAdminOrOwner(orgMember.role as OrganizationRole)) {
 						return true
 					}
-					const membership = yield* channelMemberRepo
-						.findByChannelAndUser(channel.id as ChannelId, actor.id)
-						.pipe(Effect.orDie)
+					const membership = yield* channelMemberRepo.findByChannelAndUser(
+						channel.id as ChannelId,
+						actor.id,
+					)
 					return Option.isSome(membership)
 				}
 
 				if (channel.type === "direct" || channel.type === "single") {
-					const membership = yield* channelMemberRepo
-						.findByChannelAndUser(channel.id as ChannelId, actor.id)
-						.pipe(Effect.orDie)
+					const membership = yield* channelMemberRepo.findByChannelAndUser(
+						channel.id as ChannelId,
+						actor.id,
+					)
 					return Option.isSome(membership)
 				}
 
@@ -221,9 +219,7 @@ export class OrgResolver extends Context.Service<OrgResolver>()("OrgResolver", {
 					if (!channel.parentChannelId) {
 						return false
 					}
-					const parentChannel = yield* channelRepo
-						.findById(channel.parentChannelId as ChannelId)
-						.pipe(Effect.orDie)
+					const parentChannel = yield* channelRepo.findById(channel.parentChannelId as ChannelId)
 
 					if (Option.isNone(parentChannel)) {
 						return false

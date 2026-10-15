@@ -3,7 +3,7 @@ import { Command } from "foldkit"
 import * as AsyncData from "foldkit/asyncData"
 import { modifyFields } from "foldkit/struct"
 import { failureMessage } from "~/lib/error-messages"
-import { errorToastOf, reasonToast, successToast } from "../../../data/actions"
+import { errorToastOf, successToast } from "../../../data/actions"
 import type { RouteOf } from "../../../route"
 import * as Interaction from "../../../ui/aria/interaction"
 import type { PageReturn, PageSubscriptionInput, Shared } from "../../contract"
@@ -161,7 +161,16 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 		}),
 		FailedDisconnect: ({ mountId, reason }) => ({
 			model: modifyFields(model, { disconnectingMountIds: (ids) => without(ids, mountId) }),
-			outMessage: PageOutMessage.RequestedToast({ toast: reasonToast(reason) }),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToastOf(
+					failureMessage(reason, {
+						NotFound: {
+							title: "Connection not found",
+							description: "This organization may already be disconnected.",
+						},
+					}),
+				),
+			}),
 		}),
 		GotShareModalMessage: ({ message: shareMessage }) => {
 			const next = ShareModal.update(model.share, shareMessage, {

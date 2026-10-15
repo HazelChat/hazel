@@ -45,31 +45,31 @@ export class MessageOutboxProcessor extends Context.Service<MessageOutboxProcess
 				switch (event.eventType) {
 					case "message_created":
 						yield* sideEffects.handleMessageCreated(
-							Schema.decodeUnknownSync(MessageCreatedPayloadSchema)(event.payload),
+							yield* Schema.decodeUnknownEffect(MessageCreatedPayloadSchema)(event.payload),
 							dedupeKey,
 						)
 						break
 					case "message_updated":
 						yield* sideEffects.handleMessageUpdated(
-							Schema.decodeUnknownSync(MessageUpdatedPayloadSchema)(event.payload),
+							yield* Schema.decodeUnknownEffect(MessageUpdatedPayloadSchema)(event.payload),
 							dedupeKey,
 						)
 						break
 					case "message_deleted":
 						yield* sideEffects.handleMessageDeleted(
-							Schema.decodeUnknownSync(MessageDeletedPayloadSchema)(event.payload),
+							yield* Schema.decodeUnknownEffect(MessageDeletedPayloadSchema)(event.payload),
 							dedupeKey,
 						)
 						break
 					case "reaction_created":
 						yield* sideEffects.handleReactionCreated(
-							Schema.decodeUnknownSync(ReactionCreatedPayloadSchema)(event.payload),
+							yield* Schema.decodeUnknownEffect(ReactionCreatedPayloadSchema)(event.payload),
 							dedupeKey,
 						)
 						break
 					case "reaction_deleted":
 						yield* sideEffects.handleReactionDeleted(
-							Schema.decodeUnknownSync(ReactionDeletedPayloadSchema)(event.payload),
+							yield* Schema.decodeUnknownEffect(ReactionDeletedPayloadSchema)(event.payload),
 							dedupeKey,
 						)
 						break

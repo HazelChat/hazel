@@ -10,7 +10,8 @@ import { Message } from "./message"
 import { type DirectoryMember, DmRequest, type DmRow, filterMembers, type Model } from "./model"
 import { init, update } from "./update"
 import { sharedDefaults } from "../test-shared"
-import { failureToastFixture } from "../../test/pages-fixtures"
+import { errorToast } from "../../data/actions"
+import { menuEntries } from "./model"
 
 // `ui/aria/interaction` names `document` when its module loads; the update loop never touches it.
 vi.hoisted(() => {
@@ -100,7 +101,7 @@ describe("org home directory", () => {
 		story(
 			pageUpdate,
 			given(withOpenMenu(grace)),
-			message(menuMessage(grace, Menu.Message.ClickedItem({ key: "copy-email" }))),
+			message(menuMessage(grace, Menu.Message.ClickedItem({ key: "copy-email", entries: menuEntries }))),
 			model((current) => expect(current.menus[grace]?.popup._tag).toBe("Closed")),
 			Command.resolve(CopyEmail, Message.SucceededCopyEmail({ email: "grace@hazel.test" })),
 			expectOutMessage(
@@ -167,8 +168,15 @@ describe("org home failures and guards", () => {
 			pageUpdate,
 			given(loaded()),
 			message(Message.PressedMessageMember({ userId: grace, name: "Grace Hopper" })),
-			Command.resolve(CreateDm, Message.FailedCreateDm({ toast: failureToastFixture })),
-			expectOutMessage(PageOutMessage.RequestedToast({ toast: { ...failureToastFixture, id: "home-create-dm" } })),
+			Command.resolve(CreateDm, Message.FailedCreateDm({ reason: "Offline" })),
+			expectOutMessage(
+				PageOutMessage.RequestedToast({
+					toast: {
+						...errorToast("Connection lost", "Check your internet connection and try again."),
+						id: "home-create-dm",
+					},
+				}),
+			),
 			model((current) => expect(current.dmRequest).toEqual(DmRequest.Idle())),
 		)
 	})
@@ -177,7 +185,7 @@ describe("org home failures and guards", () => {
 		story(
 			pageUpdate,
 			given(withOpenMenu(grace)),
-			message(menuMessage(grace, Menu.Message.ClickedItem({ key: "copy-email" }))),
+			message(menuMessage(grace, Menu.Message.ClickedItem({ key: "copy-email", entries: menuEntries }))),
 			Command.resolve(CopyEmail({ email: "grace@hazel.test" }), Message.FailedCopyEmail()),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({ toast: { intent: "error", title: "Failed to copy email", description: "Please try again" } }),
@@ -189,7 +197,7 @@ describe("org home failures and guards", () => {
 		story(
 			pageUpdate,
 			given(withOpenMenu(grace)),
-			message(menuMessage(grace, Menu.Message.ClickedItem({ key: "message" }))),
+			message(menuMessage(grace, Menu.Message.ClickedItem({ key: "message", entries: menuEntries }))),
 			Command.expectHas(CreateDm({ organizationId, userId: grace, name: "Grace Hopper" })),
 			Command.resolve(CreateDm, Message.SucceededCreateDm({ channelId, name: "Grace Hopper" })),
 		)

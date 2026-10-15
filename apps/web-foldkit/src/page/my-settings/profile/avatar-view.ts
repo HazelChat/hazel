@@ -79,7 +79,6 @@ export const profilePictureUpload = (
 					h.Class(
 						"rounded-xl focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
 					),
-					h.DataAttribute("rac", ""),
 					...(isUploading
 						? [h.DataAttribute("disabled", "true")]
 						: DropZone.zoneAttributes(h, model.dropZone, toDropZoneMessage, (files) =>
@@ -167,7 +166,6 @@ export const profilePictureUpload = (
 						h.Type("file"),
 						h.Attribute("accept", ALLOWED_AVATAR_TYPES.join(",")),
 						h.Class(""),
-						h.DataAttribute("rac", ""),
 						h.Style({ display: "none" }),
 						h.OnFileChange((files) => Message.SelectedAvatarFiles({ files })),
 					]),

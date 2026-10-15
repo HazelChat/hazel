@@ -21,9 +21,9 @@ const items = [
 	item("today", "Today"),
 	item("week", "This week"),
 ]
-const select = init({ id: "clear", items })
-const triggerKey = (key: string) => message(Message.PressedTriggerKey({ key }))
-const listKey = (key: string, isModified = false) => message(Message.PressedListKey({ key, isModified }))
+const select = init({ id: "clear" })
+const triggerKey = (key: string) => message(Message.PressedTriggerKey({ key, items: items }))
+const listKey = (key: string, isModified = false) => message(Message.PressedListKey({ key, isModified, items: items }))
 const focusOf = (next: Model) => (next.popup._tag === "Open" ? next.popup.focusedKey : Option.none())
 const searchOf = (next: Model) => (next.popup._tag === "Open" ? next.popup.search : "")
 const resolveFocus = Command.resolve(FocusSelectElement, Message.CompletedFocusElement())
@@ -55,7 +55,7 @@ describe("select story", () => {
 	test("opening focuses the selected option whatever the key", () => {
 		story(
 			update,
-			given(init({ id: "clear", items, selectedKey: "today" })),
+			given(init({ id: "clear", selectedKey: "today" })),
 			triggerKey("ArrowUp"),
 			model((next) => expect(focusOf(next)).toEqual(Option.some("today"))),
 		)
@@ -64,7 +64,7 @@ describe("select story", () => {
 	test("a disabled select does not open from a key or a press", () => {
 		story(
 			update,
-			given(init({ id: "clear", items, isDisabled: true })),
+			given(init({ id: "clear", isDisabled: true })),
 			triggerKey("Enter"),
 			message(Message.PressedTrigger({ pointerType: "mouse" })),
 			model((next) => expect(next.popup._tag).toBe("Closed")),
@@ -88,7 +88,7 @@ describe("select story", () => {
 	test("ArrowRight on the closed trigger selects the next option without opening", () => {
 		story(
 			update,
-			given(init({ id: "clear", items, selectedKey: "30m" })),
+			given(init({ id: "clear", selectedKey: "30m" })),
 			triggerKey("ArrowRight"),
 			expectOutMessage(OutMessage.ChangedSelection({ key: "today" })),
 			model((next) => {
@@ -104,7 +104,7 @@ describe("select story", () => {
 	test("ArrowRight on the last option keeps the selection and reports nothing", () => {
 		story(
 			update,
-			given(init({ id: "clear", items, selectedKey: "week" })),
+			given(init({ id: "clear", selectedKey: "week" })),
 			triggerKey("ArrowRight"),
 			expectNoOutMessage(),
 		)
@@ -210,14 +210,14 @@ describe("select story", () => {
 		story(
 			update,
 			given(openOn("never")),
-			message(Message.HoveredOption({ key: "1h" })),
+			message(Message.HoveredOption({ key: "1h", items: items })),
 			Command.expectNone(),
 			model((next) => expect(focusOf(next)).toEqual(Option.some("never"))),
-			message(Message.ClickedOption({ key: "1h" })),
+			message(Message.ClickedOption({ key: "1h", items: items })),
 			expectNoOutMessage(),
-			message(Message.HoveredOption({ key: "today" })),
+			message(Message.HoveredOption({ key: "today", items: items })),
 			resolveFocus,
-			message(Message.ClickedOption({ key: "today" })),
+			message(Message.ClickedOption({ key: "today", items: items })),
 			expectOutMessage(OutMessage.ChangedSelection({ key: "today" })),
 		)
 	})

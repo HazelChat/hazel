@@ -1,6 +1,6 @@
 import { Database, PG, schema } from "@hazel/db"
-import { WorkflowInitializationError } from "@hazel/domain"
-import { Context, Array, Config, Effect, Layer, Option } from "effect"
+import { WorkflowInitializationError, WorkflowServiceUnavailableError } from "@hazel/domain"
+import { Array, Cause, Config, Context, Effect, Exit, Layer, Option } from "effect"
 import type {
 	MessageCreatedPayload,
 	MessageDeletedPayload,
@@ -8,10 +8,15 @@ import type {
 	ReactionCreatedPayload,
 	ReactionDeletedPayload,
 } from "@hazel/backend-core"
-import { formatError } from "../lib/format-error"
 import { DiscordSyncWorker, DiscordSyncWorkerLayer } from "./chat-sync/discord-sync-worker"
 import { makeClusterClient } from "../lib/cluster-client"
 
+/**
+ * The outbox handlers for message and reaction events. A handler that fails makes the outbox
+ * retry the event with backoff, so every failure that may succeed later (database blips, the
+ * cluster or Discord being unreachable) propagates. Retries are safe: Discord deliveries are
+ * deduped by their receipts and the workflows by their idempotency keys.
+ */
 export class MessageSideEffectService extends Context.Service<MessageSideEffectService>()(
 	"MessageSideEffectService",
 	{
@@ -21,17 +26,16 @@ export class MessageSideEffectService extends Context.Service<MessageSideEffectS
 			const clusterUrl = yield* Config.String("CLUSTER_URL")
 			const client = yield* makeClusterClient(clusterUrl)
 
+			/** Fails rather than guessing: a guess of "none" would echo bot messages back to Discord. */
 			const resolveIntegrationBotUserId = Effect.fn(
 				"MessageSideEffectService.resolveIntegrationBotUserId",
 			)(function* () {
-				const integrationBot = yield* db
-					.first(
-						PG.from(schema.usersTable)
-							.select("id")
-							.where(($) => [$.externalId.eq("integration-bot-discord"), $.deletedAt.isNull()])
-							.limit(1),
-					)
-					.pipe(Effect.catchTag("DatabaseError", () => Effect.succeed(Option.none())))
+				const integrationBot = yield* db.first(
+					PG.from(schema.usersTable)
+						.select("id")
+						.where(($) => [$.externalId.eq("integration-bot-discord"), $.deletedAt.isNull()])
+						.limit(1),
+				)
 
 				return Option.getOrNull(Option.map(integrationBot, (row) => row.id))
 			})
@@ -39,42 +43,20 @@ export class MessageSideEffectService extends Context.Service<MessageSideEffectS
 			const handleMessageCreated = Effect.fn("MessageSideEffectService.handleMessageCreated")(
 				function* (payload: MessageCreatedPayload, dedupeKey: string) {
 					const integrationBotUserId = yield* resolveIntegrationBotUserId()
-					if (payload.authorId !== integrationBotUserId) {
-						yield* discordSyncWorker
-							.syncHazelMessageCreateToAllConnections(payload.messageId, dedupeKey)
-							.pipe(
-								Effect.catch((error) =>
-									Effect.logWarning("Failed to sync outbox message create to Discord", {
-										messageId: payload.messageId,
-										channelId: payload.channelId,
-										error: formatError(error),
-									}),
-								),
-							)
-					} else {
-						yield* Effect.logDebug("Skipping outbox message create from integration bot", {
-							messageId: payload.messageId,
-							channelId: payload.channelId,
-						})
-					}
+					// Settled now, failed last: a Discord outage must not hold back notifications.
+					const discordSync =
+						payload.authorId === integrationBotUserId
+							? Exit.void
+							: yield* discordSyncWorker
+									.syncHazelMessageCreateToAllConnections(payload.messageId, dedupeKey)
+									.pipe(Effect.asVoid, Effect.exit)
 
-					const channelResult = yield* db
-						.run(
-							PG.from(schema.channelsTable)
-								.select("type", "name")
-								.where(($) => [$.id.eq(payload.channelId)])
-								.limit(1),
-						)
-						.pipe(
-							Effect.catchTag("DatabaseError", (err) =>
-								Effect.fail(
-									new WorkflowInitializationError({
-										message: "Failed to query channel type",
-										cause: err.message,
-									}),
-								),
-							),
-						)
+					const channelResult = yield* db.run(
+						PG.from(schema.channelsTable)
+							.select("type", "name")
+							.where(($) => [$.id.eq(payload.channelId)])
+							.limit(1),
+					)
 
 					const channelType = Array.head(channelResult).pipe(
 						Option.map((row) => row.type),
@@ -93,147 +75,141 @@ export class MessageSideEffectService extends Context.Service<MessageSideEffectS
 							},
 						})
 						.pipe(
-							Effect.tapError((err) =>
-								Effect.logError("MessageNotificationWorkflow dispatch failed", {
-									messageId: payload.messageId,
-									channelId: payload.channelId,
-									errorTag:
-										typeof err === "object" && err && "_tag" in err
-											? (err as { _tag: string })._tag
-											: "unknown",
-									error: formatError(err),
-								}),
-							),
-							Effect.catch((err) =>
-								Effect.fail(
-									new WorkflowInitializationError({
-										message: "Failed to execute notification workflow",
-										cause: formatError(err),
-									}),
-								),
-							),
+							Effect.catchTags({
+								HttpClientError: (cause) =>
+									Effect.fail(
+										new WorkflowServiceUnavailableError({
+											message: "Cluster unreachable for the notification workflow",
+											cause,
+										}),
+									),
+								// The workflow ran and failed; its result is stored under the message id,
+								// so a retry would get the same failure back.
+								GetChannelMembersError: (cause) =>
+									Effect.logError("MessageNotificationWorkflow failed", Cause.fail(cause)),
+								CreateNotificationError: (cause) =>
+									Effect.logError("MessageNotificationWorkflow failed", Cause.fail(cause)),
+								SchemaError: (cause) =>
+									Effect.fail(
+										new WorkflowInitializationError({
+											message: "Failed to execute notification workflow",
+											cause,
+										}),
+									),
+							}),
 						)
 
-					if (channelType !== "thread") {
-						return
+					if (channelType === "thread") {
+						yield* nameThreadIfDue(payload, Array.head(channelResult))
 					}
 
-					const messageCountResult = yield* db
-						.run(
-							PG.from(schema.messagesTable)
-								.select(() => ({ count: PG.count() }))
-								.where(($) => [$.channelId.eq(payload.channelId), $.deletedAt.isNull()]),
-						)
-						.pipe(Effect.catchTag("DatabaseError", () => Effect.succeed([{ count: 0 }])))
-
-					const count = Array.head(messageCountResult).pipe(
-						Option.map((r) => r.count),
-						Option.getOrElse(() => 0),
-					)
-					const channelName = Array.head(channelResult).pipe(
-						Option.map((r) => r.name),
-						Option.getOrNull,
-					)
-					if (count <= 3 || channelName !== "Thread") {
-						return
-					}
-
-					const originalMessage = yield* db
-						.first(
-							PG.from(schema.messagesTable)
-								.select("id")
-								.where(($) => [$.threadChannelId.eq(payload.channelId)])
-								.limit(1),
-						)
-						.pipe(Effect.catchTag("DatabaseError", () => Effect.succeed(Option.none())))
-					if (Option.isNone(originalMessage)) {
-						return
-					}
-
-					yield* client.workflows
-						.ThreadNamingWorkflow({
-							payload: {
-								threadChannelId: payload.channelId,
-								originalMessageId: originalMessage.value.id,
-							},
-						})
-						.pipe(
-							Effect.tapError((err) =>
-								Effect.logError("Failed to execute thread naming workflow", {
-									threadChannelId: payload.channelId,
-									error: formatError(err),
-								}),
-							),
-							Effect.catch(() => Effect.void),
-						)
+					yield* discordSync
 				},
 			)
 
+			const nameThreadIfDue = Effect.fn("MessageSideEffectService.nameThreadIfDue")(function* (
+				payload: MessageCreatedPayload,
+				channel: Option.Option<{ name: string }>,
+			) {
+				const messageCountResult = yield* db.run(
+					PG.from(schema.messagesTable)
+						.select(() => ({ count: PG.count() }))
+						.where(($) => [$.channelId.eq(payload.channelId), $.deletedAt.isNull()]),
+				)
+
+				const count = Array.head(messageCountResult).pipe(
+					Option.map((r) => r.count),
+					Option.getOrElse(() => 0),
+				)
+				const channelName = Option.getOrNull(Option.map(channel, (row) => row.name))
+				if (count <= 3 || channelName !== "Thread") {
+					return
+				}
+
+				const originalMessage = yield* db.first(
+					PG.from(schema.messagesTable)
+						.select("id")
+						.where(($) => [$.threadChannelId.eq(payload.channelId)])
+						.limit(1),
+				)
+				if (Option.isNone(originalMessage)) {
+					return
+				}
+
+				// Naming is best-effort: a failed run is stored under the thread's idempotency key, so
+				// only an unreachable cluster is worth a retry.
+				const logNamingFailure = (cause: unknown) =>
+					Effect.logWarning("ThreadNamingWorkflow failed", {
+						threadChannelId: payload.channelId,
+						cause: Cause.pretty(Cause.fail(cause)),
+					})
+
+				yield* client.workflows
+					.ThreadNamingWorkflow({
+						payload: {
+							threadChannelId: payload.channelId,
+							originalMessageId: originalMessage.value.id,
+						},
+					})
+					.pipe(
+						Effect.catchTags({
+							HttpClientError: (cause) =>
+								Effect.fail(
+									new WorkflowServiceUnavailableError({
+										message: "Cluster unreachable for the thread naming workflow",
+										cause,
+									}),
+								),
+							ThreadChannelNotFoundError: logNamingFailure,
+							OriginalMessageNotFoundError: logNamingFailure,
+							ThreadContextQueryError: logNamingFailure,
+							AIProviderUnavailableError: logNamingFailure,
+							AIRateLimitError: logNamingFailure,
+							AIResponseParseError: logNamingFailure,
+							ThreadNameUpdateError: logNamingFailure,
+							SchemaError: logNamingFailure,
+						}),
+					)
+			})
+
 			const handleMessageUpdated = Effect.fn("MessageSideEffectService.handleMessageUpdated")(
 				function* (payload: MessageUpdatedPayload, dedupeKey: string) {
-					yield* discordSyncWorker
-						.syncHazelMessageUpdateToAllConnections(payload.messageId, dedupeKey)
-						.pipe(
-							Effect.catch((error) =>
-								Effect.logWarning("Failed to sync outbox message update to Discord", {
-									messageId: payload.messageId,
-									error: formatError(error),
-								}),
-							),
-						)
+					yield* discordSyncWorker.syncHazelMessageUpdateToAllConnections(
+						payload.messageId,
+						dedupeKey,
+					)
 				},
 			)
 
 			const handleMessageDeleted = Effect.fn("MessageSideEffectService.handleMessageDeleted")(
 				function* (payload: MessageDeletedPayload, dedupeKey: string) {
-					yield* discordSyncWorker
-						.syncHazelMessageDeleteToAllConnections(payload.messageId, dedupeKey)
-						.pipe(
-							Effect.catch((error) =>
-								Effect.logWarning("Failed to sync outbox message delete to Discord", {
-									messageId: payload.messageId,
-									error: formatError(error),
-								}),
-							),
-						)
+					yield* discordSyncWorker.syncHazelMessageDeleteToAllConnections(
+						payload.messageId,
+						dedupeKey,
+					)
 				},
 			)
 
 			const handleReactionCreated = Effect.fn("MessageSideEffectService.handleReactionCreated")(
 				function* (payload: ReactionCreatedPayload, dedupeKey: string) {
-					yield* discordSyncWorker
-						.syncHazelReactionCreateToAllConnections(payload.reactionId, dedupeKey)
-						.pipe(
-							Effect.catch((error) =>
-								Effect.logWarning("Failed to sync outbox reaction create to Discord", {
-									reactionId: payload.reactionId,
-									error: formatError(error),
-								}),
-							),
-						)
+					yield* discordSyncWorker.syncHazelReactionCreateToAllConnections(
+						payload.reactionId,
+						dedupeKey,
+					)
 				},
 			)
 
 			const handleReactionDeleted = Effect.fn("MessageSideEffectService.handleReactionDeleted")(
 				function* (payload: ReactionDeletedPayload, dedupeKey: string) {
-					yield* discordSyncWorker
-						.syncHazelReactionDeleteToAllConnections(
-							{
-								hazelChannelId: payload.hazelChannelId,
-								hazelMessageId: payload.hazelMessageId,
-								emoji: payload.emoji,
-								userId: payload.userId,
-							},
-							dedupeKey,
-						)
-						.pipe(
-							Effect.catch((error) =>
-								Effect.logWarning("Failed to sync outbox reaction delete to Discord", {
-									hazelMessageId: payload.hazelMessageId,
-									error: formatError(error),
-								}),
-							),
-						)
+					yield* discordSyncWorker.syncHazelReactionDeleteToAllConnections(
+						{
+							hazelChannelId: payload.hazelChannelId,
+							hazelMessageId: payload.hazelMessageId,
+							emoji: payload.emoji,
+							userId: payload.userId,
+						},
+						dedupeKey,
+					)
 				},
 			)
 

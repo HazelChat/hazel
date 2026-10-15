@@ -76,6 +76,9 @@ export const ConnectApiKey = Command.define("ConnectApiKey", {
 					Effect.succeed(Message.FailedConnectApiKey({ reason: "InvalidApiKey" })),
 				UnsupportedProviderError: () =>
 					Effect.succeed(Message.FailedConnectApiKey({ reason: "UnsupportedProvider" })),
+				// The provider's API is down (503): the shared "unavailable" copy fits.
+				IntegrationUnavailableError: () =>
+					Effect.succeed(Message.FailedConnectApiKey({ reason: "Unavailable" })),
 			}),
 			catchCommon((reason) => Message.FailedConnectApiKey({ reason })),
 		),

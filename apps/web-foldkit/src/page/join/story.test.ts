@@ -12,7 +12,7 @@ import { init, update } from "./update"
 
 const route = AppRoute.Join.make({ slug: "hazel" })
 const organization = { name: "Hazel Labs", logoUrl: null, memberCount: 3 }
-const loaded: Model = { slug: "hazel", lookup: Lookup.Loaded({ organization }), isJoining: false }
+const loaded: Model = { slug: "hazel", lookup: Lookup.Found({ organization }), isJoining: false }
 
 describe("join workspace", () => {
 	test("looks the slug up on load; a missing workspace reads as not found", () => {
@@ -22,16 +22,21 @@ describe("join workspace", () => {
 			update,
 			given(started.model),
 			message(Message.SucceededFetchOrganization({ organization: null })),
-			model((current) => expect(current.lookup).toEqual(Lookup.Loaded({ organization: null }))),
+			model((current) => expect(current.lookup).toEqual(Lookup.NotFound())),
 		)
 	})
 
-	test("a failed lookup is recorded apart from a missing workspace", () => {
+	test("a failed lookup is recorded apart from a missing workspace, and can be retried", () => {
 		story(
 			update,
 			given(init(route).model),
-			message(Message.FailedFetchOrganization()),
-			model((current) => expect(current.lookup).toEqual(Lookup.Failed())),
+			message(Message.FailedFetchOrganization({ reason: "Offline" })),
+			model((current) => expect(current.lookup).toEqual(Lookup.Failed({ reason: "Offline" }))),
+			message(Message.ClickedRetryLookup()),
+			Command.expectExact(FetchPublicOrganization({ slug: "hazel" })),
+			model((current) => expect(current.lookup).toEqual(Lookup.Loading())),
+			Command.resolve(FetchPublicOrganization, Message.SucceededFetchOrganization({ organization })),
+			model((current) => expect(current.lookup).toEqual(Lookup.Found({ organization }))),
 		)
 	})
 
@@ -66,13 +71,13 @@ describe("join workspace", () => {
 		)
 	})
 
-	test("a rejected join shows the server's reason and unlocks the button", () => {
+	test("a rejected join says why and unlocks the button", () => {
 		const failure = errorToast("Already a member", "You're already a member of this workspace.")
 		story(
 			update,
 			given(loaded),
 			message(Message.ClickedJoin()),
-			Command.resolve(JoinWorkspace, Message.FailedJoinWorkspace({ toast: failure })),
+			Command.resolve(JoinWorkspace, Message.FailedJoinWorkspace({ reason: "AlreadyMember" })),
 			expectOutMessage(PageOutMessage.RequestedToast({ toast: failure })),
 			model((current) => expect(current.isJoining).toBe(false)),
 		)

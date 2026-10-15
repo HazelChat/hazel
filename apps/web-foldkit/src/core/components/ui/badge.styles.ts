@@ -1,6 +1,5 @@
 import { tv } from "tailwind-variants"
 
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const badgeStyles = tv({
 	base: [
 		"inline-flex items-center font-medium forced-colors:outline",

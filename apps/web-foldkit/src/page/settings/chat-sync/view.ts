@@ -22,7 +22,7 @@ import { discordLogo, slackLogo } from "./brand-icons"
 import { addConnectionModal } from "./add-connection-view"
 import { confirmDialog } from "./confirm-dialog"
 import { formatSyncedAt } from "./rpc"
-import { type Connection, Message, type Model, STATUS_CONFIG } from "./model"
+import { addMenuEntries, type Connection, Message, type Model, STATUS_CONFIG } from "./model"
 
 /** Port of `settings/chat-sync/index.tsx`. */
 
@@ -70,12 +70,12 @@ const addConnectionDropdown = (
 		model: menu,
 		view: menuView,
 		viewInputs: {
+			entries: addMenuEntries,
 			toTrigger: (attributes: ReadonlyArray<ChildAttribute>, overlay: Html) =>
 				h.button(
 					[
 						...attributes,
 						h.Class(menuTriggerClassName(buttonStyles({ intent: "primary", size: "md" }))),
-						h.Attribute("data-rac", ""),
 						h.Attribute("data-react-aria-pressable", "true"),
 						h.Attribute("data-slot", "menu-trigger"),
 						h.Attribute("tabindex", "0"),
@@ -193,6 +193,7 @@ const connectionCard = (h: HtmlBuilder<Message>, connection: Connection): Html =
 										"rounded-sm p-1 text-muted-fg opacity-0 transition-all hover:bg-danger/10 hover:text-danger group-hover:opacity-100",
 									),
 									h.Title("Delete connection"),
+									h.AriaLabel("Delete connection"),
 									h.Type("button"),
 									h.OnClick(
 										Message.ClickedDeleteConnection({

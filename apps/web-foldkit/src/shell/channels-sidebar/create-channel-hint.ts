@@ -29,7 +29,7 @@ export const createChannelHint = <M>(h: HtmlBuilder<M>, onDismiss: Attribute<M>)
 					),
 				],
 			),
-			button(h, { intent: "plain", size: "sq-xs", className: "size-5", attributes: [onDismiss] }, [
+			button(h, { intent: "plain", size: "sq-xs", className: "size-5", attributes: [h.AriaLabel("Dismiss"), onDismiss] }, [
 				IconClose(h, { className: "size-3" }),
 			]),
 		],

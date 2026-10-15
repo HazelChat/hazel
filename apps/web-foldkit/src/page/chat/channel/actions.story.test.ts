@@ -12,6 +12,7 @@ import {
 	CreateThread,
 	GenerateThreadChannelId,
 	GenerateThreadName,
+	JoinChannel,
 	PinMessage,
 	ToggleReaction,
 	UnpinMessage,
@@ -33,7 +34,9 @@ import * as Write from "./write"
 
 vi.hoisted(() => {
 	if (!("document" in globalThis))
-		Object.assign(globalThis, { document: Object.assign(new EventTarget(), { documentElement: { style: {} } }) })
+		Object.assign(globalThis, {
+			document: Object.assign(new EventTarget(), { documentElement: { style: {} } }),
+		})
 })
 
 const overlays = (inner: Overlays.Message) => Message.GotOverlaysMessage({ message: inner })
@@ -46,8 +49,47 @@ describe("reactions", () => {
 			updateWithShared,
 			given(loadedModel()),
 			message(overlays(Overlays.Message.ClickedReaction({ messageId: graceMessageId, emoji: "👍" }))),
-			Command.expectExact(ToggleReaction({ messageId: graceMessageId, channelId, emoji: "👍", userId: ada })),
-			Command.resolve(ToggleReaction, ActionMessage.CompletedToggleReaction({ toast: null })),
+			Command.expectExact(
+				ToggleReaction({ messageId: graceMessageId, channelId, emoji: "👍", userId: ada }),
+			),
+			Command.resolve(ToggleReaction, ActionMessage.SucceededToggleReaction()),
+		)
+	})
+})
+
+describe("action results", () => {
+	const action = (inner: ActionMessage) => Message.GotActionMessage({ message: inner })
+
+	test("pin results toast; a failure names the reason, never server text", () => {
+		story(
+			updateWithShared,
+			given(loadedModel()),
+			message(action(ActionMessage.SucceededPinMessage())),
+			expectOutMessage(
+				PageOutMessage.RequestedToast({
+					toast: { intent: "success", title: "Message pinned", description: null },
+				}),
+			),
+			message(action(ActionMessage.FailedUnpinMessage({ reason: "PinNotFound" }))),
+			expectOutMessage(
+				PageOutMessage.RequestedToast({
+					toast: {
+						intent: "error",
+						title: "Pin not found",
+						description: "This message may have already been unpinned.",
+					},
+				}),
+			),
+			message(action(ActionMessage.FailedToggleReaction({ reason: "RateLimited" }))),
+			expectOutMessage(
+				PageOutMessage.RequestedToast({
+					toast: {
+						intent: "error",
+						title: "Rate limit exceeded",
+						description: "Please wait before trying again.",
+					},
+				}),
+			),
 		)
 	})
 })
@@ -58,17 +100,20 @@ describe("message actions", () => {
 			updateWithShared,
 			given(loadedModel()),
 			message(overlays(Overlays.Message.ClickedDelete({ messageId: adaMessageId }))),
-			expectOutMessage(PageOutMessage.RequestedModal({ modal: { _tag: "DeleteMessage", messageId: adaMessageId } })),
+			expectOutMessage(
+				PageOutMessage.RequestedModal({ modal: { _tag: "DeleteMessage", messageId: adaMessageId } }),
+			),
 			Command.expectNone(),
 		)
 	})
 
-	test("Copy writes the content and toasts", () => {
+	test("Copy writes the content, then toasts once the clipboard took it", () => {
 		story(
 			updateWithShared,
 			given(loadedModel()),
 			message(overlays(Overlays.Message.ClickedCopy({ messageId: graceMessageId }))),
-			Command.expectExact(CopyText({ text: "Launch window confirmed" })),
+			Command.expectExact(CopyText({ text: "Launch window confirmed", content: "MessageText" })),
+			Command.resolve(CopyText, ActionMessage.SucceededCopyText({ content: "MessageText" })),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
 					toast: {
@@ -78,8 +123,33 @@ describe("message actions", () => {
 					},
 				}),
 			),
-			Command.resolve(CopyText, ActionMessage.CompletedCopyText()),
 		)
+	})
+
+	test("a refused clipboard reports the failure instead of a success", () => {
+		story(
+			updateWithShared,
+			given(loadedModel()),
+			message(overlays(Overlays.Message.ClickedCopy({ messageId: graceMessageId }))),
+			Command.resolve(CopyText, ActionMessage.FailedCopyText({ reason: "ClipboardDenied" })),
+			expectOutMessage(
+				PageOutMessage.RequestedToast({
+					toast: {
+						intent: "error",
+						title: "Couldn't copy",
+						description: "Your browser blocked access to the clipboard.",
+					},
+				}),
+			),
+		)
+	})
+
+	test("the context menu's Add Reaction opens the picker modal through the Modal API", () => {
+		const opened = Write.handleOverlaysOut(loadedModel(), out("add-reaction"))
+		expect(Overlays.reactionModalOf(opened.model.overlays)).toMatchObject({
+			messageId: graceMessageId,
+			modal: { id: "reaction-picker-modal", isOpen: true },
+		})
 	})
 
 	test("Pin sends `pinnedMessage.create`; a pinned message unpins by its pin id", () => {
@@ -117,13 +187,21 @@ describe("message actions", () => {
 		story(
 			updateWithShared,
 			given(start.model),
-			message(Message.GotActionMessage({
-				message: ActionMessage.CompletedGenerateThreadChannelId({ messageId: graceMessageId, threadChannelId }),
-			})),
+			message(
+				Message.GotActionMessage({
+					message: ActionMessage.CompletedGenerateThreadChannelId({
+						messageId: graceMessageId,
+						threadChannelId,
+					}),
+				}),
+			),
 			model((current) => {
-				expect(current.overlays.thread).toEqual({ threadChannelId, messageId: graceMessageId })
-				expect(current.pendingThreadChannelId).toBe(threadChannelId)
-				expect(current.threadDraft?.composer.placeholder).toBe("Reply in thread...")
+				expect(current.threadPanel).toMatchObject({
+					threadChannelId,
+					messageId: graceMessageId,
+					creation: "Creating",
+				})
+				expect(current.threadPanel?.draft.composer.placeholder).toBe("Reply in thread...")
 			}),
 			Command.expectExact(
 				CreateThread({
@@ -135,14 +213,86 @@ describe("message actions", () => {
 				}),
 			),
 			Command.resolve(CreateThread, ActionMessage.SucceededCreateThread({ threadChannelId })),
-			model((current) => expect(current.pendingThreadChannelId).toBeNull()),
+			model((current) => expect(current.threadPanel?.creation).toBe("Created")),
 			message(Message.ClickedGenerateThreadName()),
 			Command.expectExact(GenerateThreadName({ channelId: threadChannelId })),
-			Command.resolve(GenerateThreadName, ActionMessage.CompletedGenerateThreadName({ threadChannelId, toast: null })),
+			model((current) => expect(current.threadPanel?.isNaming).toBe(true)),
+			Command.resolve(
+				GenerateThreadName,
+				ActionMessage.SucceededGenerateThreadName({ threadChannelId }),
+			),
+			model((current) => expect(current.threadPanel?.isNaming).toBe(false)),
 			message(Message.ClickedRenameThread()),
-			expectOutMessage(PageOutMessage.RequestedModal({ modal: { _tag: "RenameThread", threadId: threadChannelId } })),
+			expectOutMessage(
+				PageOutMessage.RequestedModal({ modal: { _tag: "RenameThread", threadId: threadChannelId } }),
+			),
 		)
 		expect(start.commands?.map((command) => command.name)).toEqual([GenerateThreadChannelId.name])
+	})
+})
+
+describe("join banner", () => {
+	const notMember = (): Model => ({
+		...loadedModel(),
+		members: loadedModel().members?.filter((member) => member.userId !== ada) ?? null,
+	})
+
+	test("Join #channel runs `joinChannelAction` once; success toasts and ends the pending state", () => {
+		story(
+			updateWithShared,
+			given(notMember()),
+			message(Message.ClickedJoinChannel()),
+			Command.expectExact(JoinChannel({ channelId, userId: ada })),
+			model((current) => {
+				expect(current.isJoining).toBe(true)
+				// A second press while it runs sends nothing.
+				expect(updateWithShared(current, Message.ClickedJoinChannel()).commands ?? []).toEqual([])
+			}),
+			Command.resolve(JoinChannel, ActionMessage.SucceededJoinChannel()),
+			expectOutMessage(
+				PageOutMessage.RequestedToast({
+					toast: { intent: "success", title: "Successfully joined channel", description: null },
+				}),
+			),
+			model((current) => expect(current.isJoining).toBe(false)),
+		)
+	})
+
+	test("a failed join shows the reason's copy and lets the reader try again", () => {
+		story(
+			updateWithShared,
+			given(notMember()),
+			message(Message.ClickedJoinChannel()),
+			Command.resolve(JoinChannel, ActionMessage.FailedJoinChannel({ reason: "NotFound" })),
+			expectOutMessage(
+				PageOutMessage.RequestedToast({
+					toast: {
+						intent: "error",
+						title: "Channel not found",
+						description: "This channel may have been deleted.",
+					},
+				}),
+			),
+			model((current) => expect(current.isJoining).toBe(false)),
+		)
+	})
+})
+
+describe("navigation", () => {
+	test("a tab click and the mobile menu are raised from update", () => {
+		story(
+			updateWithShared,
+			given(loadedModel()),
+			message(Message.ClickedTab({ tab: "files" })),
+			expectOutMessage(
+				PageOutMessage.RequestedNavigation({
+					href: `/hazel/chat/${channelId}/files`,
+					replace: false,
+				}),
+			),
+			message(Message.ClickedMobileMenu()),
+			expectOutMessage(PageOutMessage.RequestedMobileSidebar()),
+		)
 	})
 })
 
@@ -152,17 +302,26 @@ describe("composer pickers", () => {
 		story(
 			updateWithShared,
 			given(loadedModel()),
-			message(Message.GotDraftMessage({ message: Draft.Message.SelectedEmoji({ emoji: "🎉", label: "party", imageUrl: null }) })),
+			message(
+				Message.GotDraftMessage({
+					message: Draft.Message.SelectedEmoji({ emoji: "🎉", label: "party", imageUrl: null }),
+				}),
+			),
 			Command.expectExact(EditorCommands.InsertEditorText({ editorId, text: "🎉" })),
 			Command.resolve(EditorCommands.InsertEditorText, Composer.Message.CompletedInsertEditorText()),
 			message(
 				Message.GotDraftMessage({
-					message: Draft.Message.SelectedEmoji({ emoji: "custom:shipit", label: "shipit", imageUrl: "/r2/shipit.png" }),
+					message: Draft.Message.SelectedEmoji({
+						emoji: "custom:shipit",
+						label: "shipit",
+						imageUrl: "/r2/shipit.png",
+					}),
 				}),
 			),
-			Command.expectExact(EditorCommands.InsertCustomEmoji({ editorId, name: "shipit", imageUrl: "/r2/shipit.png" })),
+			Command.expectExact(
+				EditorCommands.InsertCustomEmoji({ editorId, name: "shipit", imageUrl: "/r2/shipit.png" }),
+			),
 			Command.resolve(EditorCommands.InsertCustomEmoji, Composer.Message.CompletedInsertCustomEmoji()),
 		)
 	})
 })
-

@@ -21,6 +21,8 @@ export const UninstallBot = Command.define("UninstallBot", {
 			Effect.catchTags({
 				BotNotFoundError: () =>
 					Effect.succeed(Message.FailedUninstallBot({ botId, reason: "NotFound" })),
+				ActiveOrganizationRequiredError: () =>
+					Effect.succeed(Message.FailedUninstallBot({ botId, reason: "NoActiveOrganization" })),
 			}),
 			catchCommon((reason) => Message.FailedUninstallBot({ botId, reason })),
 		),
@@ -59,6 +61,10 @@ export const update = (model: Model, message: Message): Return =>
 						NotFound: {
 							title: "Application not found",
 							description: "This application may have already been uninstalled.",
+						},
+						NoActiveOrganization: {
+							title: "No workspace selected",
+							description: "Open a workspace and try again.",
 						},
 					}),
 				),

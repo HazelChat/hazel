@@ -162,7 +162,7 @@ const closedCropModal =
 		wasOpen && !model.cropModal.isOpen ? closeCrop(model) : { model }
 
 const foldTimezone = Update.foldChild({
-	update: ComboBox.update,
+	update: TimezoneSelect.update,
 	read: (model: Model) => Option.some(model.timezone),
 	write: (model: Model, timezone: ComboBox.Model): Model =>
 		modifyFields(model, { timezone: () => timezone }),

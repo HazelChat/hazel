@@ -27,7 +27,7 @@ export const DeclineFailure = Schema.Union([
 export type DeclineFailure = typeof DeclineFailure.Type
 
 /** Why accepting failed: the decline reasons, and the channel already being shared. */
-export const AcceptFailure = Schema.Union([Schema.Literal("AlreadyShared"), DeclineFailure])
+export const AcceptFailure = Schema.Union([Schema.Literals(["AlreadyShared", "ChannelNotFound"]), DeclineFailure])
 export type AcceptFailure = typeof AcceptFailure.Type
 
 export const Model = Schema.Struct({

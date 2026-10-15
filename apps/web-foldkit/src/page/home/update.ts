@@ -2,7 +2,8 @@ import type { ChannelId } from "@hazel/schema"
 import { Option } from "effect"
 import { Command } from "foldkit"
 import { modifyFields } from "foldkit/struct"
-import { errorToast, loadingToast, successToast } from "../../data/actions"
+import { failureMessage } from "~/lib/error-messages"
+import { errorToast, errorToastOf, loadingToast, successToast } from "../../data/actions"
 import type { ToastRequest } from "../../overlay/toasts"
 import * as Interaction from "../../ui/aria/interaction"
 import { AppRoute } from "../../route"
@@ -12,14 +13,23 @@ import { PageOutMessage, requestedOrgNavigation } from "../out-message"
 import { CopyEmail, CreateDm, FocusSearch } from "./commands"
 import { findExistingDmChannel } from "./dm"
 import { Message } from "./message"
-import { type DirectoryMember, DmRequest, type DmRow, menuEntries, menuIdOf, type Model } from "./model"
+import {
+	type DirectoryMember,
+	DmChannels,
+	DmRequest,
+	type DmRow,
+	loadedMembers,
+	Members,
+	menuIdOf,
+	type Model,
+} from "./model"
 
 type Return = PageReturn<Model, Message>
 
 export const init = (): Return => ({
 	model: {
-		members: null,
-		dmRows: null,
+		members: Members.Loading(),
+		dmChannels: DmChannels.Loading(),
 		dmRequest: DmRequest.Idle(),
 		searchQuery: "",
 		menus: {},
@@ -43,12 +53,12 @@ const reconcileMenus = (model: Model, members: ReadonlyArray<DirectoryMember>): 
 		members.map((member) => [
 			member.id,
 			model.menus[member.id] ??
-				Menu.init({ id: menuIdOf(member.id), entries: menuEntries, placement: "bottom end" }),
+				Menu.init({ id: menuIdOf(member.id), placement: "bottom end" }),
 		]),
 	)
 
 const memberByUserId = (model: Model, userId: string) =>
-	Option.fromNullishOr(model.members?.find((member) => member.id === userId))
+	Option.fromNullishOr(loadedMembers(model).find((member) => member.id === userId))
 
 const withDmRequest = (model: Model, dmRequest: DmRequest): Model =>
 	modifyFields(model, { dmRequest: () => dmRequest })
@@ -73,7 +83,10 @@ const openDm = (model: Model, shared: Shared, member: DirectoryMember, rows: Rea
 const requestDm = (model: Model, shared: Shared, member: DirectoryMember): Return => {
 	if (model.dmRequest._tag !== "Idle" || !shared.organization || !shared.currentUser) return { model }
 	const awaiting = withDmRequest(model, DmRequest.AwaitingChannels({ userId: member.id }))
-	return model.dmRows === null ? { model: awaiting } : openDm(awaiting, shared, member, model.dmRows)
+	return DmChannels.match(model.dmChannels, {
+		Loading: () => ({ model: awaiting }),
+		Loaded: ({ rows }) => openDm(awaiting, shared, member, rows),
+	})
 }
 
 const updateMenu = (
@@ -108,7 +121,7 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 	Message.match<Return>(message, {
 		UpdatedMembers: ({ members }) => ({
 			model: modifyFields(model, {
-				members: () => members,
+				members: () => Members.Loaded({ members }),
 				menus: () => reconcileMenus(model, members),
 			}),
 		}),
@@ -132,7 +145,7 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 				onSome: (member) => updateMenu(model, shared, member, menuMessage),
 			}),
 		UpdatedDmChannels: ({ rows }) => {
-			const next = modifyFields(model, { dmRows: () => rows })
+			const next = modifyFields(model, { dmChannels: () => DmChannels.Loaded({ rows }) })
 			const { dmRequest } = model
 			if (dmRequest._tag !== "AwaitingChannels") return { model: next }
 			return Option.match(memberByUserId(model, dmRequest.userId), {
@@ -147,9 +160,19 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 				id: DM_TOAST_ID,
 			}),
 		}),
-		FailedCreateDm: ({ toast: failure }) => ({
+		FailedCreateDm: ({ reason }) => ({
 			model: withDmRequest(model, DmRequest.Idle()),
-			outMessage: PageOutMessage.RequestedToast({ toast: { ...failure, id: DM_TOAST_ID } }),
+			outMessage: toast({
+				...errorToastOf(
+					failureMessage(reason, {
+						AlreadyExists: {
+							title: "You already have a conversation with them",
+							description: "It will appear in your messages in a moment.",
+						},
+					}),
+				),
+				id: DM_TOAST_ID,
+			}),
 		}),
 		SucceededCopyEmail: ({ email }) => ({
 			model,

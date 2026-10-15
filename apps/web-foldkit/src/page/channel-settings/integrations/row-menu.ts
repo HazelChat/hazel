@@ -5,6 +5,7 @@ import type * as Menu from "../../../ui/menu"
 import { menuLabel, view as menuView } from "../../../ui/menu-view"
 import { Message } from "./message"
 import type { RowKind } from "./model"
+import { rowEntries } from "./rows"
 
 /** The rows' `<Menu><Button intent="plain" size="sq-xs" />` and its items. */
 export const rowMenu = (
@@ -14,6 +15,8 @@ export const rowMenu = (
 		id: string
 		menu: Menu.Model | undefined
 		isEnabled: boolean
+		/** The toggle item is disabled while its request runs. */
+		isToggling: boolean
 		triggerClassName: string
 		labels: Readonly<{ enable: string; disable: string; remove: string }>
 	}>,
@@ -39,10 +42,16 @@ export const rowMenu = (
 		model: menu,
 		view: menuView,
 		viewInputs: {
+			entries: rowEntries(options.kind, options.isToggling),
 			toTrigger: (attributes: ReadonlyArray<ChildAttribute>, overlay: Html) =>
 				button(
 					h,
-					{ intent: "plain", size: "sq-xs", className: options.triggerClassName, attributes },
+					{
+						intent: "plain",
+						size: "sq-xs",
+						className: options.triggerClassName,
+						attributes: [h.AriaLabel("Subscription actions"), ...attributes],
+					},
 					[IconDotsVertical(h, { className: "size-4" }), overlay],
 				),
 			content,
