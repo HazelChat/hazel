@@ -49,7 +49,6 @@ const categoryChips = <M>(h: HtmlBuilder<M>, model: Model, toMessage: (message: 
 						category.query,
 						[
 							h.Attribute("type", "button"),
-							h.Attribute("data-rac", ""),
 							h.Attribute("data-react-aria-pressable", "true"),
 							h.Attribute("tabindex", "0"),
 							h.OnClick(toMessage(Message.ClickedCategory({ category: category.category }))),
@@ -78,7 +77,6 @@ const grid = <M>(h: HtmlBuilder<M>, model: Model, toMessage: (message: Message) 
 		[
 			h.Role("grid"),
 			h.Attribute("aria-label", "GIF results"),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-layout", "grid"),
 			h.Attribute("tabindex", "0"),
 			h.Class("flex-1 columns-2 gap-2 overflow-y-auto overflow-x-hidden px-3 scrollbar-thin relative"),
@@ -92,7 +90,6 @@ const grid = <M>(h: HtmlBuilder<M>, model: Model, toMessage: (message: Message) 
 							gif.slug,
 							[
 								h.Role("row"),
-								h.Attribute("data-rac", ""),
 								h.Attribute("tabindex", "-1"),
 								h.Class(
 									"relative mb-2 cursor-pointer break-inside-avoid overflow-hidden rounded-md bg-muted/60 outline-none transition-all hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary ",

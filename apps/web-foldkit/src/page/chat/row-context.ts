@@ -166,6 +166,7 @@ const buildOwnerContext = (h: H, model: Model, nowMs: number): RowContext<Messag
 						model: contextMenu.menu,
 						view: contextMenuView,
 						viewInputs: {
+							entries: Overlays.contextMenuEntries(factsOf(model), row.message.id),
 							toTrigger: render,
 							content: contextMenuContent(h, factsOf(model).isPinned(row.message.id)),
 							className: "min-w-56",

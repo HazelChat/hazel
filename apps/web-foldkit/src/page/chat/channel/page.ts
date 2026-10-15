@@ -388,7 +388,7 @@ export const update = (model: Model, message: Message, shared: Shared | null = n
 		GotListMessage: ({ message: listMessage }) =>
 			loadWhenNearEdge(liftList(model, MessageList.update(model.list, listMessage))),
 		GotOverlaysMessage: ({ message: overlaysMessage }) =>
-			liftOverlays(model, Overlays.update(model.overlays, overlaysMessage, factsOf(model))),
+			liftOverlays(model, Overlays.update(model.overlays, overlaysMessage)),
 		GotDraftMessage: ({ message: draftMessage }) =>
 			Write.updateDraft(model, "channel", draftMessage, shared),
 		GotThreadDraftMessage: ({ message: draftMessage }) =>

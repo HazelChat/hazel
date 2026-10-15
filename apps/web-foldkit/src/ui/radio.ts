@@ -7,14 +7,13 @@ import {
 	radioStyles,
 } from "~/components/ui/radio.styles"
 import * as Collection from "./aria/collection"
-import * as Interaction from "./aria/interaction"
 import { visuallyHiddenStyle } from "./checkbox"
 import * as Field from "./field"
 
 /**
- * Port of `components/ui/radio.tsx` (React Aria RadioGroup and Radio). Radios share the group id as
- * their `name`, so the browser's arrow-key navigation moves selection and focus like useRadioGroup.
- * Pressing a label prevents the native click, selects, and focuses the input (useRadio).
+ * A radio group of native radios. Radios share the group id as their `name`, so the browser's
+ * arrow keys move selection and focus. Pressing a label prevents the native click, selects, and
+ * focuses the input. Hover and the keyboard focus ring are native CSS on the label.
  */
 export interface RadioGroupOptions<Message> {
 	readonly id: string
@@ -23,7 +22,6 @@ export interface RadioGroupOptions<Message> {
 	readonly isDisabled?: boolean
 	readonly isInvalid?: boolean
 	readonly className?: string
-	readonly interaction?: Interaction.Wiring<Message>
 }
 
 export interface RadioGroupParts<Message> {
@@ -49,7 +47,6 @@ export const radioGroup = <Message>(
 	}
 	const isDisabled = options.isDisabled ?? false
 	const isInvalid = options.isInvalid ?? false
-	const interaction = options.interaction
 	const used = new Set<"label" | "description">()
 	const describedBy = (hasDescription: boolean) =>
 		[...(hasDescription ? [ids.description] : []), ...(isInvalid ? [ids.error] : [])].join(" ") ||
@@ -60,7 +57,6 @@ export const radioGroup = <Message>(
 		(value: string, children: string | Array<Html>, part: { readonly className?: string } = {}) => {
 			const id = `${options.id}-${value}`
 			const isSelected = options.value === value
-			const state = interaction ? Interaction.stateOf(interaction.model, id) : Interaction.idleState
 			const select = options.onChange?.(value)
 			const inputDescribedBy = describedBy(hasDescription)
 			// Roving tabindex: the selected radio, or every radio while nothing is selected.
@@ -72,22 +68,10 @@ export const radioGroup = <Message>(
 			return h.label(
 				[
 					h.Class(twMerge(twMerge(radioStyles), part.className)),
-					h.DataAttribute("rac", ""),
 					h.DataAttribute("react-aria-pressable", "true"),
 					...(isSelected ? [h.DataAttribute("selected", "true")] : []),
 					...(isDisabled ? [h.DataAttribute("disabled", "true")] : []),
 					...(isInvalid ? [h.DataAttribute("invalid", "true")] : []),
-					...(interaction
-						? [
-								...Interaction.handlers(h, interaction, id, {
-									isHoverDisabled: isDisabled,
-									isPressDisabled: isDisabled,
-									isFocusDisabled: true,
-								}),
-								...Interaction.stateAttributes(h, state),
-								...Interaction.pressStyleAttributes(h, interaction.model, id),
-							]
-						: []),
 					...(select === undefined || isDisabled
 						? []
 						: [
@@ -115,13 +99,6 @@ export const radioGroup = <Message>(
 									? []
 									: [h.AriaDescribedBy(inputDescribedBy)]),
 								h.Checked(isSelected),
-								...(interaction
-									? Interaction.handlers(h, interaction, id, {
-											isHoverDisabled: true,
-											isPressDisabled: true,
-											isFocusDisabled: isDisabled,
-										})
-									: []),
 								// Arrow keys check the next radio natively; the Model follows.
 								...(select === undefined ? [] : [h.OnChange(() => select)]),
 							]),
@@ -136,7 +113,6 @@ export const radioGroup = <Message>(
 									twMerge(
 										radioIndicatorStyles({
 											isSelected,
-											isFocusVisible: state.isFocusVisible,
 											isInvalid,
 										}),
 									),
@@ -169,7 +145,6 @@ export const radioGroup = <Message>(
 	return h.div(
 		[
 			h.Class(twMerge(twMerge(...radioGroupStyles), options.className)),
-			h.DataAttribute("rac", ""),
 			h.DataAttribute("slot", "control"),
 			h.DataAttribute("orientation", "vertical"),
 			h.Role("radiogroup"),

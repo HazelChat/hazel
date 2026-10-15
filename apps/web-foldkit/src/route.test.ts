@@ -27,7 +27,7 @@ const parse = (path: string): AppRoute =>
 		onSome: (url) => urlToAppRoute(url),
 	})
 
-/** Every legacy route (`bun run parity coverage`) and the Foldkit route it must resolve to. */
+/** Every legacy route and the Foldkit route it must resolve to. */
 const legacyRoutes: ReadonlyArray<readonly [string, AppRoute["_tag"]]> = [
 	["/", "Root"],
 	["/hazel", "OrgHome"],

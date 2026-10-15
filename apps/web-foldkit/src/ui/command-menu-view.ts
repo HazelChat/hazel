@@ -154,7 +154,6 @@ const commandMenuOverlay = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder
 				[
 					h.Class(commandMenuOverlayClassName(viewInputs.isBlurred ?? false)),
 					h.Attribute("data-modal-overlay", ""),
-					h.Attribute("data-rac", ""),
 				],
 				[
 					h.div(
@@ -166,7 +165,6 @@ const commandMenuOverlay = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder
 								),
 							),
 							h.Attribute("data-modal-content", model.id),
-							h.Attribute("data-rac", ""),
 						],
 						[
 							...(isDismissable ? [dismissButton(h, Message.ClickedDismiss())] : []),
@@ -174,7 +172,6 @@ const commandMenuOverlay = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder
 								[
 									h.Attribute("aria-label", viewInputs["aria-label"] ?? "Command Menu"),
 									h.Class(commandMenuDialogClassName),
-									h.Attribute("data-rac", ""),
 									h.Id(dialogId(model.id)),
 									h.Role("dialog"),
 									h.Attribute("tabindex", "-1"),
@@ -215,7 +212,6 @@ const searchField = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder<Messag
 		[
 			h.Class(twMerge(twMerge(commandMenuSearchBase), undefined)),
 			...(model.inputValue === "" ? [h.Attribute("data-empty", "true")] : []),
-			h.Attribute("data-rac", ""),
 		],
 		[
 			IconMagnifier3(h, {
@@ -273,7 +269,6 @@ const list = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder<Message>): Ht
 			h.Attribute("aria-label", "Suggestions"),
 			h.Class(twMerge(twMerge(commandMenuListBase), undefined)),
 			...(isEmpty ? [h.Attribute("data-empty", "true")] : []),
-			h.Attribute("data-rac", ""),
 			h.Id(listId(model.id)),
 			h.Role("menu"),
 		],
@@ -285,7 +280,6 @@ const list = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder<Message>): Ht
 						[
 							...(Option.isSome(entry.label) ? [h.Attribute("aria-labelledby", headerId)] : []),
 							h.Class(twMerge(commandMenuSectionBase, undefined)),
-							h.Attribute("data-rac", ""),
 							h.Role("group"),
 						],
 						[
@@ -333,7 +327,6 @@ const menuItem = (model: Model, viewInputs: ViewInputs, candidate: Item, h: Html
 			...flag("data-focus-visible", isFocused && model.modality === "Keyboard"),
 			...flag("data-focused", isFocused),
 			...flag("data-hovered", isHovered),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-react-aria-pressable", "true"),
 			h.Attribute("data-slot", "menu-item"),
 			h.Id(itemId(model.id, key)),

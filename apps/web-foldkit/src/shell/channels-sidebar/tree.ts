@@ -19,31 +19,34 @@ export const dragDescription = <M>(h: HtmlBuilder<M>): Html =>
 const menuTriggerAttributes = <M>(h: HtmlBuilder<M>) => [
 	h.Attribute("aria-haspopup", "true"),
 	h.Attribute("aria-expanded", "false"),
-	h.Attribute("data-rac", ""),
 ]
 
 /** The row actions trigger in channel and DM items. */
-export const dotsMenuTrigger = <M>(h: HtmlBuilder<M>): Html =>
+export const dotsMenuTrigger = <M>(h: HtmlBuilder<M>, label: string): Html =>
 	button(
 		h,
 		{
 			intent: "plain",
 			size: "sq-xs",
 			className: "size-5 text-muted-fg",
-			attributes: [h.Attribute("data-slot", "menu-trigger"), ...menuTriggerAttributes(h)],
+			attributes: [h.Attribute("data-slot", "menu-trigger"), h.AriaLabel(label), ...menuTriggerAttributes(h)],
 		},
 		[IconDots(h, { className: "size-4" })],
 	)
 
 /** `SectionGroup`'s single-action "+" button (no menu). */
-export const sectionPlusButton = <M>(h: HtmlBuilder<M>, attributes: ReadonlyArray<Attribute<M>>): Html =>
+export const sectionPlusButton = <M>(
+	h: HtmlBuilder<M>,
+	label: string,
+	attributes: ReadonlyArray<Attribute<M>>,
+): Html =>
 	button(
 		h,
 		{
 			intent: "plain",
 			isCircle: true,
 			size: "sq-xs",
-			attributes: [h.Attribute("data-rac", ""), ...attributes],
+			attributes: [h.AriaLabel(label), ...attributes],
 		},
 		[IconPlus(h)],
 	)
@@ -112,7 +115,6 @@ export const treeSection = <M>(h: HtmlBuilder<M>, options: TreeSectionOptions): 
 					),
 					...(options.allowsDragging ? [h.Attribute("data-allows-dragging", "true")] : []),
 					...(isEmpty ? [h.Attribute("data-empty", "true")] : []),
-					h.Attribute("data-rac", ""),
 					h.Attribute("data-slot", "sidebar-section-inner"),
 					h.Id(options.id),
 					h.Attribute("role", "treegrid"),
@@ -166,7 +168,6 @@ export const treeRow = <M>(h: HtmlBuilder<M>, options: TreeRowOptions<M>): Html 
 			...(options.allowsDragging ? [h.Attribute("data-allows-dragging", "true")] : []),
 			h.Attribute("data-key", options.key),
 			h.Attribute("data-level", "1"),
-			h.Attribute("data-rac", ""),
 			...(options.allowsDragging ? [h.Attribute("draggable", "true")] : []),
 			h.Id(`${options.treeId}-${options.key}`),
 			h.Attribute("role", "row"),
@@ -209,7 +210,6 @@ const dragButton = <M>(
 					]
 				: []),
 			h.Class("sr-only"),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-react-aria-pressable", "true"),
 			h.Attribute("slot", "drag"),
 			h.Style({ pointerEvents: "none" }),

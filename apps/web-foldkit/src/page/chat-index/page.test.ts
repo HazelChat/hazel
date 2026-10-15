@@ -1,6 +1,6 @@
 import { ChannelId, UserId } from "@hazel/schema"
 import { Schema } from "effect"
-import { expectOutMessage, given, message, model, story } from "foldkit/story"
+import { Command, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
 import * as Tabs from "../../ui/tabs"
 import { PageOutMessage } from "../out-message"
@@ -69,12 +69,13 @@ describe("chat index grouping", () => {
 })
 
 describe("chat index update", () => {
-	test("selects a tab on press", () => {
+	test("selecting a tab stores it in the page Model", () => {
 		story(
 			update,
 			given(init().model),
-			message(Message.GotTabsMessage({ message: Tabs.Message.PressedTab({ key: "dms" }) })),
-			model((current) => expect(current.tabs.selectedKey).toBe("dms")),
+			message(Message.GotTabsMessage({ message: Tabs.Message.SelectedTab({ index: 2, value: "dms" }) })),
+			Command.resolve(Tabs.FocusTab, Tabs.Message.CompletedFocusTab()),
+			model((current) => expect(current.tab).toBe("dms")),
 		)
 	})
 

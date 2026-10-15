@@ -249,10 +249,10 @@ export const contextMenuEntries = (facts: MessageFacts, messageId: MessageId): R
 ]
 
 /** The "More actions" menu of a message: the open one, or a closed one. */
-export const moreMenuFor = (model: Model, messageId: MessageId, facts: MessageFacts): Menu.Model =>
+export const moreMenuFor = (model: Model, messageId: MessageId): Menu.Model =>
 	model.open._tag === "MoreMenu" && model.open.messageId === messageId
 		? model.open.menu
-		: Menu.init({ id: `more-${messageId}`, entries: moreMenuEntries(facts), placement: "bottom end" })
+		: Menu.init({ id: `more-${messageId}`, placement: "bottom end" })
 
 /** The toolbar's reaction picker of a message: the open one, or a closed one. */
 export const reactionPickerFor = (model: Model, messageId: MessageId): EmojiDialog.Model =>
@@ -347,7 +347,7 @@ const hoverHandlers = (model: Model) => ({
 	},
 })
 
-export const update = (model: Model, message: Message, facts: MessageFacts): OverlaysReturn =>
+export const update = (model: Model, message: Message): OverlaysReturn =>
 	Message.match<OverlaysReturn>(message, {
 		...hoverHandlers(model),
 		GotToolbarMessage: ({ message: toolbarMessage }) => {
@@ -403,7 +403,7 @@ export const update = (model: Model, message: Message, facts: MessageFacts): Ove
 			}
 		},
 		GotMoreMenuMessage: ({ messageId, message: menuMessage }) => {
-			const result = Menu.update(moreMenuFor(model, messageId, facts), menuMessage)
+			const result = Menu.update(moreMenuFor(model, messageId), menuMessage)
 			return withSelection(
 				withChild(model, result, {
 					isCurrent: model.open._tag === "MoreMenu" && model.open.messageId === messageId,
@@ -416,11 +416,7 @@ export const update = (model: Model, message: Message, facts: MessageFacts): Ove
 			)
 		},
 		RightClickedMessage: ({ messageId, offset, crossOffset }) => {
-			const menu = Menu.init({
-				id: "message-context-menu",
-				anchor: "Pointer",
-				entries: contextMenuEntries(facts, messageId),
-			})
+			const menu = Menu.init({ id: "message-context-menu", anchor: "Pointer" })
 			return withChild(
 				model,
 				Menu.update(menu, Menu.Message.PressedContextMenu({ offset, crossOffset })),

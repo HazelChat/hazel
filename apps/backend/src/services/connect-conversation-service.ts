@@ -8,6 +8,7 @@ import {
 } from "@hazel/backend-core"
 import { Database, type DatabaseError } from "@hazel/db"
 import { InternalServerError } from "@hazel/domain"
+import { ConnectConversationNotFoundError } from "@hazel/domain/rpc"
 import type { ChannelId, ConnectConversationId, OrganizationId, UserId } from "@hazel/schema"
 import { Context, Effect, Layer, Option } from "effect"
 import { ChannelAccessSyncService } from "./channel-access-sync"
@@ -244,9 +245,9 @@ export class ConnectConversationService extends Context.Service<ConnectConversat
 					const conversationOption = yield* connectConversationRepo.findById(conversationId)
 					if (Option.isNone(conversationOption)) {
 						return yield* Effect.fail(
-							new InternalServerError({
+							new ConnectConversationNotFoundError({
+								conversationId,
 								message: "Hazel Connect conversation not found",
-								detail: `conversationId=${conversationId}`,
 							}),
 						)
 					}

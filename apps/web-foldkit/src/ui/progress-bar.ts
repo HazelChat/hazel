@@ -29,30 +29,11 @@ export const progressBar = <Message>(
 			h.AriaValuemax(100),
 			h.AriaValuemin(0),
 			h.Class(twMerge(twMerge(...progressBarStyles.root), options.className)),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-slot", "control"),
 			h.Role("progressbar"),
 		],
 		[...children],
 	)
-
-export const progressBarHeader = <Message>(
-	h: HtmlBuilder<Message>,
-	options: { readonly className?: string },
-	children: ReadonlyArray<Html | string>,
-): Html =>
-	h.div(
-		[
-			h.Attribute("data-slot", "progress-bar-header"),
-			h.Class(twMerge(progressBarStyles.header, options.className)),
-		],
-		[...children],
-	)
-
-export const progressBarValue = <Message>(
-	h: HtmlBuilder<Message>,
-	options: ProgressBarState & { readonly className?: string },
-): Html => h.span([h.Class(twMerge(progressBarStyles.value, options.className))], [valueText(options)])
 
 export const progressBarTrack = <Message>(
 	h: HtmlBuilder<Message>,

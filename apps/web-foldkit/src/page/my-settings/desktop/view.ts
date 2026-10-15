@@ -229,7 +229,6 @@ export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, 
 												isDisabled: model.autostartEnabled === null,
 												onChange: (isSelected) =>
 													Message.ToggledAutostart({ isSelected }),
-												interaction: interaction.wiring(model),
 											},
 											"Open at login",
 										),

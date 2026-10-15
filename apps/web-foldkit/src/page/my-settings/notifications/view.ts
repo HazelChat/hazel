@@ -5,7 +5,7 @@ import { ariaRadioGroup } from "../../../ui/aria-radio"
 import type * as Interaction from "../../../ui/aria/interaction"
 import { button } from "../../../ui/button"
 import { dateField } from "../../../ui/date-field"
-import { slider } from "../../../ui/slider"
+import * as Slider from "../../../ui/slider"
 import { switchControl } from "../../../ui/switch"
 import type { PageViewInputs } from "../../contract"
 import { divider, pageHeader, settingsRow } from "../shared"
@@ -19,6 +19,8 @@ const soundOptions: ReadonlyArray<{ value: SoundFile; label: string; description
 	{ value: "notification01", label: "Sound 1", description: "Classic notification" },
 	{ value: "notification03", label: "Sound 2", description: "Modern alert" },
 ]
+
+const volumeText = (volume: number) => `${Math.round(volume * 100)}%`
 
 const isSoundFile = (value: string): value is SoundFile =>
 	value === "notification01" || value === "notification03"
@@ -39,7 +41,6 @@ const soundSettings = (
 					id: "notification-sounds",
 					isSelected: enabled,
 					onChange: (isSelected) => Message.ToggledSounds({ isSelected }),
-					interaction: wiring,
 				},
 				"Enable notification sounds",
 			),
@@ -123,23 +124,19 @@ const soundSettings = (
 			h.div(
 				[h.Class("flex flex-col gap-2")],
 				[
-					slider(
-						h,
-						{ model: model.volume, toParentMessage: toVolumeMessage, interaction: wiring },
-						(parts) => [
-							h.div(
-								[h.Class("flex items-center justify-between")],
-								[
-									h.div([h.Class("font-medium text-sm")], ["Volume"]),
-									parts.output({
-										className: "text-muted-fg text-sm",
-										format: (values) => `${Math.round((values[0] ?? 0) * 100)}%`,
-									}),
-								],
-							),
-							parts.track(),
-						],
-					),
+					h.submodel({
+						slotId: "volume",
+						model: model.volume,
+						view: Slider.view,
+						viewInputs: {
+							value: sound.volume,
+							isDisabled: !enabled,
+							formatValue: volumeText,
+							toView: (attributes) =>
+								Slider.layout(h, attributes, { label: "Volume", valueText: volumeText(sound.volume) }),
+						},
+						toParentMessage: toVolumeMessage,
+					}),
 				],
 			),
 			h.div(
@@ -202,7 +199,6 @@ const doNotDisturb = (h: HtmlBuilder<Message>, model: Model, wiring: Interaction
 					id: "do-not-disturb",
 					isSelected: settings?.doNotDisturb ?? false,
 					onChange: (isSelected) => Message.ToggledDoNotDisturb({ isSelected }),
-					interaction: wiring,
 				},
 				"Enable do not disturb",
 			),
@@ -229,7 +225,6 @@ const doNotDisturb = (h: HtmlBuilder<Message>, model: Model, wiring: Interaction
 							id: "show-quiet-hours",
 							isSelected: settings?.showQuietHoursInStatus ?? true,
 							onChange: (isSelected) => Message.ToggledShowQuietHours({ isSelected }),
-							interaction: wiring,
 						},
 						"Show quiet hours in status",
 					),

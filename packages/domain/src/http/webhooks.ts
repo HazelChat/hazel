@@ -1,22 +1,7 @@
-import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/http-api"
+import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/http-api"
 import { Schema } from "effect"
-import { InternalServerError, WorkflowInitializationError } from "../errors"
+import { InternalServerError, WorkflowInitializationError, WorkflowServiceUnavailableError } from "../errors"
 import { RequiredScopes } from "../scopes/required-scopes"
-
-export class WebhookResponse extends Schema.Class<WebhookResponse>("WebhookResponse")({
-	success: Schema.Boolean,
-	message: Schema.optional(Schema.String),
-}) {}
-
-export class InvalidWebhookSignature extends Schema.TaggedError<InvalidWebhookSignature>(
-	"InvalidWebhookSignature",
-)(
-	"InvalidWebhookSignature",
-	{
-		message: Schema.String,
-	},
-	{ httpApiStatus: 401 },
-) {}
 
 // GitHub Webhook Types
 export class GitHubWebhookResponse extends Schema.Class<GitHubWebhookResponse>("GitHubWebhookResponse")({
@@ -34,27 +19,29 @@ export class InvalidGitHubWebhookSignature extends Schema.TaggedError<InvalidGit
 	{ httpApiStatus: 401 },
 ) {}
 
+/** The delivery is not JSON, or a supported event lacks the fields it must carry. */
+export class InvalidGitHubWebhookPayload extends Schema.TaggedError<InvalidGitHubWebhookPayload>(
+	"InvalidGitHubWebhookPayload",
+)(
+	"InvalidGitHubWebhookPayload",
+	{
+		message: Schema.String,
+	},
+	{ httpApiStatus: 400 },
+) {}
+
 export class WebhookGroup extends HttpApiGroup.make("webhooks")
-	.add(
-		HttpApiEndpoint.post("clerk", "/clerk", {
-			payload: Schema.Unknown,
-			success: WebhookResponse,
-			error: [InvalidWebhookSignature, InternalServerError],
-		})
-			.annotateMerge(
-				OpenApi.annotations({
-					title: "Clerk Webhook",
-					description: "Receive and process Clerk webhook events (Svix-signed)",
-					summary: "Process Clerk webhook events",
-				}),
-			)
-			.annotate(RequiredScopes, []),
-	)
 	.add(
 		HttpApiEndpoint.post("github", "/github", {
 			payload: Schema.Unknown,
 			success: GitHubWebhookResponse,
-			error: [InvalidGitHubWebhookSignature, InternalServerError, WorkflowInitializationError],
+			error: [
+				InvalidGitHubWebhookSignature,
+				InvalidGitHubWebhookPayload,
+				InternalServerError,
+				WorkflowInitializationError,
+				WorkflowServiceUnavailableError,
+			],
 		})
 			.annotateMerge(
 				OpenApi.annotations({

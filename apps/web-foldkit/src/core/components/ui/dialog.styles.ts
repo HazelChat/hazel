@@ -1,15 +1,13 @@
-/** Shared by the React and Foldkit apps: keep this file framework-free. Each base is merged with `className`. */
+/** Each base is merged with `className`. */
 export const dialogBase =
 	"peer/dialog group/dialog relative flex max-h-[inherit] flex-col overflow-hidden outline-hidden [--gutter:--spacing(6)] sm:[--gutter:--spacing(8)]"
-
-export const dialogTriggerBase = "cursor-pointer"
 
 export const dialogHeaderBase = "relative space-y-1 p-(--gutter) pb-[calc(var(--gutter)---spacing(3))]"
 
 export const dialogTitleBase = "text-balance font-semibold text-fg text-lg/6 sm:text-base/6"
 
 export const dialogDescriptionBase =
-	"text-pretty text-base/6 text-muted-fg group-disabled:opacity-50 sm:text-sm/6"
+	"text-pretty text-base/6 text-muted-fg group-data-disabled:opacity-50 sm:text-sm/6"
 
 export const dialogBodyBase = [
 	"isolate flex max-h-[calc(var(--visual-viewport-height)-var(--visual-viewport-vertical-padding)-var(--dialog-header-height,0px)-var(--dialog-footer-height,0px))] flex-1 flex-col overflow-auto px-(--gutter) py-1",

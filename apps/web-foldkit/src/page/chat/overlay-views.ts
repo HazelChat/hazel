@@ -64,20 +64,20 @@ export const messageToolbarOverlay = (h: H, model: Model): Html => {
 	const row = messageId === null ? undefined : model.rows.find((candidate) => candidate.key === messageId)
 	if (messageId === null || row === undefined || row._tag !== "MessageRow") return h.empty
 	const facts = factsOf(model)
-	const menu = Overlays.moreMenuFor(overlays, messageId, facts)
+	const menu = Overlays.moreMenuFor(overlays, messageId)
 	const isPinned = facts.isPinned(messageId)
 	const moreActions = h.submodel({
 		slotId: "message-more-actions",
 		model: menu,
 		view: menuView,
 		viewInputs: {
+			entries: Overlays.moreMenuEntries(facts),
 			toTrigger: (attributes, overlay) =>
 				h.button(
 					[
 						...attributes,
 						h.Attribute("aria-label", "More actions"),
 						h.Class(menuTriggerClassName("p-1.5! rounded-md hover:bg-secondary")),
-						h.Attribute("data-rac", ""),
 						h.Attribute("data-react-aria-pressable", "true"),
 						h.Attribute("data-slot", "menu-trigger"),
 						h.Attribute("tabindex", "0"),

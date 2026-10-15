@@ -596,30 +596,25 @@ describe("image viewer", () => {
 	})
 
 	test("re-entering the hovered message cancels a pending hide; moving within it changes nothing", () => {
-		const facts = { isOwnMessage: () => false, isPinned: () => false, isThreadChannel: false }
 		const entered = Overlays.update(
 			Overlays.init(),
 			Overlays.Message.PointerEnteredMessage({ messageId: graceMessageId }),
-			facts,
 		).model
 		const within = Overlays.update(
 			entered,
 			Overlays.Message.PointerEnteredMessage({ messageId: graceMessageId }),
-			facts,
 		)
 		expect(within.model).toBe(entered)
-		const left = Overlays.update(entered, Overlays.Message.PointerLeftList(), facts).model
+		const left = Overlays.update(entered, Overlays.Message.PointerLeftList()).model
 		expect(left.hover._tag).toBe("HidePending")
 		const back = Overlays.update(
 			left,
 			Overlays.Message.PointerEnteredMessage({ messageId: graceMessageId }),
-			facts,
 		).model
 		expect(back.hover._tag).toBe("Shown")
 		const stale = Overlays.update(
 			back,
 			Overlays.Message.CompletedWaitForHideToolbar({ version: left.hideVersion }),
-			facts,
 		).model
 		expect(Overlays.hoveredMessageIdOf(stale)).toBe(graceMessageId)
 	})

@@ -118,6 +118,7 @@ const actionsMenu = <Message>(
 		model: menu,
 		view: menuView,
 		viewInputs: {
+			entries: BOT_MENU_ENTRIES,
 			// MenuTrigger renders a button around the Button and hands both the trigger props.
 			toTrigger: (attributes, overlay) =>
 				h.button(

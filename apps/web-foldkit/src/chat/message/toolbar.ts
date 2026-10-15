@@ -251,7 +251,6 @@ const action = <M>(
 						...attributes,
 						...(options.extra ?? []),
 						h.Attribute("aria-label", options.label),
-						h.Attribute("data-rac", ""),
 						h.Attribute("data-react-aria-pressable", "true"),
 						...(inputs.focusedKey === `${inputs.messageId}:toolbar:${options.key}`
 							? [h.Attribute("data-focused", "true")]

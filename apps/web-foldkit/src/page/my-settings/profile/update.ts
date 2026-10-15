@@ -163,7 +163,7 @@ const foldCropModal = (model: Model, message: Modal.Message): Return => {
 }
 
 const foldTimezone = (model: Model, message: ComboBox.Message): Return => {
-	const result = ComboBox.update(model.timezone, message)
+	const result = TimezoneSelect.update(model.timezone, message)
 	const next = modifyFields(model, { timezone: () => result.model })
 	const commands = Command.mapMessages(result.commands ?? [], toTimezoneMessage)
 	const key = result.outMessage?.key

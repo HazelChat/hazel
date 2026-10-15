@@ -158,7 +158,7 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 					Effect.fail(
 						new InternalServerError({
 							message: "Database error while syncing commands",
-							detail: String(error),
+							cause: error,
 						}),
 					),
 				),
@@ -239,7 +239,7 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 					Effect.fail(
 						new InternalServerError({
 							message: "Database error while executing command",
-							detail: String(error),
+							cause: error,
 						}),
 					),
 				),
@@ -321,7 +321,7 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 					Effect.fail(
 						new InternalServerError({
 							message: `Failed to refresh ${params.provider} token`,
-							detail: String(error.cause),
+							cause: error.cause,
 						}),
 					),
 				),
@@ -332,7 +332,7 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 					Effect.fail(
 						new InternalServerError({
 							message: `Failed to decrypt ${params.provider} token`,
-							detail: String(error),
+							cause: error,
 						}),
 					),
 				),
@@ -340,7 +340,7 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 					Effect.fail(
 						new InternalServerError({
 							message: `Encryption key version not found for ${params.provider} token`,
-							detail: String(error),
+							cause: error,
 						}),
 					),
 				),

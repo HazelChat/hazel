@@ -1,6 +1,30 @@
 # S5: Primitive parity
 
-Status: **passed** · 2026-10-07 · Branches `fk/kit-forms`, `fk/kit-overlays`, `fk/kit-data` (merged)
+Status: **passed** · 2026-10-07 · Branches `fk/kit-forms`, `fk/kit-overlays`, `fk/kit-data` (merged) · **Superseded 2026-10-15** (see below)
+
+## Since then (2026-10-15)
+
+The legacy React app is deleted, and with it the reason for pixel and DOM parity. The parity harness
+(`packages/ui-parity`), the `/dev/gallery` routes and their entries, and the `legacy-ui-guard` agent are
+gone. The kit no longer emulates React Aria's DOM:
+
+- No `data-rac`, no React Aria default class names, and no `tailwindcss-react-aria-components` plugin.
+  Hover, focus and focus-visible are native CSS (`hover:`, `focus-visible:`, `group-hover:`,
+  `group-has-focus-visible:` for controls whose input is visually hidden). State CSS cannot see uses
+  Tailwind's data variants (`data-selected:`, `data-pressed:`, `data-disabled:`, `data-invalid:`,
+  `data-open:`, `data-[placement=...]:`, `data-[orientation=...]:`).
+- Switch, Checkbox and RadioGroup need no interaction wiring for their hover and focus ring.
+- Slider and Tabs are `@foldkit/ui` 0.167 Submodels with styled `toView`s; their parents own the value.
+- Menu, Select and ComboBox keep only popup and selection state; the parent passes entries/items as
+  view inputs (and, for ComboBox, to `update`).
+- Gallery-only primitives (ListBox, Table, Tree, Toggle, ToggleGroup, InputOTP, Text, SectionFooter,
+  FormErrorSummary, FieldValidationState) and Calendar's Range mode are deleted.
+- Icons are decorative (`aria-hidden`) unless given a title; icon-only controls carry `aria-label`s
+  (`docs/foldkit-review/icons.md`).
+
+The overlay primitives (Modal, Sheet, Popover, Tooltip, Toast) still use the vendored positioning and
+the module-level overlay stack described below; moving them to `@foldkit/ui` Dialog/Popover/Tooltip and
+Animation is the next step. The rest of this record describes the parity-era design.
 
 Question: do `@foldkit/ui` plus the shared stylesheet reach pixel identity with the React Aria primitives, in both themes, including interaction states?
 

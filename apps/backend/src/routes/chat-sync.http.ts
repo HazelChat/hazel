@@ -16,7 +16,7 @@ import {
 	IntegrationConnectionRepo,
 } from "@hazel/backend-core"
 import { ExternalChannelId } from "@hazel/schema"
-import { CurrentUser, InternalServerError, UnauthorizedError } from "@hazel/domain"
+import { CurrentUser, InternalServerError, UnauthorizedError, withRemapDbErrors } from "@hazel/domain"
 import { HttpApiBuilder } from "effect/http-api"
 import { Effect, Option } from "effect"
 import { HazelApi } from "../api"
@@ -33,12 +33,6 @@ const ensureOrgAccess = Effect.fn("chatSync.ensureOrgAccess")(function* (organiz
 		)
 	}
 })
-
-const toInternalServerError = (message: string, error: unknown) =>
-	new InternalServerError({
-		message,
-		detail: String(error),
-	})
 
 const normalizeChannelLinkSettings = (
 	settings: Record<string, unknown> | null | undefined,
@@ -120,29 +114,14 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 
 					const txid = yield* generateTransactionId()
 					return new ChatSyncConnectionResponse({ data: connection, transactionId: txid })
-				}).pipe(
-					Effect.catchTag("SchemaError", (error) =>
-						Effect.fail(toInternalServerError("Invalid sync connection data", error)),
-					),
-					Effect.catchTag("DatabaseError", (error) =>
-						Effect.fail(
-							toInternalServerError("Database error while creating sync connection", error),
-						),
-					),
-				),
+				}).pipe(withRemapDbErrors("ChatSyncConnection", "create")),
 			)
 			.handle("listConnections", ({ params }) =>
 				Effect.gen(function* () {
 					yield* ensureOrgAccess(params.orgId)
 					const connections = yield* connectionRepo.findByOrganization(params.orgId)
 					return new ChatSyncConnectionListResponse({ data: connections })
-				}).pipe(
-					Effect.catchTag("DatabaseError", (error) =>
-						Effect.fail(
-							toInternalServerError("Database error while listing sync connections", error),
-						),
-					),
-				),
+				}).pipe(withRemapDbErrors("ChatSyncConnection", "select")),
 			)
 			.handle("deleteConnection", ({ params }) =>
 				Effect.gen(function* () {
@@ -166,13 +145,7 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 
 					const txid = yield* generateTransactionId()
 					return new ChatSyncDeleteResponse({ transactionId: txid })
-				}).pipe(
-					Effect.catchTag("DatabaseError", (error) =>
-						Effect.fail(
-							toInternalServerError("Database error while deleting sync connection", error),
-						),
-					),
-				),
+				}).pipe(withRemapDbErrors("ChatSyncConnection", "delete")),
 			)
 			.handle("createChannelLink", ({ params, payload }) =>
 				Effect.gen(function* () {
@@ -233,16 +206,7 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 					}
 					const txid = yield* generateTransactionId()
 					return new ChatSyncChannelLinkResponse({ data: brandedLink, transactionId: txid })
-				}).pipe(
-					Effect.catchTag("SchemaError", (error) =>
-						Effect.fail(toInternalServerError("Invalid channel link data", error)),
-					),
-					Effect.catchTag("DatabaseError", (error) =>
-						Effect.fail(
-							toInternalServerError("Database error while creating channel link", error),
-						),
-					),
-				),
+				}).pipe(withRemapDbErrors("ChatSyncChannelLink", "create")),
 			)
 			.handle("listChannelLinks", ({ params }) =>
 				Effect.gen(function* () {
@@ -259,13 +223,7 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 
 					const links = yield* channelLinkRepo.findBySyncConnection(params.syncConnectionId)
 					return new ChatSyncChannelLinkListResponse({ data: links })
-				}).pipe(
-					Effect.catchTag("DatabaseError", (error) =>
-						Effect.fail(
-							toInternalServerError("Database error while listing channel links", error),
-						),
-					),
-				),
+				}).pipe(withRemapDbErrors("ChatSyncChannelLink", "select")),
 			)
 			.handle("deleteChannelLink", ({ params }) =>
 				Effect.gen(function* () {
@@ -292,13 +250,7 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 					yield* channelLinkRepo.softDelete(params.syncChannelLinkId)
 					const txid = yield* generateTransactionId()
 					return new ChatSyncDeleteResponse({ transactionId: txid })
-				}).pipe(
-					Effect.catchTag("DatabaseError", (error) =>
-						Effect.fail(
-							toInternalServerError("Database error while deleting channel link", error),
-						),
-					),
-				),
+				}).pipe(withRemapDbErrors("ChatSyncChannelLink", "delete")),
 			)
 	}),
 )

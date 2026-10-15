@@ -71,6 +71,8 @@ const validateName = (name: string) =>
 
 const ID = "create-channel-modal"
 
+const CHANNEL_TYPE_ITEMS = [Select.item("public", "Public"), Select.item("private", "Private")]
+
 type Return = ModalReturn<Model, Message>
 
 const submitted = (model: Model, shared: Shared): Return => {
@@ -168,7 +170,7 @@ const view = Submodel.defineView<Model, Message, ModalViewInputs>((model, _input
 								slotId: `${ID}-type`,
 								model: model.channelType,
 								view: selectView,
-								viewInputs: {},
+								viewInputs: { items: CHANNEL_TYPE_ITEMS },
 								toParentMessage: toChannelTypeMessage,
 							}),
 							checkbox(
@@ -211,11 +213,7 @@ export const modal = defineModal(
 				frame: initFrame(ID),
 				name: "",
 				nameError: null,
-				channelType: Select.init({
-					id: `${ID}-type`,
-					items: [Select.item("public", "Public"), Select.item("private", "Private")],
-					selectedKey: "public",
-				}),
+				channelType: Select.init({ id: `${ID}-type`, selectedKey: "public" }),
 				addAllMembers: false,
 				isSubmitting: false,
 			},

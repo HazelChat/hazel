@@ -69,6 +69,9 @@ export type OutMessage = typeof OutMessage.Type
 export const SEARCH_FIELD_ID = "channel-files-search"
 export const FILTER_SELECT_ID = "channel-files-filter"
 
+/** The filter Select's options. */
+export const filterItems = filterOptions.map((option) => Select.item(option.id, option.label))
+
 export const init = (channelId: ChannelId, orgSlug: string, view: FilesView): Model => ({
 	channelId,
 	orgSlug,
@@ -76,11 +79,7 @@ export const init = (channelId: ChannelId, orgSlug: string, view: FilesView): Mo
 	attachments: [],
 	searchQuery: "",
 	filterType: "all",
-	filter: Select.init({
-		id: FILTER_SELECT_ID,
-		items: filterOptions.map((option) => Select.item(option.id, option.label)),
-		selectedKey: "all",
-	}),
+	filter: Select.init({ id: FILTER_SELECT_ID, selectedKey: "all" }),
 	breakpoint: "base",
 	failedMediaIds: [],
 	viewerImageId: null,

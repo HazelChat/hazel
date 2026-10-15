@@ -410,6 +410,10 @@ export const handleActionMessage = (model: Model, message: ActionMessage): PageR
 									title: "Message not found",
 									description: "The message no longer exists",
 								},
+								InvalidRequest: {
+									title: "Cannot create thread",
+									description: "This message can't start a thread.",
+								},
 								NestedThread: {
 									title: "Cannot create thread",
 									description: "Threads cannot be created within threads",
@@ -434,6 +438,10 @@ export const handleActionMessage = (model: Model, message: ActionMessage): PageR
 						ThreadNotFound: {
 							title: "Thread not found",
 							description: "This thread may have been deleted.",
+						},
+						NotAThread: {
+							title: "Cannot name this thread",
+							description: "This channel is not a thread, or its original message is gone.",
 						},
 						OriginalMessageNotFound: {
 							title: "Original message not found",

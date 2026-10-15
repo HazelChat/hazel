@@ -26,7 +26,7 @@ import { notRetryable, rateLimited } from "./action-effects"
 
 /** What can go wrong creating a thread, beyond the shared reasons. */
 export const CreateThreadFailure = Schema.Union([
-	Schema.Literals(["MessageNotFound", "NestedThread"]),
+	Schema.Literals(["MessageNotFound", "NestedThread", "InvalidRequest"]),
 	CommonReason,
 ])
 export type CreateThreadFailure = typeof CreateThreadFailure.Type
@@ -35,6 +35,7 @@ export type CreateThreadFailure = typeof CreateThreadFailure.Type
 export const GenerateThreadNameFailure = Schema.Union([
 	Schema.Literals([
 		"ThreadNotFound",
+		"NotAThread",
 		"OriginalMessageNotFound",
 		"ThreadContextUnavailable",
 		"AIUnavailable",
@@ -165,6 +166,7 @@ export const CreateThread = Command.define("CreateThread", {
 			Effect.catchTags({
 				MessageNotFoundError: () => Effect.succeed(failed("MessageNotFound")),
 				NestedThreadError: () => Effect.succeed(failed("NestedThread")),
+				InvalidChannelRequestError: () => Effect.succeed(failed("InvalidRequest")),
 			}),
 			catchCommon(failed),
 		)
@@ -233,7 +235,7 @@ export const GenerateThreadName = Command.define("GenerateThreadName", {
 			Effect.catchTags({
 				ChannelNotFoundError: fail("ThreadNotFound"),
 				ThreadChannelNotFoundError: fail("ThreadNotFound"),
-				MessageNotFoundError: fail("OriginalMessageNotFound"),
+				InvalidChannelRequestError: fail("NotAThread"),
 				OriginalMessageNotFoundError: fail("OriginalMessageNotFound"),
 				ThreadContextQueryError: fail("ThreadContextUnavailable"),
 				AIProviderUnavailableError: fail("AIUnavailable"),

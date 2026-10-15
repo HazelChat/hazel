@@ -69,9 +69,6 @@ export const itemState = (interaction: Interaction, key: string, isDisabled = fa
 
 export const isWithinFocused = (interaction: Interaction) => Option.isSome(interaction.maybeFocusedKey)
 
-export const isWithinFocusVisible = (interaction: Interaction) =>
-	isWithinFocused(interaction) && interaction.modality !== "Pointer"
-
 // ATTRIBUTES
 
 const flag = <Message>(h: HtmlBuilder<Message>, name: string, isOn: boolean | undefined) =>
@@ -154,6 +151,3 @@ export const idSelector = (id: string) => `#${CSS.escape(id)}`
  */
 export const idAttributeSelector = (id: string) => `[id="${id.replace(/["\\]/g, "\\$&")}"]`
 
-/** Selects the item at `index` inside a labelled composite, for widgets whose items carry no id. */
-export const labelledChildSelector = (label: string, index: number) =>
-	`[aria-label="${CSS.escape(label)}"] > :nth-child(${index + 1})`

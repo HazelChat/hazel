@@ -126,13 +126,12 @@ const customLabel = (model: Model): string | null => {
 		: date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
 }
 
-/** Rebuilds the Select items so the custom option shows the chosen date and time. */
-export const withExpirationItems = (model: Model): Model => {
+/** The expiration Select's items: the custom option shows the chosen date and time. */
+export const expirationItems = (model: Model): ReadonlyArray<Select.Item> => {
 	const label = customLabel(model)
-	const items = EXPIRATION_OPTIONS.map((option) =>
+	return EXPIRATION_OPTIONS.map((option) =>
 		Select.item(option.id, option.id === "custom" && label !== null ? label : option.label),
 	)
-	return { ...model, expiration: { ...model.expiration, items } }
 }
 
 const pad = (value: number) => String(value).padStart(2, "0")

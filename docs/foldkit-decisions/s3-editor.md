@@ -1,5 +1,7 @@
 # S3: Editor spike
 
+> **Historical.** The legacy React app (`apps/web`) and the parity harness (`packages/ui-parity`, the `/dev/gallery` routes and the `legacy-ui-guard` agent) have been deleted. Parity commands and baselines referenced below no longer exist.
+
 Status: **passed** · 2026-10-07 · Branch `fk/s3-editor`
 
 Question: can a vanilla editor inside a Foldkit Mount replace the Slate composer with identical pixels, faithful markdown round-trips and working mention autocomplete?

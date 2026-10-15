@@ -89,69 +89,18 @@ export const envCommand = Command.make(
 				}
 			}
 
-			// Step 2: Clerk setup
-			yield* Console.log(pc.cyan("\u2500\u2500\u2500 Step 2: Clerk Authentication \u2500\u2500\u2500"))
-			yield* Console.log("Clerk provides user authentication.")
-			if (!existingConfig.clerkSecretKey) {
-				yield* Console.log(`Create a free account at ${pc.cyan("https://dashboard.clerk.com")}\n`)
-				yield* Console.log(pc.dim("1. Create a new application"))
-				yield* Console.log(pc.dim("2. Go to API Keys \u2192 copy the Publishable key (pk_test_...)"))
-				yield* Console.log(pc.dim("3. Go to API Keys \u2192 copy the Secret key (sk_test_...)"))
-				yield* Console.log(
-					pc.dim(
-						"4. Go to Webhooks \u2192 add endpoint http://localhost:3003/webhooks/clerk \u2192 copy signing secret (whsec_...)",
-					),
-				)
-				yield* Console.log(
-					pc.dim("5. Enable Organizations + Slugs in the dashboard (required by this app)\n"),
-				)
-			} else {
-				yield* Console.log(
-					pc.dim("(Using existing credentials - press Enter to keep or type new value)\n"),
-				)
-			}
-
-			const clerkSecretKey = yield* promptWithExisting({
-				key: "CLERK_SECRET_KEY",
-				message: "Enter your Clerk Secret Key",
-				envResult,
-				validate: (s) =>
-					s.startsWith("sk_") ? Effect.succeed(s) : Effect.fail("Must start with sk_"),
-				isSecret: true,
-			})
-
-			const clerkPublishableKey = yield* promptWithExisting({
-				key: "CLERK_PUBLISHABLE_KEY",
-				message: "Enter your Clerk Publishable Key",
-				envResult,
-				validate: (s) =>
-					s.startsWith("pk_") ? Effect.succeed(s) : Effect.fail("Must start with pk_"),
-			})
-
-			const clerkWebhookSecret = yield* promptWithExisting({
-				key: "CLERK_WEBHOOK_SECRET",
-				message: "Enter your Clerk Webhook Signing Secret",
-				envResult,
-				validate: (s) =>
-					s.startsWith("whsec_") ? Effect.succeed(s) : Effect.fail("Must start with whsec_"),
-				isSecret: true,
-			})
-
-			// Validate Clerk credentials
-			if (!skipValidation) {
-				yield* Console.log(pc.dim("\nValidating Clerk credentials..."))
-				const validator = yield* CredentialValidator
-				const result = yield* validator
-					.validateClerk(clerkSecretKey, clerkPublishableKey)
-					.pipe(Effect.result)
-
-				if (result._tag === "Failure") {
-					yield* Console.log(pc.red(`\u274C Clerk validation failed: ${result.failure.message}`))
-					yield* Console.log(pc.dim("Please check your credentials and try again."))
-					return
-				}
-				yield* Console.log(pc.green("\u2713") + " Clerk credentials valid\n")
-			}
+			// Step 2: Sign-in
+			yield* Console.log(pc.cyan("\u2500\u2500\u2500 Step 2: Sign-in \u2500\u2500\u2500"))
+			yield* Console.log(
+				pc.dim(
+					"Hazel sign-in is off until AUTH_GITHUB_CLIENT_ID / AUTH_GITHUB_CLIENT_SECRET are set in apps/backend/.env.",
+				),
+			)
+			yield* Console.log(
+				pc.dim(
+					`Generate its keys with ${pc.cyan("bun run --cwd packages/auth generate-keys")} and add them there too.\n`,
+				),
+			)
 
 			// Step 3: Secrets - reuse existing or generate new
 			yield* Console.log(pc.cyan("\u2500\u2500\u2500 Step 3: Secrets \u2500\u2500\u2500"))
@@ -381,9 +330,6 @@ export const envCommand = Command.make(
 			}
 
 			const config: Config = {
-				clerkSecretKey,
-				clerkPublishableKey,
-				clerkWebhookSecret,
 				secrets: generatedSecrets,
 				s3: s3Config,
 				s3PublicUrl: s3Config?.publicUrl,

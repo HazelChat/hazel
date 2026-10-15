@@ -75,11 +75,6 @@ memoized views and a `sharedChanged` hook. `page/root/` shows a page that only r
 - **Performance.** The root re-renders on every Message. Memoize expensive subtrees with `createLazy`
   and keep `toParentMessage`-style functions at module scope (see `page/chat/channel/view.ts`).
 
-## Parity
-
-Port the legacy class composition (`*.styles.ts`, the UI kit in `src/ui`), then run
-`bun run parity build foldkit && bun run parity run --filter <scenario>` from `packages/ui-parity`.
-
 ## Lint
 
 `bun run lint` (root) runs oxlint with `@foldkit/oxlint-plugin` (a devDependency of this app) on

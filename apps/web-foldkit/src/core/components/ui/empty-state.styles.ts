@@ -1,4 +1,3 @@
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const emptyStateStyles = {
 	root: "flex flex-col items-center justify-center py-16 text-center",
 	iconWrapper: "mb-4 flex size-12 items-center justify-center rounded-xl bg-secondary",

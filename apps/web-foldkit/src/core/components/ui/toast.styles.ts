@@ -1,7 +1,5 @@
 import { twJoin } from "tailwind-merge"
 
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
-
 /** sonner `toastOptions.className`, applied to every toast `<li>`. */
 export const toastClassName = twJoin(
 	"not-has-data-[slot=note]:backdrop-blur-3xl *:data-icon:mt-0.5 *:data-icon:self-start has-data-description:*:data-icon:mt-1",

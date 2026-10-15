@@ -1,6 +1,5 @@
 import { twJoin } from "tailwind-merge"
 
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const modalSizes = {
 	"2xs": "sm:max-w-2xs",
 	xs: "sm:max-w-xs",
@@ -22,8 +21,8 @@ export const modalOverlayClassName = (size: ModalSize, isBlurred: boolean) =>
 		"fixed inset-0 z-50 h-(--visual-viewport-height,100vh) bg-overlay-backdrop",
 		"grid grid-rows-[1fr_auto] justify-items-center sm:grid-rows-[1fr_auto_3fr]",
 		size === "fullscreen" ? "md:p-3" : "md:p-4",
-		"entering:fade-in entering:animate-in entering:duration-300 entering:ease-out",
-		"exiting:fade-out exiting:animate-out exiting:ease-in",
+		"data-entering:fade-in data-entering:animate-in data-entering:duration-300 data-entering:ease-out",
+		"data-exiting:fade-out data-exiting:animate-out data-exiting:ease-in",
 		isBlurred && "backdrop-blur-[1px]",
 	)
 
@@ -40,6 +39,6 @@ export const modalContentBase = (size: ModalSize) =>
 		modalSizes[size],
 		// Ensure scale animation originates from center for proper visual effect
 		"origin-center",
-		"entering:slide-in-from-bottom sm:entering:zoom-in-95 sm:entering:slide-in-from-bottom-0 entering:animate-in entering:duration-300 entering:ease-out",
-		"exiting:slide-out-to-bottom sm:exiting:zoom-out-95 sm:exiting:slide-out-to-bottom-0 exiting:animate-out exiting:ease-in",
+		"data-entering:slide-in-from-bottom sm:data-entering:zoom-in-95 sm:data-entering:slide-in-from-bottom-0 data-entering:animate-in data-entering:duration-300 data-entering:ease-out",
+		"data-exiting:slide-out-to-bottom sm:data-exiting:zoom-out-95 sm:data-exiting:slide-out-to-bottom-0 data-exiting:animate-out data-exiting:ease-in",
 	] as const

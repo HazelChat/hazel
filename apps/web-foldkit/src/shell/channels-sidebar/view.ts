@@ -96,7 +96,8 @@ const channelRowView = <M>(
 			partners,
 			{ orgSlug, isActive: isLinkActive },
 			rowMenuView(h, {
-				menu: openMenu ?? closedRowMenu(entry.channel.id, sections, canDelete),
+				menu: openMenu ?? closedRowMenu(entry.channel.id),
+				canDelete,
 				entry,
 				sections,
 				toMessage: (message) =>

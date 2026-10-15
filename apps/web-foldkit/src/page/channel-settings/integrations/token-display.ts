@@ -32,6 +32,7 @@ const copyButton = (h: HtmlBuilder<Message>, model: Model, id: "token" | "url", 
 				successMessage: id === "token" ? "Token copied" : "URL copied",
 				failureMessage: "Failed to copy to clipboard",
 			}),
+			attributes: [h.AriaLabel(id === "token" ? "Copy token" : "Copy URL")],
 		},
 		[copyIcon(h, model.copiedIds.includes(id))],
 	)

@@ -25,7 +25,7 @@ export const linkPreviewView = <M>(h: HtmlBuilder<M>, url: string, unfurl: Unfur
 			h.Attribute("target", "_blank"),
 			h.Attribute("rel", "noopener noreferrer"),
 			h.Class(
-				"mt-2 block max-w-sm overflow-hidden rounded-lg border pressed:border-fg/15 bg-muted/40 pressed:bg-muted hover:border-fg/15 hover:bg-muted",
+				"mt-2 block max-w-sm overflow-hidden rounded-lg border data-pressed:border-fg/15 bg-muted/40 data-pressed:bg-muted hover:border-fg/15 hover:bg-muted",
 			),
 		],
 		[
@@ -73,7 +73,7 @@ export const youtubeView = <M>(h: HtmlBuilder<M>, embedUrl: string): Html =>
 	h.div(
 		[
 			h.Class(
-				"mt-2 w-full max-w-xl overflow-hidden rounded-lg border border-fg/15 pressed:border-fg/15 bg-muted/40 pressed:bg-muted hover:border-fg/15 hover:bg-muted",
+				"mt-2 w-full max-w-xl overflow-hidden rounded-lg border border-fg/15 data-pressed:border-fg/15 bg-muted/40 data-pressed:bg-muted hover:border-fg/15 hover:bg-muted",
 			),
 		],
 		[
@@ -393,7 +393,7 @@ export const tweetView = <M>(
 	return h.div(
 		[
 			h.Class(
-				"mt-2 flex max-w-sm flex-col gap-2 overflow-hidden rounded-lg border border-fg/15 pressed:border-fg/15 bg-muted/40 pressed:bg-muted p-4 hover:border-fg/15 hover:bg-muted",
+				"mt-2 flex max-w-sm flex-col gap-2 overflow-hidden rounded-lg border border-fg/15 data-pressed:border-fg/15 bg-muted/40 data-pressed:bg-muted p-4 hover:border-fg/15 hover:bg-muted",
 			),
 		],
 		[

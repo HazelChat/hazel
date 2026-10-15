@@ -201,7 +201,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 								Effect.fail(
 									new InternalServerError({
 										message: "Database error while listing messages",
-										detail: String(err),
+										cause: err,
 									}),
 								),
 							),
@@ -291,7 +291,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 								Effect.fail(
 									new InternalServerError({
 										message: "Database error while creating message",
-										detail: String(err),
+										cause: err,
 									}),
 								),
 							),
@@ -358,7 +358,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 								Effect.fail(
 									new InternalServerError({
 										message: "Database error while updating message",
-										detail: String(err),
+										cause: err,
 									}),
 								),
 							),
@@ -427,7 +427,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 								Effect.fail(
 									new InternalServerError({
 										message: "Database error while deleting message",
-										detail: String(err),
+										cause: err,
 									}),
 								),
 							),
@@ -534,7 +534,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 								Effect.fail(
 									new InternalServerError({
 										message: "Database error while toggling reaction",
-										detail: String(err),
+										cause: err,
 									}),
 								),
 							),

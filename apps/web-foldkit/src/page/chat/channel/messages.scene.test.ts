@@ -246,9 +246,7 @@ describe("image viewer", () => {
 			Scene.click(Scene.altText("photo-1.png")),
 			viewerMounted(0),
 			// Legacy nests the action Button inside its bare `TooltipTrigger` Button; the inner one acts.
-			Scene.click(
-				Scene.within(Scene.role("button", { name: "download" }), Scene.selector("button button")),
-			),
+			Scene.click(Scene.selector(`button[aria-label="Download"]`)),
 			Scene.Command.expectExact(
 				DownloadImage({ url: "https://cdn.hazel.sh/photo-1.png", fileName: "photo-1.png" }),
 			),
