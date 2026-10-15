@@ -233,9 +233,11 @@ export const makeHazelAuthLive = (config: HazelAuthConfig) => {
 		sqlHandle.layer,
 	).pipe(
 		Layer.provideMerge(Storage),
-		// Postgres stamps session times with its own clock; tolerate it running slightly
-		// ahead of this process. Shared by Auth and persistence, so provided beneath both.
-		Layer.provideMerge(Operations.AuthenticationClock.layer({ futureToleranceMillis: 1_000 })),
+		// Postgres stamps session times with its own clock; tolerate it running ahead of this
+		// process. A session issued "in the future" is rejected, so with too small a window the
+		// first requests after sign-in fail until the clocks agree. Shared by Auth and
+		// persistence, so provided beneath both.
+		Layer.provideMerge(Operations.AuthenticationClock.layer({ futureToleranceMillis: 30_000 })),
 		Layer.provideMerge(layerRouted),
 		Layer.provideMerge(CryptoLive),
 	)

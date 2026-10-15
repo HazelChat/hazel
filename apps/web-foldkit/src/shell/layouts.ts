@@ -2,6 +2,8 @@ import type { ChannelId } from "@hazel/schema"
 import type { Attribute, Html, HtmlBuilder } from "foldkit/html"
 import { IconHashtag } from "../icons"
 import { AppRoute, hrefOf } from "../route"
+import { button, buttonClassName } from "../ui/button"
+import { emptyState } from "../ui/empty-state"
 import { progressBar, progressBarTrack } from "../ui/progress-bar"
 import { tabStrip, tabView } from "../ui/tab-strip"
 import type { ChannelSummary } from "./model"
@@ -194,8 +196,12 @@ export const channelSettingsLayout = <Message>(
 	)
 }
 
-/** `components/loader.tsx`: the full-page loader `_app` shows while auth or the user loads. */
-export const appLoader = <Message>(h: HtmlBuilder<Message>): Html =>
+/**
+ * `components/loader.tsx`: the full-page loader `_app` shows while auth or the user loads.
+ * With `onReload`, loading has stalled: a note and a reload button show under it, and the
+ * loader keeps waiting, so data that arrives late still replaces it.
+ */
+export const appLoader = <Message>(h: HtmlBuilder<Message>, onReload?: Message): Html =>
 	h.div(
 		[h.Class("flex h-screen flex-col items-center justify-center gap-6")],
 		[
@@ -237,5 +243,31 @@ export const appLoader = <Message>(h: HtmlBuilder<Message>): Html =>
 					),
 				],
 			),
+			...(onReload === undefined ? [] : [stalledNotice(h, onReload)]),
+		],
+	)
+
+const stalledNotice = <Message>(h: HtmlBuilder<Message>, onReload: Message): Html =>
+	h.div(
+		[h.Class("flex flex-col items-center gap-3 text-center"), h.Role("status")],
+		[
+			h.p([h.Class("text-muted-fg text-sm")], ["This is taking longer than usual. Still trying…"]),
+			button(h, { intent: "outline", size: "sm", onPress: onReload }, ["Reload"]),
+		],
+	)
+
+/** The route names an organization the user cannot see: it does not exist or they are not a member. */
+export const organizationNotFound = <Message>(h: HtmlBuilder<Message>, orgSlug: string): Html =>
+	h.div(
+		[h.Class("flex h-screen items-center justify-center p-6")],
+		[
+			emptyState(h, {
+				title: "Workspace not found",
+				description: `The workspace “${orgSlug}” does not exist, or you are not a member of it.`,
+				action: h.a(
+					[h.Attribute("href", "/"), h.Class(buttonClassName({ intent: "primary" }))],
+					["Go to your workspace"],
+				),
+			}),
 		],
 	)

@@ -3,8 +3,16 @@ import { Command, given, message, model, story } from "foldkit/story"
 import { UrlRequest } from "foldkit/navigation"
 import { describe, expect, test } from "vitest"
 import { update } from "../main"
-import { after, boot, signedIn, urlOf } from "../test/root-fixtures"
-import { FetchCurrentUser, LoadExternal, NavigateInternal, ReplaceUrl } from "./command"
+import { ada, after, boot, signedIn, urlOf } from "../test/root-fixtures"
+import {
+	CheckSession,
+	FetchCurrentUser,
+	LoadExternal,
+	NavigateInternal,
+	ReplaceUrl,
+	RetryCheckSession,
+	RetryFetchCurrentUser,
+} from "./command"
 import { Message } from "./message"
 
 /** Root routing: links, URL changes, the `beforeLoad` redirects and the signed-out gate. */
@@ -62,7 +70,10 @@ describe("redirects", () => {
 			given(boot("/join/hazel")),
 			message(Message.ChangedAuth({ auth: "SignedOut" })),
 			Command.expectExact(FetchCurrentUser()),
-			Command.resolve(FetchCurrentUser, Message.FailedFetchCurrentUser({ reason: "Unauthorized" })),
+			Command.resolve(
+				FetchCurrentUser,
+				Message.FailedFetchCurrentUser({ reason: "Unauthorized", isUnauthorized: true }),
+			),
 			model((m) => expect(m.currentUser).toBeNull()),
 		)
 	})
@@ -73,8 +84,72 @@ describe("redirects", () => {
 			given(boot("/hazel/settings/team")),
 			message(Message.ChangedAuth({ auth: "SignedIn" })),
 			Command.expectExact(FetchCurrentUser()),
-			Command.resolve(FetchCurrentUser, Message.FailedFetchCurrentUser({ reason: "offline" })),
+			Command.resolve(FetchCurrentUser, Message.SucceededFetchCurrentUser({ user: ada })),
 			message(Message.ChangedAuth({ auth: "SignedIn" })),
+			Command.expectNone(),
+		)
+	})
+
+	test("a signed-in user.me failure asks again until it succeeds", () => {
+		const offline = Message.FailedFetchCurrentUser({ reason: "offline", isUnauthorized: false })
+		story(
+			update,
+			given(boot("/hazel/settings/team")),
+			message(Message.ChangedAuth({ auth: "SignedIn" })),
+			Command.resolve(FetchCurrentUser, offline),
+			Command.expectExact(RetryFetchCurrentUser()),
+			Command.resolve(RetryFetchCurrentUser, offline),
+			Command.expectExact(RetryFetchCurrentUser()),
+			Command.resolve(RetryFetchCurrentUser, Message.SucceededFetchCurrentUser({ user: ada })),
+			model((m) => expect(m.currentUser).toEqual(ada)),
+			Command.expectNone(),
+		)
+	})
+
+	test("an unanswered session check keeps auth loading and asks again", () => {
+		story(
+			update,
+			given(boot("/hazel/settings/team")),
+			message(Message.FailedCheckSession()),
+			Command.expectExact(RetryCheckSession()),
+			model((m) => expect(m.auth).toBe("Loading")),
+			Command.resolve(RetryCheckSession, Message.ChangedAuth({ auth: "SignedIn" })),
+			model((m) => expect(m.isSessionStalled).toBe(false)),
+			Command.resolve(FetchCurrentUser, Message.SucceededFetchCurrentUser({ user: ada })),
+		)
+	})
+
+	test("a refused access token re-reads the session, and an ended one goes to sign-in", () => {
+		story(
+			update,
+			given(signedIn("/hazel/settings/team")),
+			message(Message.RejectedSession()),
+			Command.expectExact(CheckSession()),
+			Command.resolve(CheckSession, Message.ChangedAuth({ auth: "SignedOut" })),
+			Command.expectHas(ReplaceUrl({ url: "/sign-in?redirect_url=%2Fhazel%2Fsettings%2Fteam" })),
+			Command.resolve(ReplaceUrl, Message.CompletedReplaceUrl()),
+		)
+	})
+
+	test("an unauthorized user.me while signed in re-reads the session", () => {
+		story(
+			update,
+			given(boot("/hazel/settings/team")),
+			message(Message.ChangedAuth({ auth: "SignedIn" })),
+			Command.resolve(
+				FetchCurrentUser,
+				Message.FailedFetchCurrentUser({ reason: "Unauthorized", isUnauthorized: true }),
+			),
+			Command.expectExact(CheckSession(), RetryFetchCurrentUser()),
+			Command.resolve(CheckSession, Message.ChangedAuth({ auth: "SignedOut" })),
+			Command.expectHas(ReplaceUrl({ url: "/sign-in?redirect_url=%2Fhazel%2Fsettings%2Fteam" })),
+			Command.resolveAll(
+				[ReplaceUrl, Message.CompletedReplaceUrl()],
+				[
+					RetryFetchCurrentUser,
+					Message.FailedFetchCurrentUser({ reason: "Unauthorized", isUnauthorized: true }),
+				],
+			),
 			Command.expectNone(),
 		)
 	})

@@ -14,6 +14,16 @@ import { ResolvedTheme, resolveTheme, ThemePreference } from "../theme"
 import type { Context as ShellUpdateContext } from "../shell/update"
 import { can } from "../page/contract"
 
+/**
+ * The organization query for `slug`: `Found` (the shell renders), `NotFound` (no such org, or the
+ * user is not a member) or `Stalled` (not loaded after a while; the loader offers a reload).
+ */
+export const OrgLoad = Schema.Struct({
+	slug: Schema.String,
+	status: Schema.Literals(["Found", "NotFound", "Stalled"]),
+})
+export type OrgLoad = typeof OrgLoad.Type
+
 /** The root Model: route, session, the active page, the shell and the overlay slots. */
 export const Model = Schema.Struct({
 	route: AppRoute,
@@ -23,8 +33,11 @@ export const Model = Schema.Struct({
 	auth: Auth,
 	currentUser: Schema.NullOr(CurrentUser),
 	organization: Schema.NullOr(Organization),
-	/** The slug whose organization query has answered; until it matches the route, a loader shows. */
-	loadedOrgSlug: Schema.NullOr(Schema.String),
+	/** How far the route's organization has loaded; until `slug` matches the route, a loader shows. */
+	orgLoad: Schema.NullOr(OrgLoad),
+	/** The session check or `user.me` keeps failing: the loader offers a reload while retries go on. */
+	isSessionStalled: Schema.Boolean,
+	isCurrentUserStalled: Schema.Boolean,
 	member: Schema.NullOr(Member),
 	nowMs: Schema.Number,
 	/** The stored theme preference (`themeAtom`, `themeCustomizationAtom`), and the system's theme. */

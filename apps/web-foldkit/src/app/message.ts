@@ -29,12 +29,20 @@ export const Message = defineMessageUnion({
 	UpdatedRecentNotifications: { ids: Schema.Array(NotificationId) },
 	CompletedDeliverNotifications: {},
 	ChangedAuth: { auth: Auth },
+	/** The API did not answer the session check; auth stays `Loading` and the check runs again. */
+	FailedCheckSession: {},
+	/** The API refused to exchange the session for an access token. */
+	RejectedSession: {},
 	SucceededFetchCurrentUser: { user: CurrentUser },
-	FailedFetchCurrentUser: { reason: Schema.String },
+	FailedFetchCurrentUser: { reason: Schema.String, isUnauthorized: Schema.Boolean },
 	CompletedSignOut: {},
 	FailedSignOut: { reason: Schema.String },
 	/** The organization query for `orgSlug` answered (found or not). */
 	UpdatedOrganization: { orgSlug: Schema.String, organization: Schema.NullOr(Organization) },
+	/** The organization query for `orgSlug` has not loaded after a while, or its source failed. */
+	StalledOrganization: { orgSlug: Schema.String },
+	PressedReload: {},
+	CompletedReload: {},
 	UpdatedMember: { member: Schema.NullOr(Member) },
 	TickedPresenceClock: { nowMs: Schema.Number },
 	ClickedLayoutTab: { href: Schema.String },

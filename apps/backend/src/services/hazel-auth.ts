@@ -154,13 +154,22 @@ const accessTokenRoutes = (issuerOrigin: string, key: AccessToken.SigningKey) =>
 							(value) =>
 								value.startsWith("Bearer ") ? Option.some(value.slice(7)) : Option.none(),
 						)
-						const session = Option.isSome(bearer)
-							? yield* auth
-									.verifySession(Redacted.make(bearer.value))
-									.pipe(Effect.catchTag("SessionInvalid", () => Effect.succeed(null)))
-							: yield* auth.getSession()
-						if (session === null) return HttpServerResponse.empty({ status: 401 })
-						const token = yield* issuer.mint(session)
+						const session = yield* (
+							Option.isSome(bearer)
+								? auth
+										.verifySession(Redacted.make(bearer.value))
+										.pipe(Effect.catchTag("SessionInvalid", () => Effect.succeed(null)))
+								: auth.getSession()
+						).pipe(
+							// The session store did not answer: that says nothing about the session, so
+							// the client must retry rather than treat it as signed out.
+							Effect.map(Option.some),
+							Effect.catchTag("SessionUnavailable", () => Effect.succeed(Option.none())),
+						)
+						if (Option.isNone(session))
+							return HttpServerResponse.empty({ status: 503, headers: { "retry-after": "1" } })
+						if (session.value === null) return HttpServerResponse.empty({ status: 401 })
+						const token = yield* issuer.mint(session.value)
 						return yield* HttpServerResponse.json({
 							token: Redacted.value(token),
 							expiresIn: AccessToken.lifetimeSeconds,
