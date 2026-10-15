@@ -1,7 +1,4 @@
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
-export const sliderGroupStyles = "flex items-center gap-x-3 *:data-[slot=icon]:size-5"
-
-/** Slider root: `cx(...sliderStyles, className)`. */
+/** Slider root (`@foldkit/ui` Slider's `root` attributes): `twMerge(...sliderStyles)`. */
 export const sliderStyles = [
 	"group relative flex touch-none select-none flex-col data-disabled:opacity-50",
 	"data-[orientation=horizontal]:w-full data-[orientation=horizontal]:min-w-fit data-[orientation=horizontal]:gap-y-2",
@@ -10,8 +7,9 @@ export const sliderStyles = [
 
 export const sliderOutputStyles = "font-medium text-base/6 sm:text-sm/6"
 
+/** The thumb; `@foldkit/ui` positions it along the track with inline `left` and `translateX`. */
 export const sliderThumbStyles =
-	"top-[50%] left-[50%] size-[1.25rem] rounded-full border border-fg/10 bg-white outline-hidden ring-black transition-[width,height]"
+	"top-1/2 size-5 -translate-y-1/2 cursor-grab rounded-full border border-fg/10 bg-white shadow-sm outline-hidden transition-[width,height] focus-visible:border-ring/70 focus-visible:ring-3 focus-visible:ring-ring/20 data-dragging:cursor-grabbing data-disabled:cursor-default"
 
 /** Slider track: `cx(...sliderTrackStyles, className)`. */
 export const sliderTrackStyles = [
@@ -22,19 +20,4 @@ export const sliderTrackStyles = [
 ]
 
 export const sliderFillStyles =
-	"group-orientation-horizontal/top-0 pointer-events-none absolute rounded-full bg-primary group-data-disabled/track:opacity-60 group-data-[orientation=vertical]/track:bottom-0 group-data-[orientation=horizontal]/track:h-full group-data-[orientation=vertical]/track:w-full"
-
-/** SliderFill's inline style for one thumb (a width) or a range (offset plus width). */
-export const sliderFillStyle = (
-	orientation: "horizontal" | "vertical",
-	percents: ReadonlyArray<number>,
-): Readonly<Record<string, string>> => {
-	const percent0 = percents[0] ?? 0
-	const percent1 = percents[1] ?? 0
-	if (percents.length === 1) {
-		return orientation === "horizontal" ? { width: `${percent0}%` } : { height: `${percent0}%` }
-	}
-	return orientation === "horizontal"
-		? { left: `${percent0}%`, width: `${Math.abs(percent0 - percent1)}%` }
-		: { bottom: `${percent0}%`, height: `${Math.abs(percent0 - percent1)}%` }
-}
+	"pointer-events-none absolute rounded-full bg-primary group-data-disabled/track:opacity-60 group-data-[orientation=vertical]/track:bottom-0 group-data-[orientation=horizontal]/track:h-full group-data-[orientation=vertical]/track:w-full"

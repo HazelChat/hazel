@@ -1,6 +1,6 @@
 import { User } from "@hazel/domain/models"
 import { UserId } from "@hazel/schema"
-import { Effect, Option, Schema } from "effect"
+import { Effect, Schema } from "effect"
 import { Command } from "foldkit"
 import { testNativeNotification } from "~/lib/native-notifications"
 import { notificationSoundManager } from "~/lib/notification-sound-manager"

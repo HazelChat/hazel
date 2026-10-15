@@ -37,16 +37,23 @@ export const Presence = Schema.Struct({
 })
 export type Presence = typeof Presence.Type
 
+export const ChatIndexTab = Schema.Literals(["public", "private", "dms"])
+export type ChatIndexTab = typeof ChatIndexTab.Type
+
 export const Model = Schema.Struct({
 	/** `null` while the live query loads (the legacy full-height loader). */
 	groups: Schema.NullOr(ChannelGroups),
 	/** `useUserPresence` for the other member of each single DM, keyed by user id. */
 	presence: Schema.Record(Schema.String, Presence),
+	tab: ChatIndexTab,
+	/** The tab list's roving focus; the selected tab is `tab`. */
 	tabs: Tabs.Model,
 })
 export type Model = typeof Model.Type
 
 export const TABS_ID = "chat-index-tabs"
+
+export const ChatIndexTabs = Tabs.create<ChatIndexTab>()
 
 /** The other members of a DM, as `DmCard` filters them. */
 export const otherMembers = (channel: ChannelSummary, currentUserId: string | undefined) =>

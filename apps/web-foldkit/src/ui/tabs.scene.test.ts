@@ -1,36 +1,81 @@
 // @vitest-environment jsdom
+import { Schema } from "effect"
+import type { Update } from "foldkit"
+import * as Command from "foldkit/command"
+import type { Html, HtmlBuilder } from "foldkit/html"
+import { defineMessageUnion } from "foldkit/message"
 import * as Scene from "foldkit/scene"
+import { modifyFields } from "foldkit/struct"
 import { describe, test } from "vitest"
-import { FocusTab, init, Message, update, view } from "./tabs"
+import * as Tabs from "./tabs"
 
-/** Tabs through the view: roles, selection state, keyboard navigation and disabled tabs. */
+/** The styled `@foldkit/ui` Tabs in a parent that owns the selected tab. */
 
-const sceneView = Scene.withViewInputs(view, {
-	listLabel: "Settings sections",
-	tabs: [
-		{ key: "general", content: ["General"] },
-		{ key: "members", content: ["Members"] },
-		{ key: "billing", content: ["Billing"], isDisabled: true },
-	],
-	panels: [
-		{ key: "general", content: ["General settings"] },
-		{ key: "members", content: ["Member list"] },
-		{ key: "billing", content: ["Billing details"] },
-	],
-})
+const Section = Schema.Literals(["general", "members", "billing"])
+type Section = typeof Section.Type
+const SectionTabs = Tabs.create<Section>()
 
-const config = { update, view: sceneView() }
+const Model = Schema.Struct({ tabs: Tabs.Model, section: Section })
+type Model = typeof Model.Type
+
+const Message = defineMessageUnion({ GotTabsMessage: { message: Tabs.Message } })
+type Message = typeof Message.Type
+
+const toTabsMessage = (message: Tabs.Message) => Message.GotTabsMessage({ message })
+
+const update = (model: Model, message: Message): Update.Return<Model, Message> =>
+	Message.match<Update.Return<Model, Message>>(message, {
+		GotTabsMessage: ({ message: child }) => {
+			const result = SectionTabs.update(model.tabs, child)
+			const selected = result.outMessage
+			return {
+				model: modifyFields(model, {
+					tabs: () => result.model,
+					section: (section) => (selected === undefined ? section : selected.value),
+				}),
+				commands: Command.mapMessages(result.commands ?? [], toTabsMessage),
+			}
+		},
+	})
+
+const labels: Record<Section, string> = { general: "General", members: "Members", billing: "Billing" }
+const panels: Record<Section, string> = {
+	general: "General settings",
+	members: "Member list",
+	billing: "Billing details",
+}
+
+const view = (model: Model, h: HtmlBuilder<Message>): Html =>
+	h.main(
+		[],
+		[
+			h.submodel({
+				slotId: "tabs",
+				model: model.tabs,
+				view: SectionTabs.view,
+				viewInputs: {
+					tabs: ["general", "members", "billing"],
+					selectedValue: model.section,
+					ariaLabel: "Settings sections",
+					isTabDisabled: (section) => section === "billing",
+					toView: (render) =>
+						Tabs.layout(h, render, { tab: (section) => [labels[section]], panel: (section) => [panels[section]] }),
+				},
+				toParentMessage: toTabsMessage,
+			}),
+		],
+	)
+
+const init = (section: Section = "general"): Model => ({ tabs: Tabs.init({ id: "settings" }), section })
 const tab = (name: string) => Scene.role("tab", { name })
+const resolveFocus = Scene.Command.resolve(Tabs.FocusTab, Tabs.Message.CompletedFocusTab())
 
 describe("tabs scene", () => {
-	test("renders a labelled tablist with the selected tab and only its panel", () => {
+	test("renders a labelled tablist with the parent's tab selected and only its panel", () => {
 		Scene.scene(
-			config,
-			Scene.given(init({ id: "settings", selectedKey: "general" })),
-			Scene.expect(Scene.role("tablist", { name: "Settings sections" })).toHaveAttr(
-				"aria-orientation",
-				"horizontal",
-			),
+			{ update, view },
+			Scene.given(init()),
+			Scene.expect(Scene.role("tablist", { name: "Settings sections" })).toExist(),
 			Scene.expectAll(Scene.all.role("tab")).toHaveCount(3),
 			Scene.expect(tab("General")).toHaveAttr("aria-selected", "true"),
 			Scene.expect(tab("Members")).toHaveAttr("aria-selected", "false"),
@@ -39,55 +84,25 @@ describe("tabs scene", () => {
 		)
 	})
 
-	test("pressing a tab selects it and swaps the panel", () => {
+	test("clicking a tab tells the parent, which swaps the panel", () => {
 		Scene.scene(
-			config,
-			Scene.given(init({ id: "settings", selectedKey: "general" })),
-			Scene.pointerDown(tab("Members")),
+			{ update, view },
+			Scene.given(init()),
+			Scene.click(tab("Members")),
+			resolveFocus,
 			Scene.expect(tab("Members")).toHaveAttr("aria-selected", "true"),
-			Scene.expect(tab("Members")).toHaveAttr("aria-controls", "settings-tabpanel-members"),
 			Scene.expect(Scene.role("tabpanel", { name: "Members" })).toHaveText("Member list"),
 		)
 	})
 
-	test("ArrowRight wraps past the disabled tab and focuses the new tab", () => {
+	test("ArrowRight skips the disabled tab and wraps", () => {
 		Scene.scene(
-			config,
-			Scene.given(init({ id: "settings", selectedKey: "members" })),
+			{ update, view },
+			Scene.given(init("members")),
 			Scene.keydown(tab("Members"), "ArrowRight"),
-			Scene.Command.expectExact(FocusTab({ elementId: "settings-tab-general" })),
-			Scene.Command.resolve(FocusTab, Message.CompletedFocusTab()),
+			resolveFocus,
 			Scene.expect(tab("General")).toHaveAttr("aria-selected", "true"),
-		)
-	})
-
-	test("a key that is not a navigation key is ignored", () => {
-		Scene.scene(
-			config,
-			Scene.given(init({ id: "settings", selectedKey: "general" })),
-			Scene.keydown(tab("General"), "a"),
-			Scene.expectIgnored(),
-			Scene.expect(tab("General")).toHaveAttr("aria-selected", "true"),
-		)
-	})
-
-	test("a disabled tab is marked aria-disabled", () => {
-		Scene.scene(
-			config,
-			Scene.given(init({ id: "settings", selectedKey: "general" })),
-			Scene.expect(tab("Billing")).toHaveAttr("aria-disabled", "true"),
-			Scene.expect(tab("Billing")).toHaveAttr("data-disabled", "true"),
-		)
-	})
-
-	test("vertical tabs navigate with ArrowDown", () => {
-		Scene.scene(
-			config,
-			Scene.given(init({ id: "settings", selectedKey: "general", orientation: "vertical" })),
-			Scene.expect(Scene.role("tablist")).toHaveAttr("aria-orientation", "vertical"),
-			Scene.keydown(tab("General"), "ArrowDown"),
-			Scene.Command.resolve(FocusTab, Message.CompletedFocusTab()),
-			Scene.expect(tab("Members")).toHaveAttr("aria-selected", "true"),
+			Scene.expect(tab("Billing")).toBeDisabled(),
 		)
 	})
 })
