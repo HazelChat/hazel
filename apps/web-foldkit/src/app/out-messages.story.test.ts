@@ -54,7 +54,7 @@ describe("RequestedModal", () => {
 			update,
 			given(signedIn("/hazel/chat")),
 			message(sidebar(ChannelsSidebar.Message.ClickedSectionAction({ action: "create-channel" }))),
-			model((m) => expect(m.modal?._tag).toBe("NewChannel")),
+			model((m) => expect(m.modal.current?._tag).toBe("NewChannel")),
 		)
 	})
 
@@ -67,7 +67,7 @@ describe("RequestedModal", () => {
 			message(paletteItem("action:invite")),
 			model((m) => {
 				expect(m.commandPalette.isOpen).toBe(false)
-				expect(m.modal?._tag).toBe("EmailInvite")
+				expect(m.modal.current?._tag).toBe("EmailInvite")
 			}),
 		)
 	})
@@ -179,13 +179,13 @@ describe("hotkeys", () => {
 			given(signedIn("/hazel/chat", plainMember)),
 			message(Message.PressedHotkey({ actionId: "channel.create" })),
 			Command.expectNone(),
-			model((m) => expect(m.modal).toBeNull()),
+			model((m) => expect(m.modal.current).toBeNull()),
 		)
 		story(
 			update,
 			given(signedIn("/hazel/chat")),
 			message(Message.PressedHotkey({ actionId: "channel.create" })),
-			model((m) => expect(m.modal?._tag).toBe("NewChannel")),
+			model((m) => expect(m.modal.current?._tag).toBe("NewChannel")),
 		)
 	})
 

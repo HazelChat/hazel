@@ -8,9 +8,15 @@ import * as CommandMenu from "../../ui/command-menu"
 import { CreateChannel, FocusInput, JoinChannel, SetPresenceStatus, TrackRecentChannel } from "./commands"
 import { Message, OutMessage } from "./message"
 import type { Model } from "./model"
-import { SaveRecentSearches } from "./search-mount"
+import {
+	FocusSearchEditor,
+	LoadRecentSearches,
+	SaveRecentSearches,
+	SetSearchPlaceholder,
+	SetSearchText,
+} from "./search-mount"
 import { CREATE_CHANNEL_INPUT_ID, init, JOIN_CHANNEL_INPUT_ID, MENU_ID, open, update } from "./update"
-import { successToast } from "../../data/actions"
+import { reasonToast, successToast } from "../../data/actions"
 
 /** The palette's pages, back stack and actions (legacy `components/command-palette`). */
 
@@ -140,7 +146,6 @@ describe("create channel", () => {
 	})
 
 	test("submits once while the action runs, and a failure toasts and re-enables", () => {
-		const failed = { intent: "error" as const, title: "Nope", description: null }
 		story(
 			run,
 			given(onCreate),
@@ -156,8 +161,8 @@ describe("create channel", () => {
 				}),
 			),
 			model((m) => expect(m.page).toMatchObject({ isSubmitting: true })),
-			Command.resolve(CreateChannel, Message.FailedCreateChannel({ toast: failed })),
-			expectOutMessage(OutMessage.RequestedToast({ toast: failed })),
+			Command.resolve(CreateChannel, Message.FailedCreateChannel({ reason: "Offline" })),
+			expectOutMessage(OutMessage.RequestedToast({ toast: reasonToast("Offline") })),
 			model((m) => {
 				expect(m.isOpen).toBe(true)
 				expect(m.page).toMatchObject({ isSubmitting: false, name: "design" })
@@ -244,7 +249,7 @@ describe("home actions", () => {
 			run,
 			given(opened),
 			message(item("status:dnd")),
-			Command.resolve(SetPresenceStatus, Message.FailedSetPresenceStatus({ reason: "offline" })),
+			Command.resolve(SetPresenceStatus, Message.FailedSetPresenceStatus({ reason: "Offline" })),
 			model((m) => expect(m.isOpen).toBe(false)),
 		)
 	})
@@ -290,6 +295,62 @@ describe("search page", () => {
 			),
 			Command.resolve(SaveRecentSearches, Message.CompletedSaveRecentSearches()),
 			model((m) => expect(m.recentSearches).toEqual(recent)),
+		)
+	})
+
+	const recentSearches = [{ query: "older", filters: [], timestamp: 1 }]
+	const onSearch: Model = {
+		...opened,
+		page: { _tag: "Search", query: "", rawInput: "", filters: [], selectedIndex: 0 },
+		recentSearches,
+	}
+
+	test("opening the search page loads recent searches and focuses the editor", () => {
+		story(
+			run,
+			given(opened),
+			message(item("action:search")),
+			Command.expectExact(LoadRecentSearches(), FocusSearchEditor()),
+			Command.resolve(LoadRecentSearches, Message.LoadedRecentSearches({ searches: recentSearches })),
+			Command.resolve(FocusSearchEditor, Message.FailedFocusSearchEditor({ reason: "EditorNotMounted" })),
+			model((m) => {
+				expect(m.page._tag).toBe("Search")
+				expect(m.recentSearches).toEqual(recentSearches)
+			}),
+		)
+	})
+
+	// P0: the old `if` chain fell through to "clear recent searches" for any message it did not list.
+	test.each([
+		Message.HoveredSuggestion({ index: 0 }),
+		Message.UpdatedSuggestions({ suggestions: [] }),
+		Message.PressedAutocompleteKey({ key: "Escape" }),
+		Message.EditedSearch({ text: "hi", autocomplete: null }),
+	])("$_tag keeps the recent searches", (searchMessage) => {
+		const result = run(onSearch, searchMessage)
+		expect(result.model.recentSearches).toEqual(recentSearches)
+		expect(result.commands?.map((command) => command.name) ?? []).not.toContain("SaveRecentSearches")
+	})
+
+	test("only Clear empties and saves the recent searches", () => {
+		story(
+			run,
+			given(onSearch),
+			message(Message.ClickedClearRecentSearches()),
+			Command.expectExact(SaveRecentSearches({ searches: [] })),
+			Command.resolve(SaveRecentSearches, Message.CompletedSaveRecentSearches()),
+			model((m) => expect(m.recentSearches).toEqual([])),
+		)
+	})
+
+	test("an editor Command after the page closed fails without touching the Model", () => {
+		story(
+			run,
+			given(onSearch),
+			message(Message.ClickedClearSearch()),
+			Command.resolve(SetSearchText, Message.FailedSetSearchText({ reason: "EditorNotMounted" })),
+			Command.resolve(SetSearchPlaceholder, Message.SucceededSetSearchPlaceholder()),
+			model((m) => expect(m.page).toMatchObject({ _tag: "Search", rawInput: "", query: "" })),
 		)
 	})
 })

@@ -109,6 +109,8 @@ const followModalOutMessage = (model: Model, outMessage: Option.Option<ModalOutM
 		}),
 	})
 
+const modalContextOf = (model: Model): Modal.ModalContext => ({ ...sharedOf(model), route: model.route })
+
 /** The modal slot after an open or update; a closing OutMessage already dropped the slot. */
 const withModal = (model: Model, transition: Modal.Transition): Return => {
 	const followed = followModalOutMessage(modifyFields(model, { modal: () => transition.model }), transition.outMessage)
@@ -133,7 +135,7 @@ const withCommandPalette = (model: Model, result: CommandPaletteReturn): Return 
 		onNone: (): Return => ({ model: next }),
 		onSome: CommandPalette.OutMessage.match<Return>({
 			Completed: ({ href, toast }) => completedOverlay(next, href, toast),
-			RequestedModal: ({ modal }) => withModal(next, Modal.open(next.modal, modal, sharedOf(next))),
+			RequestedModal: ({ modal }) => withModal(next, Modal.open(next.modal, modal, modalContextOf(next))),
 			RequestedToast: ({ toast }) => withToasts(next, Toasts.push(next.toasts, toast)),
 			RequestedTheme: ({ preference }) => requestTheme(next, preference),
 			RequestedPresenceStatus: ({ status }) => withPlatform(next, Platform.pickPresenceStatus(next.platform, status)),
@@ -145,7 +147,7 @@ const withCommandPalette = (model: Model, result: CommandPaletteReturn): Return 
 /** `useAppHotkey` handlers in `$orgSlug/layout.tsx`. */
 const pressedHotkey = (model: Model, actionId: LayoutHotkeyActionId): Return => {
 	const shared = sharedOf(model)
-	const openModal = (modal: Modal.ModalRequest) => withModal(model, Modal.open(model.modal, modal, shared))
+	const openModal = (modal: Modal.ModalRequest) => withModal(model, Modal.open(model.modal, modal, modalContextOf(model)))
 	// Legacy passes `initialPage`, but the palette shows its own (reset) page: always home.
 	const openPalette = () => withCommandPalette(model, CommandPalette.open(model.commandPalette, "home", shared))
 	return Match.value(actionId).pipe(
@@ -273,7 +275,7 @@ const handleOutMessage = (outMessage: PageOutMessage): Step =>
 		RequestedModal:
 			({ modal }) =>
 			(model) =>
-				withModal(model, Modal.open(model.modal, modal, sharedOf(model))),
+				withModal(model, Modal.open(model.modal, modal, modalContextOf(model))),
 		RequestedCommandPalette:
 			({ page }) =>
 			(model) =>
@@ -409,7 +411,7 @@ export const init: Runtime.RoutingApplicationInit<Model, Message, Flags, Resourc
 			sessionStartMs: flags.sessionStartMs,
 			page: null,
 			shell: Shell.init(),
-			modal: null,
+			modal: Modal.initialModel,
 			commandPalette: CommandPalette.init(),
 			toasts: Toasts.init(),
 			platform: Platform.init(),
@@ -536,7 +538,7 @@ export const update = (model: Model, message: Message): Return =>
 						informPage,
 					])
 		},
-		GotModalMessage: ({ message }) => withModal(model, Modal.update(model.modal, message, sharedOf(model))),
+		GotModalMessage: ({ message }) => withModal(model, Modal.update(model.modal, message, modalContextOf(model))),
 		GotCommandPaletteMessage: ({ message }) =>
 			withCommandPalette(model, CommandPalette.update(model.commandPalette, message, sharedOf(model))),
 		PressedHotkey: ({ actionId }) => pressedHotkey(model, actionId),

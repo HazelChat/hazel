@@ -15,7 +15,7 @@ import * as Select from "../../ui/select"
 import { closed, completed, ModalOutMessage } from "../out-message"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalSubscriptionInput } from "./contract"
-import { initFrame, isFrameClosed } from "./frame"
+import { initFrame, isCloseRequest } from "./frame"
 import {
 	customDateOf,
 	EXPIRATION_OPTIONS,
@@ -141,7 +141,7 @@ const presenceUpdated = (model: Model, presence: Presence | null): Return => ({
 
 const update = (model: Model, message: Message, shared: Shared): Return =>
 	Message.match<Return>(message, {
-		GotFrameMessage: ({ message }) => (isFrameClosed(model.frame, message) ? { model, outMessage: closed } : { model }),
+		GotFrameMessage: ({ message }) => (isCloseRequest(message) ? { model, outMessage: closed } : { model }),
 		GotExpirationMessage: ({ message }) => expirationChanged(model, Select.update(model.expiration, message), shared),
 		GotCustomDateMessage: ({ message }) => customDateChanged(model, message),
 		GotEmojiPickerMessage: ({ message }) => emojiPickerChanged(model, message),
