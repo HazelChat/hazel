@@ -45,6 +45,7 @@ import { GitHub } from "@hazel/integrations"
 import { Layer } from "effect"
 import { HazelApi } from "./api"
 import { HttpApiRoutes } from "./http"
+import { ServerFailureReporterLive } from "./lib/error-reporter"
 import { AttachmentPolicy } from "./policies/attachment-policy"
 import { BotPolicy } from "./policies/bot-policy"
 import { InvitationPolicy } from "./policies/invitation-policy"
@@ -126,6 +127,8 @@ export const AllRoutes = Layer.mergeAll(
 			credentials: true,
 		}),
 	),
+	// RpcServer and HttpApiBuilder report failed requests here; server failures get logged.
+	Layer.provide(ServerFailureReporterLive),
 )
 
 /**

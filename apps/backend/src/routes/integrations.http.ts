@@ -262,7 +262,7 @@ const makeOAuthSessionCookie = (
 		catch: (error) =>
 			new InternalServerError({
 				message: "Failed to create OAuth session cookie",
-				detail: String(error),
+				cause: error,
 			}),
 	})
 
@@ -306,7 +306,7 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (
 			(error) =>
 				new InternalServerError({
 					message: `Provider not available: ${error._tag}`,
-					detail: String(error),
+					cause: error,
 				}),
 		),
 	)
@@ -321,7 +321,7 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (
 			(error) =>
 				new InternalServerError({
 					message: "Failed to fetch organization",
-					detail: String(error),
+					cause: error,
 				}),
 		),
 	)
@@ -404,7 +404,7 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (
 	).pipe(
 		Effect.catchTag("HttpBodyError", (e) =>
 			Effect.fail(
-				new InternalServerError({ message: "Failed to serialize response", detail: String(e) }),
+				new InternalServerError({ message: "Failed to serialize response", cause: e }),
 			),
 		),
 	)
@@ -1210,7 +1210,7 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 			handleGetOAuthUrl(params, query).pipe(
 				Effect.catchTag("ConfigError", (err) =>
 					Effect.fail(
-						new InternalServerError({ message: "Missing configuration", detail: String(err) }),
+						new InternalServerError({ message: "Missing configuration", cause: err }),
 					),
 				),
 			),
@@ -1221,13 +1221,13 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 					Effect.fail(
 						new InternalServerError({
 							message: "Database error during OAuth callback",
-							detail: String(error),
+							cause: error,
 						}),
 					),
 				),
 				Effect.catchTag("ConfigError", (err) =>
 					Effect.fail(
-						new InternalServerError({ message: "Missing configuration", detail: String(err) }),
+						new InternalServerError({ message: "Missing configuration", cause: err }),
 					),
 				),
 			),
@@ -1239,14 +1239,14 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 						Effect.fail(
 							new InternalServerError({
 								message: "Database error during API key connection",
-								detail: String(error),
+								cause: error,
 							}),
 						),
 					SchemaError: (error: { readonly _tag: "SchemaError"; readonly message?: string }) =>
 						Effect.fail(
 							new InternalServerError({
 								message: "Failed to parse API response",
-								detail: String(error),
+								cause: error,
 							}),
 						),
 					IntegrationEncryptionError: (error: {
@@ -1256,7 +1256,7 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 						Effect.fail(
 							new InternalServerError({
 								message: "Failed to encrypt token",
-								detail: String(error),
+								cause: error,
 							}),
 						),
 				}),
@@ -1268,7 +1268,7 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 					Effect.fail(
 						new InternalServerError({
 							message: "Failed to get connection status",
-							detail: String(error),
+							cause: error,
 						}),
 					),
 				),
@@ -1280,7 +1280,7 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 					Effect.fail(
 						new InternalServerError({
 							message: "Failed to disconnect integration",
-							detail: String(error),
+							cause: error,
 						}),
 					),
 				),

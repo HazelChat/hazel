@@ -119,7 +119,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							Effect.fail(
 								new InternalServerError({
 									message: "Invalid sync connection data",
-									detail: String(error),
+									cause: error,
 								}),
 							),
 						),
@@ -127,7 +127,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							Effect.fail(
 								new InternalServerError({
 									message: "Database error while creating sync connection",
-									detail: String(error),
+									cause: error,
 								}),
 							),
 						),
@@ -143,7 +143,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 						Effect.fail(
 							new InternalServerError({
 								message: "Database error while listing sync connections",
-								detail: String(error),
+								cause: error,
 							}),
 						),
 					),
@@ -179,7 +179,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							Effect.fail(
 								new InternalServerError({
 									message: "Database error while deleting sync connection",
-									detail: String(error),
+									cause: error,
 								}),
 							),
 						),
@@ -256,7 +256,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							Effect.fail(
 								new InternalServerError({
 									message: "Invalid channel link data",
-									detail: String(error),
+									cause: error,
 								}),
 							),
 						),
@@ -264,7 +264,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							Effect.fail(
 								new InternalServerError({
 									message: "Database error while creating channel link",
-									detail: String(error),
+									cause: error,
 								}),
 							),
 						),
@@ -290,7 +290,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 						Effect.fail(
 							new InternalServerError({
 								message: "Database error while listing channel links",
-								detail: String(error),
+								cause: error,
 							}),
 						),
 					),
@@ -333,7 +333,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							Effect.fail(
 								new InternalServerError({
 									message: "Database error while deleting channel link",
-									detail: String(error),
+									cause: error,
 								}),
 							),
 						),
@@ -393,7 +393,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							Effect.fail(
 								new InternalServerError({
 									message: "Database error while updating channel link",
-									detail: String(error),
+									cause: error,
 								}),
 							),
 						),

@@ -37,7 +37,7 @@ const ensureOrgAccess = Effect.fn("chatSync.ensureOrgAccess")(function* (organiz
 const toInternalServerError = (message: string, error: unknown) =>
 	new InternalServerError({
 		message,
-		detail: String(error),
+		cause: error,
 	})
 
 const normalizeChannelLinkSettings = (

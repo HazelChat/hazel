@@ -93,7 +93,7 @@ export const HttpApiV1IntegrationsLive = HttpApiBuilder.group(HazelApi, "api-v1-
 								Effect.fail(
 									new InternalServerError({
 										message: "Failed to list organizations",
-										detail: String(err),
+										cause: err,
 									}),
 								),
 							),
@@ -120,7 +120,7 @@ export const HttpApiV1IntegrationsLive = HttpApiBuilder.group(HazelApi, "api-v1-
 								Effect.fail(
 									new InternalServerError({
 										message: "Failed to verify organization membership",
-										detail: String(err),
+										cause: err,
 									}),
 								),
 							),
@@ -149,7 +149,7 @@ export const HttpApiV1IntegrationsLive = HttpApiBuilder.group(HazelApi, "api-v1-
 								Effect.fail(
 									new InternalServerError({
 										message: "Failed to list channels",
-										detail: String(err),
+										cause: err,
 									}),
 								),
 							),
@@ -240,14 +240,14 @@ export const HttpApiV1IntegrationsLive = HttpApiBuilder.group(HazelApi, "api-v1-
 										Effect.fail(
 											new InternalServerError({
 												message: "Failed to create channel webhook",
-												detail: String(err),
+												cause: err,
 											}),
 										),
 									SchemaError: (err) =>
 										Effect.fail(
 											new InternalServerError({
 												message: "Schema validation failed",
-												detail: String(err),
+												cause: err,
 											}),
 										),
 								}),

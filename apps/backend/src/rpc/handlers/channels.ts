@@ -436,7 +436,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							Effect.fail(
 								new InternalServerError({
 									message: "Failed to query channel",
-									cause: String(err),
+									cause: err,
 								}),
 							),
 						),
@@ -506,7 +506,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								Effect.fail(
 									new WorkflowServiceUnavailableError({
 										message: "Cannot connect to workflow service",
-										cause: String(err),
+										cause: err,
 									}),
 								),
 							),
@@ -514,7 +514,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								Effect.fail(
 									new InternalServerError({
 										message: "Failed to parse workflow response",
-										cause: String(err),
+										cause: err,
 									}),
 								),
 							),

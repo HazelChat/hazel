@@ -152,14 +152,14 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 						Effect.fail(
 							new InternalServerError({
 								message: "Database error while creating message",
-								detail: String(error),
+								cause: error,
 							}),
 						),
 					SchemaError: (error: unknown) =>
 						Effect.fail(
 							new InternalServerError({
 								message: "Invalid request data",
-								detail: String(error),
+								cause: error,
 							}),
 						),
 				}),
@@ -255,14 +255,14 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 						Effect.fail(
 							new InternalServerError({
 								message: "Database error while creating message",
-								detail: String(error),
+								cause: error,
 							}),
 						),
 					SchemaError: (error: unknown) =>
 						Effect.fail(
 							new InternalServerError({
 								message: "Invalid request data",
-								detail: String(error),
+								cause: error,
 							}),
 						),
 				}),
@@ -355,14 +355,14 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 						Effect.fail(
 							new InternalServerError({
 								message: "Database error while creating message",
-								detail: String(error),
+								cause: error,
 							}),
 						),
 					SchemaError: (error: unknown) =>
 						Effect.fail(
 							new InternalServerError({
 								message: "Invalid request data",
-								detail: String(error),
+								cause: error,
 							}),
 						),
 				}),
@@ -448,14 +448,14 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 						Effect.fail(
 							new InternalServerError({
 								message: "Database error while creating message",
-								detail: String(error),
+								cause: error,
 							}),
 						),
 					SchemaError: (error: unknown) =>
 						Effect.fail(
 							new InternalServerError({
 								message: "Invalid request data",
-								detail: String(error),
+								cause: error,
 							}),
 						),
 				}),

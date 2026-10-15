@@ -141,7 +141,7 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 							Effect.fail(
 								new InternalServerError({
 									message: "Database error while fetching integration",
-									detail: String(error),
+									cause: error,
 								}),
 							),
 						// When token decryption fails, prompt user to reconnect instead of showing 500 error
@@ -292,7 +292,7 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 							Effect.fail(
 								new InternalServerError({
 									message: "Failed to fetch GitHub repositories",
-									detail: String(error),
+									cause: error,
 								}),
 							),
 						TokenNotFoundError: () =>
@@ -315,7 +315,7 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 							Effect.fail(
 								new InternalServerError({
 									message: "Failed to fetch Discord guilds",
-									detail: String(error),
+									cause: error,
 								}),
 							),
 						TokenNotFoundError: () =>
@@ -338,14 +338,14 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 							Effect.fail(
 								new InternalServerError({
 									message: "Failed to fetch Discord channels",
-									detail: String(error),
+									cause: error,
 								}),
 							),
 						ConfigError: (error) =>
 							Effect.fail(
 								new InternalServerError({
 									message: "Discord bot token not configured",
-									detail: String(error),
+									cause: error,
 								}),
 							),
 					}),
@@ -391,7 +391,7 @@ const handleGetGitHubRepositories = Effect.fn("integration-resources.getGitHubRe
 			(error) =>
 				new InternalServerError({
 					message: "Failed to fetch GitHub repositories",
-					detail: error.message,
+					cause: error,
 				}),
 		),
 	)

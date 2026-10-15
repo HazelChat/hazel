@@ -64,7 +64,7 @@ const handleOrganizationDbErrors = <R, E extends { _tag: string }, A>(
 						new InternalServerError({
 							message: `Error ${action}ing ${entityType}`,
 							detail: `There was a database error when ${action}ing the ${entityType}`,
-							cause: String(err),
+							cause: err,
 						}),
 					)
 				},
@@ -76,7 +76,7 @@ const handleOrganizationDbErrors = <R, E extends { _tag: string }, A>(
 						new InternalServerError({
 							message: `Error ${action}ing ${entityType}`,
 							detail: `There was an error in parsing when ${action}ing the ${entityType}`,
-							cause: String(err),
+							cause: err,
 						}),
 					),
 			),
@@ -292,7 +292,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							Effect.fail(
 								new InternalServerError({
 									message: "Error fetching organization",
-									detail: String(err),
+									cause: err,
 								}),
 							),
 					}),

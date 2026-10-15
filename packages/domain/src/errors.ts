@@ -59,7 +59,7 @@ export class OAuthRedemptionPendingError extends Schema.TaggedError<OAuthRedempt
  * part of the error's schema: `cause` is the native, non-enumerable `Error.cause`, so it is never
  * encoded into RPC or HTTP responses.
  */
-const attachCause = (error: Error, cause: unknown) => {
+export const attachCause = (error: Error, cause: unknown) => {
 	if (cause === undefined) return
 	Object.defineProperty(error, "cause", { value: cause, enumerable: false, writable: true, configurable: true })
 }
