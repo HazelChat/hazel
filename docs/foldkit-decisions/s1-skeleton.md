@@ -1,5 +1,7 @@
 # S1: Skeleton spike
 
+> **Historical.** The legacy React app (`apps/web`) and the parity harness (`packages/ui-parity`, the `/dev/gallery` routes and the `legacy-ui-guard` agent) have been deleted. Parity commands and baselines referenced below no longer exist.
+
 Status: **passed** · 2026-10-07 · Branch `experiment-2.0`
 
 Question: can Foldkit boot Hazel's stack (Clerk auth, Effect RPC, Electric/TanStack DB) and render a real screen pixel-identical to the React app?
