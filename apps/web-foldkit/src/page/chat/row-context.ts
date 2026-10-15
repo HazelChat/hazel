@@ -119,6 +119,7 @@ const buildContext = <M>(
 				model: open.menu,
 				view: contextMenuView,
 				viewInputs: {
+					entries: Overlays.contextMenuEntries(factsOf(model), row.message.id),
 					toTrigger: render,
 					content: contextMenuContent(h, factsOf(model).isPinned(row.message.id)),
 					className: "min-w-56",

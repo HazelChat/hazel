@@ -25,8 +25,8 @@ const entries = [
 	}),
 	item("docs", { textValue: "Docs", href: "/docs" }),
 ]
-const menu = init({ id: "file", entries })
-const pressMenuKey = (key: string, isModified = false) => message(Message.PressedMenuKey({ key, isModified }))
+const menu = init({ id: "file" })
+const pressMenuKey = (key: string, isModified = false) => message(Message.PressedMenuKey({ key, isModified, entries: entries }))
 const focusOf = (next: Model) => (next.popup._tag === "Open" ? next.popup.focusedKey : Option.none())
 const submenuOf = (next: Model) => (next.popup._tag === "Open" ? next.popup.submenu : Option.none())
 const searchOf = (next: Model) => (next.popup._tag === "Open" ? next.popup.search : "")
@@ -49,7 +49,7 @@ describe("menu story", () => {
 		story(
 			update,
 			given(menu),
-			message(Message.PressedTriggerKey({ key: "ArrowDown" })),
+			message(Message.PressedTriggerKey({ key: "ArrowDown", entries: entries })),
 			Command.expectNone(),
 			model((next) => {
 				expect(next.popup._tag).toBe("Open")
@@ -62,7 +62,7 @@ describe("menu story", () => {
 		story(
 			update,
 			given(menu),
-			message(Message.PressedTriggerKey({ key: "ArrowUp" })),
+			message(Message.PressedTriggerKey({ key: "ArrowUp", entries: entries })),
 			model((next) => expect(focusOf(next)).toEqual(Option.some("docs"))),
 		)
 	})
@@ -84,8 +84,8 @@ describe("menu story", () => {
 	test("a single-selection menu opens on its selected item", () => {
 		story(
 			update,
-			given(init({ id: "file", entries, selectionMode: "Single", selectedKeys: ["open"] })),
-			message(Message.PressedTriggerKey({ key: "Enter" })),
+			given(init({ id: "file", selectionMode: "Single", selectedKeys: ["open"] })),
+			message(Message.PressedTriggerKey({ key: "Enter", entries: entries })),
 			model((next) => expect(focusOf(next)).toEqual(Option.some("open"))),
 		)
 	})
@@ -94,7 +94,7 @@ describe("menu story", () => {
 		story(
 			update,
 			given(menu),
-			message(Message.PressedTriggerKey({ key: "ArrowDown" })),
+			message(Message.PressedTriggerKey({ key: "ArrowDown", entries: entries })),
 			pressMenuKey("ArrowDown"),
 			resolveFocus,
 			pressMenuKey("ArrowDown"),
@@ -112,8 +112,8 @@ describe("menu story", () => {
 	test("Enter activates the focused item, closes the menu and selects it in single mode", () => {
 		story(
 			update,
-			given(init({ id: "file", entries, selectionMode: "Single" })),
-			message(Message.PressedTriggerKey({ key: "ArrowDown" })),
+			given(init({ id: "file", selectionMode: "Single" })),
+			message(Message.PressedTriggerKey({ key: "ArrowDown", entries: entries })),
 			pressMenuKey("Enter"),
 			expectOutMessage(OutMessage.SelectedItem({ key: "new" })),
 			model((next) => {
@@ -127,11 +127,11 @@ describe("menu story", () => {
 		story(
 			update,
 			given(menu),
-			message(Message.PressedTriggerKey({ key: "ArrowUp" })),
+			message(Message.PressedTriggerKey({ key: "ArrowUp", entries: entries })),
 			pressMenuKey(" "),
 			expectOutMessage(OutMessage.ActivatedLink({ key: "docs", href: "/docs" })),
 			message(Message.PressedTrigger({ pointerType: "mouse" })),
-			message(Message.ClickedItem({ key: "docs" })),
+			message(Message.ClickedItem({ key: "docs", entries: entries })),
 			expectOutMessage(OutMessage.SelectedItem({ key: "docs" })),
 		)
 	})
@@ -141,7 +141,7 @@ describe("menu story", () => {
 			update,
 			given(menu),
 			message(Message.PressedTrigger({ pointerType: "mouse" })),
-			message(Message.ClickedItem({ key: "archive" })),
+			message(Message.ClickedItem({ key: "archive", entries: entries })),
 			expectNoOutMessage(),
 			model((next) => expect(next.popup._tag).toBe("Open")),
 		)
@@ -151,7 +151,7 @@ describe("menu story", () => {
 		story(
 			update,
 			given(menu),
-			message(Message.PressedTriggerKey({ key: "ArrowDown" })),
+			message(Message.PressedTriggerKey({ key: "ArrowDown", entries: entries })),
 			pressMenuKey("ArrowDown"),
 			resolveFocus,
 			pressMenuKey("ArrowDown"),
@@ -177,13 +177,13 @@ describe("menu story", () => {
 			update,
 			given(menu),
 			message(Message.PressedTrigger({ pointerType: "mouse" })),
-			message(Message.ClickedItem({ key: "share" })),
+			message(Message.ClickedItem({ key: "share", entries: entries })),
 			expectNoOutMessage(),
 			Command.expectNone(),
 			model((next) =>
 				expect(Option.map(submenuOf(next), (s) => s.triggerKey)).toEqual(Option.some("share")),
 			),
-			message(Message.HoveredItem({ key: "email" })),
+			message(Message.HoveredItem({ key: "email", entries: entries })),
 			resolveFocus,
 			pressMenuKey("Escape"),
 			resolveFocus,
@@ -202,7 +202,7 @@ describe("menu story", () => {
 			update,
 			given(menu),
 			message(Message.PressedTrigger({ pointerType: "mouse" })),
-			message(Message.HoveredItem({ key: "archive" })),
+			message(Message.HoveredItem({ key: "archive", entries: entries })),
 			Command.expectNone(),
 			model((next) => expect(focusOf(next)).toEqual(Option.none())),
 		)
@@ -212,7 +212,7 @@ describe("menu story", () => {
 		story(
 			update,
 			given(menu),
-			message(Message.PressedTriggerKey({ key: "ArrowDown" })),
+			message(Message.PressedTriggerKey({ key: "ArrowDown", entries: entries })),
 			pressMenuKey("s"),
 			Command.expectExact(
 				FocusMenuElement({ elementId: "file-item-share" }),
@@ -244,7 +244,7 @@ describe("menu story", () => {
 		story(
 			update,
 			given(menu),
-			message(Message.PressedTriggerKey({ key: "ArrowDown" })),
+			message(Message.PressedTriggerKey({ key: "ArrowDown", entries: entries })),
 			pressMenuKey("o", true),
 			Command.expectNone(),
 			pressMenuKey("a"),
@@ -274,7 +274,7 @@ describe("menu story", () => {
 	test("a context menu opens at the pointer with nothing focused", () => {
 		story(
 			update,
-			given(init({ id: "file", entries, anchor: "Pointer" })),
+			given(init({ id: "file", anchor: "Pointer" })),
 			message(Message.PressedContextMenu({ offset: -40, crossOffset: 12 })),
 			Command.expectNone(),
 			model((next) => {

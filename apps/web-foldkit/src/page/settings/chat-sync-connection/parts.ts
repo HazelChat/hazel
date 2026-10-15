@@ -7,6 +7,7 @@ import {
 	type ChannelLink,
 	DIRECTION_LABELS,
 	linkMenuId,
+	linkMenuEntries,
 	Message,
 	type SyncDirection,
 	type WebhookPermission,
@@ -141,6 +142,7 @@ export const channelLinkRow = (
 									model: menu,
 									view: menuView,
 									viewInputs: {
+										entries: linkMenuEntries,
 										toTrigger: (
 											attributes: ReadonlyArray<ChildAttribute>,
 											overlay: Html,

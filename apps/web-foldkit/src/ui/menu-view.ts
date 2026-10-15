@@ -209,6 +209,8 @@ export const menuTriggerClassName = (className?: string) => twMerge(twMerge(...m
 // VIEW
 
 export type ViewInputs = Readonly<{
+	/** The menu's structure, owned by the parent (build it with `item`, `section` and `separator`). */
+	entries: ReadonlyArray<Entry>
 	/** Renders the trigger. Spread `attributes` on it and put `overlay` last among its children. */
 	toTrigger: (attributes: ReadonlyArray<ChildAttribute>, overlay: Html) => Html
 	/** The children of one item (icon, label, shortcut, description), or of a section's header. */
@@ -243,7 +245,7 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 		),
 		h.OnKeyDownPreventDefault((key) =>
 			Array.contains(["Enter", " ", "ArrowDown", "ArrowUp"], key)
-				? Option.some(Message.PressedTriggerKey({ key }))
+				? Option.some(Message.PressedTriggerKey({ key, entries: viewInputs.entries }))
 				: Option.none(),
 		),
 	])
@@ -283,6 +285,7 @@ const overlay = (model: Model, open: Open, viewInputs: ViewInputs, h: HtmlBuilde
 		Message.PressedMenuKey({
 			key,
 			isModified: modifiers.ctrlKey || modifiers.metaKey || modifiers.altKey,
+			entries: viewInputs.entries,
 		})
 
 	return h.div(
@@ -341,7 +344,7 @@ const overlay = (model: Model, open: Open, viewInputs: ViewInputs, h: HtmlBuilde
 										className: viewInputs.className,
 										elementId: menuId(model.id),
 										labelledBy: isAtPointer ? undefined : triggerId(model.id),
-										entries: model.entries,
+										entries: viewInputs.entries,
 										header:
 											typeof viewInputs.header === "function"
 												? viewInputs.header()
@@ -382,7 +385,7 @@ const submenuPopover = (
 	triggerKey: string,
 	focusedKey: Option.Option<string>,
 ): Html => {
-	const trigger = Array.findFirst(rootItems(model), (candidate) => candidate.key === triggerKey)
+	const trigger = Array.findFirst(rootItems(viewInputs.entries), (candidate) => candidate.key === triggerKey)
 	const leaves = Option.match(trigger, { onNone: () => [], onSome: (found) => found.submenu })
 	return h.div(
 		[
@@ -582,9 +585,9 @@ const menuItem = (
 			h.Id(itemId(model.id, key)),
 			h.Role(isSelectable ? "menuitemradio" : "menuitem"),
 			...(entry.isDisabled ? [] : [h.Attribute("tabindex", isFocused ? "0" : "-1")]),
-			h.OnMouseEnter(Message.HoveredItem({ key })),
+			h.OnMouseEnter(Message.HoveredItem({ key, entries: viewInputs.entries })),
 			h.OnMouseLeave(Message.UnhoveredItem({ key })),
-			h.OnClick(Message.ClickedItem({ key })),
+			h.OnClick(Message.ClickedItem({ key, entries: viewInputs.entries })),
 		],
 		[
 			...(isSelected

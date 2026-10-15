@@ -19,7 +19,7 @@ import { discordLogo, slackLogo } from "./brand-icons"
 import { addConnectionModal } from "./add-connection-view"
 import { confirmDialog } from "./confirm-dialog"
 import { formatSyncedAt } from "./rpc"
-import { type Connection, Message, type Model, STATUS_CONFIG } from "./model"
+import { addMenuEntries, type Connection, Message, type Model, STATUS_CONFIG } from "./model"
 
 /** Port of `settings/chat-sync/index.tsx`. */
 
@@ -66,6 +66,7 @@ const addConnectionDropdown = (
 		model: menu,
 		view: menuView,
 		viewInputs: {
+			entries: addMenuEntries,
 			toTrigger: (attributes: ReadonlyArray<ChildAttribute>, overlay: Html) =>
 				h.button(
 					[

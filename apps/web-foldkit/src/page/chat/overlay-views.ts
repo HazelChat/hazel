@@ -58,13 +58,14 @@ export const messageToolbarOverlay = <M>(
 	if (messageId === null || row === undefined || row._tag !== "MessageRow") return h.empty
 	const toOverlay = toOverlays(toParentMessage)
 	const facts = factsOf(model)
-	const menu = Overlays.moreMenuFor(overlays, messageId, facts)
+	const menu = Overlays.moreMenuFor(overlays, messageId)
 	const isPinned = facts.isPinned(messageId)
 	const moreActions = h.submodel({
 		slotId: "message-more-actions",
 		model: menu,
 		view: menuView,
 		viewInputs: {
+			entries: Overlays.moreMenuEntries(facts),
 			toTrigger: (attributes, overlay) =>
 				h.button(
 					[

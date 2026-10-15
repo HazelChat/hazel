@@ -22,6 +22,7 @@ import {
 import { Message } from "./message"
 import { init, update } from "./update"
 import { sharedDefaults } from "../../test-shared"
+import { rowEntries } from "./rows"
 
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`
 const channelId = Schema.decodeSync(ChannelId)(uuid(1))
@@ -65,7 +66,7 @@ describe("channel integrations", () => {
 			given(loaded),
 			message(menu(Menu.Message.PressedTrigger({ pointerType: "mouse" }))),
 			Command.resolveAll(),
-			message(menu(Menu.Message.ClickedItem({ key: "toggle" }))),
+			message(menu(Menu.Message.ClickedItem({ key: "toggle", entries: rowEntries("webhook", false) }))),
 			Command.resolveAll(),
 			model((current) => expect(current.togglingRowIds).toEqual([ci.id])),
 			Command.resolve(
@@ -153,7 +154,7 @@ const rowMenu = (menuMessage: Menu.Message) =>
 /** The custom webhook's menu opened and "Delete" picked: the confirm dialog is open. */
 const confirming = [
 	Menu.Message.PressedTrigger({ pointerType: "mouse" }),
-	Menu.Message.ClickedItem({ key: "remove" }),
+	Menu.Message.ClickedItem({ key: "remove", entries: rowEntries("webhook", false) }),
 ].reduce((current, next) => run(current, rowMenu(next)).model, loaded)
 
 describe("row removal", () => {
@@ -241,7 +242,7 @@ describe("row removal", () => {
 			Message.SucceededRowAction({ kind: "webhook", id: ci.id, successMessage: "Webhook deleted" }),
 		).model
 		const reopened = run(settled, rowMenu(Menu.Message.PressedTrigger({ pointerType: "mouse" }))).model
-		const again = run(reopened, rowMenu(Menu.Message.ClickedItem({ key: "remove" }))).model
+		const again = run(reopened, rowMenu(Menu.Message.ClickedItem({ key: "remove", entries: rowEntries("webhook", false) }))).model
 		expect(run(again, Message.ClickedConfirmRemove()).commands ?? []).toHaveLength(1)
 	})
 })

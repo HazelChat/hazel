@@ -23,7 +23,6 @@ import {
 import {
 	ADD_LINK_MODAL_ID,
 	type ChannelLink,
-	linkMenuEntries,
 	linkMenuId,
 	Message,
 	type Model,
@@ -118,12 +117,7 @@ const reflectLinkMenus = (model: Model, links: ReadonlyArray<ChannelLink>): Mode
 			links.map((link) =>
 				Option.getOrElse(
 					Array.findFirst(menus, (menu) => menu.id === linkMenuId(link.id)),
-					() =>
-						Menu.init({
-							id: linkMenuId(link.id),
-							entries: linkMenuEntries,
-							placement: "bottom end",
-						}),
+					() => Menu.init({ id: linkMenuId(link.id), placement: "bottom end" }),
 				),
 			),
 	})

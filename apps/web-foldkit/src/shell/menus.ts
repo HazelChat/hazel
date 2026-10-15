@@ -182,6 +182,7 @@ const userMenuContent =
 export const userMenuFooter = <M>(
 	h: HtmlBuilder<M>,
 	menu: Menu.Model,
+	entries: ReadonlyArray<Menu.Entry>,
 	context: ShellContext,
 	toMenuMessage: (message: Menu.Message) => M,
 	status: UserStatus | null,
@@ -195,6 +196,7 @@ export const userMenuFooter = <M>(
 			model: menu,
 			view: menuView,
 			viewInputs: {
+				entries,
 				toTrigger: (attributes, overlay) =>
 					h.button(
 						[
@@ -293,6 +295,7 @@ const switcherContent =
 export const orgSwitcherHeader = <M>(
 	h: HtmlBuilder<M>,
 	menu: Menu.Model,
+	entries: ReadonlyArray<Menu.Entry>,
 	context: ShellContext,
 	organizations: ReadonlyArray<SwitcherOrg>,
 	toMenuMessage: (message: Menu.Message) => M,
@@ -303,6 +306,7 @@ export const orgSwitcherHeader = <M>(
 			model: menu,
 			view: menuView,
 			viewInputs: {
+				entries,
 				toTrigger: (attributes, overlay) =>
 					h.button(
 						[

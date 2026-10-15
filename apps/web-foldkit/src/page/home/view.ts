@@ -19,7 +19,7 @@ import {
 import type { PageViewInputs } from "../contract"
 import { AutoFocusSearch } from "./commands"
 import { Message } from "./message"
-import { type DirectoryMember, filterMembers, menuIdOf, type Model, SEARCH_ID } from "./model"
+import { type DirectoryMember, filterMembers, menuEntries, menuIdOf, type Model, SEARCH_ID } from "./model"
 
 /** Port of `routes/_app/$orgSlug/index.tsx`. */
 
@@ -76,6 +76,7 @@ const memberMenu = (h: HtmlBuilder<Message>, member: DirectoryMember, menu: Menu
 		model: menu,
 		view: menuView,
 		viewInputs: {
+			entries: menuEntries,
 			toTrigger: memberMenuTrigger(h),
 			content: menuContent(h, menu.id),
 		},

@@ -10,6 +10,7 @@ import { menuLabel, view as menuView } from "../../../ui/menu-view"
 import type { PageViewInputs } from "../../contract"
 import { Message } from "./message"
 import type { Invitation, Model, RowMenu } from "./model"
+import { rowMenuEntries } from "./update"
 
 /** Port of `routes/_app/$orgSlug/settings/invitations.tsx`. */
 
@@ -34,6 +35,7 @@ const rowActions = (h: HtmlBuilder<Message>, row: RowMenu, isRevoking: boolean):
 		model: row.menu,
 		view: menuView,
 		viewInputs: {
+			entries: rowMenuEntries(isRevoking),
 			toTrigger: (attributes, overlay) =>
 				button(h, { intent: "plain", size: "sq-xs", isPending: isRevoking, isDisabled: isRevoking, attributes }, [
 					IconDots(h),
