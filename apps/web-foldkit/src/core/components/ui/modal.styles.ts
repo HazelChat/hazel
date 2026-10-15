@@ -1,6 +1,5 @@
 import { twJoin } from "tailwind-merge"
 
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const modalSizes = {
 	"2xs": "sm:max-w-2xs",
 	xs: "sm:max-w-xs",

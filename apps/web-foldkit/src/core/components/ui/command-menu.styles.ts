@@ -1,6 +1,5 @@
 import { twJoin } from "tailwind-merge"
 
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const commandMenuSizes = {
 	xs: "sm:max-w-xs",
 	sm: "sm:max-w-sm",

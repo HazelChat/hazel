@@ -1,4 +1,3 @@
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const popoverContentBase = [
 	"group/popover min-w-(--trigger-width) max-w-xs origin-(--trigger-anchor-point) rounded-(--popover-radius) border border-fg/10 bg-overlay text-overlay-fg shadow-xs outline-hidden transition-transform [--gutter:--spacing(6)] [--popover-radius:var(--radius-xl)] sm:text-sm dark:backdrop-saturate-200 **:[[role=dialog]]:[--gutter:--spacing(6)]",
 	"data-entering:fade-in data-exiting:fade-out data-entering:animate-in data-exiting:animate-out",

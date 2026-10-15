@@ -1,4 +1,4 @@
-/** The inline markdown parser of `EmbedMarkdown`, framework-free so the Foldkit app shares it. */
+/** The inline markdown parser of `EmbedMarkdown`. */
 
 export interface ParsedSegment {
 	type: "text" | "bold" | "italic" | "strikethrough" | "code" | "link" | "url" | "colored" | "badge"

@@ -1,4 +1,4 @@
-/** Shared by the React and Foldkit apps: keep this file framework-free. Composed with `cx(twJoin(textareaStyles), className)`. */
+/** Composed with `cx(twJoin(textareaStyles), className)`. */
 export const textareaStyles = [
 	"field-sizing-content relative block min-h-16 w-full appearance-none rounded-lg px-[calc(--spacing(3.5)-1px)] py-[calc(--spacing(2.5)-1px)] sm:px-[calc(--spacing(3)-1px)] sm:py-[calc(--spacing(1.5)-1px)]",
 	"text-base/6 text-fg placeholder:text-muted-fg sm:text-sm/6",

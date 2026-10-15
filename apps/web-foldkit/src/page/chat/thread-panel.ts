@@ -1,6 +1,6 @@
 import type { Html, HtmlBuilder } from "foldkit/html"
 import { handleStyles, indicatorStyles, panelStyles } from "~/components/ui/split-panel/split-panel.styles"
-import { format } from "~/lib/date-fns-shared"
+import { format } from "date-fns"
 import { messageRowView, type RowContext } from "../../chat/message/row"
 import { markdownView } from "../../chat/markdown/markdown-view"
 import { IconClose, IconEdit, IconPenSparkle } from "../../icons"

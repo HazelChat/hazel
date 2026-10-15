@@ -1,6 +1,5 @@
 import { tv } from "tailwind-variants"
 
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const labelStyles = tv({
 	base: "select-none text-base/6 text-fg in-data-disabled:opacity-50 group-data-disabled:opacity-50 sm:text-sm/6",
 })

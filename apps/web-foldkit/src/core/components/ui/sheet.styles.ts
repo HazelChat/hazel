@@ -1,7 +1,6 @@
 import { twJoin } from "tailwind-merge"
 import { tv } from "tailwind-variants"
 
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export type Sides = "top" | "bottom" | "left" | "right"
 const generateCompoundVariants = (sides: Array<Sides>) => {
 	return sides.map((side) => ({

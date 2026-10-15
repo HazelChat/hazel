@@ -1,4 +1,3 @@
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 type Orientation = "horizontal" | "vertical" | undefined
 
 export const tabsStyles = {

@@ -1,7 +1,5 @@
 import { twJoin } from "tailwind-merge"
 
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
-
 /** DatePickerOverlay's PopoverContent className. */
 export const datePickerOverlayClassName = (months: number | undefined) =>
 	twJoin(

@@ -1,4 +1,3 @@
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const searchFieldStyles = {
 	/** `fieldStyles({ className: field })` on the SearchField root. */
 	field: "group/search-field",

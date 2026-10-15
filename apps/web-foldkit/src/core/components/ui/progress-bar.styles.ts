@@ -1,4 +1,3 @@
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const progressBarStyles = {
 	root: [
 		"w-full",

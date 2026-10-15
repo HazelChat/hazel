@@ -1,4 +1,4 @@
-/** Shared by the React and Foldkit apps: keep this file framework-free. Each base is merged with `className`. */
+/** Each base is merged with `className`. */
 export const dialogBase =
 	"peer/dialog group/dialog relative flex max-h-[inherit] flex-col overflow-hidden outline-hidden [--gutter:--spacing(6)] sm:[--gutter:--spacing(8)]"
 

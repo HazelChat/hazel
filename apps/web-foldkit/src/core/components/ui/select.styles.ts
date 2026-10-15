@@ -1,6 +1,5 @@
 import { twJoin } from "tailwind-merge"
 
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const selectPopoverBase = "min-w-(--trigger-width) scroll-py-1 overflow-y-auto overscroll-contain"
 
 export const selectListBoxBase =

@@ -4,7 +4,7 @@ import { layer as platformStorageLayer } from "~/lib/platform-storage/platform-k
 
 /**
  * The legacy `Atom.kvs` persistence (localStorage on the web, the Tauri store on desktop), read and
- * written with the same key-value layer and schema store, so both apps share one stored value.
+ * written with the same key-value layer and schema store, so stored values stay compatible with the legacy app's.
  */
 
 /** The stored value, or `None` when it is missing or undecodable (the atom then uses its default). */

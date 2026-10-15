@@ -1,6 +1,5 @@
 import type { ClassNameValue } from "tailwind-merge"
 
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const radioGroupStyles = [
 	"space-y-3 **:data-[slot=label]:font-normal",
 	"has-[slot=description]:space-y-6 has-[slot=description]:**:data-[slot=label]:font-medium",

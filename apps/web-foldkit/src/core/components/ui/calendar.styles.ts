@@ -1,7 +1,5 @@
 import { twMerge } from "tailwind-merge"
 
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
-
 const todayDot =
 	"after:pointer-events-none after:absolute after:start-1/2 after:bottom-1 after:z-10 after:size-0.75 after:-translate-x-1/2 after:rounded-full after:bg-primary"
 

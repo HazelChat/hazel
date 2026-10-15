@@ -1,4 +1,4 @@
-// Prism language components the shared code decorator lazy-loads (no bundled types), as in apps/web.
+// Prism language components the shared code decorator lazy-loads (no bundled types).
 declare module "prismjs/components/prism-c"
 declare module "prismjs/components/prism-cpp"
 declare module "prismjs/components/prism-csharp"

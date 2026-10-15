@@ -1,7 +1,6 @@
 import { twJoin } from "tailwind-merge"
 import { tv } from "tailwind-variants"
 
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const dropdownSectionStyles = tv({
 	slots: {
 		section: "col-span-full grid grid-cols-[auto_1fr]",
