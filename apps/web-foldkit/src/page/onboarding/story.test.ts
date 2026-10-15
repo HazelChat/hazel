@@ -1,16 +1,19 @@
 // @vitest-environment jsdom
+import { Option } from "effect"
 import { Command, expectNoOutMessage, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
-import { makeShared, storyUpdate, userId } from "../../test/pages-fixtures"
+import { errorToast } from "../../data/actions"
+import { onboardingHref } from "../../route"
 import {
 	creatorMembership,
 	invitedMembership,
 	newcomer,
 	onboardingAt,
 	onboardingRoute,
-	withForm,
+	runningOf,
+	withStep,
 } from "../../test/pages-entry-fixtures"
-import { onboardingHref } from "../../route"
+import { makeShared, storyUpdate, userId } from "../../test/pages-fixtures"
 import * as ChoiceBox from "../../ui/choice-box"
 import { PageOutMessage } from "../out-message"
 import {
@@ -24,9 +27,8 @@ import {
 	UpdateUserTimezone,
 } from "./command"
 import { Message } from "./message"
-import { StepForm } from "./model"
+import { type InviteRow, type Model, StepState, stepOf } from "./model"
 import { init, sharedChanged, update } from "./update"
-import { errorToast } from "../../data/actions"
 
 /** The onboarding update loop: start-up, each step's form, and finalization. */
 
@@ -36,11 +38,15 @@ const urlDone = Message.CompletedReplaceStepUrl()
 const errorOut = (title: string, description: string | null = null) =>
 	PageOutMessage.RequestedToast({ toast: errorToast(title, description) })
 
+const stepNameOf = (current: Model) => stepOf(runningOf(current).step)
+const stepStateOf = (current: Model) => runningOf(current).step
+
 describe("start-up", () => {
 	test("an onboarded user is sent home once, and later shared changes do not redirect again", () => {
 		const onboarded = makeShared()
 		const started = init(onboardingRoute(null), onboarded)
 		expect(started.outMessage).toEqual(PageOutMessage.RequestedNavigation({ href: "/", replace: false }))
+		expect(started.model.phase._tag).toBe("Leaving")
 		expect(started.commands?.map((command) => command.name)).toEqual([ReadBrowserTimezone.name])
 		expect(sharedChanged(started.model, onboarded).outMessage).toBeUndefined()
 	})
@@ -50,61 +56,74 @@ describe("start-up", () => {
 			run,
 			given(init(onboardingRoute(null), newcomer).model),
 			message(Message.DetectedBrowserTimezone({ browserTimezone: "Europe/Vienna" })),
-			model((current) => expect(current.isInitialized).toBe(false)),
+			model((current) => expect(current.phase._tag).toBe("Starting")),
 			message(Message.UpdatedMembership({ membership: creatorMembership })),
 			Command.expectNone(),
 			model((current) => {
-				expect(current.isInitialized).toBe(true)
-				expect(current.userType).toBe("creator")
-				expect(current.step).toBe("welcome")
-				expect(current.animatesStep).toBe(false)
+				const running = runningOf(current)
+				expect(running.flow).toEqual({
+					userType: "creator",
+					membership: creatorMembership,
+					browserTimezone: "Europe/Vienna",
+				})
+				expect(running.step._tag).toBe("Welcome")
+				expect(running.animatesStep).toBe(false)
 			}),
 		)
 	})
 
 	test("a membership with a slug runs the invited flow, which ignores a creator-only ?step=", () => {
 		const invited = onboardingAt("useCases", invitedMembership)
-		expect(invited.userType).toBe("invited")
-		expect(invited.step).toBe("welcome")
-		expect(onboardingAt("useCases", creatorMembership).step).toBe("useCases")
+		expect(runningOf(invited).flow.userType).toBe("invited")
+		expect(stepNameOf(invited)).toBe("welcome")
+		expect(stepNameOf(onboardingAt("useCases", creatorMembership))).toBe("useCases")
 	})
 
-	test("a later membership update does not restart the flow", () => {
+	test("a later membership update keeps the flow and its user type, but the membership is current", () => {
 		story(
 			run,
 			given(onboardingAt("themeSelection")),
 			message(Message.UpdatedMembership({ membership: invitedMembership })),
 			Command.expectNone(),
 			model((current) => {
-				expect(current.step).toBe("themeSelection")
-				expect(current.userType).toBe("creator")
+				expect(stepNameOf(current)).toBe("themeSelection")
+				expect(runningOf(current).flow.userType).toBe("creator")
+				expect(runningOf(current).flow.membership).toEqual(invitedMembership)
 			}),
 		)
 	})
 
 	test("Back on the first step stays put", () => {
-		story(run, given(onboardingAt(null)), message(Message.ClickedBack()), Command.expectNone(), model((current) => expect(current.step).toBe("welcome")))
+		story(
+			run,
+			given(onboardingAt(null)),
+			message(Message.ClickedBack()),
+			Command.expectNone(),
+			model((current) => expect(stepNameOf(current)).toBe("welcome")),
+		)
 	})
 })
 
 describe("profile step", () => {
 	const profile = onboardingAt("profileInfo")
+	const profileForm = (firstName: string, lastName: string, isSubmitting = false) =>
+		withStep(profile, StepState.Profile({ firstName, lastName, hasChanged: false, isSubmitting }))
 
 	test("the form is seeded from user.me and submits the trimmed names", () => {
 		story(
 			run,
 			given(profile),
-			model((current) => expect(current.form).toMatchObject({ firstName: "Nora", lastName: "Newcomer" })),
+			model((current) => expect(stepStateOf(current)).toMatchObject({ firstName: "Nora", lastName: "Newcomer" })),
 			message(Message.ChangedFirstName({ value: "  Ada " })),
 			message(Message.SubmittedProfile()),
 			Command.expectExact(UpdateProfile({ userId, firstName: "Ada", lastName: "Newcomer" })),
-			model((current) => expect(current.form).toMatchObject({ isSubmitting: true })),
+			model((current) => expect(stepStateOf(current)).toMatchObject({ isSubmitting: true })),
 			Command.resolve(UpdateProfile, Message.SucceededUpdateProfile()),
 			Command.expectExact(urlFor("timezoneSelection")),
 			Command.resolve(ReplaceOnboardingStepUrl, urlDone),
 			model((current) => {
-				expect(current.step).toBe("timezoneSelection")
-				expect(current.direction).toBe("forward")
+				expect(stepNameOf(current)).toBe("timezoneSelection")
+				expect(runningOf(current).direction).toBe("forward")
 			}),
 		)
 	})
@@ -112,40 +131,41 @@ describe("profile step", () => {
 	test("an empty name is not submitted and marks the form as edited", () => {
 		story(
 			run,
-			given(withForm(profile, StepForm.Profile({ firstName: "", lastName: "Newcomer", hasChanged: false, isSubmitting: false }))),
+			given(profileForm("", "Newcomer")),
 			message(Message.SubmittedProfile()),
 			Command.expectNone(),
-			model((current) => expect(current.form).toMatchObject({ hasChanged: true, isSubmitting: false })),
+			model((current) => expect(stepStateOf(current)).toMatchObject({ hasChanged: true, isSubmitting: false })),
 		)
 	})
 
-	test("a failed Clerk update re-enables the form and toasts", () => {
+	test("a failed profile update re-enables the form and says why", () => {
 		story(
 			run,
 			given(profile),
 			message(Message.SubmittedProfile()),
-			Command.resolve(UpdateProfile, Message.FailedUpdateProfile()),
-			expectOutMessage(errorOut("Failed to update profile")),
+			Command.resolve(UpdateProfile, Message.FailedUpdateProfile({ reason: "Offline" })),
+			expectOutMessage(errorOut("Connection lost", "Check your internet connection and try again.")),
 			model((current) => {
-				expect(current.step).toBe("profileInfo")
-				expect(current.form).toMatchObject({ isSubmitting: false })
+				expect(stepNameOf(current)).toBe("profileInfo")
+				expect(stepStateOf(current)).toMatchObject({ isSubmitting: false })
 			}),
 		)
 	})
 
 	// SubmittedProfile is guarded on isSubmitting, so Enter while saving sends no second update.
 	test("a submit while saving sends nothing", () => {
+		story(run, given(profileForm("Nora", "Newcomer", true)), message(Message.SubmittedProfile()), Command.expectNone())
+	})
+
+	// Validation trims, so "   " is not sent as a first name.
+	test("a whitespace-only name is not submitted", () => {
 		story(
 			run,
-			given(withForm(profile, StepForm.Profile({ firstName: "Nora", lastName: "Newcomer", hasChanged: false, isSubmitting: true }))),
+			given(profile),
+			message(Message.ChangedFirstName({ value: "   " })),
 			message(Message.SubmittedProfile()),
 			Command.expectNone(),
 		)
-	})
-
-	// Validation trims, so "   " is not sent to Clerk as a first name.
-	test("a whitespace-only name is not submitted", () => {
-		story(run, given(profile), message(Message.ChangedFirstName({ value: "   " })), message(Message.SubmittedProfile()), Command.expectNone())
 	})
 
 	test("a second profile success after the step moved on does not skip the timezone step", () => {
@@ -157,20 +177,54 @@ describe("profile step", () => {
 			Command.resolve(ReplaceOnboardingStepUrl, urlDone),
 			message(Message.SucceededUpdateProfile()),
 			Command.expectNone(),
-			model((current) => expect(current.step).toBe("timezoneSelection")),
+			model((current) => expect(stepNameOf(current)).toBe("timezoneSelection")),
+		)
+	})
+
+	// Back then forward made a fresh form, and the earlier save's late success advanced it.
+	test("Back waits while the profile is saving", () => {
+		const saving = run(profile, Message.SubmittedProfile()).model
+		const back = run(saving, Message.ClickedBack())
+		expect(back.commands ?? []).toEqual([])
+		expect(stepStateOf(back.model)).toMatchObject({ _tag: "Profile", isSubmitting: true })
+		expect(stepNameOf(run(back.model, Message.SucceededUpdateProfile()).model)).toBe("timezoneSelection")
+	})
+
+	test("a profile success the form did not ask for is ignored", () => {
+		story(
+			run,
+			given(profile),
+			message(Message.SucceededUpdateProfile()),
+			Command.expectNone(),
+			model((current) => expect(stepNameOf(current)).toBe("profileInfo")),
 		)
 	})
 
 	test("user.me arriving late seeds an untouched empty form", () => {
-		const empty = withForm(profile, StepForm.Profile({ firstName: "", lastName: "", hasChanged: false, isSubmitting: false }))
-		expect(sharedChanged(empty, newcomer).model.form).toMatchObject({ firstName: "Nora", lastName: "Newcomer" })
-		const edited = withForm(profile, StepForm.Profile({ firstName: "", lastName: "", hasChanged: true, isSubmitting: false }))
-		expect(sharedChanged(edited, newcomer).model.form).toMatchObject({ firstName: "", lastName: "" })
+		const empty = profileForm("", "")
+		expect(stepStateOf(sharedChanged(empty, newcomer).model)).toMatchObject({
+			firstName: "Nora",
+			lastName: "Newcomer",
+		})
+		const edited = withStep(profile, StepState.Profile({ firstName: "", lastName: "", hasChanged: true, isSubmitting: false }))
+		expect(stepStateOf(sharedChanged(edited, newcomer).model)).toMatchObject({ firstName: "", lastName: "" })
 	})
 })
 
 describe("timezone step", () => {
 	const timezone = onboardingAt("timezoneSelection")
+	const timezoneForm = (selected: string, isSubmitting = false) =>
+		withStep(
+			timezone,
+			StepState.Timezone({
+				selected,
+				query: "",
+				debouncedQuery: "",
+				hoveredOffset: null,
+				detectionAttempted: false,
+				isSubmitting,
+			}),
+		)
 
 	test("search is debounced, and a stale debounce is dropped", () => {
 		story(
@@ -178,21 +232,23 @@ describe("timezone step", () => {
 			given(timezone),
 			message(Message.ChangedTimezoneQuery({ value: "vie" })),
 			Command.resolve(DebounceTimezoneQuery({ query: "vie" }), Message.ElapsedTimezoneDebounce({ query: "vi" })),
-			model((current) => expect(current.form).toMatchObject({ query: "vie", debouncedQuery: "" })),
+			model((current) => expect(stepStateOf(current)).toMatchObject({ query: "vie", debouncedQuery: "" })),
 			message(Message.ChangedTimezoneQuery({ value: "vienna" })),
 			Command.resolve(DebounceTimezoneQuery, Message.ElapsedTimezoneDebounce({ query: "vienna" })),
-			model((current) => expect(current.form).toMatchObject({ debouncedQuery: "vienna" })),
+			model((current) => expect(stepStateOf(current)).toMatchObject({ debouncedQuery: "vienna" })),
 		)
 	})
 
 	test("an offset without a city keeps the selection; Detect picks the browser timezone", () => {
 		story(
 			run,
-			given(withForm(timezone, StepForm.Timezone({ selected: "Asia/Tokyo", query: "", debouncedQuery: "", hoveredOffset: null, detectionAttempted: false, isSubmitting: false }))),
+			given(timezoneForm("Asia/Tokyo")),
 			message(Message.ClickedOffset({ offset: 99 })),
-			model((current) => expect(current.form).toMatchObject({ selected: "Asia/Tokyo" })),
+			model((current) => expect(stepStateOf(current)).toMatchObject({ selected: "Asia/Tokyo" })),
 			message(Message.ClickedDetectTimezone()),
-			model((current) => expect(current.form).toMatchObject({ selected: "UTC", detectionAttempted: true })),
+			model((current) =>
+				expect(stepStateOf(current)).toMatchObject({ selected: "UTC", detectionAttempted: true }),
+			),
 		)
 	})
 
@@ -206,31 +262,28 @@ describe("timezone step", () => {
 			Command.resolve(UpdateUserTimezone, Message.SucceededUpdateTimezone({ timezone: "Europe/Vienna" })),
 			Command.resolve(urlFor("themeSelection"), urlDone),
 			model((current) => {
-				expect(current.step).toBe("themeSelection")
-				expect(current.data.timezone).toBe("Europe/Vienna")
+				expect(stepNameOf(current)).toBe("themeSelection")
+				expect(runningOf(current).data.timezone).toBe("Europe/Vienna")
 			}),
 		)
 	})
 
-	test("a failed save re-enables Continue and shows the server's reason", () => {
+	test("a failed save re-enables Continue and says why", () => {
 		story(
 			run,
 			given(timezone),
 			message(Message.ClickedContinueTimezone()),
-			Command.resolve(UpdateUserTimezone, Message.FailedUpdateTimezone({ toast: errorToast("User not found", "Sign in again.") })),
-			expectOutMessage(errorOut("User not found", "Sign in again.")),
-			model((current) => expect(current.form).toMatchObject({ isSubmitting: false })),
+			Command.resolve(UpdateUserTimezone, Message.FailedUpdateTimezone({ reason: "UserNotFound" })),
+			expectOutMessage(
+				errorOut("User not found", "Your account could not be found. Please try signing in again."),
+			),
+			model((current) => expect(stepStateOf(current)).toMatchObject({ isSubmitting: false })),
 		)
 	})
 
 	// ClickedContinueTimezone is guarded on isSubmitting, so a second press does not save twice.
 	test("Continue while saving sends nothing", () => {
-		story(
-			run,
-			given(withForm(timezone, StepForm.Timezone({ selected: "UTC", query: "", debouncedQuery: "", hoveredOffset: null, detectionAttempted: false, isSubmitting: true }))),
-			message(Message.ClickedContinueTimezone()),
-			Command.expectNone(),
-		)
+		story(run, given(timezoneForm("UTC", true)), message(Message.ClickedContinueTimezone()), Command.expectNone())
 	})
 })
 
@@ -241,149 +294,234 @@ describe("theme and choice steps", () => {
 			given(onboardingAt("themeSelection")),
 			message(Message.SucceededUpdateTimezone({ timezone: "UTC" })),
 			Command.expectNone(),
-			model((current) => expect(current.step).toBe("themeSelection")),
+			model((current) => expect(stepNameOf(current)).toBe("themeSelection")),
 		)
 		story(
 			run,
 			given(onboardingAt("useCases")),
 			message(Message.ClickedContinueTheme()),
 			Command.expectNone(),
-			model((current) => expect(current.step).toBe("useCases")),
+			model((current) => expect(stepNameOf(current)).toBe("useCases")),
 		)
 	})
 
 	test("an invalid brand color is ignored", () => {
-		story(run, given(onboardingAt("themeSelection")), message(Message.SelectedBrandColor({ hex: "green" })), expectNoOutMessage())
+		story(
+			run,
+			given(onboardingAt("themeSelection")),
+			message(Message.SelectedBrandColor({ hex: "green" })),
+			expectNoOutMessage(),
+		)
 	})
 
 	test("Continue without a team size does nothing; with one it records it", () => {
 		const useCases = onboardingAt("useCases")
-		story(run, given(useCases), message(Message.ClickedContinueChoice()), Command.expectNone(), model((current) => expect(current.step).toBe("useCases")))
 		story(
 			run,
-			given(withForm(useCases, StepForm.Choice({ box: ChoiceBox.init({ id: "team-size", selectedKeys: ["small"] }) }))),
+			given(useCases),
+			message(Message.ClickedContinueChoice()),
+			Command.expectNone(),
+			model((current) => expect(stepNameOf(current)).toBe("useCases")),
+		)
+		story(
+			run,
+			given(withStep(useCases, StepState.UseCases({ box: ChoiceBox.init({ id: "team-size", selectedKeys: ["small"] }) }))),
 			message(Message.ClickedContinueChoice()),
 			Command.resolve(urlFor("role"), urlDone),
 			model((current) => {
-				expect(current.data.useCases).toEqual(["small"])
-				expect(current.form).toMatchObject({ box: { selectedKeys: [] } })
+				expect(runningOf(current).data.useCases).toEqual(["small"])
+				expect(stepStateOf(current)).toMatchObject({ _tag: "Role", box: { selectedKeys: [] } })
 			}),
 		)
 	})
 })
 
 describe("invite step and finalization", () => {
-	const invite = onboardingAt("teamInvitation")
-	const inviteForm = (emails: ReadonlyArray<string>, isLoading = false) =>
-		withForm(invite, StepForm.Invite({ emails: [...emails], errors: {}, isLoading }))
+	const invite = onboardingAt("teamInvitation", creatorMembership)
+	const rowsOf = (emails: ReadonlyArray<string>): ReadonlyArray<InviteRow> =>
+		emails.map((email, id) => ({ id, email, error: Option.none() }))
+	const inviteForm = (emails: ReadonlyArray<string>, isSending = false) =>
+		withStep(invite, StepState.Invite({ rows: rowsOf(emails), nextRowId: emails.length, isSending }))
+	const inviteRows = (current: Model) => {
+		const step = stepStateOf(current)
+		return step._tag === "Invite" ? step.rows : []
+	}
+	const completeFor = CompleteOnboarding({ memberId: creatorMembership.memberId, role: null, useCases: [] })
 
 	test("adding, editing and removing rows keeps at least one field", () => {
 		story(
 			run,
 			given(invite),
 			message(Message.ClickedAddEmail()),
-			message(Message.ChangedEmail({ index: 1, value: "grace@hazel.test" })),
-			model((current) => expect(current.form).toMatchObject({ emails: ["", "grace@hazel.test"] })),
-			message(Message.ClickedRemoveEmail({ index: 0 })),
-			message(Message.ClickedRemoveEmail({ index: 0 })),
-			model((current) => expect(current.form).toMatchObject({ emails: [""] })),
+			message(Message.ChangedEmail({ rowId: 1, value: "grace@hazel.test" })),
+			model((current) => expect(inviteRows(current).map((row) => row.email)).toEqual(["", "grace@hazel.test"])),
+			message(Message.ClickedRemoveEmail({ rowId: 0 })),
+			message(Message.ClickedRemoveEmail({ rowId: 1 })),
+			model((current) => {
+				expect(inviteRows(current).map((row) => row.email)).toEqual([""])
+				expect(inviteRows(current)[0]?.id).toBe(2)
+			}),
 		)
 	})
 
-	test("valid addresses are sent; full success toasts and finalizes with them", () => {
+	test("Add stops at the limit, whatever the button shows", () => {
+		const full = inviteForm(Array.from({ length: 10 }, () => ""))
+		story(
+			run,
+			given(full),
+			message(Message.ClickedAddEmail()),
+			model((current) => expect(inviteRows(current)).toHaveLength(10)),
+		)
+	})
+
+	test("valid addresses are sent; full success toasts and finalizes", () => {
 		const emails = ["grace@hazel.test", "alan@hazel.test"]
 		story(
 			run,
 			given(inviteForm([...emails, " "])),
 			message(Message.ClickedContinueInvite()),
-			Command.expectExact(SendInvites({ organizationId: null, emails })),
-			model((current) => expect(current.form).toMatchObject({ isLoading: true })),
+			Command.expectExact(SendInvites({ organizationId: creatorMembership.organizationId, emails })),
+			model((current) => expect(stepStateOf(current)).toMatchObject({ isSending: true })),
 			Command.resolve(SendInvites, Message.SucceededSendInvites({ emails, failedCount: 0 })),
-			expectOutMessage(PageOutMessage.RequestedToast({ toast: { intent: "success", title: "Sent 2 invitations", description: null } })),
-			Command.expectExact(urlFor("finalization"), CompleteOnboarding),
-			Command.resolveAll([ReplaceOnboardingStepUrl, urlDone], [CompleteOnboarding, Message.SucceededCompleteOnboarding()]),
+			expectOutMessage(
+				PageOutMessage.RequestedToast({
+					toast: { intent: "success", title: "Sent 2 invitations", description: null },
+				}),
+			),
+			Command.expectExact(urlFor("finalization"), completeFor),
+			Command.resolveAll(
+				[ReplaceOnboardingStepUrl, urlDone],
+				[CompleteOnboarding, Message.SucceededCompleteOnboarding()],
+			),
 			Command.expectExact(urlFor("completed"), LoadOnboardingHome({ href: "/" })),
 			Command.resolveAll([ReplaceOnboardingStepUrl, urlDone], [LoadOnboardingHome, Message.CompletedLoadHome()]),
-			model((current) => {
-				expect(current.step).toBe("completed")
-			}),
+			model((current) => expect(stepNameOf(current)).toBe("completed")),
 		)
 	})
 
 	test("a partial failure warns with the counts", () => {
+		const emails = ["a@hazel.test", "b@hazel.test", "c@hazel.test"]
 		story(
 			run,
-			given(inviteForm(["a@hazel.test", "b@hazel.test", "c@hazel.test"], true)),
-			message(Message.SucceededSendInvites({ emails: ["a@hazel.test", "b@hazel.test", "c@hazel.test"], failedCount: 2 })),
-			expectOutMessage(PageOutMessage.RequestedToast({ toast: { intent: "warning", title: "Sent 1 invitation, 2 failed", description: null } })),
-			Command.resolveAll([ReplaceOnboardingStepUrl, urlDone], [CompleteOnboarding, Message.FailedCompleteOnboarding({ error: "Failed to finalize onboarding" })]),
-			model((current) => {
-				expect(current.step).toBe("finalization")
-				expect(current.error).toBe("Failed to finalize onboarding")
-			}),
+			given(inviteForm(emails, true)),
+			message(Message.SucceededSendInvites({ emails, failedCount: 2 })),
+			expectOutMessage(
+				PageOutMessage.RequestedToast({
+					toast: { intent: "warning", title: "Sent 1 invitation, 2 failed", description: null },
+				}),
+			),
+			Command.resolveAll(
+				[ReplaceOnboardingStepUrl, urlDone],
+				[CompleteOnboarding, Message.SucceededCompleteOnboarding()],
+			),
+			Command.resolveAll([ReplaceOnboardingStepUrl, urlDone], [LoadOnboardingHome, Message.CompletedLoadHome()]),
 		)
 	})
 
-	test("without an active organization the send fails and the form unlocks", () => {
+	test("a failed finalize stops the spinner and Try again finalizes again", () => {
+		story(
+			run,
+			given(inviteForm([])),
+			message(Message.ClickedContinueInvite()),
+			Command.resolveAll(
+				[ReplaceOnboardingStepUrl, urlDone],
+				[CompleteOnboarding, Message.FailedCompleteOnboarding({ reason: "Unavailable" })],
+			),
+			model((current) =>
+				expect(stepStateOf(current)).toEqual(StepState.Finalizing({ failure: Option.some("Unavailable") })),
+			),
+			message(Message.ClickedBack()),
+			Command.expectNone(),
+			message(Message.ClickedRetryFinalize()),
+			Command.expectExact(completeFor),
+			model((current) => {
+				expect(stepStateOf(current)).toEqual(StepState.Finalizing({ failure: Option.none() }))
+				// A second press while it runs sends nothing.
+				expect(run(current, Message.ClickedRetryFinalize()).commands ?? []).toEqual([])
+			}),
+			Command.resolve(CompleteOnboarding, Message.SucceededCompleteOnboarding()),
+			Command.resolveAll([ReplaceOnboardingStepUrl, urlDone], [LoadOnboardingHome, Message.CompletedLoadHome()]),
+			model((current) => expect(stepNameOf(current)).toBe("completed")),
+		)
+	})
+
+	test("without an active organization nothing is sent and the form stays open", () => {
+		story(
+			run,
+			given(withStep(onboardingAt("teamInvitation"), StepState.Invite({ rows: rowsOf(["grace@hazel.test"]), nextRowId: 1, isSending: false }))),
+			message(Message.ClickedContinueInvite()),
+			Command.expectNone(),
+			expectOutMessage(errorOut("No active organization")),
+			model((current) => expect(stepStateOf(current)).toMatchObject({ isSending: false })),
+		)
+	})
+
+	test("when every invitation fails the form unlocks", () => {
 		story(
 			run,
 			given(inviteForm(["grace@hazel.test"], true)),
-			message(Message.FailedSendInvites({ reason: "NoOrganization" })),
-			expectOutMessage(errorOut("No active organization")),
-			model((current) => expect(current.form).toMatchObject({ isLoading: false })),
+			message(Message.FailedSendInvites({ reason: "AllFailed" })),
+			expectOutMessage(errorOut("Failed to send invitations")),
+			model((current) => expect(stepStateOf(current)).toMatchObject({ isSending: false })),
 		)
 	})
 
-	// Continue is guarded on isLoading, so a second press while sending does not invite twice.
+	// Continue is guarded on isSending, so a second press while sending does not invite twice.
 	test("Continue while sending sends nothing", () => {
 		story(run, given(inviteForm(["grace@hazel.test"], true)), message(Message.ClickedContinueInvite()), Command.expectNone())
 	})
 
-	// Legacy re-invited these addresses at finalization; the invite step is now the only sender.
-	test("finalization does not re-send invitations the step already sent", () => {
-		story(
-			run,
-			given(inviteForm(["grace@hazel.test"], true)),
-			message(Message.SucceededSendInvites({ emails: ["grace@hazel.test"], failedCount: 0 })),
-			Command.expectHas(CompleteOnboarding({ memberId: null, role: null, useCases: [] })),
-			Command.resolveAll([ReplaceOnboardingStepUrl, urlDone], [CompleteOnboarding, Message.FailedCompleteOnboarding({ error: "x" })]),
-		)
-	})
-
-	// Errors are keyed by row index, which is how the view reads them.
 	test("an invalid address is flagged on its own row", () => {
 		story(
 			run,
 			given(inviteForm(["", "grace@"])),
 			message(Message.ClickedContinueInvite()),
-			model((current) => expect("errors" in current.form && current.form.errors).toEqual({ "1": "Please enter a valid email address" })),
+			Command.expectNone(),
+			model((current) =>
+				expect(inviteRows(current).map((row) => row.error)).toEqual([Option.none(), Option.some("InvalidEmail")]),
+			),
 		)
 	})
 
-	test("removing a row moves the errors of later rows up with them", () => {
+	test("removing a row keeps every other row's error with its row", () => {
 		story(
 			run,
 			given(inviteForm(["bad@", "ok@hazel.test", "worse@"])),
 			message(Message.ClickedContinueInvite()),
-			model((current) => expect(current.form).toMatchObject({ errors: { "0": "Please enter a valid email address", "2": "Please enter a valid email address" } })),
-			message(Message.ClickedRemoveEmail({ index: 0 })),
-			model((current) => {
-				expect(current.form).toMatchObject({ emails: ["ok@hazel.test", "worse@"] })
-				expect("errors" in current.form && current.form.errors).toEqual({ "1": "Please enter a valid email address" })
-			}),
+			message(Message.ClickedRemoveEmail({ rowId: 0 })),
+			model((current) =>
+				expect(inviteRows(current)).toEqual([
+					{ id: 1, email: "ok@hazel.test", error: Option.none() },
+					{ id: 2, email: "worse@", error: Option.some("InvalidEmail") },
+				]),
+			),
 		)
 	})
 
 	test("an invited member finalizes with their member id and lands in the org", () => {
-		const role = withForm(onboardingAt("role", invitedMembership), StepForm.Choice({ box: ChoiceBox.init({ id: "role", selectedKeys: ["developer"] }) }))
+		const role = withStep(
+			onboardingAt("role", invitedMembership),
+			StepState.Role({ box: ChoiceBox.init({ id: "role", selectedKeys: ["developer"] }) }),
+		)
 		story(
 			run,
 			given(role),
 			message(Message.ClickedContinueChoice()),
-			Command.expectExact(urlFor("finalization"), CompleteOnboarding({ memberId: invitedMembership.memberId, role: "developer", useCases: [] })),
-			Command.resolveAll([ReplaceOnboardingStepUrl, urlDone], [CompleteOnboarding, Message.SucceededCompleteOnboarding()]),
+			Command.expectExact(
+				urlFor("finalization"),
+				CompleteOnboarding({ memberId: invitedMembership.memberId, role: "developer", useCases: [] }),
+			),
+			Command.resolveAll(
+				[ReplaceOnboardingStepUrl, urlDone],
+				[CompleteOnboarding, Message.SucceededCompleteOnboarding()],
+			),
 			Command.expectHas(LoadOnboardingHome({ href: "/hazel" })),
 			Command.resolveAll([ReplaceOnboardingStepUrl, urlDone], [LoadOnboardingHome, Message.CompletedLoadHome()]),
 		)
+	})
+
+	test("finishing the flow is not cut short by user.me turning onboarded", () => {
+		const finalizing = withStep(invite, StepState.Finalizing({ failure: Option.none() }))
+		expect(sharedChanged(finalizing, makeShared()).outMessage).toBeUndefined()
 	})
 })

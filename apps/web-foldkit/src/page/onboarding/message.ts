@@ -1,9 +1,9 @@
 import { Schema } from "effect"
 import { defineMessageUnion } from "foldkit/message"
-import { ToastRequest } from "../../overlay/toasts"
+import { CommonReason } from "~/lib/error-messages"
 import * as Interaction from "../../ui/aria/interaction"
 import * as ChoiceBox from "../../ui/choice-box"
-import { Membership, Theme } from "./model"
+import { Membership, Theme, UpdateUserFailure } from "./model"
 
 export const Message = defineMessageUnion({
 	DetectedBrowserTimezone: { browserTimezone: Schema.String },
@@ -15,7 +15,7 @@ export const Message = defineMessageUnion({
 	ChangedLastName: { value: Schema.String },
 	SubmittedProfile: {},
 	SucceededUpdateProfile: {},
-	FailedUpdateProfile: {},
+	FailedUpdateProfile: { reason: UpdateUserFailure },
 	// Timezone
 	ChangedTimezoneQuery: { value: Schema.String },
 	ElapsedTimezoneDebounce: { query: Schema.String },
@@ -25,7 +25,7 @@ export const Message = defineMessageUnion({
 	ClickedDetectTimezone: {},
 	ClickedContinueTimezone: {},
 	SucceededUpdateTimezone: { timezone: Schema.String },
-	FailedUpdateTimezone: { toast: ToastRequest },
+	FailedUpdateTimezone: { reason: UpdateUserFailure },
 	// Theme
 	SelectedBrandColor: { hex: Schema.String },
 	SelectedTheme: { theme: Theme },
@@ -34,15 +34,17 @@ export const Message = defineMessageUnion({
 	GotChoiceBoxMessage: { message: ChoiceBox.Message },
 	ClickedContinueChoice: {},
 	// Invite
-	ChangedEmail: { index: Schema.Number, value: Schema.String },
+	ChangedEmail: { rowId: Schema.Number, value: Schema.String },
 	ClickedAddEmail: {},
-	ClickedRemoveEmail: { index: Schema.Number },
+	ClickedRemoveEmail: { rowId: Schema.Number },
 	ClickedContinueInvite: {},
 	SucceededSendInvites: { emails: Schema.Array(Schema.String), failedCount: Schema.Number },
-	FailedSendInvites: { reason: Schema.Literals(["NoOrganization", "AllFailed"]) },
+	/** Every invitation failed (`sendInvitations` reports per-address failures as counts). */
+	FailedSendInvites: { reason: Schema.Literals(["AllFailed"]) },
 	// Finalization
 	SucceededCompleteOnboarding: {},
-	FailedCompleteOnboarding: { error: Schema.String },
+	FailedCompleteOnboarding: { reason: CommonReason },
+	ClickedRetryFinalize: {},
 	CompletedReplaceStepUrl: {},
 	CompletedLoadHome: {},
 	CompletedAutoFocus: {},

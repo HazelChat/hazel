@@ -2,12 +2,13 @@ import type { Html, HtmlBuilder } from "foldkit/html"
 import type * as Interaction from "../../../ui/aria/interaction"
 import { textField } from "../../../ui/text-field"
 import { Message } from "../message"
-import type { StepForm } from "../model"
+import type { StepOf } from "../model"
 import { autoFocus, onboardingNavigation, stepHeader } from "../navigation"
+import { profileErrors } from "../validation"
 
 /** `profile-info-step.tsx`: the form validates on change, so errors appear after the first edit. */
 
-type ProfileForm = Extract<StepForm, { _tag: "Profile" }>
+type ProfileForm = StepOf<"Profile">
 
 const nameField = (
 	h: HtmlBuilder<Message>,
@@ -57,8 +58,9 @@ export const profileStep = (
 	form: ProfileForm,
 	interaction: Interaction.Wiring<Message>,
 ): Html => {
-	const isFirstNameInvalid = form.hasChanged && form.firstName.length === 0
-	const isLastNameInvalid = form.hasChanged && form.lastName.length === 0
+	const errors = profileErrors(form)
+	const isFirstNameInvalid = form.hasChanged && errors.firstName
+	const isLastNameInvalid = form.hasChanged && errors.lastName
 	return h.div(
 		[h.Class("space-y-4 sm:space-y-6"), h.DataAttribute("testid", "onboarding-step-profile")],
 		[
