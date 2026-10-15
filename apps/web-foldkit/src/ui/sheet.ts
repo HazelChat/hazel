@@ -35,7 +35,9 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 			}),
 			closeIconClassName: sheetCloseIconClassName,
 			panelAttributes: childAttributes(
-				Object.entries(viewInputs.panelAttributes ?? {}).map(([name, value]) => h.Attribute(name, value)),
+				Object.entries(viewInputs.panelAttributes ?? {}).map(([name, value]) =>
+					h.Attribute(name, value),
+				),
 			),
 		},
 		(message) => message,

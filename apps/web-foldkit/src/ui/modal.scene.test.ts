@@ -3,7 +3,7 @@ import * as Scene from "foldkit/scene"
 import { inertHtml as ih } from "foldkit/html"
 import { describe, test } from "vitest"
 import { dialogClose, dialogFooter, dialogHeader } from "./dialog"
-import { AcquireResources, CloseDialog, init, initOpen, Message, titleId, update, view } from "./modal"
+import { AcquireResources, init, initOpen, Message, titleId, update, view } from "./modal"
 
 /** Modal through the view: a native dialog labelled by its title, closed by its buttons and backdrop. */
 
@@ -31,7 +31,6 @@ const opened = [
 	Scene.Mount.resolve(AcquireResources, Message.SucceededAcquireResources()),
 ]
 const closedByRequest = () => [
-	Scene.Command.resolve(CloseDialog, Message.CompletedCloseDialog()),
 	Scene.Mount.expectEnded(AcquireResources),
 	Scene.expect(Scene.role("dialog")).toBeAbsent(),
 ]

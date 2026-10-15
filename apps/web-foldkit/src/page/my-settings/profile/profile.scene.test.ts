@@ -90,8 +90,8 @@ const dialog = Scene.role("dialog")
 /** The crop dialog is a `controlledModal`, so its Mount result arrives already lifted into the page Message. */
 const cropModalMounted = Scene.Mount.resolve(
 	// Name-only matcher: the Mount is wrapped by mapMessage, so its typed result is the parent Message.
-	{ name: "PortalModal" },
-	Message.GotCropModalMessage({ message: Modal.Message.SucceededAcquireResources() }),
+	{ name: "AcquireResources" },
+	Modal.Message.SucceededAcquireResources(),
 )
 const toastOf = (intent: "success" | "error", title: string, description: string | null = null) =>
 	PageOutMessage.RequestedToast({ toast: { intent, title, description } })

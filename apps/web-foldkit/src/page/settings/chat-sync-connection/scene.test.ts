@@ -69,8 +69,8 @@ const inDialog = (name: string | RegExp) => Scene.within(dialog, Scene.role("but
 const linkMenuMounted = Scene.Mount.resolve(FocusTriggerOnPress, Menu.Message.CompletedFocusTriggerOnPress())
 /** The add link modal is a controlled modal: its Mount result arrives already wrapped. */
 const addLinkModalMounted = Scene.Mount.resolve(
-	{ name: "PortalModal" },
-	Message.GotAddLinkModalMessage({ message: Modal.Message.SucceededAcquireResources() }),
+	{ name: "AcquireResources" },
+	Modal.Message.SucceededAcquireResources(),
 )
 
 describe("connection states", () => {

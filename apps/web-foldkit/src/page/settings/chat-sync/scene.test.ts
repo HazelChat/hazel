@@ -43,8 +43,8 @@ const addTriggerMounted = Scene.Mount.resolve(
 	Menu.Message.CompletedFocusTriggerOnPress(),
 )
 const addModalMounted = Scene.Mount.resolve(
-	{ name: "PortalModal" },
-	Message.GotAddModalMessage({ message: Modal.Message.SucceededAcquireResources() }),
+	{ name: "AcquireResources" },
+	Modal.Message.SucceededAcquireResources(),
 )
 
 describe("list states", () => {

@@ -3,7 +3,7 @@ import * as Scene from "foldkit/scene"
 import { inertHtml as ih } from "foldkit/html"
 import { describe, test } from "vitest"
 import { dialogClose, dialogFooter, dialogHeader } from "./dialog"
-import { AcquireResources, CloseDialog, initOpen, Message, titleId, update } from "./modal"
+import { AcquireResources, initOpen, Message, titleId, update } from "./modal"
 import { view } from "./sheet"
 
 /** Sheet through the view: a Modal with an edge panel, sharing the Modal Model and update. */
@@ -46,8 +46,7 @@ describe("sheet scene", () => {
 			config,
 			...opened,
 			Scene.click(Scene.role("button", { name: "Done" })),
-			Scene.Command.resolve(CloseDialog, Message.CompletedCloseDialog()),
-			Scene.Mount.expectEnded(AcquireResources),
+					Scene.Mount.expectEnded(AcquireResources),
 			Scene.expect(Scene.role("dialog")).toBeAbsent(),
 		)
 	})

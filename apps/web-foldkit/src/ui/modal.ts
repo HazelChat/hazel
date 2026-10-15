@@ -1,7 +1,8 @@
 import { Dialog } from "@foldkit/ui"
 import { Schema } from "effect"
-import { Submodel } from "foldkit"
+import { Submodel, type Update } from "foldkit"
 import type { ChildAttribute, Html, HtmlBuilder } from "foldkit/html"
+import { modifyFields } from "foldkit/struct"
 import { twMerge } from "tailwind-merge"
 import {
 	type ModalSize,
@@ -46,8 +47,6 @@ export type OutMessage = Dialog.OutMessage
 
 /** The Mount on the `<dialog>` that acquires its resources once it renders open. */
 export const AcquireResources = Dialog.AcquireResources
-export const ShowDialog = Dialog.ShowDialog
-export const CloseDialog = Dialog.CloseDialog
 
 export const titleId = (id: string): string => Dialog.titleId(init(id))
 export const dialogId = (id: string): string => `${id}-content`
@@ -56,16 +55,30 @@ export const dialogId = (id: string): string => `${id}-content`
 export const isCloseRequest = (message: Message): boolean => Schema.is(Message.RequestedClose)(message)
 
 /** The dialog rendered open and moved focus in: the moment for a field's autofocus. */
-export const isReady = (message: Message): boolean =>
-	Schema.is(Message.SucceededAcquireResources)(message)
+export const isReady = (message: Message): boolean => Schema.is(Message.SucceededAcquireResources)(message)
 
 // UPDATE
 
-export const update = Dialog.update
-/** Opens the modal from the parent; fold it with `Update.foldChildStep`. */
-export const open = Dialog.open
-/** Closes the modal from the parent; fold it with `Update.foldChildStep`. */
-export const close = Dialog.close
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage>
+
+/**
+ * Opens the modal from the parent; fold it with `Update.foldChildStep`. A Model change: the dialog
+ * renders only while open, and its Mount shows it and takes its resources.
+ */
+export const open = (model: Model): UpdateReturn =>
+	model.isOpen ? { model } : { model: modifyFields(model, { isOpen: () => true }), outMessage: OutMessage.Opened() }
+
+/** Closes the modal from the parent; removing the dialog releases its resources and returns focus. */
+export const close = (model: Model): UpdateReturn =>
+	model.isOpen ? { model: modifyFields(model, { isOpen: () => false }), outMessage: OutMessage.Closed() } : { model }
+
+/** Open and close requests are Model changes (see `open`); the rest is the Dialog's own lifecycle. */
+export const update = (model: Model, message: Message): UpdateReturn =>
+	Schema.is(Message.RequestedOpen)(message)
+		? open(model)
+		: Schema.is(Message.RequestedClose)(message)
+			? close(model)
+			: Dialog.update(model, message)
 
 /** A `foldOutMessage` for a parent that reads `isOpen` rather than reacting to Opened or Closed. */
 export const ignoreOutMessage =
@@ -147,11 +160,16 @@ export const dialogView = <M>(
 						h.div([
 							...(isDismissable ? render.backdrop : []),
 							h.Class(
-								twMerge(parts.backdropClassName, (inputs.isBlurred ?? false) && "backdrop-blur-[1px]"),
+								twMerge(
+									parts.backdropClassName,
+									(inputs.isBlurred ?? false) && "backdrop-blur-[1px]",
+								),
 							),
 							h.DataAttribute("slot", "modal-overlay"),
 						]),
-						parts.layoutClassName === null ? panel : h.div([h.Class(parts.layoutClassName)], [panel]),
+						parts.layoutClassName === null
+							? panel
+							: h.div([h.Class(parts.layoutClassName)], [panel]),
 					],
 				)
 			},
@@ -178,5 +196,4 @@ export const controlledModal = <ParentMessage>(
 			model: Model
 			toParentMessage: (message: Message) => ParentMessage
 		}>,
-): Html =>
-	dialogView(h, options.model, options, modalParts(options.size ?? "lg"), options.toParentMessage)
+): Html => dialogView(h, options.model, options, modalParts(options.size ?? "lg"), options.toParentMessage)
