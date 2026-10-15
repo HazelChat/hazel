@@ -2,22 +2,19 @@ import { User } from "@hazel/domain/models"
 import { Option, Schema } from "effect"
 import { Update } from "foldkit"
 import { modifyFields } from "foldkit/struct"
+import { failureMessage } from "~/lib/error-messages"
 import { errorToast } from "../../../data/actions"
 import * as Interaction from "../../../ui/aria/interaction"
 import * as Segments from "../../../ui/date-segments"
 import * as Slider from "../../../ui/slider"
-import type { PageReturn, Shared } from "../../contract"
+import type { PageReturn, PageSubscriptionInput, Shared } from "../../contract"
 import { PageOutMessage } from "../../out-message"
-import { embedInteraction } from "../shared"
-import {
-	ExpireNotificationStatus,
-	PlayTestSound,
-	SendTestNotification,
-	UpdateUserSettings,
-} from "./command"
+import { ExpireNotificationStatus, PlayTestSound, SendTestNotification, UpdateUserSettings } from "./command"
 import { Message } from "./message"
+import { updateUserFailureCopy } from "../user"
 import {
 	type Model,
+	type NotificationStatus,
 	type QuietHoursField,
 	settingsOf,
 	type SoundSettings,
@@ -25,8 +22,9 @@ import {
 
 type Return = PageReturn<Model, Message>
 
-export const interaction = embedInteraction<Model, Message>((message) =>
-	Message.GotInteractionMessage({ message }),
+export const interaction = Interaction.embed<Model, Message, PageSubscriptionInput<Model>>(
+	(message) => Message.GotInteractionMessage({ message }),
+	(input) => input.model,
 )
 
 export const toVolumeMessage = (message: Slider.Message) => Message.GotVolumeMessage({ message })
@@ -105,6 +103,18 @@ const settleWrite = (
 	}
 }
 
+/** Shows the test notification's outcome; `ExpireNotificationStatus` clears it after 3 seconds. */
+const showNotificationStatus = (model: Model, status: NotificationStatus): Return => {
+	const version = model.notificationStatusVersion + 1
+	return {
+		model: modifyFields(model, {
+			notificationStatus: () => status,
+			notificationStatusVersion: () => version,
+		}),
+		commands: [ExpireNotificationStatus({ version })],
+	}
+}
+
 const decodeTimeString = Schema.decodeUnknownOption(User.TimeString)
 
 const foldQuietHours = (field: QuietHoursField) =>
@@ -150,16 +160,9 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 		ClickedTestSound: () => ({ model, commands: [PlayTestSound()] }),
 		CompletedTestSound: () => ({ model }),
 		ClickedTestNotification: () => ({ model, commands: [SendTestNotification()] }),
-		CompletedTestNotification: ({ isSent }) => {
-			const version = model.notificationStatusVersion + 1
-			return {
-				model: modifyFields(model, {
-					notificationStatus: () => (isSent ? "sent" : "unavailable"),
-					notificationStatusVersion: () => version,
-				}),
-				commands: [ExpireNotificationStatus({ version })],
-			}
-		},
+		SucceededSendTestNotification: () => showNotificationStatus(model, "sent"),
+		// Either way the note says native notifications are unavailable here.
+		FailedSendTestNotification: () => showNotificationStatus(model, "unavailable"),
 		ExpiredNotificationStatus: ({ version }) => ({
 			model:
 				version === model.notificationStatusVersion
@@ -183,7 +186,9 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 			const result = foldQuietHours(field)(model, child)
 			const before = field === "start" ? model.quietHoursStart : model.quietHoursEnd
 			const after = field === "start" ? result.model.quietHoursStart : result.model.quietHoursEnd
-			const time = Option.fromNullishOr(after.committed?.slice(0, 5)).pipe(Option.flatMap(decodeTimeString))
+			const time = Option.fromNullishOr(after.committed?.slice(0, 5)).pipe(
+				Option.flatMap(decodeTimeString),
+			)
 			if (Option.isNone(time) || after.committed === before.committed) return result
 			const patch = field === "start" ? { quietHoursStart: time.value } : { quietHoursEnd: time.value }
 			const written = withUserSettings(result.model, shared, patch)
@@ -195,9 +200,14 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 		// The server now holds the written snapshot, so it stands until the synced row echoes it.
 		SucceededUpdateUserSettings: () =>
 			settleWrite(model, shared, (current) => current.optimisticSettings ?? current.settings),
-		FailedUpdateUserSettings: () => ({
+		FailedUpdateUserSettings: ({ reason }) => ({
 			...settleWrite(model, shared, (current) => current.settings),
-			outMessage: PageOutMessage.RequestedToast({ toast: errorToast("Failed to update setting") }),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToast(
+					"Failed to update setting",
+					failureMessage(reason, updateUserFailureCopy).description ?? null,
+				),
+			}),
 		}),
 		GotInteractionMessage: ({ message: child }) => interaction.fold(model, child),
 	})

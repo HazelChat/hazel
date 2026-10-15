@@ -1,7 +1,8 @@
 import { ChannelId, ConnectConversationId, ConnectInviteId, OrganizationId } from "@hazel/schema"
 import { Schema } from "effect"
+import * as AsyncData from "foldkit/asyncData"
 import { defineMessageUnion } from "foldkit/message"
-import { ToastRequest } from "../../../overlay/toasts"
+import { CommonReason } from "~/lib/error-messages"
 import * as Interaction from "../../../ui/aria/interaction"
 import * as ShareModal from "./share-modal"
 
@@ -28,6 +29,17 @@ export const Invite = Schema.Struct({
 })
 export type Invite = typeof Invite.Type
 
+/** The outgoing invites this channel hosts. */
+export const Invites = AsyncData.Schema(Schema.Array(Invite), CommonReason)
+
+/** What can go wrong revoking an invite, beyond the shared reasons. */
+/** Why disconnecting failed: the connection may already be gone. */
+export const DisconnectFailure = Schema.Union([Schema.Literals(["NotFound"]), CommonReason])
+export type DisconnectFailure = typeof DisconnectFailure.Type
+
+export const RevokeInviteFailure = Schema.Union([Schema.Literals(["NotFound", "NotRevokable"]), CommonReason])
+export type RevokeInviteFailure = typeof RevokeInviteFailure.Type
+
 export const Model = Schema.Struct({
 	channelId: ChannelId,
 	channelName: Schema.NullOr(Schema.String),
@@ -35,8 +47,8 @@ export const Model = Schema.Struct({
 	mounts: Schema.Array(Mount),
 	orgs: Schema.Record(Schema.String, OrgSummary),
 	requestedOrganizationId: Schema.NullOr(OrganizationId),
-	/** Outgoing invites hosted by this channel; empty until the query succeeds. */
-	invites: Schema.Array(Invite),
+	/** Outgoing invites hosted by this channel, for `requestedOrganizationId`. */
+	invites: Invites.schema,
 	revokingInviteIds: Schema.Array(ConnectInviteId),
 	disconnectingMountIds: Schema.Array(Schema.String),
 	share: ShareModal.Model,
@@ -49,15 +61,16 @@ export const Message = defineMessageUnion({
 	UpdatedMounts: { mounts: Schema.Array(Mount) },
 	UpdatedOrgs: { orgs: Schema.Record(Schema.String, OrgSummary) },
 	SucceededListOutgoingInvites: { organizationId: OrganizationId, invites: Schema.Array(Invite) },
-	FailedListOutgoingInvites: {},
+	FailedListOutgoingInvites: { organizationId: OrganizationId, reason: CommonReason },
+	ClickedRetryInvites: {},
 	ClickedShareChannel: {},
 	ClickedRevokeInvite: { inviteId: ConnectInviteId },
 	GotInteractionMessage: { message: Interaction.Message },
 	SucceededRevokeInvite: { inviteId: ConnectInviteId },
-	FailedRevokeInvite: { inviteId: ConnectInviteId, toast: ToastRequest },
+	FailedRevokeInvite: { inviteId: ConnectInviteId, reason: RevokeInviteFailure },
 	ClickedDisconnect: { mountId: Schema.String },
 	SucceededDisconnect: { mountId: Schema.String, successMessage: Schema.String },
-	FailedDisconnect: { mountId: Schema.String, toast: ToastRequest },
+	FailedDisconnect: { mountId: Schema.String, reason: DisconnectFailure },
 	GotShareModalMessage: { message: ShareModal.Message },
 })
 export type Message = typeof Message.Type

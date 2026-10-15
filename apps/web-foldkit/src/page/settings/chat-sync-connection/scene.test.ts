@@ -7,11 +7,20 @@ import { describe, test } from "vitest"
 import * as Menu from "../../../ui/menu"
 import { FocusTriggerOnPress } from "../../../ui/menu-view"
 import * as Modal from "../../../ui/modal"
-import { errorToast, successToast } from "../../../data/actions"
+import { successToast } from "../../../data/actions"
 import { makeShared, organizationId, pageScene, portalModalMounted, uuid } from "../../../test/pages-fixtures"
 import { connection, syncConnectionId } from "../../../test/pages-integrations-fixtures"
 import { PageOutMessage } from "../../out-message"
-import { CreateChannelLink, DisconnectConnection, ListChannelLinks, RemoveChannelLink } from "./command"
+import * as ConfirmAction from "../../shared/confirm-action"
+import { DiscordChannels } from "../chat-sync/discord"
+import {
+	CreateChannelLink,
+	DisconnectConnection,
+	ListChannelLinks,
+	ListChatSyncConnectionsForConnection,
+	ListDiscordChannels,
+	RemoveChannelLink,
+} from "./command"
 import { Message, type Model } from "./model"
 import { init, update } from "./update"
 import { view } from "./view"
@@ -54,6 +63,7 @@ const withLink = step(found, Message.SucceededListChannelLinks({ version: 1, lin
 const withoutLinks = step(found, Message.SucceededListChannelLinks({ version: 1, links: [] }))
 
 const dialog = Scene.role("dialog")
+const tryAgain = Scene.role("button", { name: "Try again" })
 const inDialog = (name: string | RegExp) => Scene.within(dialog, Scene.role("button", { name }))
 /** Each link row's menu trigger focuses itself on press. */
 const linkMenuMounted = Scene.Mount.resolve(FocusTriggerOnPress, Menu.Message.CompletedFocusTriggerOnPress())
@@ -82,6 +92,50 @@ describe("connection states", () => {
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedNavigation({ route: routeOfPath("/hazel/settings/chat-sync"), replace: false }),
 			),
+		)
+	})
+
+	test("a failed connection list explains why, not 'not found', and Try again reloads it", () => {
+		Scene.scene(
+			config,
+			Scene.given(step(initial, Message.FailedListConnections({ organizationId, reason: "Offline" }))),
+			Scene.expect(Scene.text("Failed to load connection")).toExist(),
+			Scene.expect(Scene.text("Check your internet connection and try again.")).toExist(),
+			Scene.expect(Scene.text("Connection not found")).toBeAbsent(),
+			Scene.click(tryAgain),
+			Scene.Command.expectExact(ListChatSyncConnectionsForConnection({ organizationId })),
+			Scene.expect(Scene.text("Loading connection...")).toExist(),
+			Scene.Command.resolve(
+				ListChatSyncConnectionsForConnection,
+				Message.SucceededListConnections({ organizationId, connections: [connection] }),
+			),
+			Scene.Command.resolve(
+				ListDiscordChannels,
+				Message.SucceededListDiscordChannels({
+					guildId: connection.externalWorkspaceId,
+					channels: [],
+				}),
+			),
+			Scene.expect(Scene.text("Channel Links")).toExist(),
+		)
+	})
+
+	test("failed channel links explain why, not 'no channels linked', and Try again reloads them", () => {
+		Scene.scene(
+			config,
+			Scene.given(step(found, Message.FailedListChannelLinks({ version: 1, reason: "Unavailable" }))),
+			Scene.expect(Scene.text("Failed to load channel links")).toExist(),
+			Scene.expect(Scene.text("Please try again in a moment.")).toExist(),
+			Scene.expect(Scene.text("No channels linked")).toBeAbsent(),
+			Scene.click(tryAgain),
+			Scene.Command.expectExact(ListChannelLinks({ syncConnectionId, version: 2 })),
+			Scene.expect(Scene.text("Loading channel links...")).toExist(),
+			Scene.Command.resolve(
+				ListChannelLinks,
+				Message.SucceededListChannelLinks({ version: 2, links: [link] }),
+			),
+			linkMenuMounted,
+			Scene.expect(Scene.text("general")).toExist(),
 		)
 	})
 
@@ -122,36 +176,35 @@ describe("disconnect", () => {
 		)
 	})
 
-	test("a failed disconnect toasts the error and closes the dialog", () => {
+	test("a failed disconnect toasts the reason and keeps the dialog open to retry", () => {
 		Scene.scene(
 			config,
 			Scene.given(withoutLinks),
 			Scene.click(Scene.role("button", { name: "Disconnect" })),
 			portalModalMounted,
 			Scene.click(inDialog("Disconnect")),
-			Scene.Command.resolve(
-				DisconnectConnection,
-				Message.FailedDisconnect({ toast: errorToast("Request failed") }),
-			),
+			Scene.Command.resolve(DisconnectConnection, Message.FailedDisconnect({ reason: "Unexpected" })),
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Request failed", description: null },
+					toast: {
+						intent: "error",
+						title: "Something went wrong",
+						description: "Please try again.",
+					},
 				}),
 			),
-			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
-			Scene.expect(Scene.role("button", { name: "Disconnect" })).toBeEnabled(),
+			Scene.expect(inDialog("Disconnect")).toBeEnabled(),
 		)
 	})
 })
 
 describe("remove a channel link", () => {
-	const confirming = step(
-		{ ...withLink, deleteTarget: { id: linkId, name: "general" } },
-		Message.GotDeleteLinkModalMessage({ message: Modal.Message.ClickedTrigger() }),
-	)
+	const confirming = {
+		...withLink,
+		removeLinkConfirm: ConfirmAction.ask(withLink.removeLinkConfirm, { id: linkId, name: "general" }),
+	}
 
-	test("confirming removes the link, toasts and reloads the links", () => {
+	test("confirming removes the link, toasts and refreshes the shown links", () => {
 		Scene.scene(
 			config,
 			Scene.given(confirming),
@@ -166,12 +219,13 @@ describe("remove a channel link", () => {
 			),
 			Scene.expect(dialog).toBeAbsent(),
 			Scene.Mount.expectEnded(Modal.PortalModal),
-			Scene.expect(Scene.text("Loading channel links...")).toExist(),
-			Scene.Mount.expectEnded(FocusTriggerOnPress),
+			Scene.expect(Scene.text("Loading channel links...")).toBeAbsent(),
+			Scene.expect(Scene.text("general")).toExist(),
 			Scene.Command.resolve(
 				ListChannelLinks,
 				Message.SucceededListChannelLinks({ version: 2, links: [] }),
 			),
+			Scene.Mount.expectEnded(FocusTriggerOnPress),
 			Scene.expect(Scene.text("No channels linked")).toExist(),
 		)
 	})
@@ -183,13 +237,14 @@ describe("remove a channel link", () => {
 			linkMenuMounted,
 			portalModalMounted,
 			Scene.click(inDialog("Remove Link")),
-			Scene.Command.resolve(
-				RemoveChannelLink,
-				Message.FailedRemoveLink({ toast: errorToast("Request failed") }),
-			),
+			Scene.Command.resolve(RemoveChannelLink, Message.FailedRemoveLink({ reason: "Offline" })),
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Request failed", description: null },
+					toast: {
+						intent: "error",
+						title: "Connection lost",
+						description: "Check your internet connection and try again.",
+					},
 				}),
 			),
 			Scene.expect(inDialog("Remove Link")).toBeEnabled(),
@@ -252,13 +307,14 @@ describe("link a channel", () => {
 			Scene.click(Scene.role("button", { name: /Link Channel$/ })),
 			addLinkModalMounted,
 			Scene.click(linkButton),
-			Scene.Command.resolve(
-				CreateChannelLink,
-				Message.FailedCreateLink({ toast: errorToast("Already linked") }),
-			),
+			Scene.Command.resolve(CreateChannelLink, Message.FailedCreateLink({ reason: "AlreadyLinked" })),
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Already linked", description: null },
+					toast: {
+						intent: "error",
+						title: "Link already exists",
+						description: "This channel pair is already linked.",
+					},
 				}),
 			),
 			Scene.expect(Scene.within(dialog, Scene.text("dev-chat"))).toExist(),
@@ -271,12 +327,13 @@ describe("link a channel", () => {
 			config,
 			Scene.given({
 				...withoutLinks,
-				discordChannels: { _tag: "Failed" },
+				discordChannels: DiscordChannels.Failure({ error: "ProviderError" }),
 				selectedChannel: hazelChannel,
 			}),
 			Scene.click(Scene.role("button", { name: /Link Channel$/ })),
 			addLinkModalMounted,
 			Scene.expect(Scene.text("Could not load Discord channels")).toExist(),
+			Scene.expect(Scene.within(dialog, tryAgain)).toBeAbsent(),
 			Scene.expect(linkButton).toBeDisabled(),
 		)
 	})

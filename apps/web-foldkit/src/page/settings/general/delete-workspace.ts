@@ -4,6 +4,7 @@ import { button } from "../../../ui/button"
 import { dialogBody, dialogFooter, dialogHeader, dialogTitle } from "../../../ui/dialog"
 import * as Field from "../../../ui/field"
 import * as Modal from "../../../ui/modal"
+import * as ConfirmAction from "../../shared/confirm-action"
 import { textField } from "../../../ui/text-field"
 import type { Organization } from "../../../session"
 import { Message } from "./message"
@@ -11,12 +12,18 @@ import type { Model } from "./model"
 
 /** Port of `components/modals/delete-workspace-modal.tsx` (a page-local controlled modal). */
 
-const toDeleteModalMessage = (message: Modal.Message) => Message.GotDeleteModalMessage({ message })
+const toDeleteModalMessage = (message: Modal.Message) =>
+	Message.GotDeleteConfirmMessage({ message: ConfirmAction.toModalMessage(message) })
 
-export const deleteWorkspaceModal = (h: HtmlBuilder<Message>, model: Model, organization: Organization): Html =>
-	h.submodel({
+export const deleteWorkspaceModal = (
+	h: HtmlBuilder<Message>,
+	model: Model,
+	organization: Organization,
+): Html => {
+	const isDeleting = ConfirmAction.isRunning(model.deleteConfirm)
+	return h.submodel({
 		slotId: "delete-workspace-modal",
-		model: model.deleteModal,
+		model: model.deleteConfirm.modal,
 		view: Modal.view,
 		viewInputs: {
 			// Controlled: no trigger, only the overlay while open.
@@ -27,10 +34,18 @@ export const deleteWorkspaceModal = (h: HtmlBuilder<Message>, model: Model, orga
 						[h.Class("flex items-center gap-2")],
 						[
 							h.div(
-								[h.Class("flex size-10 items-center justify-center rounded-full bg-danger/10")],
+								[
+									h.Class(
+										"flex size-10 items-center justify-center rounded-full bg-danger/10",
+									),
+								],
 								[IconWarning(h, { className: "size-5 text-danger" })],
 							),
-							dialogTitle(h, { id: Modal.titleId(model.deleteModal.id) }, "Delete workspace"),
+							dialogTitle(
+								h,
+								{ id: Modal.titleId(model.deleteConfirm.modal.id) },
+								"Delete workspace",
+							),
 						],
 					),
 					Field.description(h, {}, [
@@ -67,18 +82,18 @@ export const deleteWorkspaceModal = (h: HtmlBuilder<Message>, model: Model, orga
 				dialogFooter(h, [
 					button(
 						h,
-						{ intent: "outline", isDisabled: model.isDeleting, onPress: Message.ClickedCancelDelete() },
+						{ intent: "outline", isDisabled: isDeleting, onPress: Message.ClickedCancelDelete() },
 						["Cancel"],
 					),
 					button(
 						h,
 						{
 							intent: "danger",
-							isDisabled: model.confirmationText !== organization.name || model.isDeleting,
-							isPending: model.isDeleting,
+							isDisabled: model.confirmationText !== organization.name || isDeleting,
+							isPending: isDeleting,
 							onPress: Message.ClickedConfirmDelete(),
 						},
-						[model.isDeleting ? "Deleting..." : "Delete workspace"],
+						[isDeleting ? "Deleting..." : "Delete workspace"],
 					),
 				]),
 			],
@@ -86,3 +101,4 @@ export const deleteWorkspaceModal = (h: HtmlBuilder<Message>, model: Model, orga
 		},
 		toParentMessage: toDeleteModalMessage,
 	})
+}

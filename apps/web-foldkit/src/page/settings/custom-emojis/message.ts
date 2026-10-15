@@ -2,17 +2,16 @@ import { CustomEmojiId } from "@hazel/schema"
 import { Schema } from "effect"
 import { File } from "foldkit/file"
 import { defineMessageUnion } from "foldkit/message"
-import { ToastRequest } from "../../../overlay/toasts"
-import * as Modal from "../../../ui/modal"
-import { Emoji, RestoreTarget } from "./model"
+import * as ConfirmAction from "../../shared/confirm-action"
+import * as DropZone from "../../shared/drop-zone"
+import { CreateFailure, DeleteFailure, Emoji, RestoreFailure, RestoreTarget } from "./model"
 
 export const Message = defineMessageUnion({
 	UpdatedEmojis: { emojis: Schema.Array(Emoji) },
 	ClickedBrowse: { inputId: Schema.String },
 	CompletedOpenPicker: {},
 	SelectedFiles: { files: Schema.Array(File) },
-	EnteredDropZone: {},
-	LeftDropZone: {},
+	GotDropZoneMessage: { message: DropZone.Message },
 	CreatedPreview: { file: File, previewUrl: Schema.String },
 	CompletedFocusName: {},
 	ChangedEmojiName: { value: Schema.String },
@@ -21,15 +20,15 @@ export const Message = defineMessageUnion({
 	ClickedSaveEmoji: {},
 	SucceededCreateEmoji: { name: Schema.String, previewUrl: Schema.String },
 	FoundDeletedEmoji: { target: RestoreTarget },
-	FailedCreateEmoji: { toast: ToastRequest },
+	FailedCreateEmoji: { reason: CreateFailure },
 	ClickedConfirmRestore: {},
 	SucceededRestoreEmoji: { name: Schema.String, previewUrl: Schema.NullOr(Schema.String) },
-	FailedRestoreEmoji: {},
+	FailedRestoreEmoji: { reason: RestoreFailure },
 	ClickedDeleteEmoji: { id: CustomEmojiId, name: Schema.String },
 	ClickedConfirmDelete: {},
 	SucceededDeleteEmoji: { name: Schema.String },
-	FailedDeleteEmoji: {},
-	GotDeleteModalMessage: { message: Modal.Message },
-	GotRestoreModalMessage: { message: Modal.Message },
+	FailedDeleteEmoji: { reason: DeleteFailure },
+	GotDeleteConfirmMessage: { message: ConfirmAction.Message },
+	GotRestoreConfirmMessage: { message: ConfirmAction.Message },
 })
 export type Message = typeof Message.Type

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import * as Scene from "foldkit/scene"
 import { describe, test } from "vitest"
-import { errorToast, successToast } from "../../../data/actions"
+import { successToast } from "../../../data/actions"
 import { channelId, failureToastFixture, makeShared, pageScene } from "../../../test/pages-fixtures"
 import { PageOutMessage } from "../../out-message"
 import { Message } from "./message"
@@ -45,6 +45,7 @@ describe("channel overview scene", () => {
 				PageOutMessage.RequestedToast({ toast: successToast("Channel updated successfully") }),
 			),
 			Scene.expect(nameInput).toHaveValue("announcements"),
+			Scene.expect(save).toBeDisabled(),
 		)
 	})
 
@@ -55,12 +56,7 @@ describe("channel overview scene", () => {
 			Scene.Subscription.emit(loadedChannel),
 			Scene.type(nameInput, "announcements"),
 			Scene.submit(Scene.selector("form")),
-			Scene.Command.resolve(
-				UpdateChannel,
-				Message.FailedUpdateChannel({
-					toast: errorToast(failureToastFixture.title, failureToastFixture.description),
-				}),
-			),
+			Scene.Command.resolve(UpdateChannel, Message.FailedUpdateChannel({ reason: "Unexpected" })),
 			Scene.expectOutMessage(PageOutMessage.RequestedToast({ toast: failureToastFixture })),
 			Scene.expect(save).toBeEnabled(),
 		)
@@ -73,6 +69,7 @@ describe("channel overview scene", () => {
 			Scene.Subscription.emit(loadedChannel),
 			Scene.type(nameInput, "a"),
 			Scene.expect(nameInput).toHaveAttr("aria-invalid", "true"),
+			Scene.expect(Scene.text("Channel name must be at least 2 characters")).toExist(),
 			Scene.expect(save).toBeDisabled(),
 		)
 	})

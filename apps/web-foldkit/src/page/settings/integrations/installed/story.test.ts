@@ -22,7 +22,7 @@ describe("installed apps", () => {
 			given(initial),
 			message(Message.ClickedUninstall({ botId })),
 			Command.expectExact(UninstallBot({ botId })),
-			Command.resolve(UninstallBot, Message.FailedUninstallBot({ botId, toast })),
+			Command.resolve(UninstallBot, Message.FailedUninstallBot({ botId, reason: "NotFound" })),
 			expectOutMessage(PageOutMessage.RequestedToast({ toast })),
 		)
 	})
@@ -66,7 +66,7 @@ describe("installed apps outcomes", () => {
 	test("a second Uninstall while uninstalling sends nothing; a settled one can run again", () => {
 		const uninstalling = update(initial, Message.ClickedUninstall({ botId })).model
 		expect(update(uninstalling, Message.ClickedUninstall({ botId })).commands ?? []).toHaveLength(0)
-		const failed = update(uninstalling, Message.FailedUninstallBot({ botId, toast })).model
+		const failed = update(uninstalling, Message.FailedUninstallBot({ botId, reason: "NotFound" })).model
 		expect(failed.uninstallingBotIds).toEqual([])
 		expect(update(failed, Message.ClickedUninstall({ botId })).commands ?? []).toHaveLength(1)
 	})

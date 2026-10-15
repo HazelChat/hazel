@@ -15,7 +15,10 @@ const inv1 = Schema.decodeSync(InvitationId)(uuid(11))
 
 const invitation: Invitation = { id: inv1, emailAddress: "ada@example.com", role: "member", createdAtMs: 0 }
 const loaded = () =>
-	update(init(undefined, makeShared()).model, Message.CompletedFetchInvitations({ version: 1, invitations: [invitation] })).model
+	update(
+		init(undefined, makeShared()).model,
+		Message.SucceededFetchInvitations({ version: 1, invitations: [invitation] }),
+	).model
 
 describe("pending invitations", () => {
 	test("every invitation gets a row menu with a revoke item", () => {
@@ -32,9 +35,9 @@ describe("pending invitations", () => {
 		expect(done.model.revokingId).toBeNull()
 		expect(done.commands?.map((command) => command.name)).toEqual(["FetchInvitations"])
 		expect(done.outMessage).toMatchObject({ toast: { title: "Invitation revoked successfully" } })
-		const failed = update(revoking, Message.FailedRevokeInvitation())
+		const failed = update(revoking, Message.FailedRevokeInvitation({ reason: "Unexpected" }))
 		expect(failed.outMessage).toMatchObject({
-			toast: { intent: "error", title: "Failed to revoke invitation" },
+			toast: { intent: "error", title: "Something went wrong" },
 		})
 	})
 

@@ -1,16 +1,19 @@
 import { Submodel } from "foldkit"
+import * as AsyncData from "foldkit/asyncData"
 import type { Html, HtmlBuilder } from "foldkit/html"
-import { IconClose, IconDots, IconPlus, IconUsersPlus } from "../../../icons"
+import { type CommonReason, commonMessage, isRetryableReason } from "~/lib/error-messages"
+import { IconClose, IconDots, IconPlus, IconUsersPlus, IconWarning } from "../../../icons"
 import { badge } from "../../../ui/badge"
 import { button } from "../../../ui/button"
 import { card, cardHeader, cardHeaderGroup } from "../../../ui/card"
 import { emptyState } from "../../../ui/empty-state"
+import { loader } from "../../../ui/loader"
 import * as Menu from "../../../ui/menu"
 import { menuLabel, view as menuView } from "../../../ui/menu-view"
 import type { PageViewInputs } from "../../contract"
 import { Message } from "./message"
 import type { Invitation, Model, RowMenu } from "./model"
-import { rowMenuEntries } from "./update"
+import { invitationsOf, rowMenuEntries } from "./update"
 
 /** Port of `routes/_app/$orgSlug/settings/invitations.tsx`. */
 
@@ -66,13 +69,27 @@ const invitationRow = (h: HtmlBuilder<Message>, model: Model, invitation: Invita
 		invitation.id,
 		[h.Class("hover:bg-secondary/50")],
 		[
-			h.td([h.Class("px-4 py-4")], [h.p([h.Class("font-medium text-fg text-sm")], [invitation.emailAddress])]),
-			h.td([h.Class("px-4 py-4")], [h.p([h.Class("text-muted-fg text-sm")], [roleLabel(invitation.role)])]),
 			h.td(
 				[h.Class("px-4 py-4")],
-				[badge(h, { intent: "warning" }, [h.span([h.Class("size-1.5 rounded-full bg-current")]), "Pending"])],
+				[h.p([h.Class("font-medium text-fg text-sm")], [invitation.emailAddress])],
 			),
-			h.td([h.Class("px-4 py-4")], [h.p([h.Class("text-muted-fg text-sm")], [formatSent(invitation.createdAtMs)])]),
+			h.td(
+				[h.Class("px-4 py-4")],
+				[h.p([h.Class("text-muted-fg text-sm")], [roleLabel(invitation.role)])],
+			),
+			h.td(
+				[h.Class("px-4 py-4")],
+				[
+					badge(h, { intent: "warning" }, [
+						h.span([h.Class("size-1.5 rounded-full bg-current")]),
+						"Pending",
+					]),
+				],
+			),
+			h.td(
+				[h.Class("px-4 py-4")],
+				[h.p([h.Class("text-muted-fg text-sm")], [formatSent(invitation.createdAtMs)])],
+			),
 			h.td(
 				[h.Class("px-4 py-4 text-right")],
 				row === undefined ? [] : [rowActions(h, row, model.revokingId === invitation.id)],
@@ -81,7 +98,11 @@ const invitationRow = (h: HtmlBuilder<Message>, model: Model, invitation: Invita
 	)
 }
 
-const invitationsTable = (h: HtmlBuilder<Message>, model: Model): Html =>
+const invitationsTable = (
+	h: HtmlBuilder<Message>,
+	model: Model,
+	invitations: ReadonlyArray<Invitation>,
+): Html =>
 	h.div(
 		[h.Class("overflow-x-auto")],
 		[
@@ -105,15 +126,81 @@ const invitationsTable = (h: HtmlBuilder<Message>, model: Model): Html =>
 					),
 					h.tbody(
 						[h.Class("divide-y divide-border")],
-						model.invitations.map((invitation) => invitationRow(h, model, invitation)),
+						invitations.map((invitation) => invitationRow(h, model, invitation)),
 					),
 				],
 			),
 		],
 	)
 
+const retryButton = (h: HtmlBuilder<Message>, reason: CommonReason): ReadonlyArray<Html> =>
+	isRetryableReason(reason)
+		? [
+				button(
+					h,
+					{ intent: "secondary", size: "sm", onPress: Message.ClickedRetryFetchInvitations() },
+					["Try again"],
+				),
+			]
+		: []
+
+const loadingState = (h: HtmlBuilder<Message>): Html =>
+	h.div(
+		[h.Class("flex h-64 items-center justify-center gap-3 text-muted-fg")],
+		[loader(h, { className: "size-6" }), h.span([h.Class("text-sm")], ["Loading invitations..."])],
+	)
+
+/** The first load failed: nothing to show but the reason. */
+const failedState = (h: HtmlBuilder<Message>, reason: CommonReason): Html => {
+	const message = commonMessage(reason)
+	return emptyState(h, {
+		icon: (className) => IconWarning(h, { className }),
+		title: "Couldn't load invitations",
+		description: message.description ?? message.title,
+		action: retryButton(h, reason),
+		className: "h-64",
+	})
+}
+
+/** A refetch failed: the last loaded rows stay, with the reason above them. */
+const staleNotice = (h: HtmlBuilder<Message>, reason: CommonReason): Html =>
+	h.div(
+		[
+			h.Class("flex items-center justify-between gap-3 border-border border-b px-4 py-3"),
+			h.Role("alert"),
+		],
+		[
+			h.p([h.Class("text-danger text-sm")], [`Couldn't refresh: ${commonMessage(reason).title}`]),
+			...retryButton(h, reason),
+		],
+	)
+
+const loadedBody = (h: HtmlBuilder<Message>, model: Model, invitations: ReadonlyArray<Invitation>): Html =>
+	invitations.length === 0
+		? emptyState(h, {
+				icon: (className) => IconUsersPlus(h, { className }),
+				title: "No pending invitations",
+				description: "Invite team members to join your organization.",
+				action: button(h, { intent: "secondary", size: "sm", onPress: Message.ClickedInviteUser() }, [
+					plusIcon(h),
+					"Invite a team member",
+				]),
+				className: "h-64",
+			})
+		: invitationsTable(h, model, invitations)
+
+const body = (h: HtmlBuilder<Message>, model: Model): Html =>
+	AsyncData.match(model.invitations, {
+		onIdle: () => loadingState(h),
+		onLoading: () => loadingState(h),
+		onFailure: (reason) => failedState(h, reason),
+		onRefreshing: (invitations) => loadedBody(h, model, invitations),
+		onStale: ({ error, data }) => h.div([], [staleNotice(h, error), loadedBody(h, model, data)]),
+		onSuccess: (invitations) => loadedBody(h, model, invitations),
+	})
+
 export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, _inputs, h) => {
-	const count = model.invitations.length
+	const count = invitationsOf(model).length
 	return h.div(
 		[h.Class("flex flex-col gap-6 px-4 lg:px-8")],
 		[
@@ -126,8 +213,13 @@ export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, 
 								h.div(
 									[h.Class("flex items-center gap-2")],
 									[
-										h.h2([h.Class("font-semibold text-fg text-lg")], ["Pending invitations"]),
-										...(count > 0 ? [badge(h, { intent: "secondary" }, [`${count}`, " pending"])] : []),
+										h.h2(
+											[h.Class("font-semibold text-fg text-lg")],
+											["Pending invitations"],
+										),
+										...(count > 0
+											? [badge(h, { intent: "secondary" }, [`${count}`, " pending"])]
+											: []),
 									],
 								),
 								h.p(
@@ -141,27 +233,16 @@ export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, 
 						h.div(
 							[h.Class("flex gap-3")],
 							[
-								button(h, { intent: "secondary", size: "md", onPress: Message.ClickedInviteUser() }, [
-									plusIcon(h),
-									"Invite user",
-								]),
+								button(
+									h,
+									{ intent: "secondary", size: "md", onPress: Message.ClickedInviteUser() },
+									[plusIcon(h), "Invite user"],
+								),
 							],
 						),
 					]),
 				]),
-				count === 0
-					? emptyState(h, {
-							icon: (className) => IconUsersPlus(h, { className }),
-							title: "No pending invitations",
-							description: "Invite team members to join your organization.",
-							action: button(
-								h,
-								{ intent: "secondary", size: "sm", onPress: Message.ClickedInviteUser() },
-								[plusIcon(h), "Invite a team member"],
-							),
-							className: "h-64",
-						})
-					: invitationsTable(h, model),
+				body(h, model),
 			]),
 		],
 	)

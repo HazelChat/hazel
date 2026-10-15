@@ -3,21 +3,30 @@ import { Command } from "foldkit"
 import { modifyFields } from "foldkit/struct"
 import { getTauriApp } from "@hazel/desktop/bridge"
 import { disableAutostart, enableAutostart, isAutostartEnabled } from "~/lib/tauri-autostart"
+import { errorToast } from "../../../data/actions"
 import { isDesktop } from "../../../platform/desktop"
 import { PageOutMessage } from "../../out-message"
 import * as Interaction from "../../../ui/aria/interaction"
-import type { PageReturn } from "../../contract"
-import { embedInteraction } from "../shared"
+import type { PageReturn, PageSubscriptionInput } from "../../contract"
 import { Message } from "./message"
 import type { Model } from "./model"
 
-export const interaction = embedInteraction<Model, Message>((message) =>
-	Message.GotInteractionMessage({ message }),
+export const interaction = Interaction.embed<Model, Message, PageSubscriptionInput<Model>>(
+	(message) => Message.GotInteractionMessage({ message }),
+	(input) => input.model,
 )
 
+/** A Tauri plugin call (autostart, app version) rejected. */
+class TauriPluginError extends Schema.TaggedError<TauriPluginError>()("TauriPluginError", {
+	cause: Schema.Defect(),
+}) {}
+
+const tauri = <A>(run: () => Promise<A>) =>
+	Effect.tryPromise({ try: run, catch: (cause) => new TauriPluginError({ cause }) })
+
 /** Reads the autostart state; a failure reads as off, as the legacy mount effect does. */
-const readAutostart = Effect.tryPromise(() => isAutostartEnabled()).pipe(
-	Effect.catch(() => Effect.succeed(false)),
+const readAutostart = tauri(isAutostartEnabled).pipe(
+	Effect.catchTags({ TauriPluginError: () => Effect.succeed(false) }),
 )
 
 export const CheckAutostart = Command.define("CheckAutostart", {
@@ -28,20 +37,26 @@ export const CheckAutostart = Command.define("CheckAutostart", {
 /** On failure the legacy handler re-reads the real state instead of keeping the toggle. */
 export const SetAutostart = Command.define("SetAutostart", {
 	args: { isEnabled: Schema.Boolean },
-	messages: [Message.CompletedSetAutostart],
+	messages: [Message.SucceededSetAutostart, Message.FailedSetAutostart],
 	execute: ({ isEnabled }) =>
-		Effect.tryPromise(() => (isEnabled ? enableAutostart() : disableAutostart())).pipe(
-			Effect.as(isEnabled),
-			Effect.catch(() => readAutostart),
-			Effect.map((isEnabled) => Message.CompletedSetAutostart({ isEnabled })),
+		tauri(isEnabled ? enableAutostart : disableAutostart).pipe(
+			Effect.as(Message.SucceededSetAutostart({ isEnabled })),
+			Effect.catchTags({
+				TauriPluginError: () =>
+					readAutostart.pipe(
+						Effect.map((actual) =>
+							Message.FailedSetAutostart({ reason: "PluginFailed", isEnabled: actual }),
+						),
+					),
+			}),
 		),
 })
 
-/** `useAppVersion()`: the installed version on desktop. */
+/** `useAppVersion()`: the installed version on desktop; unknown if the plugin fails. */
 export const ReadVersion = Command.define("ReadVersion", {
 	messages: [Message.ReadAppVersion],
-	execute: Effect.tryPromise(async () => (await getTauriApp()?.getVersion()) ?? null).pipe(
-		Effect.catch(() => Effect.succeed(null)),
+	execute: tauri(async () => (await getTauriApp()?.getVersion()) ?? null).pipe(
+		Effect.catchTags({ TauriPluginError: () => Effect.succeed(null) }),
 		Effect.map((version) => Message.ReadAppVersion({ version })),
 	),
 })
@@ -51,12 +66,17 @@ export const init = (): PageReturn<Model, Message> => ({
 	commands: isDesktop ? [CheckAutostart(), ReadVersion()] : [CheckAutostart()],
 })
 
+const settleAutostart = (model: Model, isEnabled: boolean): Model =>
+	modifyFields(model, { autostartEnabled: () => isEnabled, isUpdating: () => false })
+
 export const update = (model: Model, message: Message): PageReturn<Model, Message> =>
 	Message.match<PageReturn<Model, Message>>(message, {
 		// The initial read only fills an unknown state, so it can never undo a later write.
 		CheckedAutostart: ({ isEnabled }) => ({
 			model:
-				model.autostartEnabled === null ? modifyFields(model, { autostartEnabled: () => isEnabled }) : model,
+				model.autostartEnabled === null
+					? modifyFields(model, { autostartEnabled: () => isEnabled })
+					: model,
 		}),
 		ToggledAutostart: ({ isSelected }) =>
 			model.isUpdating || model.autostartEnabled === null
@@ -65,8 +85,12 @@ export const update = (model: Model, message: Message): PageReturn<Model, Messag
 						model: modifyFields(model, { isUpdating: () => true }),
 						commands: [SetAutostart({ isEnabled: isSelected })],
 					},
-		CompletedSetAutostart: ({ isEnabled }) => ({
-			model: modifyFields(model, { autostartEnabled: () => isEnabled, isUpdating: () => false }),
+		SucceededSetAutostart: ({ isEnabled }) => ({ model: settleAutostart(model, isEnabled) }),
+		FailedSetAutostart: ({ isEnabled }) => ({
+			model: settleAutostart(model, isEnabled),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToast("Failed to update launch at login", "Please try again."),
+			}),
 		}),
 		GotInteractionMessage: ({ message: child }) => interaction.fold(model, child),
 		ReadAppVersion: ({ version }) => ({ model: modifyFields(model, { version: () => version }) }),

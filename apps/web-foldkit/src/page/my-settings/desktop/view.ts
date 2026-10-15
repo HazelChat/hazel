@@ -44,8 +44,8 @@ const checkRow = (h: HtmlBuilder<Message>, text: string, label: string): Html =>
 const megabytes = (bytes: number) => (bytes / 1024 / 1024).toFixed(1)
 
 /** Legacy `UpdateStatusDisplay`: the update's state and what can be done next. */
-const updateStatus = (h: HtmlBuilder<Message>, state: Updates.Model): Html => {
-	return Updates.Model.match<Html>(state, {
+const updateStatus = (h: HtmlBuilder<Message>, state: Updates.Model): Html =>
+	Updates.Model.match(state, {
 		Idle: () => checkRow(h, "Check for available updates", "Check for updates"),
 		Checking: () => spinner(h, "Checking for updates..."),
 		Available: (state) =>
@@ -167,7 +167,6 @@ const updateStatus = (h: HtmlBuilder<Message>, state: Updates.Model): Html => {
 		Restarting: () => spinner(h, "Restarting..."),
 		InstallFailed: (state) => retry(h, Updates.installFailureText(state.reason), "Retry"),
 	})
-}
 
 const appUpdates = (h: HtmlBuilder<Message>, model: Model, state: Updates.Model): ReadonlyArray<Html> => [
 	divider(h),

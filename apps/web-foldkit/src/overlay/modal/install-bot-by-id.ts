@@ -3,7 +3,7 @@ import { Cause, Effect, Option, Schema } from "effect"
 import { Command, Submodel } from "foldkit"
 import { defineMessageUnion } from "foldkit/message"
 import { modifyFields } from "foldkit/struct"
-import { embedInteraction } from "../../page/settings/integrations/shared/interaction"
+import type { PageSubscriptionInput } from "../../page/contract"
 import { HazelRpc } from "../../rpc"
 import * as Interaction from "../../ui/aria/interaction"
 import { button } from "../../ui/button"
@@ -87,7 +87,10 @@ export const InstallBotById = Command.define("InstallBotById", {
 
 type Return = ModalReturn<Model, Message>
 
-const interaction = embedInteraction<Model, Message>((message) => Message.GotInteractionMessage({ message }))
+const interaction = Interaction.embed<Model, Message, PageSubscriptionInput<Model>>(
+	(message) => Message.GotInteractionMessage({ message }),
+	(input) => input.model,
+)
 
 const INSTALL_TARGET = "install"
 

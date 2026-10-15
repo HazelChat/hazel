@@ -55,7 +55,11 @@ describe("root toaster", () => {
 				),
 		})
 		expect(booted.model.toasts.toaster.toasts).toMatchObject([
-			{ kind: "error", title: "Failed to link Discord account", description: "db_error" },
+			{
+				kind: "error",
+				title: "Failed to link Discord account",
+				description: "A database error occurred. Please try again.",
+			},
 		])
 		// The kit's own Messages fold back into the slot through `GotToastsMessage`.
 		const hovered = update(

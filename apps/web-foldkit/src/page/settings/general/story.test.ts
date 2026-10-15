@@ -1,19 +1,16 @@
 // @vitest-environment jsdom
 import { routeOfPath } from "../../../route"
 import { Command, expectNoOutMessage, expectOutMessage, given, message, model, story } from "foldkit/story"
+import { Option } from "effect"
 import { describe, expect, test } from "vitest"
-import { errorToast, successToast } from "../../../data/actions"
-import {
-	failureToastFixture,
-	makeShared,
-	organization,
-	organizationId,
-	storyUpdate,
-} from "../../../test/pages-fixtures"
+import * as Modal from "../../../ui/modal"
+import * as ConfirmAction from "../../shared/confirm-action"
+import { errorToast, reasonToast, successToast } from "../../../data/actions"
+import { makeShared, organization, organizationId, storyUpdate } from "../../../test/pages-fixtures"
 import type { Shared } from "../../contract"
 import { PageOutMessage } from "../../out-message"
 import { Message } from "./message"
-import type { Model } from "./model"
+import { LogoUpload, type Model, NameSave, PublicModeSave, type UploadLogoFailure } from "./model"
 import {
 	DeleteOrganization,
 	init,
@@ -72,25 +69,33 @@ describe("organization name", () => {
 			expectOutMessage(
 				PageOutMessage.RequestedToast({ toast: successToast("Organization name updated") }),
 			),
-			model((current) => expect(current.isSavingName).toBe(false)),
+			model((current) => expect(current.nameSave).toEqual(NameSave.Idle())),
 		)
 		const saving = update(
-			{ ...initial, name: "Hazel HQ", isSavingName: true },
+			{ ...initial, name: "Hazel HQ", nameSave: NameSave.Saving() },
 			Message.SubmittedName(),
 			owner,
 		)
 		expect(saving.commands ?? []).toHaveLength(0)
 	})
 
-	test("a failed save clears the saving flag and forwards the failure toast", () => {
+	test("a failed save goes back to idle, keeps the draft and toasts the reason's copy", () => {
 		story<Model, Message, PageOutMessage>(
 			storyUpdate(update, owner),
 			given({ ...initial, name: "Hazel HQ" }),
 			message(Message.SubmittedName()),
-			Command.resolve(UpdateOrganizationName, Message.FailedUpdateName({ toast: failureToastFixture })),
-			expectOutMessage(PageOutMessage.RequestedToast({ toast: failureToastFixture })),
-			model((current) => expect(current).toMatchObject({ isSavingName: false, name: "Hazel HQ" })),
+			Command.resolve(UpdateOrganizationName, Message.FailedUpdateName({ reason: "Offline" })),
+			expectOutMessage(PageOutMessage.RequestedToast({ toast: reasonToast("Offline") })),
+			model((current) =>
+				expect(current).toMatchObject({ nameSave: NameSave.Idle(), name: "Hazel HQ" }),
+			),
 		)
+		expect(
+			update({ ...initial, name: "Hazel HQ" }, Message.FailedUpdateName({ reason: "SlugTaken" }), owner)
+				.outMessage,
+		).toMatchObject({
+			toast: errorToast("Slug already exists", "This organization slug is already taken."),
+		})
 	})
 
 	test("a new server name replaces the draft, an unchanged one keeps it", () => {
@@ -114,34 +119,45 @@ describe("logo", () => {
 			message(Message.SelectedLogo({ files: [logo] })),
 			// Matched by name: structural equality cannot compare a jsdom File.
 			Command.expectExact(UploadLogo),
-			model((current) => expect(current.isUploading).toBe(true)),
+			model((current) => expect(current.logoUpload).toEqual(LogoUpload.Uploading())),
 			Command.resolve(UploadLogo, Message.SucceededUploadLogo()),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({ toast: successToast("Organization logo updated") }),
 			),
-			model((current) => expect(current.isUploading).toBe(false)),
+			model((current) => expect(current.logoUpload).toEqual(LogoUpload.Idle())),
 		)
 	})
 
 	test("a file picked while an upload runs is ignored", () => {
-		const uploading: Model = { ...initial, isUploading: true }
+		const uploading: Model = { ...initial, logoUpload: LogoUpload.Uploading() }
 		expect(update(uploading, Message.SelectedLogo({ files: [logo] }), owner).commands ?? []).toHaveLength(
 			0,
 		)
 	})
 
-	test("a failed upload clears the uploading flag and toasts; an empty pick does nothing", () => {
-		const toast = errorToast("Upload failed", "Failed to update organization. Please try again.")
+	test("a failed upload goes back to idle and toasts; an empty pick does nothing", () => {
+		const toast = errorToast("File too large", "File size must be less than 5MB")
 		story<Model, Message, PageOutMessage>(
 			storyUpdate(update, owner),
 			given(initial),
 			message(Message.SelectedLogo({ files: [] })),
 			Command.expectNone(),
 			message(Message.SelectedLogo({ files: [logo] })),
-			Command.resolve(UploadLogo, Message.FailedUploadLogo({ toast })),
+			Command.resolve(UploadLogo, Message.FailedUploadLogo({ reason: "TooLarge" })),
 			expectOutMessage(PageOutMessage.RequestedToast({ toast })),
-			model((current) => expect(current.isUploading).toBe(false)),
+			model((current) => expect(current.logoUpload).toEqual(LogoUpload.Idle())),
 		)
+	})
+
+	test("upload problems and organization errors each get their own copy, not a generic one", () => {
+		const toastFor = (reason: UploadLogoFailure) =>
+			update(initial, Message.FailedUploadLogo({ reason }), owner).outMessage
+		expect(toastFor("NotConfigured")).toMatchObject({ toast: { title: "Configuration error" } })
+		expect(toastFor("StorageOffline")).toMatchObject({ toast: { title: "Upload failed" } })
+		expect(toastFor("NotFound")).toMatchObject({
+			toast: errorToast("Organization not found", "This organization may have been deleted."),
+		})
+		expect(toastFor("SignedOut")).toMatchObject({ toast: reasonToast("SignedOut") })
 	})
 })
 
@@ -152,14 +168,19 @@ describe("public mode", () => {
 			given(initial),
 			message(Message.ToggledPublicMode({ isPublic: true })),
 			Command.expectExact(SetPublicMode({ organizationId, isPublic: true })),
-			Command.resolve(SetPublicMode, Message.FailedSetPublicMode({ toast: failureToastFixture })),
-			expectOutMessage(PageOutMessage.RequestedToast({ toast: failureToastFixture })),
-			model((current) => expect(current).toMatchObject({ isTogglingPublic: false, isPublic: false })),
+			model((current) =>
+				expect(current.publicModeSave).toEqual(PublicModeSave.Saving({ isPublic: true })),
+			),
+			Command.resolve(SetPublicMode, Message.FailedSetPublicMode({ reason: "Unexpected" })),
+			expectOutMessage(PageOutMessage.RequestedToast({ toast: reasonToast("Unexpected") })),
+			model((current) =>
+				expect(current).toMatchObject({ publicModeSave: PublicModeSave.Idle(), isPublic: false }),
+			),
 		)
 	})
 
 	test("a second toggle while one runs sends nothing", () => {
-		const toggling: Model = { ...initial, isTogglingPublic: true }
+		const toggling: Model = { ...initial, publicModeSave: PublicModeSave.Saving({ isPublic: false }) }
 		expect(
 			update(toggling, Message.ToggledPublicMode({ isPublic: true }), owner).commands ?? [],
 		).toHaveLength(0)
@@ -196,17 +217,20 @@ describe("delete workspace", () => {
 				}),
 			),
 			model((current) =>
-				expect(current).toMatchObject({ confirmationText: "", deleteModal: { isOpen: false } }),
+				expect(current).toMatchObject({
+					confirmationText: "",
+					deleteConfirm: { state: { _tag: "Closed" }, modal: { isOpen: false } },
+				}),
 			),
 		)
 	})
 
 	test("a second confirm while deleting sends nothing", () => {
+		const asking = ConfirmAction.ask(initial.deleteConfirm, { organizationId })
 		const deleting: Model = {
 			...initial,
-			deleteModal: { ...initial.deleteModal, isOpen: true },
+			deleteConfirm: Option.getOrThrow(ConfirmAction.confirm(asking))[0],
 			confirmationText: "Hazel Labs",
-			isDeleting: true,
 		}
 		expect(update(deleting, Message.ClickedConfirmDelete(), owner).commands ?? []).toHaveLength(0)
 	})
@@ -219,7 +243,32 @@ describe("delete workspace", () => {
 			message(Message.ChangedConfirmation({ value: "Hazel" })),
 			message(Message.ClickedCancelDelete()),
 			model((current) =>
-				expect(current).toMatchObject({ confirmationText: "", deleteModal: { isOpen: false } }),
+				expect(current).toMatchObject({
+					confirmationText: "",
+					deleteConfirm: { state: { _tag: "Closed" }, modal: { isOpen: false } },
+				}),
+			),
+			message(Message.ClickedDeleteWorkspace()),
+			model((current) => expect(current.confirmationText).toBe("")),
+		)
+	})
+
+	test("dismissing the dialog (Escape, backdrop) also clears the confirmation", () => {
+		story<Model, Message, PageOutMessage>(
+			storyUpdate(update, owner),
+			given(initial),
+			message(Message.ClickedDeleteWorkspace()),
+			message(Message.ChangedConfirmation({ value: "Hazel" })),
+			message(
+				Message.GotDeleteConfirmMessage({
+					message: ConfirmAction.toModalMessage(Modal.Message.ClickedClose()),
+				}),
+			),
+			model((current) =>
+				expect(current).toMatchObject({
+					confirmationText: "",
+					deleteConfirm: { state: { _tag: "Closed" } },
+				}),
 			),
 		)
 	})

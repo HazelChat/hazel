@@ -12,7 +12,7 @@ import type { Organization } from "../../../session"
 import type { PageViewInputs, Shared } from "../../contract"
 import { deleteWorkspaceModal } from "./delete-workspace"
 import { Message } from "./message"
-import type { Model } from "./model"
+import { type CopyTarget, LogoUpload, type Model, NameSave, PublicModeSave } from "./model"
 import { isAdminOf, LOGO_INPUT_ID } from "./update"
 
 /** Port of `routes/_app/$orgSlug/settings/index.tsx`. */
@@ -27,21 +27,32 @@ const getInitials = (orgName: string) => {
 
 const sectionHeader = (
 	h: HtmlBuilder<Message>,
-	options: { readonly icon: Html; readonly title: string; readonly titleClass?: string; readonly text: string },
+	options: {
+		readonly icon: Html
+		readonly title: string
+		readonly titleClass?: string
+		readonly text: string
+	},
 ): Html =>
 	h.div(
 		[h.Class("flex flex-col gap-0.5")],
 		[
 			h.div(
 				[h.Class("flex items-center gap-2")],
-				[options.icon, h.h2([h.Class(`font-semibold ${options.titleClass ?? "text-fg"} text-lg`)], [options.title])],
+				[
+					options.icon,
+					h.h2(
+						[h.Class(`font-semibold ${options.titleClass ?? "text-fg"} text-lg`)],
+						[options.title],
+					),
+				],
 			),
 			h.p([h.Class("text-muted-fg text-sm")], [options.text]),
 		],
 	)
 
 /** The read-only URL box with its Copy button. */
-const copyRow = (h: HtmlBuilder<Message>, url: string, successTitle: string, failureTitle: string): Html =>
+const copyRow = (h: HtmlBuilder<Message>, url: string, target: CopyTarget): Html =>
 	h.div(
 		[h.Class("flex items-center gap-2")],
 		[
@@ -54,7 +65,7 @@ const copyRow = (h: HtmlBuilder<Message>, url: string, successTitle: string, fai
 				{
 					intent: "secondary",
 					size: "md",
-					onPress: Message.ClickedCopy({ text: url, successTitle, failureTitle }),
+					onPress: Message.ClickedCopy({ target, text: url }),
 				},
 				[IconCopy(h, { attributes: { "data-slot": "icon" } }), "Copy"],
 			),
@@ -64,8 +75,10 @@ const copyRow = (h: HtmlBuilder<Message>, url: string, successTitle: string, fai
 const profileCard = (h: HtmlBuilder<Message>, model: Model, shared: Shared, organization: Organization) => {
 	const isAdmin = isAdminOf(shared)
 	const isPermissionsLoading = shared.member === null
-	const isLogoDisabled = model.isUploading || isPermissionsLoading || !isAdmin
-	const isNameDisabled = model.isSavingName || isPermissionsLoading || !isAdmin
+	const isUploading = LogoUpload.guards.Uploading(model.logoUpload)
+	const isSavingName = NameSave.guards.Saving(model.nameSave)
+	const isLogoDisabled = isUploading || isPermissionsLoading || !isAdmin
+	const isNameDisabled = isSavingName || isPermissionsLoading || !isAdmin
 	const workspaceUrl = `${model.origin}/${model.orgSlug}`
 	return card(h, {}, [
 		cardHeader(h, [
@@ -92,7 +105,9 @@ const profileCard = (h: HtmlBuilder<Message>, model: Model, shared: Shared, orga
 												"group relative cursor-pointer disabled:cursor-not-allowed disabled:opacity-50",
 											),
 											h.Type("button"),
-											...(isLogoDisabled ? [h.Disabled(true)] : [h.OnClick(Message.ClickedLogo())]),
+											...(isLogoDisabled
+												? [h.Disabled(true)]
+												: [h.OnClick(Message.ClickedLogo())]),
 										],
 										[
 											avatar(h, {
@@ -128,9 +143,12 @@ const profileCard = (h: HtmlBuilder<Message>, model: Model, shared: Shared, orga
 										[
 											h.p(
 												[h.Class("font-medium text-fg text-sm")],
-												[model.isUploading ? "Uploading..." : "Click to upload"],
+												[isUploading ? "Uploading..." : "Click to upload"],
 											),
-											h.p([h.Class("text-muted-fg text-xs")], ["JPG, PNG or WebP. Max 5MB."]),
+											h.p(
+												[h.Class("text-muted-fg text-xs")],
+												["JPG, PNG or WebP. Max 5MB."],
+											),
 										],
 									),
 								],
@@ -150,10 +168,14 @@ const profileCard = (h: HtmlBuilder<Message>, model: Model, shared: Shared, orga
 							parts.input({
 								placeholder: "Enter organization name",
 								attributes: [
-									...(isNameDisabled ? [h.Disabled(true), h.DataAttribute("disabled", "true")] : []),
+									...(isNameDisabled
+										? [h.Disabled(true), h.DataAttribute("disabled", "true")]
+										: []),
 									h.OnBlur(Message.SubmittedName()),
 									h.OnKeyDownPreventDefault((key) =>
-										key === "Enter" ? Option.some(Message.SubmittedName()) : Option.none(),
+										key === "Enter"
+											? Option.some(Message.SubmittedName())
+											: Option.none(),
 									),
 								],
 							}),
@@ -170,17 +192,17 @@ const profileCard = (h: HtmlBuilder<Message>, model: Model, shared: Shared, orga
 											{
 												intent: "primary",
 												size: "sm",
-												isDisabled: model.isSavingName,
+												isDisabled: isSavingName,
 												onPress: Message.SubmittedName(),
 											},
-											[model.isSavingName ? "Saving..." : "Save Changes"],
+											[isSavingName ? "Saving..." : "Save Changes"],
 										),
 										button(
 											h,
 											{
 												intent: "secondary",
 												size: "sm",
-												isDisabled: model.isSavingName,
+												isDisabled: isSavingName,
 												onPress: Message.ClickedCancelName(),
 											},
 											["Cancel"],
@@ -193,8 +215,10 @@ const profileCard = (h: HtmlBuilder<Message>, model: Model, shared: Shared, orga
 						[h.Class("flex flex-col gap-2")],
 						[
 							Field.label(h, {}, ["Workspace URL"]),
-							copyRow(h, workspaceUrl, "Workspace URL copied to clipboard", "Failed to copy URL"),
-							Field.description(h, {}, ["This is your workspace's unique URL. Share it with your team."]),
+							copyRow(h, workspaceUrl, "WorkspaceUrl"),
+							Field.description(h, {}, [
+								"This is your workspace's unique URL. Share it with your team.",
+							]),
 						],
 					),
 				],
@@ -223,7 +247,10 @@ const publicInviteCard = (h: HtmlBuilder<Message>, model: Model, shared: Shared)
 						{
 							id: "public-invite-switch",
 							isSelected: model.isPublic,
-							isDisabled: model.isTogglingPublic || isPermissionsLoading || !isAdminOf(shared),
+							isDisabled:
+								PublicModeSave.guards.Saving(model.publicModeSave) ||
+								isPermissionsLoading ||
+								!isAdminOf(shared),
 							onChange: (isPublic) => Message.ToggledPublicMode({ isPublic }),
 						},
 						"Enable public invite link",
@@ -237,7 +264,7 @@ const publicInviteCard = (h: HtmlBuilder<Message>, model: Model, shared: Shared)
 											[h.Class("text-muted-fg text-sm")],
 											["Anyone with this link can join your workspace as a member."],
 										),
-										copyRow(h, publicInviteUrl, "Invite link copied to clipboard", "Failed to copy link"),
+										copyRow(h, publicInviteUrl, "InviteLink"),
 									],
 								),
 							]

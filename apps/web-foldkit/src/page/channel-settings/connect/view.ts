@@ -1,6 +1,8 @@
 import { Submodel } from "foldkit"
+import * as AsyncData from "foldkit/asyncData"
 import type { Html, HtmlBuilder } from "foldkit/html"
 import { getConnectInviteStatusBadge } from "~/lib/connect-shared-channels"
+import { type CommonReason, commonMessage, isRetryableReason } from "~/lib/error-messages"
 import { IconConnect, IconPlus } from "../../../icons"
 import { avatar } from "../../../ui/avatar"
 import { badge } from "../../../ui/badge"
@@ -155,7 +157,7 @@ const inviteRow = (h: HtmlBuilder<Message>, model: Model, invite: Invite): Html 
 	)
 }
 
-const invitations = (h: HtmlBuilder<Message>, model: Model): Html =>
+const invitations = (h: HtmlBuilder<Message>, model: Model, invites: ReadonlyArray<Invite>): Html =>
 	h.div(
 		[h.Class("overflow-hidden rounded-xl border border-border bg-bg shadow-sm")],
 		[
@@ -185,7 +187,7 @@ const invitations = (h: HtmlBuilder<Message>, model: Model): Html =>
 							),
 							h.tbody(
 								[h.Class("divide-y divide-border")],
-								model.invites.map((invite) => inviteRow(h, model, invite)),
+								invites.map((invite) => inviteRow(h, model, invite)),
 							),
 						],
 					),
@@ -193,6 +195,50 @@ const invitations = (h: HtmlBuilder<Message>, model: Model): Html =>
 			),
 		],
 	)
+
+const invitesFailed = (h: HtmlBuilder<Message>, reason: CommonReason): Html => {
+	const message = commonMessage(reason)
+	return h.div(
+		[
+			h.Class(
+				"flex items-center justify-between gap-4 rounded-xl border border-border bg-bg px-4 py-4 md:px-6",
+			),
+			h.Role("alert"),
+		],
+		[
+			h.div(
+				[h.Class("flex flex-col")],
+				[
+					h.span([h.Class("font-medium text-fg text-sm")], ["Couldn't load invitations"]),
+					h.span([h.Class("text-muted-fg text-xs")], [message.description ?? message.title]),
+				],
+			),
+			...(isRetryableReason(reason)
+				? [
+						button(h, { intent: "outline", size: "sm", onPress: Message.ClickedRetryInvites() }, [
+							"Try again",
+						]),
+					]
+				: []),
+		],
+	)
+}
+
+/** The invitations table, a load failure, or (with no connections either) the "not shared" empty state. */
+const invitationsSection = (
+	h: HtmlBuilder<Message>,
+	model: Model,
+	isConnected: boolean,
+): ReadonlyArray<Html> => {
+	const invites = AsyncData.getOrElse(model.invites, () => [])
+	return AsyncData.isFailure(model.invites)
+		? [invitesFailed(h, model.invites.error)]
+		: invites.length > 0
+			? [invitations(h, model, invites)]
+			: isConnected || AsyncData.isPending(model.invites)
+				? []
+				: [notShared(h)]
+}
 
 const notShared = (h: HtmlBuilder<Message>): Html =>
 	emptyState(h, {
@@ -225,7 +271,7 @@ export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, 
 				],
 			),
 			...(isConnected ? [activeConnections(h, model, shared)] : []),
-			...(model.invites.length > 0 ? [invitations(h, model)] : isConnected ? [] : [notShared(h)]),
+			...invitationsSection(h, model, isConnected),
 			// `{channel && <ShareChannelModal />}`; its overlay portals to the body.
 			...(model.channelName === null
 				? []

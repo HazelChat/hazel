@@ -13,11 +13,6 @@ import type { Model, TeamMember } from "./model"
 
 /** Port of `routes/_app/$orgSlug/settings/team.tsx` (read path; menus and modals follow in Phase 5). */
 
-const getInitials = (name: string) => {
-	const [firstName, lastName] = name.split(" ")
-	return `${firstName?.charAt(0)}${lastName?.charAt(0)}`
-}
-
 const canManageUser = (
 	members: ReadonlyArray<TeamMember>,
 	currentUserId: string | undefined,

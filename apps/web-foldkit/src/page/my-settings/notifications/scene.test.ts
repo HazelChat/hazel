@@ -54,10 +54,17 @@ describe("do not disturb", () => {
 			Scene.expect(showQuietHours).toBeChecked(),
 			Scene.click(showQuietHours),
 			Scene.expect(showQuietHours).not.toBeChecked(),
-			Scene.Command.resolve(UpdateUserSettings, Message.FailedUpdateUserSettings()),
+			Scene.Command.resolve(
+				UpdateUserSettings,
+				Message.FailedUpdateUserSettings({ reason: "Offline" }),
+			),
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Failed to update setting", description: null },
+					toast: {
+						intent: "error",
+						title: "Failed to update setting",
+						description: "Check your internet connection and try again.",
+					},
 				}),
 			),
 			Scene.expect(showQuietHours).toBeChecked(),
@@ -96,9 +103,15 @@ describe("sounds", () => {
 			Scene.given(init().model),
 			Scene.click(Scene.role("button", { name: "Test notification" })),
 			Scene.Command.expectExact(SendTestNotification),
-			Scene.Command.resolve(SendTestNotification, Message.CompletedTestNotification({ isSent: false })),
+			Scene.Command.resolve(
+				SendTestNotification,
+				Message.FailedSendTestNotification({ reason: "Unavailable" }),
+			),
 			Scene.expect(note).toExist(),
-			Scene.Command.resolve(ExpireNotificationStatus, Message.ExpiredNotificationStatus({ version: 1 })),
+			Scene.Command.resolve(
+				ExpireNotificationStatus,
+				Message.ExpiredNotificationStatus({ version: 1 }),
+			),
 			Scene.expect(note).toBeAbsent(),
 		)
 	})

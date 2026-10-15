@@ -11,11 +11,12 @@ import { inputGroup } from "../../../ui/input"
 import { textField } from "../../../ui/text-field"
 import type { PageViewInputs, Shared } from "../../contract"
 import { formatDistanceToNow } from "../format-distance"
+import * as DropZone from "../../shared/drop-zone"
 import { ALLOWED_EMOJI_TYPES } from "../upload"
 import { deleteEmojiModal, restoreEmojiModal } from "./modals"
 import { Message } from "./message"
 import type { Draft, Emoji, Model } from "./model"
-import { EMOJI_NAME_ID } from "./update"
+import { EMOJI_NAME_ID, isBusy } from "./update"
 
 /** Port of `routes/_app/$orgSlug/settings/custom-emojis.tsx`. */
 
@@ -38,16 +39,17 @@ const fileInput = (h: HtmlBuilder<Message>, id: string): Html =>
 const dropZone = (h: HtmlBuilder<Message>, model: Model, isDisabled: boolean): Html =>
 	h.div(
 		[
-			h.Class("rounded-lg focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"),
-			...(model.isDropTarget ? [h.DataAttribute("drop-target", "true")] : []),
+			h.Class(
+				"rounded-lg focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+			),
 			...(isDisabled
 				? [h.DataAttribute("disabled", "true")]
-				: [
-						h.AllowDrop(),
-						h.OnDragEnter(Message.EnteredDropZone()),
-						h.OnDragLeave(Message.LeftDropZone()),
-						h.OnDropFiles((files) => Message.SelectedFiles({ files })),
-					]),
+				: DropZone.zoneAttributes(
+						h,
+						model.dropZone,
+						(message) => Message.GotDropZoneMessage({ message }),
+						(files) => Message.SelectedFiles({ files }),
+					)),
 		],
 		[
 			h.div(
@@ -67,7 +69,7 @@ const dropZone = (h: HtmlBuilder<Message>, model: Model, isDisabled: boolean): H
 					h.Class(
 						cx(
 							"flex w-full cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed px-4 py-8 transition-colors",
-							model.isDropTarget
+							model.dropZone.isOver
 								? "border-primary bg-primary/5"
 								: "border-border bg-secondary/20 hover:border-muted-fg/40 hover:bg-secondary/40",
 							isDisabled && "pointer-events-none opacity-50",
@@ -83,7 +85,10 @@ const dropZone = (h: HtmlBuilder<Message>, model: Model, isDisabled: boolean): H
 					h.div(
 						[h.Class("text-center")],
 						[
-							h.p([h.Class("font-medium text-fg text-sm")], ["Drop an image or click to browse"]),
+							h.p(
+								[h.Class("font-medium text-fg text-sm")],
+								["Drop an image or click to browse"],
+							),
 							h.p([h.Class("mt-0.5 text-muted-fg text-xs")], ["PNG, GIF, or WebP · Max 256KB"]),
 						],
 					),
@@ -94,8 +99,9 @@ const dropZone = (h: HtmlBuilder<Message>, model: Model, isDisabled: boolean): H
 	)
 
 const draftForm = (h: HtmlBuilder<Message>, model: Model, draft: Draft): Html => {
-	const busy = model.isSaving
-	const isInvalid = draft.nameError !== null
+	const busy = isBusy(model)
+	const nameError = draft.name._tag === "Invalid" ? draft.name.errors[0] : null
+	const isInvalid = nameError !== null
 	return h.div(
 		[h.Class("rounded-lg border border-border bg-bg p-4")],
 		[
@@ -108,7 +114,13 @@ const draftForm = (h: HtmlBuilder<Message>, model: Model, draft: Draft): Html =>
 								"flex size-24 shrink-0 items-center justify-center self-center overflow-hidden rounded-lg bg-secondary sm:self-start",
 							),
 						],
-						[h.img([h.Src(draft.previewUrl), h.Alt("Emoji preview"), h.Class("size-24 object-contain")])],
+						[
+							h.img([
+								h.Src(draft.previewUrl),
+								h.Alt("Emoji preview"),
+								h.Class("size-24 object-contain"),
+							]),
+						],
 					),
 					h.div(
 						[h.Class("flex min-w-0 flex-1 flex-col gap-3")],
@@ -117,7 +129,7 @@ const draftForm = (h: HtmlBuilder<Message>, model: Model, draft: Draft): Html =>
 								h,
 								{
 									id: EMOJI_NAME_ID,
-									value: draft.name,
+									value: draft.name.value,
 									onInput: (value) => Message.ChangedEmojiName({ value }),
 									isInvalid,
 									isDisabled: busy,
@@ -125,24 +137,30 @@ const draftForm = (h: HtmlBuilder<Message>, model: Model, draft: Draft): Html =>
 								(parts) => [
 									parts.label(["Name"]),
 									inputGroup(h, { isDisabled: busy, isInvalid }, [
-										h.span([h.DataAttribute("slot", "text"), h.Class("text-muted-fg")], [":"]),
+										h.span(
+											[h.DataAttribute("slot", "text"), h.Class("text-muted-fg")],
+											[":"],
+										),
 										parts.input({
 											placeholder: "emoji_name",
 											attributes: [h.Attribute("maxlength", "64")],
 										}),
-										h.span([h.DataAttribute("slot", "text"), h.Class("text-muted-fg")], [":"]),
+										h.span(
+											[h.DataAttribute("slot", "text"), h.Class("text-muted-fg")],
+											[":"],
+										),
 									]),
 									h.div(
 										[h.Class("mt-1 flex items-center justify-between gap-2")],
 										[
-											draft.nameError !== null
-												? parts.fieldError([draft.nameError])
+											nameError !== null
+												? parts.fieldError([nameError])
 												: parts.description([
 														"Lowercase letters, numbers, hyphens, and underscores",
 													]),
 											h.span(
 												[h.Class("shrink-0 text-muted-fg text-xs tabular-nums")],
-												[`${draft.name.length}/64`],
+												[`${draft.name.value.length}/64`],
 											),
 										],
 									),
@@ -166,7 +184,7 @@ const draftForm = (h: HtmlBuilder<Message>, model: Model, draft: Draft): Html =>
 										{
 											intent: "primary",
 											size: "sm",
-											isDisabled: busy || isInvalid || !draft.name,
+											isDisabled: busy || isInvalid || !draft.name.value,
 											onPress: Message.ClickedSaveEmoji(),
 										},
 										[busy ? "Saving..." : "Save Emoji"],
@@ -224,7 +242,10 @@ const skeletonRow = (h: HtmlBuilder<Message>, index: number): Html =>
 			pulse(h, "h-4 w-24"),
 			pulse(h, "h-4 w-28"),
 			pulse(h, "h-4 w-20"),
-			h.td([h.Class("px-4 py-4 text-right")], [h.div([h.Class("size-8 animate-pulse rounded-sm bg-secondary")])]),
+			h.td(
+				[h.Class("px-4 py-4 text-right")],
+				[h.div([h.Class("size-8 animate-pulse rounded-sm bg-secondary")])],
+			),
 		],
 	)
 
@@ -237,10 +258,18 @@ const emojiRow = (h: HtmlBuilder<Message>, emoji: Emoji, isAdmin: boolean, nowMs
 				[h.Class("px-4 py-4")],
 				[h.img([h.Src(emoji.imageUrl), h.Alt(emoji.name), h.Class("size-8 rounded object-contain")])],
 			),
-			h.td([h.Class("px-4 py-4")], [h.span([h.Class("font-medium text-fg text-sm")], [":", emoji.name, ":"])]),
 			h.td(
 				[h.Class("px-4 py-4")],
-				[h.span([h.Class("text-muted-fg text-sm")], [emoji.creatorFirstName, " ", emoji.creatorLastName])],
+				[h.span([h.Class("font-medium text-fg text-sm")], [":", emoji.name, ":"])],
+			),
+			h.td(
+				[h.Class("px-4 py-4")],
+				[
+					h.span(
+						[h.Class("text-muted-fg text-sm")],
+						[emoji.creatorFirstName, " ", emoji.creatorLastName],
+					),
+				],
 			),
 			h.td(
 				[h.Class("px-4 py-4")],
@@ -281,7 +310,11 @@ const emojiRow = (h: HtmlBuilder<Message>, emoji: Emoji, isAdmin: boolean, nowMs
 	)
 
 const emojiList = (h: HtmlBuilder<Message>, model: Model, isAdmin: boolean, nowMs: number): Html => {
-	if (model.emojis === null) return table(h, [0, 1, 2, 3, 4].map((index) => skeletonRow(h, index)))
+	if (model.emojis === null)
+		return table(
+			h,
+			[0, 1, 2, 3, 4].map((index) => skeletonRow(h, index)),
+		)
 	if (model.emojis.length === 0) {
 		return emptyState(h, {
 			icon: (className) => IconEmoji1(h, { className }),
@@ -329,10 +362,17 @@ export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, 
 								[
 									IconEmoji1(h, { className: "size-5 text-muted-fg" }),
 									h.h2([h.Class("font-semibold text-fg text-lg")], ["Custom Emojis"]),
-									badge(h, { intent: "secondary" }, [`${count}`, " emoji", ...(count !== 1 ? ["s"] : [])]),
+									badge(h, { intent: "secondary" }, [
+										`${count}`,
+										" emoji",
+										...(count !== 1 ? ["s"] : []),
+									]),
 								],
 							),
-							h.p([h.Class("text-muted-fg text-sm")], ["Upload and manage custom emojis for your workspace."]),
+							h.p(
+								[h.Class("text-muted-fg text-sm")],
+								["Upload and manage custom emojis for your workspace."],
+							),
 						],
 					),
 				]),

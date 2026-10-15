@@ -1,3 +1,4 @@
+import type { IntegrationConnection } from "@hazel/domain/models"
 import { OrganizationId, UserId } from "@hazel/schema"
 import { and, eq, isNull } from "@tanstack/db"
 import { Schema, Stream } from "effect"
@@ -10,7 +11,7 @@ import type { DiscordConnection, Model } from "./model"
 import { interaction } from "./update"
 
 interface ConnectionRow {
-	readonly status: string
+	readonly status: IntegrationConnection.ConnectionStatus
 	readonly externalAccountName?: string | null
 }
 

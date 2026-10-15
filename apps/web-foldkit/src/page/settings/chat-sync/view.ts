@@ -1,13 +1,16 @@
 import { Submodel } from "foldkit"
+import * as AsyncData from "foldkit/asyncData"
 import type { ChildAttribute, Html, HtmlBuilder } from "foldkit/html"
 import { buttonStyles } from "~/components/ui/button.styles"
+import { type CommonReason, commonMessage, isRetryableReason } from "~/lib/error-messages"
 import { IconArrowPath, IconChevronDown, IconPlus, IconTrash, IconWarning } from "../../../icons"
 import { badge } from "../../../ui/badge"
+import { button } from "../../../ui/button"
 import { emptyState } from "../../../ui/empty-state"
 import { loader } from "../../../ui/loader"
 import type * as Menu from "../../../ui/menu"
 import { menuTriggerClassName, view as menuView } from "../../../ui/menu-view"
-import type * as Modal from "../../../ui/modal"
+import type * as ConfirmAction from "../../shared/confirm-action"
 import {
 	sectionHeaderGroup,
 	sectionHeaderHeading,
@@ -25,7 +28,8 @@ import { addMenuEntries, type Connection, Message, type Model, STATUS_CONFIG } f
 
 const toAddMenuMessage = (message: Menu.Message) => Message.GotAddMenuMessage({ message })
 const toEmptyAddMenuMessage = (message: Menu.Message) => Message.GotEmptyAddMenuMessage({ message })
-const toDeleteModalMessage = (message: Modal.Message) => Message.GotDeleteModalMessage({ message })
+const toDeleteConfirmMessage = (message: ConfirmAction.Message) =>
+	Message.GotDeleteConfirmMessage({ message })
 
 const header = (h: HtmlBuilder<Message>, actions: ReadonlyArray<Html>): Html =>
 	sectionHeaderRoot(h, { className: "border-none pb-0" }, [
@@ -228,19 +232,18 @@ const connectionCard = (h: HtmlBuilder<Message>, connection: Connection): Html =
 const deleteModal = (h: HtmlBuilder<Message>, model: Model): Html =>
 	confirmDialog(h, {
 		slotId: "delete-connection",
-		modal: model.deleteModal,
+		confirm: model.deleteConfirm,
 		icon: IconWarning(h, { className: "size-6 text-danger" }),
 		title: "Delete Connection",
-		description: [
+		description: (target) => [
 			"Are you sure you want to delete the connection to",
-			model.deleteTarget?.name ?? "",
+			target.name,
 			"? This will also remove all linked channels. This action cannot be undone.",
 		],
 		confirmLabel: "Delete Connection",
 		pendingLabel: "Deleting...",
-		isPending: model.isDeleting,
 		onConfirm: Message.ClickedConfirmDelete(),
-		toParentMessage: toDeleteModalMessage,
+		toParentMessage: toDeleteConfirmMessage,
 	})
 
 /** Legacy returns a fragment into the column layout; `display: contents` keeps its children flex items. */
@@ -279,21 +282,40 @@ const loadedBody = (h: HtmlBuilder<Message>, model: Model, connections: Readonly
 				connections.map((connection) => connectionCard(h, connection)),
 			)
 
-export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, _inputs, h) => {
-	const connections = model.connections
-	if (connections._tag === "Loading") return fragment(h, [header(h, []), loadingState(h)])
-	if (connections._tag === "Failed")
-		return fragment(h, [
-			header(h, []),
-			emptyState(h, {
-				title: "Failed to load connections",
-				description: "Something went wrong loading your sync connections. Please try refreshing.",
-			}),
-		])
-	return fragment(h, [
+/** A first load that failed: what went wrong, and "Try again" when it may pass on a retry. */
+const failureState = (h: HtmlBuilder<Message>, reason: CommonReason): Html => {
+	const message = commonMessage(reason)
+	return emptyState(h, {
+		title: "Failed to load connections",
+		description: message.description ?? message.title,
+		...(isRetryableReason(reason)
+			? {
+					action: button(
+						h,
+						{ intent: "secondary", onPress: Message.ClickedRetryListConnections() },
+						["Try again"],
+					),
+				}
+			: {}),
+	})
+}
+
+const loaded = (h: HtmlBuilder<Message>, model: Model, connections: ReadonlyArray<Connection>): Html =>
+	fragment(h, [
 		header(h, [addConnectionDropdown(h, "add-connection", model.addMenu, toAddMenuMessage)]),
-		loadedBody(h, model, connections.connections),
+		loadedBody(h, model, connections),
 		addConnectionModal(h, model),
 		deleteModal(h, model),
 	])
-})
+
+export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, _inputs, h) =>
+	AsyncData.match(model.connections, {
+		onIdle: () => fragment(h, [header(h, []), loadingState(h)]),
+		onLoading: () => fragment(h, [header(h, []), loadingState(h)]),
+		onFailure: (reason) => fragment(h, [header(h, []), failureState(h, reason)]),
+		// A refresh (or a failed one, which toasts) keeps the shown list.
+		onRefreshing: (connections) => loaded(h, model, connections),
+		onStale: ({ data }) => loaded(h, model, data),
+		onSuccess: (connections) => loaded(h, model, connections),
+	}),
+)

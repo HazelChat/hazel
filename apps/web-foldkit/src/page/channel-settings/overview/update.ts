@@ -1,44 +1,38 @@
 import { ChannelIcon, ChannelId } from "@hazel/schema"
-import { Effect, Exit, Schema } from "effect"
+import { Effect, Schema } from "effect"
 import { Command } from "foldkit"
+import { NotValidated, validate } from "foldkit/fieldValidation"
 import { modifyFields } from "foldkit/struct"
+import { failureMessage } from "~/lib/error-messages"
+import { catchCommon, errorToastOf, successToast } from "../../../data/actions"
 import { HazelRpc } from "../../../rpc"
 import type { RouteOf } from "../../../route"
 import * as Interaction from "../../../ui/aria/interaction"
-import { failureToast, successToast } from "../../../data/actions"
-import type { PageReturn } from "../../contract"
+import type { PageReturn, PageSubscriptionInput } from "../../contract"
 import { PageOutMessage } from "../../out-message"
+import { channelNameRules } from "../name-rules"
 import { Message } from "./message"
-import { canSave, type Form, type Model, saveButtonTarget } from "./model"
+import { canSave, type Form, type Model, saveButtonTarget, Submission } from "./model"
 
 type Return = PageReturn<Model, Message>
 
 // COMMAND
 
-/** `updateChannelMutation` (`channel.update`) with ChannelSettingsForm's toast handlers. */
+/** `channel.update` with the form's name and icon. */
 export const UpdateChannel = Command.define("UpdateChannel", {
 	args: { id: ChannelId, name: Schema.String, icon: Schema.NullOr(Schema.String) },
 	messages: [Message.SucceededUpdateChannel, Message.FailedUpdateChannel],
 	execute: ({ id, name, icon }) =>
-		Effect.gen(function* () {
-			const client = yield* HazelRpc
-			const exit = yield* Effect.exit(
-				client("channel.update", { id, name, icon: icon === null ? null : ChannelIcon.make(icon) }),
-			)
-			return Exit.match(exit, {
-				onSuccess: () => Message.SucceededUpdateChannel(),
-				onFailure: (cause) => {
-					const toast = failureToast(cause, "exitToast", {
-						ChannelNotFoundError: {
-							title: "Channel not found",
-							description: "This channel may have been deleted.",
-							isRetryable: false,
-						},
-					})
-					return Message.FailedUpdateChannel({ toast })
-				},
-			})
-		}),
+		HazelRpc.use((rpc) =>
+			rpc("channel.update", { id, name, icon: icon === null ? null : ChannelIcon.make(icon) }),
+		).pipe(
+			Effect.as(Message.SucceededUpdateChannel()),
+			Effect.catchTags({
+				ChannelNotFoundError: () =>
+					Effect.succeed(Message.FailedUpdateChannel({ reason: "NotFound" })),
+			}),
+			catchCommon((reason) => Message.FailedUpdateChannel({ reason })),
+		),
 })
 
 // INIT
@@ -49,22 +43,28 @@ export const init = (route: RouteOf<"ChannelSettingsOverview">): Return => ({
 
 // UPDATE
 
+export const interaction = Interaction.embed<Model, Message, PageSubscriptionInput<Model>>(
+	(message) => Message.GotInteractionMessage({ message }),
+	(input) => input.model,
+)
+
 const withForm = (model: Model, f: (form: Form) => Form): Model =>
 	modifyFields(model, { form: (form) => (form === null ? null : f(form)) })
-
-const foldInteraction = (model: Model, message: Interaction.Message): Model =>
-	modifyFields(model, { interaction: (interaction) => Interaction.update(interaction, message).model })
 
 const submit = (model: Model): Return => {
 	const form = model.form
 	if (form === null || !canSave(form)) return { model }
+	const name = form.name.value
 	// React Aria ends hover and focus on the button once it is disabled while submitting.
 	const settled = modifyFields(model, {
-		interaction: (interaction) => Interaction.disabledTargets(interaction, [saveButtonTarget]),
+		interaction: (current) => Interaction.disabledTargets(current, [saveButtonTarget]),
 	})
 	return {
-		model: withForm(settled, (current) => ({ ...current, isSubmitting: true })),
-		commands: [UpdateChannel({ id: model.channelId, name: form.name, icon: form.icon })],
+		model: withForm(settled, (current) => ({
+			...current,
+			submission: Submission.Submitting({ name, icon: form.icon }),
+		})),
+		commands: [UpdateChannel({ id: model.channelId, name, icon: form.icon })],
 	}
 }
 
@@ -77,39 +77,49 @@ export const update = (model: Model, message: Message): Return =>
 			return {
 				model: modifyFields(model, {
 					form: () => ({
-						initialName: channel.name,
-						initialIcon: channel.icon,
-						name: channel.name,
+						savedName: channel.name,
+						savedIcon: channel.icon,
+						name: NotValidated({ value: channel.name }),
 						icon: channel.icon,
-						isNameDirty: false,
-						isIconDirty: false,
-						isSubmitting: false,
+						submission: Submission.NotSubmitted(),
 					}),
 				}),
 			}
 		},
 		ChangedName: ({ name }) => ({
-			model: withForm(model, (form) => ({ ...form, name, isNameDirty: true })),
+			model: withForm(model, (form) => ({ ...form, name: validate(channelNameRules)(name) })),
 		}),
-		ClearedIcon: () => ({
-			model: withForm(model, (form) => ({
-				...form,
-				icon: null,
-				isIconDirty: form.initialIcon !== null,
-			})),
-		}),
+		ClearedIcon: () => ({ model: withForm(model, (form) => ({ ...form, icon: null })) }),
 		SubmittedForm: () => submit(model),
 		SucceededUpdateChannel: () => ({
-			model: withForm(model, (form) => ({ ...form, isSubmitting: false, isIconDirty: false })),
+			// The sent values are now the saved ones, so the form is clean until the next edit.
+			model: withForm(model, (form) =>
+				form.submission._tag === "Submitting"
+					? {
+							...form,
+							savedName: form.submission.name,
+							savedIcon: form.submission.icon,
+							submission: Submission.NotSubmitted(),
+						}
+					: form,
+			),
 			outMessage: PageOutMessage.RequestedToast({
 				toast: successToast("Channel updated successfully"),
 			}),
 		}),
-		FailedUpdateChannel: ({ toast }) => ({
-			model: withForm(model, (form) => ({ ...form, isSubmitting: false })),
-			outMessage: PageOutMessage.RequestedToast({ toast }),
+		FailedUpdateChannel: ({ reason }) => ({
+			model: withForm(model, (form) => ({ ...form, submission: Submission.Failed({ reason }) })),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToastOf(
+					failureMessage(reason, {
+						NotFound: {
+							title: "Channel not found",
+							description: "This channel may have been deleted.",
+						},
+					}),
+				),
+			}),
 		}),
-		GotInteractionMessage: ({ message: interactionMessage }) => ({
-			model: foldInteraction(model, interactionMessage),
-		}),
+		GotInteractionMessage: ({ message: interactionMessage }) =>
+			interaction.fold(model, interactionMessage),
 	})

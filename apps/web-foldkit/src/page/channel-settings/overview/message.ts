@@ -1,8 +1,8 @@
 import { ChannelId } from "@hazel/schema"
 import { Schema } from "effect"
 import { defineMessageUnion } from "foldkit/message"
-import { ToastRequest } from "../../../overlay/toasts"
 import * as Interaction from "../../../ui/aria/interaction"
+import { UpdateChannelFailure } from "./model"
 
 export const LoadedChannel = Schema.Struct({
 	id: ChannelId,
@@ -16,7 +16,7 @@ export const Message = defineMessageUnion({
 	ClearedIcon: {},
 	SubmittedForm: {},
 	SucceededUpdateChannel: {},
-	FailedUpdateChannel: { toast: ToastRequest },
+	FailedUpdateChannel: { reason: UpdateChannelFailure },
 	GotInteractionMessage: { message: Interaction.Message },
 })
 export type Message = typeof Message.Type

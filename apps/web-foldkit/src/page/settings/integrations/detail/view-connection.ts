@@ -1,3 +1,4 @@
+import { anyInvalid, type Field as ValidatedField } from "foldkit/fieldValidation"
 import type { Html, HtmlBuilder } from "foldkit/html"
 import { type ConfigOption, getBrandfetchIcon, type Integration } from "~/lib/integrations/__data"
 import { button } from "../../../../ui/button"
@@ -87,6 +88,8 @@ export const connectedState = (
 	options: { readonly canConfigure: boolean },
 ): Html => {
 	const connection = model.connection
+	const isConnecting = model.activity._tag === "Connecting"
+	const isDisconnecting = model.activity._tag === "Disconnecting"
 	const showConfigureButton =
 		options.canConfigure && integration.id === "github" && connection?.hasInstallationId
 	return h.div(
@@ -126,9 +129,9 @@ export const connectedState = (
 							intent: "secondary",
 							size: "sm",
 							onPress: Message.ClickedConnect(),
-							isDisabled: model.isConnecting,
+							isDisabled: isConnecting,
 						},
-						model.isConnecting
+						isConnecting
 							? [spinner(h, "size-4 animate-spin"), "Redirecting..."]
 							: [
 									strokeIcon(h, { className: "size-4", strokeWidth: "2", d: SLIDERS_ICON }),
@@ -141,9 +144,9 @@ export const connectedState = (
 							intent: "danger",
 							size: "sm",
 							onPress: Message.ClickedDisconnect(),
-							isDisabled: model.isDisconnecting,
+							isDisabled: isDisconnecting,
 						},
-						[model.isDisconnecting ? "Disconnecting..." : "Disconnect"],
+						[isDisconnecting ? "Disconnecting..." : "Disconnect"],
 					),
 		],
 	)
@@ -156,12 +159,14 @@ const apiField = (
 		readonly label: string
 		readonly type: string
 		readonly placeholder: string
-		readonly value: string
+		readonly field: ValidatedField<string>
 		readonly onInput: (value: string) => Message
 		readonly hint: Array<string>
 	},
-): Html =>
-	h.div(
+): Html => {
+	const error = options.field._tag === "Invalid" ? options.field.errors[0] : null
+	const errorId = `${options.id}-error`
+	return h.div(
 		[h.Class("flex flex-col gap-1.5")],
 		[
 			h.label([h.For(options.id), h.Class("font-medium text-fg text-sm")], [options.label]),
@@ -169,21 +174,27 @@ const apiField = (
 				input(h, {
 					placeholder: options.placeholder,
 					className: "text-sm",
+					isInvalid: error !== null,
 					attributes: [
 						h.Id(options.id),
 						h.Type(options.type),
 						h.Attribute("autocomplete", "off"),
-						h.Value(options.value),
+						h.Value(options.field.value),
 						h.OnInput(options.onInput),
+						...(error === null ? [] : [h.AriaDescribedBy(errorId)]),
 					],
 				}),
 			]),
-			h.p([h.Class("text-muted-fg text-xs")], options.hint),
+			error === null
+				? h.p([h.Class("text-muted-fg text-xs")], options.hint)
+				: Field.fieldError(h, { id: errorId }, [error]),
 		],
 	)
+}
 
-export const apiKeyConnectionForm = (h: H, integration: Integration, model: Model): Html =>
-	h.form(
+export const apiKeyConnectionForm = (h: H, integration: Integration, model: Model): Html => {
+	const isConnecting = model.activity._tag === "Connecting"
+	return h.form(
 		[h.Class("flex flex-col gap-5 py-2"), h.OnSubmit(Message.SubmittedApiKeyForm())],
 		[
 			apiField(h, {
@@ -191,7 +202,7 @@ export const apiKeyConnectionForm = (h: H, integration: Integration, model: Mode
 				label: "Bearer Token",
 				type: "password",
 				placeholder: "Enter your API token",
-				value: model.apiToken,
+				field: model.apiToken,
 				onInput: (value) => Message.ChangedApiToken({ value }),
 				hint: ["You can find this in your ", integration.name, " API settings."],
 			}),
@@ -200,7 +211,7 @@ export const apiKeyConnectionForm = (h: H, integration: Integration, model: Mode
 				label: "Base URL",
 				type: "url",
 				placeholder: "https://connect.craft.do/links/{linkId}/api/v1",
-				value: model.apiBaseUrl,
+				field: model.apiBaseUrl,
 				onInput: (value) => Message.ChangedApiBaseUrl({ value }),
 				hint: ["The API endpoint URL for your space."],
 			}),
@@ -210,15 +221,16 @@ export const apiKeyConnectionForm = (h: H, integration: Integration, model: Mode
 					intent: "primary",
 					size: "md",
 					className: "self-start",
-					isDisabled: model.isConnecting || !model.apiToken.trim() || !model.apiBaseUrl.trim(),
+					isDisabled: isConnecting || anyInvalid([model.apiToken, model.apiBaseUrl]),
 					attributes: [h.Type("submit"), h.Style({ backgroundColor: integration.brandColor })],
 				},
-				model.isConnecting
+				isConnecting
 					? [spinner(h, "size-4 animate-spin"), "Connecting..."]
 					: [brandIcon(h, integration), "Connect"],
 			),
 		],
 	)
+}
 
 export const configOptionRow = (h: H, option: ConfigOption, isEnabled: boolean): Html =>
 	h.keyed("div")(
