@@ -1,6 +1,6 @@
 import type { AttachmentId } from "@hazel/schema"
 import type { Html, HtmlBuilder } from "foldkit/html"
-import type * as Draft from "../../composer/draft"
+import * as Draft from "../../composer/draft"
 import { draftView, type DraftViewInputs, type ReplyPreview } from "../../composer/draft-view"
 import { identityOf, toDeriveContext } from "./derive"
 import type { AttachmentInfo } from "./lookups"
@@ -10,7 +10,7 @@ import type { Model } from "./channel/model"
 
 /** The reply a draft is composing. A fresh object each call: memoized views compare its fields. */
 export const replyPreviewOf = (model: Model, draft: Draft.Model): ReplyPreview | null => {
-	const replyTo = draft.replyToMessageId
+	const replyTo = Draft.replyToMessageIdOf(draft)
 	const message =
 		replyTo === null
 			? undefined

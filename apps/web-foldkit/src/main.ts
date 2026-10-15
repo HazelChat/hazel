@@ -183,10 +183,13 @@ const foldModal = Update.foldChild({
 	foldOutMessage: followModalOutMessage,
 })
 
+/** What a modal reads: the shared state, plus the route (to leave a channel it deleted). */
+const modalContextOf = (model: Model): Modal.ModalContext => ({ ...sharedOf(model), route: model.route })
+
 const openModal =
 	(request: Modal.ModalRequest): Step =>
 	(model) =>
-		foldModal(model, (modal) => Modal.open(modal, request, sharedOf(model)))
+		foldModal(model, (modal) => Modal.open(modal, request, modalContextOf(model)))
 
 const foldPlatform = Update.foldChild({
 	update: (
@@ -490,7 +493,7 @@ export const init: Runtime.RoutingApplicationInit<Model, Message, Flags, Resourc
 			sessionStartMs: flags.sessionStartMs,
 			page: null,
 			shell: Shell.init({ isCreateChannelHintDismissed: flags.isCreateChannelHintDismissed }),
-			modal: null,
+			modal: Modal.initialModel,
 			commandPalette: CommandPalette.init(),
 			toasts: Toasts.init(),
 			platform: Platform.init(),
@@ -567,7 +570,7 @@ export const update = (model: Model, message: Message): Return =>
 		ClickedLayoutTab: ({ route }) => navigateTo(route)(model),
 		GotPageMessage: ({ message }) => foldPage(model, (page) => updatePage(page, message, sharedOf(model))),
 		GotShellMessage: ({ message }) => foldShell(model, (shell) => Shell.update(shell, message, shellContextOf(model))),
-		GotModalMessage: ({ message }) => foldModal(model, (modal) => Modal.update(modal, message, sharedOf(model))),
+		GotModalMessage: ({ message }) => foldModal(model, (modal) => Modal.update(modal, message, modalContextOf(model))),
 		GotCommandPaletteMessage: ({ message }) =>
 			foldCommandPalette(model, (palette) => CommandPalette.update(palette, message, sharedOf(model))),
 		PressedHotkey: ({ actionId }) => pressedHotkey(actionId)(model),

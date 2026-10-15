@@ -8,7 +8,7 @@ import * as EditorCommands from "../../../composer/editor-commands"
 import { channelScene, derivedModel, mountedChannel, mountedToolbar, overlays, draft } from "../../../test/chat-fixtures"
 import * as Menu from "../../../ui/menu"
 import * as Draft from "../../../composer/draft"
-import { DropEvent, TrackFileDrop } from "../../../composer/drop"
+import { DragState, DropEvent, TrackFileDrop } from "../../../composer/drop"
 import { MountEditor } from "../../../composer/composer"
 import { Message } from "./model"
 import * as Picker from "../../../emoji-picker/picker"
@@ -138,17 +138,17 @@ describe("threads", () => {
 			Scene.expect(Scene.text("Creating thread...")).toBeAbsent(),
 			Scene.Mount.resolveAll(
 				[
-					MountEditor({ editorId: threadEditorId, placeholder: "Reply in thread..." }),
+					MountEditor({ editorId: threadEditorId, placeholder: "Reply in thread...", initialMarkdown: "" }),
 					threadDraft(Draft.Message.GotComposerMessage({ message: Composer.Message.UpdatedDraft({ markdown: "", isEmpty: true }) })),
 				],
 				[
 					{ name: "TrackFileDrop" },
-					threadDraft(Draft.Message.ReceivedDropEvent({ event: DropEvent.ChangedDragState({ isDraggingOnPage: false, isDropTarget: false }) })),
+					threadDraft(Draft.Message.ReceivedDropEvent({ event: DropEvent.ChangedDragState({ drag: DragState.Idle() }) })),
 				],
 			),
 			Scene.click(Scene.role("button", { name: "Close thread" })),
 			Scene.expect(Scene.role("heading", { name: "Thread" })).toBeAbsent(),
-			Scene.Mount.expectEnded(MountEditor({ editorId: threadEditorId, placeholder: "Reply in thread..." }), TrackFileDrop),
+			Scene.Mount.expectEnded(MountEditor({ editorId: threadEditorId, placeholder: "Reply in thread...", initialMarkdown: "" }), TrackFileDrop),
 		)
 	})
 })
@@ -228,13 +228,13 @@ describe("composer emoji picker", () => {
 			Scene.Mount.resolveAll(
 				[{ name: "PortalPickerPopover" }, emojiDialog(EmojiDialog.Message.ReceivedPopoverEvent({ event: PopoverEvent.CompletedPortalPickerPopover() }))],
 				[{ name: "MeasurePicker" }, emojiDialog(EmojiDialog.Message.GotPickerMessage({ message: measured }))],
-				[{ name: "TrackPickerKeys" }, emojiDialog(EmojiDialog.Message.GotPickerMessage({ message: Picker.Message.PressedNavigationKey({ key: "ArrowRight" }) }))],
+				[{ name: "TrackPickerFocusOut" }, emojiDialog(EmojiDialog.Message.GotPickerMessage({ message: Picker.Message.BlurredPicker() }))],
 			),
 			Scene.expect(Scene.role("dialog", { name: "Emoji picker" })).toExist(),
 			Scene.expect(Scene.role("gridcell", { name: "party popper" })).toExist(),
 			// The popover around the dialog owns the Escape key (React Aria's Popover).
 			Scene.keydown(Scene.selector(`#${popoverId(`${editorId}-emoji-picker`)}`), "Escape"),
-			Scene.Mount.expectEnded({ name: "PortalPickerPopover" }, { name: "MeasurePicker" }, { name: "TrackPickerKeys" }),
+			Scene.Mount.expectEnded({ name: "PortalPickerPopover" }, { name: "MeasurePicker" }, { name: "TrackPickerFocusOut" }),
 			Scene.expect(Scene.role("dialog", { name: "Emoji picker" })).toBeAbsent(),
 			Scene.Command.expectNone(),
 		)

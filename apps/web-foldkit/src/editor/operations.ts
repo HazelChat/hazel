@@ -10,28 +10,27 @@ import { schema } from "./schema"
  * `focusAndInsertText`, `insertCustomEmoji`) plus the autocomplete inserts, on a live view.
  */
 
-/** Legacy skips focusing when a dialog (an emoji picker, a modal) holds the focus. */
-const isDialogFocused = () => {
-	const dialog = document.querySelector('[role="dialog"]')
-	const active = document.activeElement
-	return dialog !== null && active !== null && dialog.contains(active)
-}
-
 const replaceDoc = (view: EditorView, blocks: ReadonlyArray<ProseMirrorNode>) => {
 	const { state } = view
-	const tr = state.tr.replaceWith(0, state.doc.content.size, [...blocks]).setMeta(autocompleteKey, closedAutocomplete)
+	const tr = state.tr
+		.replaceWith(0, state.doc.content.size, [...blocks])
+		.setMeta(autocompleteKey, closedAutocomplete)
 	view.dispatch(tr.setSelection(Selection.atEnd(tr.doc)))
 }
 
-const selectEnd = (view: EditorView) => view.dispatch(view.state.tr.setSelection(Selection.atEnd(view.state.doc)))
+const selectEnd = (view: EditorView) =>
+	view.dispatch(view.state.tr.setSelection(Selection.atEnd(view.state.doc)))
 
 /** `setContent(markdown)`: replace the document with the parsed markdown. */
-export const setContent = (view: EditorView, markdown: string) => replaceDoc(view, deserializeFromMarkdown(markdown))
+export const setContent = (view: EditorView, markdown: string) =>
+	replaceDoc(view, deserializeFromMarkdown(markdown))
 
-/** `resetAndFocus`: empty document, autocomplete closed, caret at the start. */
+/**
+ * `resetAndFocus`: empty document, autocomplete closed, caret at the start. Every caller acts on
+ * input in the composer itself, so no picker or dialog holds the focus then (legacy checked the DOM).
+ */
 export const clearContent = (view: EditorView) => {
 	replaceDoc(view, createEmptyValue())
-	if (isDialogFocused()) return
 	view.focus()
 	view.dispatch(view.state.tr.setSelection(Selection.atStart(view.state.doc)))
 }
@@ -44,10 +43,11 @@ export const focusAtEnd = (view: EditorView) => {
 
 /** `focusAndInsertText`: text goes through the same input path as typing, so triggers open. */
 export const focusAndInsertText = (view: EditorView, text: string) => {
-	if (isDialogFocused()) return
 	focusAtEnd(view)
 	const { from, to } = view.state.selection
-	const handled = view.someProp("handleTextInput", (handle) => handle(view, from, to, text, () => view.state.tr))
+	const handled = view.someProp("handleTextInput", (handle) =>
+		handle(view, from, to, text, () => view.state.tr),
+	)
 	if (!handled) view.dispatch(view.state.tr.insertText(text, from, to).scrollIntoView())
 }
 
@@ -60,7 +60,11 @@ export const insertCustomEmoji = (view: EditorView, name: string, imageUrl: stri
 }
 
 /** An emoji option from the `:` trigger: unicode text, or an inline custom emoji. */
-export const insertEmojiResult = (view: EditorView, emoji: string, custom: { name: string; imageUrl: string } | null) => {
+export const insertEmojiResult = (
+	view: EditorView,
+	emoji: string,
+	custom: { name: string; imageUrl: string } | null,
+) => {
 	insertAutocompleteResult(view, custom ? schema.nodes["custom-emoji"].create(custom) : emoji)
 	view.focus()
 }
@@ -69,5 +73,7 @@ export const insertEmojiResult = (view: EditorView, emoji: string, custom: { nam
 export const removeTriggerText = (view: EditorView) => {
 	const { trigger, from } = autocompleteKey.getState(view.state) ?? closedAutocomplete
 	if (!trigger) return
-	view.dispatch(view.state.tr.delete(from, view.state.selection.head).setMeta(autocompleteKey, closedAutocomplete))
+	view.dispatch(
+		view.state.tr.delete(from, view.state.selection.head).setMeta(autocompleteKey, closedAutocomplete),
+	)
 }

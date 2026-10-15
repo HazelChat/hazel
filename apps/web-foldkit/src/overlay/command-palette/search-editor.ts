@@ -14,7 +14,7 @@ const schema = new ProseMirrorSchema({
 		paragraph: {
 			content: "text*",
 			marks: "",
-			toDOM: () => ["div", { "data-slate-node": "element", style: "position: relative;" }, 0],
+			toDOM: () => ["div", { style: "position: relative;" }, 0],
 		},
 		text: {},
 	},
@@ -156,9 +156,6 @@ export const createSearchEditor = (
 				class: EDITABLE_CLASS,
 				role: "textbox",
 				"aria-multiline": "true",
-				"data-slate-editor": "true",
-				"data-slate-node": "value",
-				zindex: "-1",
 				style: "position: relative; white-space: pre-wrap; overflow-wrap: break-word;",
 			},
 			dispatchTransaction: (tr) => {
@@ -187,10 +184,3 @@ export const deleteFilterText = (view: EditorView, filterStartOffset: number) =>
 export const syncOptionCount = (view: EditorView, count: number) => {
 	if ((optionCountKey.getState(view.state) ?? 0) !== count) view.dispatch(view.state.tr.setMeta(optionCountKey, count))
 }
-
-const editors = new Map<string, EditorView>()
-export const registerSearchEditor = (id: string, view: EditorView) => editors.set(id, view)
-export const unregisterSearchEditor = (id: string, view: EditorView) => {
-	if (editors.get(id) === view) editors.delete(id)
-}
-export const searchEditorById = (id: string) => editors.get(id)

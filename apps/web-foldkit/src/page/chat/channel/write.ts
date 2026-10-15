@@ -1,4 +1,4 @@
-import { type ChannelId, type MessageId, PinnedMessageId } from "@hazel/schema"
+import { type ChannelId, type MessageId, PinnedMessageId, type UserId } from "@hazel/schema"
 import { Match, Option, Schema } from "effect"
 import { Command } from "foldkit"
 import * as Composer from "../../../composer/composer"
@@ -122,7 +122,7 @@ export const updateDraft = (model: Model, which: Which, message: Draft.Message, 
 export const forwardComposerData = (model: Model, message: Composer.Message): PageReturn =>
 	updateDraft(model, "channel", Draft.Message.GotComposerMessage({ message }), null)
 
-export const toComposerPresence = (presence: ReadonlyArray<{ readonly userId: string; readonly status: string }>) =>
+export const toComposerPresence = (presence: ReadonlyArray<{ readonly userId: UserId; readonly status: string }>) =>
 	presence.map((row) => ({ userId: row.userId, status: isPresenceStatus(row.status) ? row.status : ("offline" as const) }))
 
 const isPresenceStatus = Schema.is(Composer.PresenceStatus)

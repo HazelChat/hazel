@@ -14,7 +14,7 @@ import { closed, completed, ModalOutMessage } from "../out-message"
 import { ToastRequest } from "../toasts"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalViewInputs } from "./contract"
-import { Frame, Message as FrameMessage, frameView, initFrame, isFrameClosed, modalDescription, modalTitle } from "./frame"
+import { Frame, Message as FrameMessage, frameView, initFrame, isCloseRequest, modalDescription, modalTitle } from "./frame"
 import { failureToast, successToast } from "../../data/actions"
 
 /** `components/modals/create-organization-modal.tsx` (legacy `useModal("create-organization")`). */
@@ -101,7 +101,7 @@ const submitted = (model: Model): Return => {
 
 const update = (model: Model, message: Message): Return =>
 	Message.match<Return>(message, {
-		GotFrameMessage: ({ message }) => (isFrameClosed(model.frame, message) ? { model, outMessage: closed } : { model }),
+		GotFrameMessage: ({ message }) => (isCloseRequest(message) ? { model, outMessage: closed } : { model }),
 		ChangedName: ({ value }) => ({
 			model: modifyFields(model, { name: () => value, errors: () => validate(value, model.slug) }),
 		}),

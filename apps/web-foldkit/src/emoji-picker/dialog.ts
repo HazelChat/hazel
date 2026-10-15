@@ -1,7 +1,8 @@
-import { Schema } from "effect"
-import { Command, type Update } from "foldkit"
+import { Option, Schema } from "effect"
+import { Update } from "foldkit"
 import type { ChildAttribute, Html, HtmlBuilder } from "foldkit/html"
 import { defineMessageUnion } from "foldkit/message"
+import { modifyFields } from "foldkit/struct"
 import { cn } from "~/lib/utils"
 import { pickerPopover, PopoverEvent } from "../picker-popover/popover"
 import * as Picker from "./picker"
@@ -34,13 +35,27 @@ export type Return = Update.ReturnWithOutMessage<Model, Message, OutMessage>
 
 // UPDATE
 
-const closed = (model: Model): Model => ({ ...model, isOpen: false })
+const closed = (model: Model): Model => modifyFields(model, { isOpen: () => false })
+
+const pickerFold = {
+	read: (model: Model) => Option.some(model.picker),
+	write: (model: Model, picker: Picker.Model): Model => modifyFields(model, { picker: () => picker }),
+	toParentMessage: (message: Picker.Message) => Message.GotPickerMessage({ message }),
+}
+
+/** `handleEmojiSelect`: report the emoji (forwarded as the dialog's OutMessage), then close. */
+const foldPicker = Update.foldChild({
+	update: Picker.update,
+	...pickerFold,
+	toParentOutMessage: (outMessage: Picker.OutMessage): OutMessage => outMessage,
+	foldOutMessage: () => (model: Model) => ({ model: closed(model) }),
+})
 
 /** Opening mounts a fresh picker (frimousse remounts with the popover), which loads its data. */
-const open = (model: Model): Return => ({
-	model: { ...model, isOpen: true, picker: Picker.init(model.id) },
-	commands: Command.mapMessages([Picker.LoadEmojiData()], (message) => Message.GotPickerMessage({ message })),
-})
+const open = (model: Model): Return =>
+	Update.foldChildStep({ update: Picker.loadData, ...pickerFold })(
+		modifyFields(model, { isOpen: () => true, picker: () => Picker.init(model.id) }),
+	)
 
 export const update = (model: Model, message: Message): Return =>
 	Message.match<Return>(message, {
@@ -52,15 +67,7 @@ export const update = (model: Model, message: Message): Return =>
 				PressedOutside: () => ({ model: closed(model) }),
 				CompletedPortalPickerPopover: () => ({ model }),
 			}),
-		GotPickerMessage: ({ message: pickerMessage }) => {
-			const result = Picker.update(model.picker, pickerMessage)
-			const next = { ...model, picker: result.model }
-			const commands = Command.mapMessages(result.commands ?? [], (inner) => Message.GotPickerMessage({ message: inner }))
-			// `handleEmojiSelect`: report the emoji, then close.
-			return result.outMessage === undefined
-				? { model: next, commands }
-				: { model: closed(next), commands, outMessage: result.outMessage }
-		},
+		GotPickerMessage: ({ message: pickerMessage }) => foldPicker(model, pickerMessage),
 	})
 
 // VIEW
@@ -83,7 +90,10 @@ const customSection = <M>(
 	return h.div(
 		[h.Class("border-border border-t")],
 		[
-			h.div([h.Class(CATEGORY_HEADER_CLASS), h.Attribute("data-slot", "emoji-picker-category-header")], ["Custom"]),
+			h.div(
+				[h.Class(CATEGORY_HEADER_CLASS), h.Attribute("data-slot", "emoji-picker-category-header")],
+				["Custom"],
+			),
 			h.div(
 				[h.Class("grid grid-cols-9 gap-0 px-2 pb-2")],
 				filtered.map((emoji) =>
@@ -91,11 +101,26 @@ const customSection = <M>(
 						emoji.name,
 						[
 							h.Attribute("type", "button"),
-							h.OnClick(toMessage(Picker.Message.ClickedCustomEmoji({ name: emoji.name, imageUrl: emoji.imageUrl }))),
-							h.Class(cn("flex size-10 items-center justify-center rounded-md hover:bg-accent")),
+							h.OnClick(
+								toMessage(
+									Picker.Message.ClickedCustomEmoji({
+										name: emoji.name,
+										imageUrl: emoji.imageUrl,
+									}),
+								),
+							),
+							h.Class(
+								cn("flex size-10 items-center justify-center rounded-md hover:bg-accent"),
+							),
 							h.Attribute("title", `:${emoji.name}:`),
 						],
-						[h.img([h.Attribute("src", emoji.imageUrl), h.Attribute("alt", emoji.name), h.Class("size-7 object-contain")])],
+						[
+							h.img([
+								h.Attribute("src", emoji.imageUrl),
+								h.Attribute("alt", emoji.name),
+								h.Class("size-7 object-contain"),
+							]),
+						],
 					),
 				),
 			),

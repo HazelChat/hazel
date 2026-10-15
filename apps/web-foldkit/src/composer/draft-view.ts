@@ -10,7 +10,7 @@ import { loader } from "../ui/loader"
 import { fileInputId, hasTopContent, isUploading, Message, type Model } from "./draft"
 import * as EmojiDialog from "../emoji-picker/dialog"
 import * as GifPickerView from "../gif-picker/view"
-import { TrackFileDrop } from "./drop"
+import { DragState, TrackFileDrop } from "./drop"
 import { composerBoxView } from "./view"
 
 /** A draft's composer: `SlateMessageComposer` with previews, indicators, the drop zone and the actions. */
@@ -24,7 +24,9 @@ export interface ReplyPreview {
 export interface DraftViewInputs<M> {
 	readonly toMessage: (message: Message) => M
 	readonly replyPreview: ReplyPreview | null
-	readonly attachmentInfo: (id: AttachmentId) => { readonly fileName: string; readonly fileSize: number } | null
+	readonly attachmentInfo: (
+		id: AttachmentId,
+	) => { readonly fileName: string; readonly fileSize: number } | null
 }
 
 const removeButton = <M>(h: HtmlBuilder<M>, onPress: M, label: string, isCompact = false) =>
@@ -42,7 +44,8 @@ const removeButton = <M>(h: HtmlBuilder<M>, onPress: M, label: string, isCompact
 
 /** `ComposerAttachmentPreviews`. */
 const attachmentPreviews = <M>(h: HtmlBuilder<M>, model: Model, inputs: DraftViewInputs<M>): Html => {
-	if (model.attachmentIds.length === 0 && model.uploadingFiles.length === 0) return h.empty
+	const uploading = model.currentUpload === null ? [] : [model.currentUpload]
+	if (model.attachmentIds.length === 0 && uploading.length === 0) return h.empty
 	const card = (key: string, className: string, children: ReadonlyArray<Html>) =>
 		h.keyed("div")(key, [h.Class(className)], children)
 	const fileText = (name: string, detail: string) =>
@@ -58,8 +61,8 @@ const attachmentPreviews = <M>(h: HtmlBuilder<M>, model: Model, inputs: DraftVie
 			h.Class(
 				cn(
 					"border border-border border-b-0 bg-secondary px-2 py-1",
-					model.uploadingFiles.length > 0 ? "rounded-t-none border-t-0" : "rounded-t-lg",
-					model.replyToMessageId !== null && "border-b-0",
+					uploading.length > 0 ? "rounded-t-none border-t-0" : "rounded-t-lg",
+					model.composeMode._tag === "Replying" && "border-b-0",
 				),
 			),
 		],
@@ -74,23 +77,27 @@ const attachmentPreviews = <M>(h: HtmlBuilder<M>, model: Model, inputs: DraftVie
 							attachmentId,
 							"group flex items-center gap-2 rounded-lg bg-bg p-2 transition-colors hover:bg-secondary",
 							[
-								fileIcon(h, getFileTypeFromName(fileName), { className: "size-8 shrink-0 text-muted-fg" }),
+								fileIcon(h, getFileTypeFromName(fileName), {
+									className: "size-8 shrink-0 text-muted-fg",
+								}),
 								fileText(fileName, formatFileSize(info?.fileSize || 0)),
 								removeButton(h, inputs.toMessage(Message.ClickedRemoveAttachment({ attachmentId })), `Remove ${fileName}`),
 							],
 						)
 					}),
-					...model.uploadingFiles.map((file) =>
+					...uploading.map((upload) =>
 						card(
-							file.fileId,
+							upload.fileId,
 							"group relative flex items-center gap-2 overflow-hidden rounded-lg bg-bg p-2 transition-colors hover:bg-secondary",
 							[
-								fileIcon(h, getFileTypeFromName(file.fileName), { className: "size-8 shrink-0 text-muted-fg" }),
+								fileIcon(h, getFileTypeFromName(upload.file.name), {
+									className: "size-8 shrink-0 text-muted-fg",
+								}),
 								fileText(
-									file.fileName,
-									file.progress < 100
-										? `${file.progress}% of ${formatFileSize(file.fileSize)}`
-										: formatFileSize(file.fileSize),
+									upload.file.name,
+									upload.progress < 100
+										? `${upload.progress}% of ${formatFileSize(upload.file.size)}`
+										: formatFileSize(upload.file.size),
 								),
 								loader(h, { className: "size-4" }),
 								h.div(
@@ -98,7 +105,7 @@ const attachmentPreviews = <M>(h: HtmlBuilder<M>, model: Model, inputs: DraftVie
 									[
 										h.div([
 											h.Class("h-full bg-primary transition-all duration-200"),
-											h.Attribute("style", `width: ${file.progress}%;`),
+											h.Attribute("style", `width: ${upload.progress}%;`),
 										]),
 									],
 								),
@@ -111,13 +118,14 @@ const attachmentPreviews = <M>(h: HtmlBuilder<M>, model: Model, inputs: DraftVie
 	)
 }
 
-const indicatorClass = "flex items-center justify-between gap-2 rounded-t-lg border border-border border-b-0 bg-secondary px-3 py-2"
+const indicatorClass =
+	"flex items-center justify-between gap-2 rounded-t-lg border border-border border-b-0 bg-secondary px-3 py-2"
 
 /** `ComposerReplyIndicator` (`ReplyIndicator`). */
 const replyIndicator = <M>(h: HtmlBuilder<M>, model: Model, inputs: DraftViewInputs<M>): Html => {
 	const reply = inputs.replyPreview
-	if (model.replyToMessageId === null || reply === null) return h.empty
-	const hasFiles = model.uploadingFiles.length > 0 || model.attachmentIds.length > 0
+	if (model.composeMode._tag !== "Replying" || reply === null) return h.empty
+	const hasFiles = model.currentUpload !== null || model.attachmentIds.length > 0
 	return h.div(
 		[h.Class(cn(indicatorClass, hasFiles ? "rounded-t-none border-t-0" : ""))],
 		[
@@ -136,8 +144,8 @@ const replyIndicator = <M>(h: HtmlBuilder<M>, model: Model, inputs: DraftViewInp
 
 /** `ComposerEditIndicator`. */
 const editIndicator = <M>(h: HtmlBuilder<M>, model: Model, inputs: DraftViewInputs<M>): Html => {
-	if (model.editingMessageId === null) return h.empty
-	const hasFiles = model.uploadingFiles.length > 0 || model.attachmentIds.length > 0
+	if (model.composeMode._tag !== "Editing") return h.empty
+	const hasFiles = model.currentUpload !== null || model.attachmentIds.length > 0
 	return h.div(
 		[h.Class(cn(indicatorClass, hasFiles ? "rounded-t-none border-t-0" : ""))],
 		[
@@ -153,27 +161,31 @@ const editIndicator = <M>(h: HtmlBuilder<M>, model: Model, inputs: DraftViewInpu
 	)
 }
 
-/** The drop zone's overlays: strong over the zone, subtle while dragging anywhere. */
+/** The drop zone's overlays: strong over the zone, subtle while dragging anywhere; none while a file uploads. */
 const dropOverlay = <M>(h: HtmlBuilder<M>, model: Model): Html =>
-	model.isDropTarget
-		? h.div(
-				[
-					h.Class(
-						"absolute inset-0 z-20 flex items-center justify-center rounded-xl border-2 border-primary border-dashed bg-primary/10",
+	isUploading(model)
+		? h.empty
+		: DragState.match(model.drag, {
+				Idle: () => h.empty,
+				OverDropZone: () =>
+					h.div(
+						[
+							h.Class(
+								"absolute inset-0 z-20 flex items-center justify-center rounded-xl border-2 border-primary border-dashed bg-primary/10",
+							),
+						],
+						[h.span([h.Class("font-medium text-primary")], ["Drop files here"])],
 					),
-				],
-				[h.span([h.Class("font-medium text-primary")], ["Drop files here"])],
-			)
-		: model.isDraggingOnPage
-			? h.div(
-					[
-						h.Class(
-							"absolute inset-0 z-20 flex items-center justify-center rounded-xl border-2 border-primary/50 border-dashed bg-primary/5",
-						),
-					],
-					[h.span([h.Class("font-medium text-primary/70")], ["Drop files here"])],
-				)
-			: h.empty
+				DraggingOnPage: () =>
+					h.div(
+						[
+							h.Class(
+								"absolute inset-0 z-20 flex items-center justify-center rounded-xl border-2 border-primary/50 border-dashed bg-primary/5",
+							),
+						],
+						[h.span([h.Class("font-medium text-primary/70")], ["Drop files here"])],
+					),
+			})
 
 export const draftView = <M>(h: HtmlBuilder<M>, model: Model, inputs: DraftViewInputs<M>): Html => {
 	const { toMessage } = inputs
@@ -189,9 +201,7 @@ export const draftView = <M>(h: HtmlBuilder<M>, model: Model, inputs: DraftViewI
 		dropOverlay: dropOverlay(h, model),
 		dropZoneAttributes: [
 			h.OnMount(
-				Mount.mapMessage(TrackFileDrop({ isDisabled: uploading }), (event) =>
-					toMessage(Message.ReceivedDropEvent({ event })),
-				),
+				Mount.mapMessage(TrackFileDrop(), (event) => toMessage(Message.ReceivedDropEvent({ event }))),
 			),
 		],
 		fileInputAttributes: [

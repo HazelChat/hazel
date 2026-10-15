@@ -12,7 +12,7 @@ import { textField } from "../../ui/text-field"
 import { closed, completed, ModalOutMessage } from "../out-message"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalViewInputs } from "./contract"
-import { Frame, Message as FrameMessage, frameView, initFrame, isFrameClosed, modalDescription, modalTitle } from "./frame"
+import { Frame, Message as FrameMessage, frameView, initFrame, isCloseRequest, modalDescription, modalTitle } from "./frame"
 import { errorToast, successToast } from "../../data/actions"
 
 /** `components/modals/request-integration-modal.tsx` (`integrationRequest.create`). */
@@ -92,7 +92,7 @@ const submitted = (model: Model, shared: Shared): Return => {
 
 const update = (model: Model, message: Message, shared: Shared): Return =>
 	Message.match<Return>(message, {
-		GotFrameMessage: ({ message }) => (isFrameClosed(model.frame, message) ? { model, outMessage: closed } : { model }),
+		GotFrameMessage: ({ message }) => (isCloseRequest(message) ? { model, outMessage: closed } : { model }),
 		// tanstack-form validates the whole form schema on each change.
 		ChangedIntegrationName: ({ value }) => ({
 			model: validated(modifyFields(model, { integrationName: () => value })),

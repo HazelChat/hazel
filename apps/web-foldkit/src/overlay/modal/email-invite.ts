@@ -14,7 +14,7 @@ import { closed, completed, ModalOutMessage } from "../out-message"
 import { ToastRequest } from "../toasts"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalViewInputs } from "./contract"
-import { Frame, Message as FrameMessage, frameView, initFrame, isFrameClosed, modalDescription, modalTitle } from "./frame"
+import { Frame, Message as FrameMessage, frameView, initFrame, isCloseRequest, modalDescription, modalTitle } from "./frame"
 import { errorToast, successToast, warningToast } from "../../data/actions"
 import { sendInvitations } from "../../data/invitations"
 import { OrganizationId } from "@hazel/schema"
@@ -123,7 +123,7 @@ const completedSendInvites = (model: Model, successCount: number, errorCount: nu
 
 const update = (model: Model, message: Message): Return =>
 	Message.match<Return>(message, {
-		GotFrameMessage: ({ message }) => (isFrameClosed(model.frame, message) ? { model, outMessage: closed } : { model }),
+		GotFrameMessage: ({ message }) => (isCloseRequest(message) ? { model, outMessage: closed } : { model }),
 		GotRoleMessage: ({ rowId, message }) => {
 			const row = model.invites.find((candidate) => candidate.rowId === rowId)
 			if (row === undefined) return { model }

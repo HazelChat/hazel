@@ -1,6 +1,7 @@
 import { ChannelId } from "@hazel/schema"
 import { Schema } from "effect"
 import { defineMessageUnion } from "foldkit/message"
+import { CommonReason } from "~/lib/error-messages"
 import * as CommandMenu from "../../ui/command-menu"
 import { ModalRequest } from "../modal"
 import { ToastRequest } from "../toasts"
@@ -8,6 +9,13 @@ import { PresenceStatus } from "../../platform/presence/model"
 import { ThemePreference } from "../../theme"
 import { ChannelSummary, ChannelType, DmChannel } from "./model"
 import { RecentSearch, SearchAutocomplete, SearchData, Suggestion } from "./search-data"
+
+/** What can go wrong joining a channel, beyond the shared reasons. */
+export const JoinChannelFailure = Schema.Union([Schema.Literals(["NotFound"]), CommonReason])
+export type JoinChannelFailure = typeof JoinChannelFailure.Type
+
+/** The search page's editor is gone (the page closed before the Command ran). */
+export const SearchEditorFailure = Schema.Literals(["EditorNotMounted"])
 
 export const Message = defineMessageUnion({
 	GotMenuMessage: { message: CommandMenu.Message },
@@ -24,11 +32,11 @@ export const Message = defineMessageUnion({
 	ChangedChannelType: { value: ChannelType },
 	SubmittedCreateChannel: {},
 	SucceededCreateChannel: { channelId: ChannelId },
-	FailedCreateChannel: { toast: ToastRequest },
+	FailedCreateChannel: { reason: CommonReason },
 	ChangedJoinSearch: { value: Schema.String },
 	ClickedJoinChannel: { channelId: ChannelId },
 	SucceededJoinChannel: {},
-	FailedJoinChannel: { toast: ToastRequest },
+	FailedJoinChannel: { reason: JoinChannelFailure },
 	// Search page
 	EditedSearch: { text: Schema.String, autocomplete: Schema.NullOr(SearchAutocomplete) },
 	PressedSearchKey: { key: Schema.Literals(["ArrowDown", "ArrowUp", "Enter", "BackspaceAtStart"]) },
@@ -47,12 +55,18 @@ export const Message = defineMessageUnion({
 	CompletedTrackRecentChannel: {},
 	SucceededSetPresenceStatus: {},
 	/** Legacy ignores the exit of `setStatus`, so a failure shows nothing. */
-	FailedSetPresenceStatus: { reason: Schema.String },
-	CompletedSetSearchText: {},
-	CompletedDeleteFilterText: {},
-	CompletedSyncSuggestionCount: {},
-	CompletedSetSearchPlaceholder: {},
-	CompletedFocusSearchEditor: {},
+	FailedSetPresenceStatus: { reason: CommonReason },
+	// The search editor's Commands: each fails only when the editor is not mounted.
+	SucceededSetSearchText: {},
+	FailedSetSearchText: { reason: SearchEditorFailure },
+	SucceededDeleteFilterText: {},
+	FailedDeleteFilterText: { reason: SearchEditorFailure },
+	SucceededSyncSuggestionCount: {},
+	FailedSyncSuggestionCount: { reason: SearchEditorFailure },
+	SucceededSetSearchPlaceholder: {},
+	FailedSetSearchPlaceholder: { reason: SearchEditorFailure },
+	SucceededFocusSearchEditor: {},
+	FailedFocusSearchEditor: { reason: SearchEditorFailure },
 	CompletedSaveRecentSearches: {},
 })
 export type Message = typeof Message.Type

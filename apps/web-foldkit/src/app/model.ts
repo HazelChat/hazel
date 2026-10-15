@@ -138,6 +138,7 @@ export const sharedOf = (model: Model): Shared => ({
 	theme: { ...model.themePreference, resolved: resolvedThemeOf(model) },
 	soundSettings: model.soundSettings,
 	desktopUpdate: model.desktopUpdate,
+	isOverlayOpen: model.modal.current !== null || model.commandPalette.isOpen,
 })
 
 export const pageHostOf = (model: Model): PageHost => ({ page: model.page, shared: sharedOf(model) })
