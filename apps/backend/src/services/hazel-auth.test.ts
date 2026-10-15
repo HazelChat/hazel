@@ -29,7 +29,6 @@ import { serviceShape } from "../test/effect-helpers"
 import { AuthorizationLive } from "./auth"
 import { HazelAuthInstance, HazelAuthRoutes, HazelAuthServicesLive } from "./hazel-auth"
 import { HazelSession } from "./hazel-session"
-import { SessionManager } from "./session-manager"
 
 const api = "http://localhost:3003"
 const app = "http://localhost:3000"
@@ -62,14 +61,6 @@ const FakeGitHub = Layer.succeed(
 			return HttpClientResponse.fromWeb(request, new Response("not found", { status: 404 }))
 		}),
 	),
-)
-
-/** Clerk is not involved: any Clerk path reaching it is a test failure. */
-const NoClerk = Layer.succeed(
-	SessionManager,
-	serviceShape<typeof SessionManager>({
-		authenticateWithBearer: () => Effect.die(new Error("Clerk should not be consulted")),
-	}),
 )
 
 const successValue = { _: Symbol("success") } as SuccessValue
@@ -158,7 +149,6 @@ describe("Hazel sign-in in the backend", () => {
 			Layer.provideMerge(HazelSession.layer),
 			Layer.provideMerge(HazelAuthServicesLive),
 			Layer.provideMerge(HazelAuthInstance.layer),
-			Layer.provide(NoClerk),
 		)
 
 		web = HttpRouter.toWebHandler(

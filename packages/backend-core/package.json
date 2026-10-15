@@ -6,14 +6,12 @@
 	"main": "src/index.ts",
 	"exports": {
 		".": "./src/index.ts",
-		"./services": "./src/services/index.ts",
 		"./repositories": "./src/repositories/index.ts"
 	},
 	"scripts": {
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@clerk/backend": "^3.3.0",
 		"@hazel/db": "workspace:*",
 		"@hazel/domain": "workspace:*",
 		"@hazel/schema": "workspace:*",

@@ -23,7 +23,7 @@ import type { ElectricContainer } from "./src/electric-container.ts"
  */
 export const ELECTRIC_IMAGE = "docker.io/electricsql/electric-temp:1.8.1"
 
-/** Backs the bot access-context and Clerk user-lookup caches (Redis on the Bun entry). */
+/** Backs the bot access-context cache (Redis on the Bun entry). */
 export const ProxyCache = Cloudflare.KV.Namespace(
 	"electric-proxy-cache",
 	stageProps("electric-proxy-cache", (title) => ({ title })),

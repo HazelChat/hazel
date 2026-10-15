@@ -46,5 +46,3 @@ export { TypingIndicatorRepo } from "./repositories/typing-indicator-repo"
 export { UserPresenceStatusRepo } from "./repositories/user-presence-status-repo"
 export { UserRepo } from "./repositories/user-repo"
 
-// Services
-export { ClerkSync } from "./services/clerk-sync"

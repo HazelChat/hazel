@@ -10,9 +10,9 @@ import { Config, Context, Effect, Layer, Option, Redacted, Schema } from "effect
 import { Headers, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 
 /**
- * Hazel's own sign-in (`@hazel/auth/server`), replacing Clerk. Enabled when
- * `AUTH_GITHUB_CLIENT_ID` is set; until then Clerk remains the only sign-in and these
- * routes are not mounted.
+ * Hazel's own sign-in (`@hazel/auth/server`). Enabled when `AUTH_GITHUB_CLIENT_ID` is set;
+ * until then nobody can sign in (only bot tokens authenticate) and these routes are not
+ * mounted.
  *
  * - `/auth/*`: sign-in, registration, passkeys and sessions (cookie on the API host).
  * - `POST /auth/token`: exchanges the session for a short-lived JWT for the hosts that

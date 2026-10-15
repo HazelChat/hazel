@@ -40,9 +40,7 @@ import {
 	TypingIndicatorRepo,
 	UserPresenceStatusRepo,
 	UserRepo,
-	ClerkSync,
 } from "@hazel/backend-core"
-import { ClerkClient } from "@hazel/auth"
 import { GitHub } from "@hazel/integrations"
 import { Layer } from "effect"
 import { HazelApi } from "./api"
@@ -81,7 +79,6 @@ import { ObjectStorage } from "./services/object-storage"
 import { OAuthProviderRegistry } from "./services/oauth"
 import { HazelAuthInstance, HazelAuthRoutes, HazelAuthServicesLive } from "./services/hazel-auth"
 import { HazelSession } from "./services/hazel-session"
-import { SessionManager } from "./services/session-manager"
 import { WebhookBotService } from "./services/webhook-bot-service"
 import { BotGatewayService } from "./services/bot-gateway-service"
 import { ChannelAccessSyncService } from "./services/channel-access-sync"
@@ -208,8 +205,6 @@ export const AppServicesLive = Layer.mergeAll(
 	RepoLive,
 	PolicyLive,
 	MockDataGenerator.layer,
-	ClerkClient.layer,
-	ClerkSync.layer,
 	ObjectStorage.layer,
 	GitHub.GitHubAppJWTService.layer,
 	GitHub.GitHubApiClient.layer,
@@ -224,8 +219,6 @@ export const AppServicesLive = Layer.mergeAll(
 	ChannelAccessSyncService.layer,
 	ConnectConversationService.layer,
 	Invitations.layer,
-	// SessionManager.layer includes BackendAuth.layer via dependencies
-	SessionManager.layer,
 	OAuthBearerAuth.layer,
 ).pipe(Layer.provideMerge(FetchHttpClient.layer))
 
@@ -234,7 +227,4 @@ export const AppServicesLive = Layer.mergeAll(
  * HTTP entry points build this; the Durable Objects never authenticate. Requires `Database`
  * and the auth SQL connection from the platform.
  */
-export const AppAuthorizationLive = AuthorizationLive.pipe(
-	Layer.provideMerge(SessionManager.layer),
-	Layer.provideMerge(HazelAuthLive),
-)
+export const AppAuthorizationLive = AuthorizationLive.pipe(Layer.provideMerge(HazelAuthLive))

@@ -1,11 +1,10 @@
 import { Headers } from "effect/http"
 import { BotRepo, UserRepo } from "@hazel/backend-core"
-import { CurrentUser, InvalidBearerTokenError, SessionNotProvidedError } from "@hazel/domain"
-import { Effect, Layer, Option } from "effect"
+import { CurrentUser, InvalidBearerTokenError, SessionLoadError, SessionNotProvidedError } from "@hazel/domain"
+import { Cause, Effect, Layer, Option } from "effect"
 import { AuthMiddleware } from "@hazel/domain/rpc"
 import { type ApiScope, CurrentBotScopes } from "@hazel/domain/scopes"
 import { HazelSession } from "../../services/hazel-session"
-import { SessionManager } from "../../services/session-manager"
 
 export { AuthMiddleware } from "@hazel/domain/rpc"
 
@@ -20,18 +19,9 @@ async function hashToken(token: string): Promise<string> {
 	return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
 }
 
-/**
- * Check if a token looks like a JWT (three base64url-encoded segments)
- */
-function isJwtToken(token: string): boolean {
-	const parts = token.split(".")
-	return parts.length === 3 && parts.every((part) => /^[A-Za-z0-9_-]+$/.test(part))
-}
-
 export const AuthMiddlewareLive = Layer.effect(
 	AuthMiddleware,
 	Effect.gen(function* () {
-		const sessionManager = yield* SessionManager
 		const hazelSession = yield* HazelSession
 		const botRepo = yield* BotRepo
 		const userRepo = yield* UserRepo
@@ -55,15 +45,9 @@ export const AuthMiddlewareLive = Layer.effect(
 					return yield* Effect.provideService(effect, CurrentUser.Context, cookieUser.value)
 				}
 
-				// Bearer token: Clerk JWT, Hazel session credential (native clients) or bot token
+				// Bearer token: Hazel session credential (native clients) or bot token
 				if (Option.isSome(authHeader) && authHeader.value.startsWith("Bearer ")) {
 					const token = authHeader.value.slice(7)
-
-					// JWT → Clerk bearer auth. Otherwise, treat as bot token (hash lookup).
-					if (isJwtToken(token)) {
-						const currentUser = yield* sessionManager.authenticateWithBearer(token)
-						return yield* Effect.provideService(effect, CurrentUser.Context, currentUser)
-					}
 
 					if (hazelSession.enabled && !token.startsWith("hzl_bot_")) {
 						const sessionUser = yield* hazelSession.verify(token)
@@ -81,12 +65,16 @@ export const AuthMiddlewareLive = Layer.effect(
 
 					// Find bot by token hash
 					const botOption = yield* botRepo.findByTokenHash(tokenHash).pipe(
-						Effect.catchTag("DatabaseError", () =>
-							Effect.fail(
-								new InvalidBearerTokenError({
-									message: "Failed to validate bot token",
-									detail: "Database error",
-								}),
+						Effect.catchTag("DatabaseError", (error) =>
+							Effect.logError("Bot token lookup failed", Cause.fail(error)).pipe(
+								Effect.andThen(
+									Effect.fail(
+										new SessionLoadError({
+											message: "Failed to validate bot token",
+											detail: "The session store is unavailable",
+										}),
+									),
+								),
 							),
 						),
 					)
@@ -105,12 +93,16 @@ export const AuthMiddlewareLive = Layer.effect(
 
 					// Get the bot's user from users table
 					const userOption = yield* userRepo.findById(bot.userId).pipe(
-						Effect.catchTag("DatabaseError", () =>
-							Effect.fail(
-								new InvalidBearerTokenError({
-									message: "Failed to validate bot token",
-									detail: "Database error",
-								}),
+						Effect.catchTag("DatabaseError", (error) =>
+							Effect.logError("Bot token lookup failed", Cause.fail(error)).pipe(
+								Effect.andThen(
+									Effect.fail(
+										new SessionLoadError({
+											message: "Failed to validate bot token",
+											detail: "The session store is unavailable",
+										}),
+									),
+								),
 							),
 						),
 					)

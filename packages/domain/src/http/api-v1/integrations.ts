@@ -2,6 +2,7 @@ import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/http-api"
 import { Schema } from "effect"
 import { AvatarUrl, ChannelId, ChannelWebhookId, OrganizationId } from "@hazel/schema"
 import { InternalServerError, UnauthorizedError } from "../../errors"
+import { SessionLoadError } from "../../session-errors"
 import { ChannelType } from "../../models/channel-model"
 
 /**
@@ -12,7 +13,9 @@ import { ChannelType } from "../../models/channel-model"
  * the integration delivery path (the existing /webhooks/incoming/...) takes
  * care of formatting and posting.
  *
- * Auth: Bearer access tokens issued by Hazel's Clerk OAuth Applications.
+ * Auth: Bearer access tokens issued by Hazel's Clerk OAuth Applications (the last Clerk
+ * consumer; see `OAuthBearerAuth` in the backend). `SessionLoadError` (503) means the token
+ * could not be checked right now, not that it is invalid.
  */
 
 // ============ MODELS ============
@@ -96,7 +99,7 @@ export class IntegrationsApiGroup extends HttpApiGroup.make("api-v1-integrations
 	.add(
 		HttpApiEndpoint.get("listOrganizations", "/organizations", {
 			success: ApiV1OrganizationsListResponse,
-			error: [UnauthorizedError, InternalServerError],
+			error: [UnauthorizedError, SessionLoadError, InternalServerError],
 		})
 			.annotateMerge(
 				OpenApi.annotations({
@@ -113,6 +116,7 @@ export class IntegrationsApiGroup extends HttpApiGroup.make("api-v1-integrations
 			success: ApiV1ChannelsListResponse,
 			error: [
 				UnauthorizedError,
+				SessionLoadError,
 				ApiV1OrganizationNotFoundError,
 				InternalServerError,
 			],
@@ -131,6 +135,7 @@ export class IntegrationsApiGroup extends HttpApiGroup.make("api-v1-integrations
 			success: ApiV1ChannelWebhookCreatedResponse,
 			error: [
 				UnauthorizedError,
+				SessionLoadError,
 				ApiV1ChannelNotFoundError,
 				InternalServerError,
 			],
