@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import * as Scene from "foldkit/scene"
 import { describe, test } from "vitest"
-import { failureToastFixture, makeShared, pageScene } from "../../test/pages-fixtures"
+import { errorToast } from "../../data/actions"
+import { makeShared, pageScene } from "../../test/pages-fixtures"
 import { PageOutMessage } from "../out-message"
-import { JoinWorkspace, RedirectToSignIn } from "./command"
+import { FetchPublicOrganization, JoinWorkspace, RedirectToSignIn } from "./command"
 import { Message } from "./message"
 import { Lookup, type Model } from "./model"
 import { update } from "./update"
@@ -15,7 +16,7 @@ const signedIn = makeShared()
 const signedOut = makeShared({ auth: "SignedOut", currentUser: null, organization: null, member: null })
 const withOrganization = (memberCount: number): Model => ({
 	slug: "hazel",
-	lookup: Lookup.Loaded({ organization: { name: "Hazel Labs", logoUrl: null, memberCount } }),
+	lookup: Lookup.Found({ organization: { name: "Hazel Labs", logoUrl: null, memberCount } }),
 	isJoining: false,
 })
 const cardShown = Scene.Mount.resolve(CardEnterAnimation, Message.CompletedEnterAnimation())
@@ -40,19 +41,28 @@ describe("join page", () => {
 	test("an unknown or private workspace explains itself and links home", () => {
 		Scene.scene(
 			pageScene(update, view, signedIn),
-			Scene.given<Model>({ slug: "nope", lookup: Lookup.Loaded({ organization: null }), isJoining: false }),
+			Scene.given<Model>({ slug: "nope", lookup: Lookup.NotFound(), isJoining: false }),
 			cardShown,
 			Scene.expect(Scene.role("heading", { name: "Workspace Not Found" })).toExist(),
 			Scene.expect(Scene.role("link", { name: "Go to Home" })).toHaveAttr("href", "/"),
 		)
 	})
 
-	test("a failed lookup renders exactly like not found", () => {
+	// A network error used to render "Workspace Not Found", which reads as a bad link.
+	test("a failed lookup is not a missing workspace: it says so and retries", () => {
 		Scene.scene(
 			pageScene(update, view, signedIn),
-			Scene.given<Model>({ slug: "nope", lookup: Lookup.Failed(), isJoining: false }),
+			Scene.given<Model>({ slug: "hazel", lookup: Lookup.Failed({ reason: "Offline" }), isJoining: false }),
 			cardShown,
+			Scene.expect(Scene.role("heading", { name: "Workspace Not Found" })).toBeAbsent(),
+			Scene.expect(Scene.role("heading", { name: "Couldn't load this workspace" })).toExist(),
+			Scene.click(Scene.role("button", { name: "Try again" })),
+			Scene.Command.expectExact(FetchPublicOrganization({ slug: "hazel" })),
+			Scene.expect(Scene.text("Loading workspace...")).toExist(),
+			Scene.Mount.expectEnded(CardEnterAnimation),
+			Scene.Command.resolve(FetchPublicOrganization, Message.SucceededFetchOrganization({ organization: null })),
 			Scene.expect(Scene.role("heading", { name: "Workspace Not Found" })).toExist(),
+			cardShown,
 		)
 	})
 
@@ -79,8 +89,12 @@ describe("join page", () => {
 			Scene.click(joinButton),
 			Scene.Command.expectExact(JoinWorkspace({ slug: "hazel" })),
 			Scene.expect(Scene.role("button", { name: "Joining..." })).toBeDisabled(),
-			Scene.Command.resolve(JoinWorkspace, Message.FailedJoinWorkspace({ toast: failureToastFixture })),
-			Scene.expectOutMessage(PageOutMessage.RequestedToast({ toast: failureToastFixture })),
+			Scene.Command.resolve(JoinWorkspace, Message.FailedJoinWorkspace({ reason: "Offline" })),
+			Scene.expectOutMessage(
+				PageOutMessage.RequestedToast({
+					toast: errorToast("Connection lost", "Check your internet connection and try again."),
+				}),
+			),
 			Scene.expect(joinButton).toBeEnabled(),
 		)
 	})
