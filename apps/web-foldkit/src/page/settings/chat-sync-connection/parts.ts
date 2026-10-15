@@ -7,6 +7,7 @@ import {
 	type ChannelLink,
 	DIRECTION_LABELS,
 	linkMenuId,
+	linkMenuEntries,
 	Message,
 	type SyncDirection,
 	type WebhookPermission,
@@ -141,6 +142,7 @@ export const channelLinkRow = (
 									model: menu,
 									view: menuView,
 									viewInputs: {
+										entries: linkMenuEntries,
 										toTrigger: (
 											attributes: ReadonlyArray<ChildAttribute>,
 											overlay: Html,
@@ -154,7 +156,6 @@ export const channelLinkRow = (
 															"inline-flex size-7 items-center justify-center rounded-lg text-muted-fg hover:bg-secondary hover:text-fg",
 														),
 													),
-													h.Attribute("data-rac", ""),
 													h.Attribute("data-react-aria-pressable", "true"),
 													h.Attribute("data-slot", "menu-trigger"),
 													h.Attribute("tabindex", "0"),

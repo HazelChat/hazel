@@ -57,7 +57,7 @@ export const HttpIntegrationCommandLive = HttpApiBuilder.group(HazelApi, "integr
 					Effect.fail(
 						new InternalServerError({
 							message: "Database error while fetching commands",
-							detail: String(error),
+							cause: error,
 						}),
 					),
 				),

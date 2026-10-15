@@ -118,6 +118,8 @@ const secondarySidebar = (model: Model, h: HtmlBuilder<Message>, context: ShellC
 	const chrome = {
 		userMenu: shell.userMenu,
 		orgSwitcher: shell.orgSwitcher,
+		userMenuEntries: shell.userMenuEntries,
+		orgSwitcherEntries: shell.orgSwitcherEntries,
 		organizations: shell.userOrganizations,
 		userStatus: shell.userStatus,
 		statusExpiration: formatStatusExpirationAt(shell.userStatus?.expiresAtMs ?? null, model.nowMs),

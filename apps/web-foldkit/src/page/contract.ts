@@ -31,6 +31,8 @@ export interface Shared {
 	readonly soundSettings: SoundSettings
 	/** The desktop app's update check and install (always `Idle` on the web). */
 	readonly desktopUpdate: Updates.Model
+	/** A root modal or the command palette is open (it holds the keyboard; the composer's global typing waits). */
+	readonly isOverlayOpen: boolean
 }
 
 /** `usePermission().can(action)` */

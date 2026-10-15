@@ -1,13 +1,22 @@
 import { Option, Schema } from "effect"
 import { Command, Submodel, Subscription, type Update } from "foldkit"
 import type { Shared } from "../../page/contract"
-import type { HazelRpc } from "../../rpc"
+import type { AppRoute } from "../../route"
+import type { Resources } from "../../rpc"
 import type { ModalOutMessage } from "../out-message"
 
 /**
  * The modal contract: each legacy `useModal` id (and each page-local modal) is a Submodel the root
  * opens from a `RequestedModal`. Mirrors `page/contract.ts`: registered once in `overlay/modal.ts`.
+ *
+ * Every opening is a new instance with its own number. Slots and Messages carry it, so a Command's
+ * result reaches the instance that issued it, even after that one closed or another replaced it.
  */
+
+/** What `init` and `update` see: the shared state plus the route the modal opened over. */
+export interface ModalContext extends Shared {
+	readonly route: AppRoute
+}
 
 export interface ModalViewInputs {
 	readonly shared: Shared
@@ -18,34 +27,40 @@ export interface ModalSubscriptionInput<Model> {
 	readonly shared: Shared
 }
 
-export type ModalReturn<Model, Message> = Update.ReturnWithOutMessage<Model, Message, ModalOutMessage, HazelRpc>
+export type ModalReturn<Model, Message> = Update.ReturnWithOutMessage<Model, Message, ModalOutMessage, Resources>
 
 export interface ModalSpec<Request, Model, Message> {
-	readonly init: (request: Request, shared: Shared) => ModalReturn<Model, Message>
-	readonly update: (model: Model, message: Message, shared: Shared) => ModalReturn<Model, Message>
+	readonly init: (request: Request, context: ModalContext) => ModalReturn<Model, Message>
+	readonly update: (model: Model, message: Message, context: ModalContext) => ModalReturn<Model, Message>
 	readonly view: Submodel.View<Model, Message, ModalViewInputs>
-	readonly subscriptions?: Subscription.Subscriptions<ModalSubscriptionInput<Model>, Message, HazelRpc>
+	readonly subscriptions?: Subscription.Subscriptions<ModalSubscriptionInput<Model>, Message, Resources>
 }
 
 export interface ModalSlotBase {
 	readonly _tag: string
+	readonly instance: number
 }
 export interface ModalMessageBase {
 	readonly _tag: string
+	/** The instance that sent it; `null` from a Subscription, which always follows the open instance. */
+	readonly instance: number | null
 }
 export interface ModalHost {
-	readonly modal: ModalSlotBase | null
+	readonly modal: { readonly current: ModalSlotBase | null }
 	readonly shared: Shared
 }
 
 export interface ModalStep<Slot, Wrapped> {
 	readonly slot: Slot
-	readonly commands: ReadonlyArray<Command.Command<Wrapped, never, HazelRpc>>
+	readonly commands: ReadonlyArray<Command.Command<Wrapped, never, Resources>>
 	readonly outMessage: Option.Option<ModalOutMessage>
 }
 
-/** Request `{ _tag: id, ...fields }` (from `requests.ts`), slot `{ _tag: id, model }`, Messages `{ _tag: id, message }`. */
-/** The request schema comes from `requests.ts`, so out-messages stay free of modal views. */
+/**
+ * Request `{ _tag: id, ...fields }` (from `requests.ts`), slot `{ _tag: id, instance, model }`, Messages
+ * `{ _tag: id, instance, message }`. The request schema comes from `requests.ts`, so out-messages stay
+ * free of modal views.
+ */
 export const defineModal = <
 	const Id extends string,
 	RequestSchema extends Schema.Top & { readonly Type: { readonly _tag: Id } },
@@ -58,53 +73,54 @@ export const defineModal = <
 ) => {
 	type Model = ModelSchema["Type"]
 	type Message = MessageSchema["Type"]
-	const Request = schemas.request
-	const Slot = Schema.TaggedStruct(id, { model: schemas.Model })
-	const Wrapped = Schema.TaggedStruct(id, { message: schemas.Message })
-	type RequestType = typeof Request.Type
-	type SlotType = { readonly _tag: Id; readonly model: Model }
-	type WrappedType = { readonly _tag: Id; readonly message: Message }
+	const Slot = Schema.TaggedStruct(id, { instance: Schema.Number, model: schemas.Model })
+	const Wrapped = Schema.TaggedStruct(id, { instance: Schema.NullOr(Schema.Number), message: schemas.Message })
+	type SlotType = { readonly _tag: Id; readonly instance: number; readonly model: Model }
+	type WrappedType = { readonly _tag: Id; readonly instance: number | null; readonly message: Message }
 
 	// The tags are unique across the registry, so a matching tag is this modal's value.
-	const isOwnRequest = Schema.is(Request)
+	const isOwnRequest = Schema.is(schemas.request)
 	const isOwnSlot = (slot: ModalSlotBase): slot is SlotType => slot._tag === id
 	const isOwnMessage = (message: ModalMessageBase): message is WrappedType => message._tag === id
-	const wrap = (message: Message): WrappedType => ({ _tag: id, message })
-	const step = (result: ModalReturn<Model, Message>): ModalStep<SlotType, WrappedType> => ({
-		slot: { _tag: id, model: result.model },
-		commands: Command.mapMessages(result.commands, wrap),
+	const wrapFor =
+		(instance: number | null) =>
+		(message: Message): WrappedType => ({ _tag: id, instance, message })
+	const step = (instance: number, result: ModalReturn<Model, Message>): ModalStep<SlotType, WrappedType> => ({
+		slot: { _tag: id, instance, model: result.model },
+		commands: Command.mapMessages(result.commands, wrapFor(instance)),
 		outMessage: Option.fromNullishOr(result.outMessage),
 	})
 
 	const lifted = Subscription.lift(spec.subscriptions ?? {})<ModalHost, WrappedType>({
 		read: (host) =>
-			host.modal !== null && isOwnSlot(host.modal)
-				? Option.some({ model: host.modal.model, shared: host.shared })
+			host.modal.current !== null && isOwnSlot(host.modal.current)
+				? Option.some({ model: host.modal.current.model, shared: host.shared })
 				: Option.none(),
-		toParentMessage: wrap,
+		toParentMessage: wrapFor(null),
 	})
 
 	return {
 		id,
-		Request,
+		Request: schemas.request,
 		Slot,
 		Wrapped,
-		init: (request: unknown, shared: Shared) =>
+		init: (request: unknown, context: ModalContext, instance: number) =>
 			isOwnRequest(request)
-				? Option.some(step(spec.init(request, shared)))
+				? Option.some(step(instance, spec.init(request, context)))
 				: Option.none<ModalStep<SlotType, WrappedType>>(),
-		update: (slot: ModalSlotBase, message: ModalMessageBase, shared: Shared) =>
+		/** Runs `message` on `slot`; the caller has already picked the slot by the message's instance. */
+		update: (slot: ModalSlotBase, message: ModalMessageBase, context: ModalContext) =>
 			isOwnSlot(slot) && isOwnMessage(message)
-				? Option.some(step(spec.update(slot.model, message.message, shared)))
+				? Option.some(step(slot.instance, spec.update(slot.model, message.message, context)))
 				: Option.none<ModalStep<SlotType, WrappedType>>(),
 		hostView: Submodel.defineView<ModalSlotBase, WrappedType, ModalViewInputs>((slot, inputs, h) =>
 			isOwnSlot(slot)
 				? h.submodel({
-						slotId: `modal:${id}`,
+						slotId: `modal:${id}:${slot.instance}`,
 						model: slot.model,
 						view: spec.view,
 						viewInputs: inputs,
-						toParentMessage: wrap,
+						toParentMessage: wrapFor(slot.instance),
 					})
 				: h.empty,
 		),

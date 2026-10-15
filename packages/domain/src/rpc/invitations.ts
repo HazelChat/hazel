@@ -83,7 +83,7 @@ export class InvitationRpcs extends RpcGroup.make(
 			role: InvitationRole,
 		}),
 		success: InvitationCreateResult,
-		error: Schema.Union([UnauthorizedError, InternalServerError]),
+		error: Schema.Union([OrganizationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["organization-members:write"])
 		.middleware(AuthMiddleware),

@@ -7,22 +7,22 @@ import { defineMessageUnion } from "foldkit/message"
 import { modifyFields } from "foldkit/struct"
 import { updateChannelAction } from "~/db/actions"
 import { channelCollection } from "~/db/collections"
-import type { UserErrorMessage } from "~/lib/error-messages"
+import { CommonReason, failureMessage, type UserErrorMessage } from "~/lib/error-messages"
+import { catchCommon, errorToastOf, successToast } from "../../data/actions"
 import { liveQueryStream } from "../../data/live-query"
 import { button } from "../../ui/button"
 import { dialogBody, dialogFooter, dialogHeader } from "../../ui/dialog"
 import { textField, textFieldIds } from "../../ui/text-field"
 import { closed, completed, ModalOutMessage } from "../out-message"
-import { ToastRequest } from "../toasts"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalSubscriptionInput, type ModalViewInputs } from "./contract"
-import { failureToast, successToast } from "../../data/actions"
 import {
 	Frame,
 	Message as FrameMessage,
 	frameView,
 	initFrame,
-	isFrameClosed,
+	isCloseRequest,
+	isPortalReady,
 	modalDescription,
 	modalTitle,
 } from "./frame"
@@ -46,6 +46,10 @@ export const Model = Schema.Struct({
 })
 type Model = typeof Model.Type
 
+/** What can go wrong renaming, beyond the shared reasons. */
+export const RenameChannelFailure = Schema.Union([Schema.Literals(["NotFound"]), CommonReason])
+export type RenameChannelFailure = typeof RenameChannelFailure.Type
+
 export const Message = defineMessageUnion({
 	GotFrameMessage: { message: FrameMessage },
 	UpdatedChannel: { channel: Schema.NullOr(ChannelRow) },
@@ -53,7 +57,7 @@ export const Message = defineMessageUnion({
 	ClickedCancel: {},
 	SubmittedForm: {},
 	SucceededRenameChannel: {},
-	FailedRenameChannel: { toast: ToastRequest },
+	FailedRenameChannel: { reason: RenameChannelFailure },
 	CompletedFocusInput: {},
 })
 type Message = typeof Message.Type
@@ -68,34 +72,20 @@ export interface RenameCopy {
 	readonly notFound: UserErrorMessage
 }
 
-const RenameChannel = Command.define("RenameChannel", {
-	args: {
-		channelId: ChannelId,
-		name: Schema.String,
-		notFoundTitle: Schema.String,
-		notFoundDescription: Schema.String,
-	},
+export const RenameChannel = Command.define("RenameChannel", {
+	args: { channelId: ChannelId, name: Schema.String },
 	messages: [Message.SucceededRenameChannel, Message.FailedRenameChannel],
-	execute: ({ channelId, name, notFoundTitle, notFoundDescription }) =>
+	execute: ({ channelId, name }) =>
 		updateChannelAction({ channelId, name }).pipe(
 			Effect.as(Message.SucceededRenameChannel()),
-			Effect.catchCause((cause) =>
-				Effect.succeed(
-					Message.FailedRenameChannel({
-						toast: failureToast(cause, "friendly", {
-							ChannelNotFoundError: {
-								title: notFoundTitle,
-								description: notFoundDescription,
-								isRetryable: false,
-							},
-						}),
-					}),
-				),
-			),
+			Effect.catchTags({
+				ChannelNotFoundError: () => Effect.succeed(Message.FailedRenameChannel({ reason: "NotFound" })),
+			}),
+			catchCommon((reason) => Message.FailedRenameChannel({ reason })),
 		),
 })
 
-/** The Input's `autoFocus`, once the frame has moved focus into the dialog. */
+/** The Input's `autoFocus`, once the frame has moved focus into the dialog. Best effort, like `autoFocus`. */
 const FocusInput = Command.define("FocusInput", {
 	args: { selector: Schema.String },
 	messages: [Message.CompletedFocusInput],
@@ -107,20 +97,13 @@ type Return = ModalReturn<Model, Message>
 
 const inputId = (copy: RenameCopy) => textFieldIds(`${copy.id}-name`).input
 
-const submitted = (model: Model, copy: RenameCopy): Return => {
+const submitted = (model: Model): Return => {
 	if (model.channel === null || model.isSubmitting) return { model }
 	const trimmedName = model.name.trim()
 	if (trimmedName === model.channel.name) return { model, outMessage: closed }
 	return {
 		model: modifyFields(model, { isSubmitting: () => true }),
-		commands: [
-			RenameChannel({
-				channelId: model.channel.id,
-				name: trimmedName,
-				notFoundTitle: copy.notFound.title,
-				notFoundDescription: copy.notFound.description ?? "",
-			}),
-		],
+		commands: [RenameChannel({ channelId: model.channel.id, name: trimmedName })],
 	}
 }
 
@@ -129,8 +112,8 @@ const makeUpdate =
 	(model: Model, message: Message): Return =>
 		Message.match<Return>(message, {
 			GotFrameMessage: ({ message }) => {
-				if (isFrameClosed(model.frame, message)) return { model, outMessage: closed }
-				return message._tag === "CompletedPortalModal"
+				if (isCloseRequest(message)) return { model, outMessage: closed }
+				return isPortalReady(message)
 					? { model, commands: [FocusInput({ selector: `#${inputId(copy)}` })] }
 					: { model }
 			},
@@ -144,14 +127,16 @@ const makeUpdate =
 				model: modifyFields(model, { name: () => value, isTouched: () => true }),
 			}),
 			ClickedCancel: () => ({ model, outMessage: closed }),
-			SubmittedForm: () => submitted(model, copy),
+			SubmittedForm: () => submitted(model),
 			SucceededRenameChannel: () => ({
 				model,
 				outMessage: completed({ toast: successToast(copy.successMessage) }),
 			}),
-			FailedRenameChannel: ({ toast }) => ({
+			FailedRenameChannel: ({ reason }) => ({
 				model: modifyFields(model, { isSubmitting: () => false }),
-				outMessage: ModalOutMessage.RequestedToast({ toast }),
+				outMessage: ModalOutMessage.RequestedToast({
+					toast: errorToastOf(failureMessage(reason, { NotFound: copy.notFound })),
+				}),
 			}),
 			CompletedFocusInput: () => ({ model }),
 		})

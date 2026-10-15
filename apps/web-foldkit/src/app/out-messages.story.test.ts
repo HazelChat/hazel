@@ -7,6 +7,7 @@ import * as CommandPalette from "../overlay/command-palette"
 import { FocusInput, SetPresenceStatus } from "../overlay/command-palette/commands"
 import { LayoutHotkeyActionId } from "../overlay/hotkeys"
 import * as ChannelsSidebar from "../shell/channels-sidebar"
+import { userMenuEntries } from "../shell/menus"
 import * as Shell from "../shell/model"
 import * as Platform from "../platform"
 import * as Presence from "../platform/presence/message"
@@ -54,7 +55,7 @@ describe("RequestedModal", () => {
 			update,
 			given(signedIn("/hazel/chat")),
 			message(sidebar(ChannelsSidebar.Message.ClickedSectionAction({ action: "create-channel" }))),
-			model((m) => expect(m.modal?._tag).toBe("NewChannel")),
+			model((m) => expect(m.modal.current?._tag).toBe("NewChannel")),
 		)
 	})
 
@@ -67,7 +68,7 @@ describe("RequestedModal", () => {
 			message(paletteItem("action:invite")),
 			model((m) => {
 				expect(m.commandPalette.isOpen).toBe(false)
-				expect(m.modal?._tag).toBe("EmailInvite")
+				expect(m.modal.current?._tag).toBe("EmailInvite")
 			}),
 		)
 	})
@@ -122,7 +123,7 @@ describe("RequestedSignOut", () => {
 			update,
 			given(signedIn("/hazel/chat")),
 			message(userMenu(Menu.Message.PressedTrigger({ pointerType: "mouse" }))),
-			message(userMenu(Menu.Message.ClickedItem({ key: "logout" }))),
+			message(userMenu(Menu.Message.ClickedItem({ key: "logout", entries: userMenuEntries("hazel", ada.id) }))),
 			Command.expectExact(SignOut()),
 			Command.resolve(SignOut, Message.CompletedSignOut()),
 		)
@@ -179,13 +180,13 @@ describe("hotkeys", () => {
 			given(signedIn("/hazel/chat", plainMember)),
 			message(Message.PressedHotkey({ actionId: "channel.create" })),
 			Command.expectNone(),
-			model((m) => expect(m.modal).toBeNull()),
+			model((m) => expect(m.modal.current).toBeNull()),
 		)
 		story(
 			update,
 			given(signedIn("/hazel/chat")),
 			message(Message.PressedHotkey({ actionId: "channel.create" })),
-			model((m) => expect(m.modal?._tag).toBe("NewChannel")),
+			model((m) => expect(m.modal.current?._tag).toBe("NewChannel")),
 		)
 	})
 

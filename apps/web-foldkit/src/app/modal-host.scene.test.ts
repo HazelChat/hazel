@@ -2,6 +2,7 @@
 import { Command, Mount, click, expect as sceneExpect, given, label, role, scene, submit, text, type, within, selector } from "foldkit/scene"
 import { describe, test } from "vitest"
 import * as CreateSection from "../overlay/modal/create-section"
+import { orgSwitcherEntries } from "../shell/menus"
 import * as Shell from "../shell/model"
 import { after, hazelOrg, rootScene, signedIn } from "../test/root-fixtures"
 import * as Menu from "../ui/menu"
@@ -17,7 +18,18 @@ const orgSwitcher = (inner: Menu.Message): Message =>
 
 const withCreateSection = after(signedIn("/hazel/chat"), [
 	orgSwitcher(Menu.Message.PressedTrigger({ pointerType: "mouse" })),
-	orgSwitcher(Menu.Message.ClickedItem({ key: "create-category" })),
+	orgSwitcher(
+		Menu.Message.ClickedItem({
+			key: "create-category",
+			entries: orgSwitcherEntries({
+				orgSlug: "hazel",
+				isChat: true,
+				isMobile: false,
+				canCreateChannel: true,
+				organizations: [],
+			}),
+		}),
+	),
 ])
 
 const dialog = role("dialog", { name: "Create a new Section" })

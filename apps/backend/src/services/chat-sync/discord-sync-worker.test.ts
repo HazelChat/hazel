@@ -2812,7 +2812,12 @@ describe("DiscordSyncWorker outbound webhook dispatch", () => {
 					},
 					createWebhook: () => {
 						webhookProvisioned = true
-						return Effect.fail(new Error("webhook provisioning failed"))
+						return Effect.fail(
+							new Discord.DiscordApiError({
+								message: "webhook provisioning failed",
+								status: 500,
+							}),
+						)
 					},
 					executeWebhookMessage: () => Effect.fail(new Error("should not be called")),
 					updateWebhookMessage: () => Effect.succeed(undefined),
@@ -3162,7 +3167,8 @@ describe("DiscordSyncWorker outbound attachments primitive", () => {
 					}),
 			} as unknown as ChatSyncProviderRegistry,
 			discordApiClient: {
-				executeWebhookMessage: () => Effect.fail(new Error("webhook send failed")),
+				executeWebhookMessage: () =>
+					Effect.fail(new Discord.DiscordApiError({ message: "webhook send failed", status: 500 })),
 				createWebhook: () => Effect.fail(new Error("not expected")),
 				updateWebhookMessage: () => Effect.succeed(undefined),
 				deleteWebhookMessage: () => Effect.succeed(undefined),

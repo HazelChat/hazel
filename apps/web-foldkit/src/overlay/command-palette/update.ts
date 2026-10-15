@@ -4,7 +4,9 @@ import { Command, type Update } from "foldkit"
 import { modifyFields } from "foldkit/struct"
 import type { Shared } from "../../page/contract"
 import { AppRoute, orgHrefOf } from "../../route"
-import type { HazelRpc } from "../../rpc"
+import { failureMessage } from "~/lib/error-messages"
+import { errorToastOf, reasonToast, successToast } from "../../data/actions"
+import type { Resources } from "../../rpc"
 import * as CommandMenu from "../../ui/command-menu"
 import type { ToastRequest } from "../toasts"
 import {
@@ -18,11 +20,10 @@ import { Message, OutMessage } from "./message"
 import { initialPageState, isFormPage, type Model, type Page, type PageState } from "./model"
 import { emptySearchData } from "./search-data"
 import { menuSectionsOf, NAVIGATION, parseKey, SETTINGS, STATUS_OPTIONS, THEME_OPTIONS } from "./menu"
-import { LoadRecentSearches } from "./search-mount"
+import { FocusSearchEditor, LoadRecentSearches } from "./search-mount"
 import { updateSearch } from "./search-update"
-import { successToast } from "../../data/actions"
 
-export type Return = Update.ReturnWithOutMessage<Model, Message, OutMessage, HazelRpc>
+export type Return = Update.ReturnWithOutMessage<Model, Message, OutMessage, Resources>
 
 export const MENU_ID = "command-palette"
 export const CREATE_CHANNEL_INPUT_ID = "command-palette-create-channel-name"
@@ -63,14 +64,14 @@ const withMenu = (model: Model, shared: Shared, inputValue: string): Model =>
 			}),
 	})
 
-/** The new page's `autoFocus` input (the search editor focuses itself on mount). */
+/** The new page's `autoFocus` input (and the search page's stored recent searches). */
 const focusCommandsOf = (page: PageState) =>
 	page._tag === "CreateChannel"
 		? [FocusInput({ selector: `#${CREATE_CHANNEL_INPUT_ID}` })]
 		: page._tag === "JoinChannel"
 			? [FocusInput({ selector: `#${JOIN_CHANNEL_INPUT_ID}` })]
 			: page._tag === "Search"
-				? [LoadRecentSearches()]
+				? [LoadRecentSearches(), FocusSearchEditor()]
 				: [FocusInput({ selector: `#${CommandMenu.searchId(MENU_ID)}` })]
 
 const showPage = (model: Model, page: PageState, history: ReadonlyArray<PageState>, shared: Shared): Return => ({
@@ -235,10 +236,10 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 			SubmittedCreateChannel: () => submittedCreateChannel(model, shared),
 			SucceededCreateChannel: ({ channelId }) =>
 				closedWith(model, chatHref(shared, channelId), successToast("Channel created successfully")),
-			FailedCreateChannel: ({ toast }) => ({
+			FailedCreateChannel: ({ reason }) => ({
 				model:
 					model.page._tag === "CreateChannel" ? withPage(model, { ...model.page, isSubmitting: false }) : model,
-				outMessage: OutMessage.RequestedToast({ toast }),
+				outMessage: OutMessage.RequestedToast({ toast: reasonToast(reason) }),
 			}),
 			ChangedJoinSearch: ({ value }) =>
 				model.page._tag === "JoinChannel" ? { model: withPage(model, { ...model.page, searchQuery: value }) } : { model },
@@ -247,7 +248,16 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 					? { model }
 					: { model, commands: [JoinChannel({ channelId, userId: shared.currentUser.id })] },
 			SucceededJoinChannel: () => closedWith(model, null, successToast("Successfully joined channel")),
-			FailedJoinChannel: ({ toast }) => ({ model, outMessage: OutMessage.RequestedToast({ toast }) }),
+			FailedJoinChannel: ({ reason }) => ({
+				model,
+				outMessage: OutMessage.RequestedToast({
+					toast: errorToastOf(
+						failureMessage(reason, {
+							NotFound: { title: "Channel not found", description: "This channel may have been deleted." },
+						}),
+					),
+				}),
+			}),
 			EditedSearch: (found) => updateSearch(model, found, shared),
 			PressedSearchKey: (found) => updateSearch(model, found, shared),
 			PressedAutocompleteKey: (found) => updateSearch(model, found, shared),
@@ -265,11 +275,17 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 			CompletedTrackRecentChannel: () => ({ model }),
 			SucceededSetPresenceStatus: () => ({ model }),
 			FailedSetPresenceStatus: () => ({ model }),
-			CompletedSetSearchText: () => ({ model }),
-			CompletedDeleteFilterText: () => ({ model }),
-			CompletedSyncSuggestionCount: () => ({ model }),
-			CompletedSetSearchPlaceholder: () => ({ model }),
-			CompletedFocusSearchEditor: () => ({ model }),
+			// The editor follows the Model; a page that closed first has no editor left to update.
+			SucceededSetSearchText: () => ({ model }),
+			FailedSetSearchText: () => ({ model }),
+			SucceededDeleteFilterText: () => ({ model }),
+			FailedDeleteFilterText: () => ({ model }),
+			SucceededSyncSuggestionCount: () => ({ model }),
+			FailedSyncSuggestionCount: () => ({ model }),
+			SucceededSetSearchPlaceholder: () => ({ model }),
+			FailedSetSearchPlaceholder: () => ({ model }),
+			SucceededFocusSearchEditor: () => ({ model }),
+			FailedFocusSearchEditor: () => ({ model }),
 			CompletedSaveRecentSearches: () => ({ model }),
 		}),
 		shared,

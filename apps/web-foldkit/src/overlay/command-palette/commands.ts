@@ -1,13 +1,13 @@
 import { ChannelId, OrganizationId, UserId } from "@hazel/schema"
-import { Cause, Effect, Option, Schema } from "effect"
+import { Clock, Effect, Option, Schema } from "effect"
 import { Command } from "foldkit"
 import * as Dom from "foldkit/dom"
 import { createChannelAction, joinChannelAction } from "~/db/actions"
+import { catchCommon } from "../../data/actions"
 import { PresenceStatus } from "../../platform/presence/model"
 import { HazelRpc } from "../../rpc"
 import { Message } from "./message"
 import { ChannelType } from "./model"
-import { failureToast } from "../../data/actions"
 
 /** Side effects of the palette pages, each the call legacy makes from the same handler. */
 
@@ -25,7 +25,7 @@ export const CreateChannel = Command.define("CreateChannel", {
 			currentUserId,
 		}).pipe(
 			Effect.map((result) => Message.SucceededCreateChannel({ channelId: result.data.channelId })),
-			Effect.catchCause((cause) => Effect.succeed(Message.FailedCreateChannel({ toast: failureToast(cause, "friendly") }))),
+			catchCommon((reason) => Message.FailedCreateChannel({ reason })),
 		),
 })
 
@@ -36,19 +36,10 @@ export const JoinChannel = Command.define("JoinChannel", {
 	execute: ({ channelId, userId }) =>
 		joinChannelAction({ channelId, userId }).pipe(
 			Effect.as(Message.SucceededJoinChannel()),
-			Effect.catchCause((cause) =>
-				Effect.succeed(
-					Message.FailedJoinChannel({
-						toast: failureToast(cause, "friendly", {
-							ChannelNotFoundError: {
-								title: "Channel not found",
-								description: "This channel may have been deleted.",
-								isRetryable: false,
-							},
-						}),
-					}),
-				),
-			),
+			Effect.catchTags({
+				ChannelNotFoundError: () => Effect.succeed(Message.FailedJoinChannel({ reason: "NotFound" })),
+			}),
+			catchCommon((reason) => Message.FailedJoinChannel({ reason })),
 		),
 })
 
@@ -61,11 +52,7 @@ export const SetPresenceStatus = Command.define("SetPresenceStatus", {
 			const client = yield* HazelRpc
 			yield* client("userPresenceStatus.update", { status, customMessage: null })
 			return Message.SucceededSetPresenceStatus()
-		}).pipe(
-			Effect.catchCause((cause) =>
-				Effect.succeed(Message.FailedSetPresenceStatus({ reason: Cause.pretty(cause) })),
-			),
-		),
+		}).pipe(catchCommon((reason) => Message.FailedSetPresenceStatus({ reason }))),
 })
 
 const RECENT_CHANNELS_KEY = "recentChannels"
@@ -85,13 +72,12 @@ export const TrackRecentChannel = Command.define("TrackRecentChannel", {
 	args: { channelId: ChannelId },
 	messages: [Message.CompletedTrackRecentChannel],
 	execute: ({ channelId }) =>
-		readRecentChannels.pipe(
-			Effect.map((channels) =>
-				[{ channelId, visitedAt: Date.now() }, ...channels.filter((entry) => entry.channelId !== channelId)].slice(
-					0,
-					MAX_RECENT_CHANNELS,
-				),
+		Effect.zipWith(readRecentChannels, Clock.currentTimeMillis, (channels, visitedAt) =>
+			[{ channelId, visitedAt }, ...channels.filter((entry) => entry.channelId !== channelId)].slice(
+				0,
+				MAX_RECENT_CHANNELS,
 			),
+		).pipe(
 			// Best effort: a full or blocked localStorage only loses the recent list.
 			Effect.flatMap((channels) => Effect.try(() => localStorage.setItem(RECENT_CHANNELS_KEY, JSON.stringify(channels)))),
 			Effect.ignore,
@@ -110,7 +96,7 @@ export const readRecentChannelIds = readRecentChannels.pipe(
 	),
 )
 
-/** `autoFocus` on a form page's input, after the page renders. */
+/** `autoFocus` on a form page's input, after the page renders. Best effort: a missing input just stays unfocused. */
 export const FocusInput = Command.define("FocusInput", {
 	args: { selector: Schema.String },
 	messages: [Message.CompletedFocusInput],

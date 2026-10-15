@@ -28,10 +28,10 @@ import {
 	ExternalWebhookId,
 	ExternalThreadId,
 } from "@hazel/schema"
-import { Context, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
+import { Cause, Context, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
 import { ChannelAccessSyncService } from "../channel-access-sync"
 import { IntegrationBotService } from "../integrations/integration-bot-service"
-import { ChatSyncProviderRegistry } from "./chat-sync-provider-registry"
+import { ChatSyncProviderApiError, ChatSyncProviderRegistry } from "./chat-sync-provider-registry"
 import { Discord } from "@hazel/integrations"
 import {
 	type ChatSyncAttachmentLink,
@@ -76,6 +76,48 @@ export class DiscordSyncApiError extends Schema.TaggedError<DiscordSyncApiError>
 	status: Schema.optional(Schema.Number),
 	detail: Schema.optional(Schema.String),
 }) {}
+
+/**
+ * Some Hazel → provider deliveries failed in a way that may succeed later. Failing with it
+ * makes the message outbox retry the event; the deliveries that went through are deduped by
+ * their receipts on the retry.
+ */
+export class ChatSyncDeliveryRetryableError extends Schema.TaggedError<ChatSyncDeliveryRetryableError>()(
+	"ChatSyncDeliveryRetryableError",
+	{
+		provider: Schema.String,
+		failed: Schema.Number,
+		cause: Schema.Defect(),
+	},
+) {}
+
+/**
+ * Whether a failed Hazel → provider delivery may succeed on another attempt: database blips,
+ * provider transport failures and timeouts, rate limits and 5xx. Missing links, configuration
+ * problems and other 4xx fail the same way every time.
+ */
+export const isRetryableSyncFailure = (error: unknown): boolean => {
+	if (error instanceof Database.DatabaseError) return true
+	if (error instanceof ChatSyncProviderApiError || error instanceof DiscordSyncApiError) {
+		const status = error.status
+		return status === undefined || status === 408 || status === 429 || status >= 500
+	}
+	return false
+}
+
+/** The receipt keys Hazel → provider deliveries claim, unless the caller passes its own. */
+const hazelDedupeKey = {
+	messageCreate: (id: MessageId, override?: string) => override ?? `hazel:message:create:${id}`,
+	messageUpdate: (id: MessageId, override?: string) => override ?? `hazel:message:update:${id}`,
+	messageDelete: (id: MessageId, override?: string) => override ?? `hazel:message:delete:${id}`,
+	reactionCreate: (id: MessageReactionId, override?: string) => override ?? `hazel:reaction:create:${id}`,
+	reactionDelete: (
+		payload: { hazelMessageId: MessageId; emoji: string; userId?: UserId },
+		override?: string,
+	) =>
+		override ??
+		`hazel:reaction:delete:${payload.hazelMessageId}:${payload.emoji}:${payload.userId ?? "unknown"}`,
+}
 
 type ChatSyncProvider = ChatSyncConnection.ChatSyncProvider
 
@@ -215,6 +257,32 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 			})
 		})
 
+		/**
+		 * A delivery claims its receipt before calling the provider, so a failure would leave it
+		 * claimed and every retry would be deduped. On a retryable failure the claim is dropped
+		 * so the outbox's retry delivers it. The outbox dispatcher is single-flight, so no other
+		 * worker holds the same key.
+		 */
+		const releaseClaimOnRetryableFailure =
+			(syncConnectionId: SyncConnectionId, dedupeKey: string) =>
+			<A, E, R>(effect: Effect.Effect<A, E, R>) =>
+				effect.pipe(
+					Effect.tapError((error) =>
+						isRetryableSyncFailure(error)
+							? eventReceiptRepo
+									.releaseByDedupeKey({ syncConnectionId, source: "hazel", dedupeKey })
+									.pipe(
+										Effect.catchTag("DatabaseError", (releaseError) =>
+											Effect.logWarning(
+												"Failed to release chat sync receipt; the retry will be deduped",
+												Cause.fail(releaseError),
+											),
+										),
+									)
+							: Effect.void,
+					),
+				)
+
 		const getProviderAdapter = Effect.fn("ChatSyncCoreWorker.getProviderAdapter")(function* (
 			provider: ChatSyncProvider,
 		) {
@@ -311,6 +379,12 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 		)
 
 		const decodeProvider = Schema.decodeUnknownSync(IntegrationConnection.IntegrationProvider)
+		const decodeOutboundIdentitySettings = Schema.decodeUnknownOption(
+			ChatSyncChannelLink.OutboundIdentitySettings,
+		)
+		const decodeDiscordWebhookConfig = Schema.decodeUnknownOption(
+			ChatSyncChannelLink.DiscordWebhookOutboundIdentityConfig,
+		)
 
 		type WebhookPermissionStatus = "unknown" | "allowed" | "denied"
 
@@ -355,11 +429,6 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 			...(params.reason ? { reason: params.reason } : {}),
 		})
 
-		const isDiscordApiError = (error: unknown): error is Discord.DiscordApiError =>
-			typeof error === "object" &&
-			error !== null &&
-			(error as { _tag?: unknown })._tag === "DiscordApiError"
-
 		const isWebhookStrategyEnabled = (
 			outboundIdentity: ChatSyncChannelLink.OutboundIdentitySettings,
 		): boolean => outboundIdentity.enabled && outboundIdentity.strategy === "webhook"
@@ -387,11 +456,7 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 			if (raw === undefined) {
 				return defaultOutboundIdentitySettings()
 			}
-			try {
-				return Schema.decodeUnknownSync(ChatSyncChannelLink.OutboundIdentitySettings)(raw)
-			} catch {
-				return defaultOutboundIdentitySettings()
-			}
+			return Option.getOrElse(decodeOutboundIdentitySettings(raw), defaultOutboundIdentitySettings)
 		}
 
 		const getDiscordWebhookConfig = (
@@ -410,15 +475,7 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 				return Option.none()
 			}
 
-			try {
-				return Option.some(
-					Schema.decodeUnknownSync(ChatSyncChannelLink.DiscordWebhookOutboundIdentityConfig)(
-						providerConfig,
-					),
-				)
-			} catch {
-				return Option.none()
-			}
+			return decodeDiscordWebhookConfig(providerConfig)
 		}
 
 		const shouldIgnoreWebhookOrigin = (
@@ -536,9 +593,11 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 					)
 					return Option.some(nextConfig)
 				}).pipe(
-					Effect.catch((error) =>
+					// Discord refusing or failing the webhook leaves the bot identity in place; database
+					// failures propagate so the delivery is retried.
+					Effect.catchTag("DiscordApiError", (error) =>
 						Effect.gen(function* () {
-							if (isDiscordApiError(error) && error.status === 403) {
+							if (error.status === 403) {
 								const fallbackOutboundIdentity: ChatSyncChannelLink.OutboundIdentitySettings =
 									{
 										enabled: outboundIdentity.enabled,
@@ -555,23 +614,21 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 									}),
 								)
 							} else {
-								const reason =
-									typeof error === "object" && error !== null && "message" in error
-										? String((error as { message?: unknown }).message)
-										: undefined
-
 								yield* persistWebhookIdentity(
 									params.link,
 									outboundIdentity,
-									makeWebhookPermissionState({ status: "unknown", reason }),
+									makeWebhookPermissionState({ status: "unknown", reason: error.message }),
 								)
 							}
 
-							yield* Effect.logWarning("Failed to provision Discord webhook identity", {
-								provider: params.provider,
-								externalChannelId: params.link.externalChannelId,
-								error: String(error),
-							})
+							yield* Effect.logWarning(
+								"Failed to provision Discord webhook identity",
+								Cause.fail(error),
+								{
+									provider: params.provider,
+									externalChannelId: params.link.externalChannelId,
+								},
+							)
 							return Option.none()
 						}),
 					),
@@ -642,13 +699,11 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 
 					return Option.some(outboundMessageId as ExternalMessageId)
 				}).pipe(
-					Effect.catch((error) =>
-						Effect.gen(function* () {
-							yield* Effect.logWarning("Discord webhook send failed; falling back to bot API", {
-								error: String(error),
-							})
-							return Option.none()
-						}),
+					Effect.catchTag("DiscordApiError", (error) =>
+						Effect.logWarning(
+							"Discord webhook send failed; falling back to bot API",
+							Cause.fail(error),
+						).pipe(Effect.as(Option.none<ExternalMessageId>())),
 					),
 				)
 			},
@@ -687,16 +742,11 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 
 					return true
 				}).pipe(
-					Effect.catch((error) =>
-						Effect.gen(function* () {
-							yield* Effect.logWarning(
-								"Discord webhook update failed; falling back to bot API",
-								{
-									error: String(error),
-								},
-							)
-							return false
-						}),
+					Effect.catchTag("DiscordApiError", (error) =>
+						Effect.logWarning(
+							"Discord webhook update failed; falling back to bot API",
+							Cause.fail(error),
+						).pipe(Effect.as(false)),
 					),
 				)
 			},
@@ -733,16 +783,11 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 
 					return true
 				}).pipe(
-					Effect.catch((error) =>
-						Effect.gen(function* () {
-							yield* Effect.logWarning(
-								"Discord webhook delete failed; falling back to bot API",
-								{
-									error: String(error),
-								},
-							)
-							return false
-						}),
+					Effect.catchTag("DiscordApiError", (error) =>
+						Effect.logWarning(
+							"Discord webhook delete failed; falling back to bot API",
+							Cause.fail(error),
+						).pipe(Effect.as(false)),
 					),
 				)
 			},
@@ -1052,7 +1097,7 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 				hazelMessageId: MessageId,
 				dedupeKeyOverride?: string,
 			) {
-				const dedupeKey = dedupeKeyOverride ?? `hazel:message:create:${hazelMessageId}`
+				const dedupeKey = hazelDedupeKey.messageCreate(hazelMessageId, dedupeKeyOverride)
 				const claimed = yield* claimReceipt({ syncConnectionId, source: "hazel", dedupeKey })
 				if (!claimed) {
 					return { status: "deduped" as const }
@@ -1196,6 +1241,16 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 
 				return { status: "synced" as const, externalMessageId }
 			},
+			(
+				effect,
+				syncConnectionId: SyncConnectionId,
+				hazelMessageId: MessageId,
+				dedupeKeyOverride?: string,
+			) =>
+				releaseClaimOnRetryableFailure(
+					syncConnectionId,
+					hazelDedupeKey.messageCreate(hazelMessageId, dedupeKeyOverride),
+				)(effect),
 		)
 
 		const syncConnection = Effect.fn("discordSyncWorker.syncConnection")(function* (
@@ -1272,395 +1327,448 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 
 		const syncHazelMessageUpdateToProvider = Effect.fn(
 			"discordSyncWorker.syncHazelMessageUpdateToProvider",
-		)(function* (
-			syncConnectionId: SyncConnectionId,
-			hazelMessageId: MessageId,
-			dedupeKeyOverride?: string,
-		) {
-			const dedupeKey = dedupeKeyOverride ?? `hazel:message:update:${hazelMessageId}`
-			const claimed = yield* claimReceipt({ syncConnectionId, source: "hazel", dedupeKey })
-			if (!claimed) {
-				return { status: "deduped" as const }
-			}
+		)(
+			function* (
+				syncConnectionId: SyncConnectionId,
+				hazelMessageId: MessageId,
+				dedupeKeyOverride?: string,
+			) {
+				const dedupeKey = hazelDedupeKey.messageUpdate(hazelMessageId, dedupeKeyOverride)
+				const claimed = yield* claimReceipt({ syncConnectionId, source: "hazel", dedupeKey })
+				if (!claimed) {
+					return { status: "deduped" as const }
+				}
 
-			const connectionOption = yield* connectionRepo.findById(syncConnectionId)
-			if (Option.isNone(connectionOption)) {
-				return yield* Effect.fail(
-					new DiscordSyncConnectionNotFoundError({
-						syncConnectionId,
-					}),
-				)
-			}
-			const connection = connectionOption.value
-			const adapter = yield* getProviderAdapter(connection.provider)
+				const connectionOption = yield* connectionRepo.findById(syncConnectionId)
+				if (Option.isNone(connectionOption)) {
+					return yield* Effect.fail(
+						new DiscordSyncConnectionNotFoundError({
+							syncConnectionId,
+						}),
+					)
+				}
+				const connection = connectionOption.value
+				const adapter = yield* getProviderAdapter(connection.provider)
 
-			const messageOption = yield* messageRepo.findById(hazelMessageId)
-			if (Option.isNone(messageOption)) {
-				return yield* Effect.fail(new DiscordSyncMessageNotFoundError({ messageId: hazelMessageId }))
-			}
-			const message = messageOption.value
+				const messageOption = yield* messageRepo.findById(hazelMessageId)
+				if (Option.isNone(messageOption)) {
+					return yield* Effect.fail(
+						new DiscordSyncMessageNotFoundError({ messageId: hazelMessageId }),
+					)
+				}
+				const message = messageOption.value
 
-			const link = yield* resolveOrCreateOutboundLinkForMessage({
-				syncConnectionId,
-				provider: connection.provider,
-				hazelChannelId: message.channelId,
-			})
-			const normalizedLink = normalizeChannelLinkExternalId(link)
-
-			const messageLinkOption = yield* messageLinkRepo.findByHazelMessage(link.id, hazelMessageId)
-
-			if (Option.isNone(messageLinkOption)) {
-				yield* writeReceipt({
+				const link = yield* resolveOrCreateOutboundLinkForMessage({
 					syncConnectionId,
-					channelLinkId: link.id,
-					source: "hazel",
-					dedupeKey,
-					status: "ignored",
-					payload: { hazelMessageId },
+					provider: connection.provider,
+					hazelChannelId: message.channelId,
 				})
-				return { status: "ignored_missing_link" as const }
-			}
-			const messageLink = messageLinkOption.value
-			const normalizedMessageLink = normalizeMessageLinkExternalId(messageLink)
-			const outboundContent =
-				connection.provider === "discord"
-					? yield* translateHazelMentionsForDiscord({
-							organizationId: connection.organizationId,
-							content: message.content,
-						})
-					: message.content
+				const normalizedLink = normalizeChannelLinkExternalId(link)
 
-			if (connection.provider !== "discord") {
-				yield* adapter.updateMessage({
-					externalChannelId: normalizedLink.externalChannelId,
-					externalMessageId: normalizedMessageLink.externalMessageId,
-					content: outboundContent,
-				})
-			} else {
-				const updated = yield* updateDiscordMessageViaWebhook({
-					link: {
-						id: normalizedLink.id,
-						externalChannelId: normalizedLink.externalChannelId,
-						settings: link.settings,
-					},
-					externalMessageId: normalizedMessageLink.externalMessageId,
-					content: outboundContent,
-				})
+				const messageLinkOption = yield* messageLinkRepo.findByHazelMessage(link.id, hazelMessageId)
 
-				if (!updated) {
+				if (Option.isNone(messageLinkOption)) {
+					yield* writeReceipt({
+						syncConnectionId,
+						channelLinkId: link.id,
+						source: "hazel",
+						dedupeKey,
+						status: "ignored",
+						payload: { hazelMessageId },
+					})
+					return { status: "ignored_missing_link" as const }
+				}
+				const messageLink = messageLinkOption.value
+				const normalizedMessageLink = normalizeMessageLinkExternalId(messageLink)
+				const outboundContent =
+					connection.provider === "discord"
+						? yield* translateHazelMentionsForDiscord({
+								organizationId: connection.organizationId,
+								content: message.content,
+							})
+						: message.content
+
+				if (connection.provider !== "discord") {
 					yield* adapter.updateMessage({
 						externalChannelId: normalizedLink.externalChannelId,
 						externalMessageId: normalizedMessageLink.externalMessageId,
 						content: outboundContent,
 					})
+				} else {
+					const updated = yield* updateDiscordMessageViaWebhook({
+						link: {
+							id: normalizedLink.id,
+							externalChannelId: normalizedLink.externalChannelId,
+							settings: link.settings,
+						},
+						externalMessageId: normalizedMessageLink.externalMessageId,
+						content: outboundContent,
+					})
+
+					if (!updated) {
+						yield* adapter.updateMessage({
+							externalChannelId: normalizedLink.externalChannelId,
+							externalMessageId: normalizedMessageLink.externalMessageId,
+							content: outboundContent,
+						})
+					}
 				}
-			}
 
-			yield* messageLinkRepo.updateLastSyncedAt(messageLink.id)
-			yield* writeReceipt({
-				syncConnectionId,
-				channelLinkId: link.id,
-				source: "hazel",
-				dedupeKey,
-				payload: {
-					hazelMessageId,
-					externalMessageId: normalizedMessageLink.externalMessageId,
-				},
-			})
-			yield* connectionRepo.updateLastSyncedAt(syncConnectionId)
-			yield* channelLinkRepo.updateLastSyncedAt(link.id)
-
-			return {
-				status: "updated" as const,
-				externalMessageId: normalizedMessageLink.externalMessageId,
-			}
-		})
-
-		const syncHazelMessageDeleteToProvider = Effect.fn(
-			"discordSyncWorker.syncHazelMessageDeleteToProvider",
-		)(function* (
-			syncConnectionId: SyncConnectionId,
-			hazelMessageId: MessageId,
-			dedupeKeyOverride?: string,
-		) {
-			const dedupeKey = dedupeKeyOverride ?? `hazel:message:delete:${hazelMessageId}`
-			const claimed = yield* claimReceipt({ syncConnectionId, source: "hazel", dedupeKey })
-			if (!claimed) {
-				return { status: "deduped" as const }
-			}
-
-			const connectionOption = yield* connectionRepo.findById(syncConnectionId)
-			if (Option.isNone(connectionOption)) {
-				return yield* Effect.fail(
-					new DiscordSyncConnectionNotFoundError({
-						syncConnectionId,
-					}),
-				)
-			}
-			const connection = connectionOption.value
-			const adapter = yield* getProviderAdapter(connection.provider)
-
-			const messageOption = yield* messageRepo.findById(hazelMessageId)
-			if (Option.isNone(messageOption)) {
-				return yield* Effect.fail(new DiscordSyncMessageNotFoundError({ messageId: hazelMessageId }))
-			}
-			const message = messageOption.value
-
-			const link = yield* resolveOrCreateOutboundLinkForMessage({
-				syncConnectionId,
-				provider: connection.provider,
-				hazelChannelId: message.channelId,
-			})
-			const normalizedLink = normalizeChannelLinkExternalId(link)
-
-			const messageLinkOption = yield* messageLinkRepo.findByHazelMessage(link.id, hazelMessageId)
-
-			if (Option.isNone(messageLinkOption)) {
+				yield* messageLinkRepo.updateLastSyncedAt(messageLink.id)
 				yield* writeReceipt({
 					syncConnectionId,
 					channelLinkId: link.id,
 					source: "hazel",
 					dedupeKey,
-					status: "ignored",
-					payload: { hazelMessageId },
-				})
-				return { status: "ignored_missing_link" as const }
-			}
-			const messageLink = messageLinkOption.value
-			const normalizedMessageLink = normalizeMessageLinkExternalId(messageLink)
-
-			if (connection.provider !== "discord") {
-				yield* adapter.deleteMessage({
-					externalChannelId: normalizedLink.externalChannelId,
-					externalMessageId: normalizedMessageLink.externalMessageId,
-				})
-			} else {
-				const deleted = yield* deleteDiscordMessageViaWebhook({
-					link: {
-						id: normalizedLink.id,
-						externalChannelId: normalizedLink.externalChannelId,
-						settings: link.settings,
+					payload: {
+						hazelMessageId,
+						externalMessageId: normalizedMessageLink.externalMessageId,
 					},
-					externalMessageId: normalizedMessageLink.externalMessageId,
 				})
+				yield* connectionRepo.updateLastSyncedAt(syncConnectionId)
+				yield* channelLinkRepo.updateLastSyncedAt(link.id)
 
-				if (!deleted) {
+				return {
+					status: "updated" as const,
+					externalMessageId: normalizedMessageLink.externalMessageId,
+				}
+			},
+			(
+				effect,
+				syncConnectionId: SyncConnectionId,
+				hazelMessageId: MessageId,
+				dedupeKeyOverride?: string,
+			) =>
+				releaseClaimOnRetryableFailure(
+					syncConnectionId,
+					hazelDedupeKey.messageUpdate(hazelMessageId, dedupeKeyOverride),
+				)(effect),
+		)
+
+		const syncHazelMessageDeleteToProvider = Effect.fn(
+			"discordSyncWorker.syncHazelMessageDeleteToProvider",
+		)(
+			function* (
+				syncConnectionId: SyncConnectionId,
+				hazelMessageId: MessageId,
+				dedupeKeyOverride?: string,
+			) {
+				const dedupeKey = hazelDedupeKey.messageDelete(hazelMessageId, dedupeKeyOverride)
+				const claimed = yield* claimReceipt({ syncConnectionId, source: "hazel", dedupeKey })
+				if (!claimed) {
+					return { status: "deduped" as const }
+				}
+
+				const connectionOption = yield* connectionRepo.findById(syncConnectionId)
+				if (Option.isNone(connectionOption)) {
+					return yield* Effect.fail(
+						new DiscordSyncConnectionNotFoundError({
+							syncConnectionId,
+						}),
+					)
+				}
+				const connection = connectionOption.value
+				const adapter = yield* getProviderAdapter(connection.provider)
+
+				const messageOption = yield* messageRepo.findById(hazelMessageId)
+				if (Option.isNone(messageOption)) {
+					return yield* Effect.fail(
+						new DiscordSyncMessageNotFoundError({ messageId: hazelMessageId }),
+					)
+				}
+				const message = messageOption.value
+
+				const link = yield* resolveOrCreateOutboundLinkForMessage({
+					syncConnectionId,
+					provider: connection.provider,
+					hazelChannelId: message.channelId,
+				})
+				const normalizedLink = normalizeChannelLinkExternalId(link)
+
+				const messageLinkOption = yield* messageLinkRepo.findByHazelMessage(link.id, hazelMessageId)
+
+				if (Option.isNone(messageLinkOption)) {
+					yield* writeReceipt({
+						syncConnectionId,
+						channelLinkId: link.id,
+						source: "hazel",
+						dedupeKey,
+						status: "ignored",
+						payload: { hazelMessageId },
+					})
+					return { status: "ignored_missing_link" as const }
+				}
+				const messageLink = messageLinkOption.value
+				const normalizedMessageLink = normalizeMessageLinkExternalId(messageLink)
+
+				if (connection.provider !== "discord") {
 					yield* adapter.deleteMessage({
 						externalChannelId: normalizedLink.externalChannelId,
 						externalMessageId: normalizedMessageLink.externalMessageId,
 					})
+				} else {
+					const deleted = yield* deleteDiscordMessageViaWebhook({
+						link: {
+							id: normalizedLink.id,
+							externalChannelId: normalizedLink.externalChannelId,
+							settings: link.settings,
+						},
+						externalMessageId: normalizedMessageLink.externalMessageId,
+					})
+
+					if (!deleted) {
+						yield* adapter.deleteMessage({
+							externalChannelId: normalizedLink.externalChannelId,
+							externalMessageId: normalizedMessageLink.externalMessageId,
+						})
+					}
 				}
-			}
 
-			yield* messageLinkRepo.softDelete(messageLink.id)
-			yield* writeReceipt({
-				syncConnectionId,
-				channelLinkId: link.id,
-				source: "hazel",
-				dedupeKey,
-				payload: {
-					hazelMessageId,
+				yield* messageLinkRepo.softDelete(messageLink.id)
+				yield* writeReceipt({
+					syncConnectionId,
+					channelLinkId: link.id,
+					source: "hazel",
+					dedupeKey,
+					payload: {
+						hazelMessageId,
+						externalMessageId: normalizedMessageLink.externalMessageId,
+					},
+				})
+				yield* connectionRepo.updateLastSyncedAt(syncConnectionId)
+				yield* channelLinkRepo.updateLastSyncedAt(link.id)
+
+				return {
+					status: "deleted" as const,
 					externalMessageId: normalizedMessageLink.externalMessageId,
-				},
-			})
-			yield* connectionRepo.updateLastSyncedAt(syncConnectionId)
-			yield* channelLinkRepo.updateLastSyncedAt(link.id)
-
-			return {
-				status: "deleted" as const,
-				externalMessageId: normalizedMessageLink.externalMessageId,
-			}
-		})
+				}
+			},
+			(
+				effect,
+				syncConnectionId: SyncConnectionId,
+				hazelMessageId: MessageId,
+				dedupeKeyOverride?: string,
+			) =>
+				releaseClaimOnRetryableFailure(
+					syncConnectionId,
+					hazelDedupeKey.messageDelete(hazelMessageId, dedupeKeyOverride),
+				)(effect),
+		)
 
 		const syncHazelReactionCreateToProvider = Effect.fn(
 			"discordSyncWorker.syncHazelReactionCreateToProvider",
-		)(function* (
-			syncConnectionId: SyncConnectionId,
-			hazelReactionId: MessageReactionId,
-			dedupeKeyOverride?: string,
-		) {
-			const dedupeKey = dedupeKeyOverride ?? `hazel:reaction:create:${hazelReactionId}`
-			const claimed = yield* claimReceipt({ syncConnectionId, source: "hazel", dedupeKey })
-			if (!claimed) {
-				return { status: "deduped" as const }
-			}
+		)(
+			function* (
+				syncConnectionId: SyncConnectionId,
+				hazelReactionId: MessageReactionId,
+				dedupeKeyOverride?: string,
+			) {
+				const dedupeKey = hazelDedupeKey.reactionCreate(hazelReactionId, dedupeKeyOverride)
+				const claimed = yield* claimReceipt({ syncConnectionId, source: "hazel", dedupeKey })
+				if (!claimed) {
+					return { status: "deduped" as const }
+				}
 
-			const connectionOption = yield* connectionRepo.findById(syncConnectionId)
-			if (Option.isNone(connectionOption)) {
-				return yield* Effect.fail(
-					new DiscordSyncConnectionNotFoundError({
+				const connectionOption = yield* connectionRepo.findById(syncConnectionId)
+				if (Option.isNone(connectionOption)) {
+					return yield* Effect.fail(
+						new DiscordSyncConnectionNotFoundError({
+							syncConnectionId,
+						}),
+					)
+				}
+				const connection = connectionOption.value
+				const adapter = yield* getProviderAdapter(connection.provider)
+
+				const reactionOption = yield* messageReactionRepo.findById(hazelReactionId)
+				if (Option.isNone(reactionOption)) {
+					yield* writeReceipt({
 						syncConnectionId,
-					}),
-				)
-			}
-			const connection = connectionOption.value
-			const adapter = yield* getProviderAdapter(connection.provider)
+						source: "hazel",
+						dedupeKey,
+						status: "ignored",
+					})
+					return { status: "ignored_missing_reaction" as const }
+				}
+				const reaction = reactionOption.value
 
-			const reactionOption = yield* messageReactionRepo.findById(hazelReactionId)
-			if (Option.isNone(reactionOption)) {
-				yield* writeReceipt({
+				const link = yield* resolveOrCreateOutboundLinkForMessage({
 					syncConnectionId,
-					source: "hazel",
-					dedupeKey,
-					status: "ignored",
+					provider: connection.provider,
+					hazelChannelId: reaction.channelId,
 				})
-				return { status: "ignored_missing_reaction" as const }
-			}
-			const reaction = reactionOption.value
+				const normalizedLink = normalizeChannelLinkExternalId(link)
 
-			const link = yield* resolveOrCreateOutboundLinkForMessage({
-				syncConnectionId,
-				provider: connection.provider,
-				hazelChannelId: reaction.channelId,
-			})
-			const normalizedLink = normalizeChannelLinkExternalId(link)
+				const messageLinkOption = yield* messageLinkRepo.findByHazelMessage(
+					link.id,
+					reaction.messageId,
+				)
 
-			const messageLinkOption = yield* messageLinkRepo.findByHazelMessage(link.id, reaction.messageId)
+				if (Option.isNone(messageLinkOption)) {
+					yield* writeReceipt({
+						syncConnectionId,
+						channelLinkId: link.id,
+						source: "hazel",
+						dedupeKey,
+						status: "ignored",
+						payload: {
+							hazelReactionId,
+						},
+					})
+					return { status: "ignored_missing_link" as const }
+				}
+				const messageLink = messageLinkOption.value
+				const normalizedMessageLink = normalizeMessageLinkExternalId(messageLink)
 
-			if (Option.isNone(messageLinkOption)) {
+				yield* adapter.addReaction({
+					externalChannelId: normalizedLink.externalChannelId,
+					externalMessageId: normalizedMessageLink.externalMessageId,
+					emoji: reaction.emoji,
+				})
+
 				yield* writeReceipt({
 					syncConnectionId,
 					channelLinkId: link.id,
 					source: "hazel",
 					dedupeKey,
-					status: "ignored",
 					payload: {
 						hazelReactionId,
+						externalMessageId: normalizedMessageLink.externalMessageId,
+						emoji: reaction.emoji,
 					},
 				})
-				return { status: "ignored_missing_link" as const }
-			}
-			const messageLink = messageLinkOption.value
-			const normalizedMessageLink = normalizeMessageLinkExternalId(messageLink)
+				yield* connectionRepo.updateLastSyncedAt(syncConnectionId)
+				yield* channelLinkRepo.updateLastSyncedAt(link.id)
 
-			yield* adapter.addReaction({
-				externalChannelId: normalizedLink.externalChannelId,
-				externalMessageId: normalizedMessageLink.externalMessageId,
-				emoji: reaction.emoji,
-			})
-
-			yield* writeReceipt({
-				syncConnectionId,
-				channelLinkId: link.id,
-				source: "hazel",
-				dedupeKey,
-				payload: {
-					hazelReactionId,
+				return {
+					status: "created" as const,
 					externalMessageId: normalizedMessageLink.externalMessageId,
-					emoji: reaction.emoji,
-				},
-			})
-			yield* connectionRepo.updateLastSyncedAt(syncConnectionId)
-			yield* channelLinkRepo.updateLastSyncedAt(link.id)
-
-			return {
-				status: "created" as const,
-				externalMessageId: normalizedMessageLink.externalMessageId,
-			}
-		})
+				}
+			},
+			(
+				effect,
+				syncConnectionId: SyncConnectionId,
+				hazelReactionId: MessageReactionId,
+				dedupeKeyOverride?: string,
+			) =>
+				releaseClaimOnRetryableFailure(
+					syncConnectionId,
+					hazelDedupeKey.reactionCreate(hazelReactionId, dedupeKeyOverride),
+				)(effect),
+		)
 
 		const syncHazelReactionDeleteToProvider = Effect.fn(
 			"discordSyncWorker.syncHazelReactionDeleteToProvider",
-		)(function* (
-			syncConnectionId: SyncConnectionId,
-			payload: {
-				hazelChannelId: ChannelId
-				hazelMessageId: MessageId
-				emoji: string
-				userId?: UserId
-			},
-			dedupeKeyOverride?: string,
-		) {
-			const dedupeKey =
-				dedupeKeyOverride ??
-				`hazel:reaction:delete:${payload.hazelMessageId}:${payload.emoji}:${payload.userId ?? "unknown"}`
-			const claimed = yield* claimReceipt({ syncConnectionId, source: "hazel", dedupeKey })
-			if (!claimed) {
-				return { status: "deduped" as const }
-			}
+		)(
+			function* (
+				syncConnectionId: SyncConnectionId,
+				payload: {
+					hazelChannelId: ChannelId
+					hazelMessageId: MessageId
+					emoji: string
+					userId?: UserId
+				},
+				dedupeKeyOverride?: string,
+			) {
+				const dedupeKey = hazelDedupeKey.reactionDelete(payload, dedupeKeyOverride)
+				const claimed = yield* claimReceipt({ syncConnectionId, source: "hazel", dedupeKey })
+				if (!claimed) {
+					return { status: "deduped" as const }
+				}
 
-			const connectionOption = yield* connectionRepo.findById(syncConnectionId)
-			if (Option.isNone(connectionOption)) {
-				return yield* Effect.fail(
-					new DiscordSyncConnectionNotFoundError({
-						syncConnectionId,
-					}),
-				)
-			}
-			const connection = connectionOption.value
-			const adapter = yield* getProviderAdapter(connection.provider)
+				const connectionOption = yield* connectionRepo.findById(syncConnectionId)
+				if (Option.isNone(connectionOption)) {
+					return yield* Effect.fail(
+						new DiscordSyncConnectionNotFoundError({
+							syncConnectionId,
+						}),
+					)
+				}
+				const connection = connectionOption.value
+				const adapter = yield* getProviderAdapter(connection.provider)
 
-			const link = yield* resolveOrCreateOutboundLinkForMessage({
-				syncConnectionId,
-				provider: connection.provider,
-				hazelChannelId: payload.hazelChannelId,
-			})
-			const normalizedLink = normalizeChannelLinkExternalId(link)
-
-			const messageLinkOption = yield* messageLinkRepo.findByHazelMessage(
-				link.id,
-				payload.hazelMessageId,
-			)
-
-			if (Option.isNone(messageLinkOption)) {
-				yield* writeReceipt({
+				const link = yield* resolveOrCreateOutboundLinkForMessage({
 					syncConnectionId,
-					channelLinkId: link.id,
-					source: "hazel",
-					dedupeKey,
-					status: "ignored",
-					payload,
+					provider: connection.provider,
+					hazelChannelId: payload.hazelChannelId,
 				})
-				return { status: "ignored_missing_link" as const }
-			}
-			const messageLink = messageLinkOption.value
-			const normalizedMessageLink = normalizeMessageLinkExternalId(messageLink)
+				const normalizedLink = normalizeChannelLinkExternalId(link)
 
-			const remainingReactions = yield* db.run(
-				PG.from(schema.messageReactionsTable)
-					.select("id")
-					.where(($) => [$.messageId.eq(payload.hazelMessageId), $.emoji.eq(payload.emoji)])
-					.limit(1),
-			)
-			if (remainingReactions.length > 0) {
+				const messageLinkOption = yield* messageLinkRepo.findByHazelMessage(
+					link.id,
+					payload.hazelMessageId,
+				)
+
+				if (Option.isNone(messageLinkOption)) {
+					yield* writeReceipt({
+						syncConnectionId,
+						channelLinkId: link.id,
+						source: "hazel",
+						dedupeKey,
+						status: "ignored",
+						payload,
+					})
+					return { status: "ignored_missing_link" as const }
+				}
+				const messageLink = messageLinkOption.value
+				const normalizedMessageLink = normalizeMessageLinkExternalId(messageLink)
+
+				const remainingReactions = yield* db.run(
+					PG.from(schema.messageReactionsTable)
+						.select("id")
+						.where(($) => [$.messageId.eq(payload.hazelMessageId), $.emoji.eq(payload.emoji)])
+						.limit(1),
+				)
+				if (remainingReactions.length > 0) {
+					yield* writeReceipt({
+						syncConnectionId,
+						channelLinkId: link.id,
+						source: "hazel",
+						dedupeKey,
+						status: "ignored",
+						payload: {
+							...payload,
+							reason: "remaining_reactions_for_emoji",
+						},
+					})
+					return { status: "ignored_remaining_reactions" as const }
+				}
+
+				yield* adapter.removeReaction({
+					externalChannelId: normalizedLink.externalChannelId,
+					externalMessageId: normalizedMessageLink.externalMessageId,
+					emoji: payload.emoji,
+				})
+
 				yield* writeReceipt({
 					syncConnectionId,
 					channelLinkId: link.id,
 					source: "hazel",
 					dedupeKey,
-					status: "ignored",
 					payload: {
 						...payload,
-						reason: "remaining_reactions_for_emoji",
+						externalMessageId: normalizedMessageLink.externalMessageId,
 					},
 				})
-				return { status: "ignored_remaining_reactions" as const }
-			}
+				yield* connectionRepo.updateLastSyncedAt(syncConnectionId)
+				yield* channelLinkRepo.updateLastSyncedAt(link.id)
 
-			yield* adapter.removeReaction({
-				externalChannelId: normalizedLink.externalChannelId,
-				externalMessageId: normalizedMessageLink.externalMessageId,
-				emoji: payload.emoji,
-			})
-
-			yield* writeReceipt({
-				syncConnectionId,
-				channelLinkId: link.id,
-				source: "hazel",
-				dedupeKey,
-				payload: {
-					...payload,
+				return {
+					status: "deleted" as const,
 					externalMessageId: normalizedMessageLink.externalMessageId,
-				},
-			})
-			yield* connectionRepo.updateLastSyncedAt(syncConnectionId)
-			yield* channelLinkRepo.updateLastSyncedAt(link.id)
-
-			return {
-				status: "deleted" as const,
-				externalMessageId: normalizedMessageLink.externalMessageId,
-			}
-		})
+				}
+			},
+			(
+				effect,
+				syncConnectionId: SyncConnectionId,
+				payload: { hazelMessageId: MessageId; emoji: string; userId?: UserId },
+				dedupeKeyOverride?: string,
+			) =>
+				releaseClaimOnRetryableFailure(
+					syncConnectionId,
+					hazelDedupeKey.reactionDelete(payload, dedupeKeyOverride),
+				)(effect),
+		)
 
 		const getActiveOutboundTargets = Effect.fn("discordSyncWorker.getActiveOutboundTargets")(function* (
 			hazelChannelId: ChannelId,
@@ -1698,6 +1806,7 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 			const targets = yield* getActiveOutboundTargets(messageOption.value.channelId, provider)
 			let synced = 0
 			let failed = 0
+			const retryable: Array<unknown> = []
 
 			for (const target of targets) {
 				if (target.direction === "external_to_hazel") continue
@@ -1712,6 +1821,7 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 					}
 				} else {
 					failed++
+					if (isRetryableSyncFailure(result.failure)) retryable.push(result.failure)
 					yield* Effect.logWarning("Failed to sync create message to provider", {
 						provider,
 						hazelMessageId,
@@ -1721,6 +1831,15 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 				}
 			}
 
+			if (retryable.length > 0) {
+				return yield* Effect.fail(
+					new ChatSyncDeliveryRetryableError({
+						provider,
+						failed: retryable.length,
+						cause: retryable[0],
+					}),
+				)
+			}
 			return { synced, failed }
 		})
 
@@ -1734,6 +1853,7 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 			const targets = yield* getActiveOutboundTargets(messageOption.value.channelId, provider)
 			let synced = 0
 			let failed = 0
+			const retryable: Array<unknown> = []
 
 			for (const target of targets) {
 				if (target.direction === "external_to_hazel") continue
@@ -1748,6 +1868,7 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 					}
 				} else {
 					failed++
+					if (isRetryableSyncFailure(result.failure)) retryable.push(result.failure)
 					yield* Effect.logWarning("Failed to sync update message to provider", {
 						provider,
 						hazelMessageId,
@@ -1757,6 +1878,15 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 				}
 			}
 
+			if (retryable.length > 0) {
+				return yield* Effect.fail(
+					new ChatSyncDeliveryRetryableError({
+						provider,
+						failed: retryable.length,
+						cause: retryable[0],
+					}),
+				)
+			}
 			return { synced, failed }
 		})
 
@@ -1770,6 +1900,7 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 			const targets = yield* getActiveOutboundTargets(messageOption.value.channelId, provider)
 			let synced = 0
 			let failed = 0
+			const retryable: Array<unknown> = []
 
 			for (const target of targets) {
 				if (target.direction === "external_to_hazel") continue
@@ -1784,6 +1915,7 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 					}
 				} else {
 					failed++
+					if (isRetryableSyncFailure(result.failure)) retryable.push(result.failure)
 					yield* Effect.logWarning("Failed to sync delete message to provider", {
 						provider,
 						hazelMessageId,
@@ -1793,6 +1925,15 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 				}
 			}
 
+			if (retryable.length > 0) {
+				return yield* Effect.fail(
+					new ChatSyncDeliveryRetryableError({
+						provider,
+						failed: retryable.length,
+						cause: retryable[0],
+					}),
+				)
+			}
 			return { synced, failed }
 		})
 
@@ -1807,6 +1948,7 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 			const targets = yield* getActiveOutboundTargets(reaction.channelId, provider)
 			let synced = 0
 			let failed = 0
+			const retryable: Array<unknown> = []
 
 			for (const target of targets) {
 				if (target.direction === "external_to_hazel") continue
@@ -1821,6 +1963,7 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 					}
 				} else {
 					failed++
+					if (isRetryableSyncFailure(result.failure)) retryable.push(result.failure)
 					yield* Effect.logWarning("Failed to sync create reaction to provider", {
 						provider,
 						hazelReactionId,
@@ -1830,6 +1973,15 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 				}
 			}
 
+			if (retryable.length > 0) {
+				return yield* Effect.fail(
+					new ChatSyncDeliveryRetryableError({
+						provider,
+						failed: retryable.length,
+						cause: retryable[0],
+					}),
+				)
+			}
 			return { synced, failed }
 		})
 
@@ -1848,6 +2000,7 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 			const targets = yield* getActiveOutboundTargets(payload.hazelChannelId, provider)
 			let synced = 0
 			let failed = 0
+			const retryable: Array<unknown> = []
 
 			for (const target of targets) {
 				if (target.direction === "external_to_hazel") continue
@@ -1862,6 +2015,7 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 					}
 				} else {
 					failed++
+					if (isRetryableSyncFailure(result.failure)) retryable.push(result.failure)
 					yield* Effect.logWarning("Failed to sync delete reaction to provider", {
 						provider,
 						hazelMessageId: payload.hazelMessageId,
@@ -1871,6 +2025,15 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 				}
 			}
 
+			if (retryable.length > 0) {
+				return yield* Effect.fail(
+					new ChatSyncDeliveryRetryableError({
+						provider,
+						failed: retryable.length,
+						cause: retryable[0],
+					}),
+				)
+			}
 			return { synced, failed }
 		})
 

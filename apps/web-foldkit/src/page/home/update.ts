@@ -20,7 +20,6 @@ import {
 	type DmRow,
 	loadedMembers,
 	Members,
-	menuEntries,
 	menuIdOf,
 	type Model,
 } from "./model"
@@ -54,7 +53,7 @@ const reconcileMenus = (model: Model, members: ReadonlyArray<DirectoryMember>): 
 		members.map((member) => [
 			member.id,
 			model.menus[member.id] ??
-				Menu.init({ id: menuIdOf(member.id), entries: menuEntries, placement: "bottom end" }),
+				Menu.init({ id: menuIdOf(member.id), placement: "bottom end" }),
 		]),
 	)
 

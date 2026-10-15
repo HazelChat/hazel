@@ -108,6 +108,8 @@ const KeepTypedValue = Mount.define("KeepComboBoxTypedValue", {
 // VIEW
 
 export type ViewInputs = Readonly<{
+	/** The options, owned by the parent (the same ones it passes to `update`). */
+	items: ReadonlyArray<Item>
 	/** The `Label` inside the ComboBox; TimezoneSelect has none. */
 	label?: string
 	placeholder?: string
@@ -130,7 +132,6 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 			h.Class(twMerge(twMerge(fieldStyles()), viewInputs.className)),
 			...flag("data-focused", model.isFocused),
 			...flag("data-open", isOpen),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-slot", "control"),
 		],
 		[
@@ -255,7 +256,6 @@ const listPopover = (model: Model, open: Open, viewInputs: ViewInputs, h: HtmlBu
 								),
 							),
 							h.Attribute("data-popover", ""),
-							h.Attribute("data-rac", ""),
 							h.Attribute("data-trigger", "ComboBox"),
 							h.Attribute("dir", "ltr"),
 						],
@@ -293,11 +293,10 @@ const listbox = (model: Model, open: Open, viewInputs: ViewInputs, h: HtmlBuilde
 			h.Class(twMerge(twMerge(comboBoxListBoxBase), viewInputs.listBoxClassName)),
 			h.Attribute("data-layout", "stack"),
 			h.Attribute("data-orientation", "vertical"),
-			h.Attribute("data-rac", ""),
 			h.Id(listboxId(model.id)),
 			h.Role("listbox"),
 		],
-		Array.map(visibleItems(model, open), (candidate) => option(model, open, candidate, h)),
+		Array.map(visibleItems(model, open, viewInputs.items), (candidate) => option(model, open, candidate, h)),
 	)
 
 const option = (model: Model, open: Open, candidate: Item, h: HtmlBuilder<Message>): Html => {
@@ -320,7 +319,6 @@ const option = (model: Model, open: Open, candidate: Item, h: HtmlBuilder<Messag
 			...flag("data-focused", isFocused),
 			...flag("data-hovered", isHovered),
 			h.Attribute("data-key", key),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-react-aria-pressable", "true"),
 			...flag("data-selected", isSelected),
 			h.Attribute("data-selection-mode", "single"),

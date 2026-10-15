@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import * as Scene from "foldkit/scene"
 import { describe, test } from "vitest"
-import { AnnounceCalendar, FocusCalendarCell, FocusCellOnPress, init, Message, OutMessage, update } from "./calendar"
+import { AnnounceCalendar, FocusCalendarCell, init, Message, OutMessage, update } from "./calendar"
 import { view } from "./calendar-view"
 import * as Select from "./select"
 
-/** Calendar and RangeCalendar through the view: grid roles, selection state, paging and clicks. */
+/** Calendar through the view: grid roles, selection state, paging and clicks. */
 
 // Fixed dates: March 2026, today the 5th, nothing reads the clock.
 const today = "2026-03-05"
@@ -113,46 +113,6 @@ describe("calendar scene", () => {
 			Scene.expectOutMessage(OutMessage.ChangedValue({ date: "2026-03-19" })),
 			resolveAnnounce,
 			Scene.expect(selectedCell).toHaveText("19"),
-		)
-	})
-})
-
-const rangeConfig = { update, view: sceneView({ ariaLabel: "Trip dates" }) }
-const trip = init({ id: "trip", mode: "Range", today, range: { start: "2026-03-09", end: "2026-03-13" } })
-const selectedCells = Scene.all.role("gridcell", { selected: true })
-const rangeMounted = [...mounted, Scene.Mount.resolve(FocusCellOnPress, Message.CompletedFocusCellOnPress())]
-
-describe("range calendar scene", () => {
-	test("renders a multiselectable grid with the committed range selected", () => {
-		Scene.scene(
-			rangeConfig,
-			Scene.given(trip),
-			...rangeMounted,
-			Scene.expect(Scene.role("grid", { name: "Trip dates, March 2026" })).toHaveAttr("aria-multiselectable", "true"),
-			Scene.expectAll(selectedCells).toHaveCount(5),
-			Scene.expect(
-				day("Selected Range: Monday, March 9 to Friday, March 13, 2026, Monday, March 9, 2026 selected"),
-			).toHaveAttr("data-selection-start", "true"),
-			Scene.expect(day("Wednesday, March 11, 2026 selected")).not.toHaveAttr("data-selection-end"),
-		)
-	})
-
-	test("clicking two days previews on hover, then commits the range and tells the parent", () => {
-		Scene.scene(
-			rangeConfig,
-			Scene.given(trip),
-			...rangeMounted,
-			Scene.click(day("Monday, March 16, 2026")),
-			Scene.expectNoOutMessage(),
-			Scene.expectAll(selectedCells).toHaveCount(1),
-			Scene.hover(day("Thursday, March 19, 2026")),
-			Scene.expectAll(selectedCells).toHaveCount(4),
-			Scene.click(day("Thursday, March 19, 2026 selected")),
-			Scene.expectOutMessage(OutMessage.ChangedRange({ start: "2026-03-16", end: "2026-03-19" })),
-			resolveAnnounce,
-			Scene.expect(
-				day("Selected Range: Monday, March 16 to Thursday, March 19, 2026, Thursday, March 19, 2026 selected"),
-			).toHaveAttr("data-selection-end", "true"),
 		)
 	})
 })

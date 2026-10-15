@@ -19,7 +19,7 @@ import {
 import type { PageViewInputs } from "../contract"
 import { AutoFocusSearch } from "./commands"
 import { Message } from "./message"
-import { type DirectoryMember, filterMembers, menuIdOf, type Model, SEARCH_ID } from "./model"
+import { type DirectoryMember, filterMembers, menuEntries, menuIdOf, type Model, SEARCH_ID } from "./model"
 
 /** Port of `routes/_app/$orgSlug/index.tsx`. */
 
@@ -58,7 +58,7 @@ const memberMenuTrigger =
 					menuTriggerClassName(
 						cn(
 							"inline-flex size-8 items-center justify-center rounded-lg border border-transparent hover:border-border hover:bg-secondary",
-							"pressed:bg-secondary group-hover:border-border",
+							"data-pressed:bg-secondary group-hover:border-border",
 						),
 					),
 				),
@@ -76,6 +76,7 @@ const memberMenu = (h: HtmlBuilder<Message>, member: DirectoryMember, menu: Menu
 		model: menu,
 		view: menuView,
 		viewInputs: {
+			entries: menuEntries,
 			toTrigger: memberMenuTrigger(h),
 			content: menuContent(h, menu.id),
 		},
@@ -165,7 +166,8 @@ const memberRow = (
 										name: fullName,
 									}),
 									className:
-										"hidden border-transparent pressed:bg-muted group-hover:border-border sm:inline-flex",
+										"hidden border-transparent data-pressed:bg-muted group-hover:border-border sm:inline-flex",
+									attributes: [h.AriaLabel(`Message ${fullName}`)],
 								},
 								[IconMsgs(h, { attributes: { "data-slot": "icon" } })],
 							),

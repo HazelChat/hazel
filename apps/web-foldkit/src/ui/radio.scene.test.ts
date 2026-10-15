@@ -20,7 +20,6 @@ const styledView =
 					onChange: (value) => Message.ChoseValue({ value }),
 					isDisabled,
 					isInvalid,
-					interaction: wiring(model),
 				},
 				(parts) => [
 					parts.label(["Plan"]),
@@ -110,11 +109,11 @@ const unstyledView =
 		])
 
 describe("unstyled aria radio group scene", () => {
-	test("an aria-labelled group uses the React Aria default classes", () => {
+	test("an aria-labelled group is a named radiogroup", () => {
 		Scene.scene(
 			{ update, view: unstyledView() },
 			Scene.given(init()),
-			Scene.expect(Scene.role("radiogroup", { name: "Size" })).toHaveClass("react-aria-RadioGroup"),
+			Scene.expect(Scene.role("radiogroup", { name: "Size" })).toExist(),
 			Scene.expect(Scene.role("radio", { name: "Small" })).not.toBeChecked(),
 		)
 	})

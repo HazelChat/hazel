@@ -1,4 +1,3 @@
-import { ChannelId } from "@hazel/schema"
 import * as Requests from "./requests"
 import { defineModal } from "./contract"
 import { Message, Model, renameModalSpec } from "./rename-channel"

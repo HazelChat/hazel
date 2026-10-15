@@ -17,7 +17,7 @@ import { closed, completed, ModalOutMessage } from "../out-message"
 import { ToastRequest } from "../toasts"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalSubscriptionInput, type ModalViewInputs } from "./contract"
-import { Frame, Message as FrameMessage, frameView, initFrame, isFrameClosed, modalDescription, modalTitle } from "./frame"
+import { Frame, Message as FrameMessage, frameView, initFrame, isCloseRequest, isPortalReady, modalDescription, modalTitle } from "./frame"
 import { failureToast, successToast } from "../../data/actions"
 
 /** `components/modals/join-channel-modal.tsx` (legacy `useModal("join-channel")`). */
@@ -83,9 +83,9 @@ const update = (model: Model, message: Message, shared: Shared): Return =>
 	Message.match<Return>(message, {
 		// `autoFocus`: after the frame has portaled and focused its dialog.
 		GotFrameMessage: ({ message }) =>
-			isFrameClosed(model.frame, message)
+			isCloseRequest(message)
 				? { model, outMessage: closed }
-				: message._tag === "CompletedPortalModal"
+				: isPortalReady(message)
 					? { model, commands: [FocusSearch()] }
 					: { model },
 		ChangedSearch: ({ value }) => ({ model: modifyFields(model, { searchQuery: () => value }) }),

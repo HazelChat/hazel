@@ -16,7 +16,6 @@ export interface TooltipContext<M> {
 }
 
 const PRESSABLE = <M>(h: HtmlBuilder<M>) => [
-	h.Attribute("data-rac", ""),
 	h.Attribute("data-react-aria-pressable", "true"),
 	h.Attribute("tabindex", "0"),
 	h.Attribute("type", "button"),

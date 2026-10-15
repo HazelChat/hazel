@@ -4,6 +4,7 @@ import { redo, undo } from "prosemirror-history"
 import type { Node as ProseMirrorNode } from "prosemirror-model"
 import { AllSelection, type EditorState, Plugin, TextSelection, type Transaction } from "prosemirror-state"
 import type { EditorView } from "prosemirror-view"
+import { isAcceptedFile, isAcceptedMimeType } from "./file-types"
 import { blocksOf, isValueEmpty, serializeToMarkdown } from "./markdown"
 import { autocompleteKey, canActivateTrigger, DEFAULT_TRIGGERS, isAutocompleteOpen } from "./plugins"
 import { schema } from "./schema"
@@ -65,7 +66,9 @@ const handleTextInput = (view: EditorView, from: number, to: number, text: strin
 	const trigger = DEFAULT_TRIGGERS.find((candidate) => candidate.char === text)
 	if (trigger && !isAutocompleteOpen(state) && canActivateTrigger(state, trigger, from)) {
 		view.dispatch(
-			state.tr.insertText(text, from, to).setMeta(autocompleteKey, { trigger, search: "", from, optionCount: 0 }),
+			state.tr
+				.insertText(text, from, to)
+				.setMeta(autocompleteKey, { trigger, search: "", from, optionCount: 0, activeOptionId: null }),
 		)
 		return true
 	}
@@ -87,40 +90,21 @@ const isAtStart = (state: EditorState) => state.selection.empty && state.selecti
 const isAtEnd = (state: EditorState) =>
 	state.selection.empty && state.selection.$from.parentOffset === state.selection.$from.parent.content.size
 
-/** `withFilePaste`'s accepted types (`ACCEPTED_FILE_TYPES`). */
-const ACCEPTED_FILE_TYPES = [
-	"image/*",
-	"video/*",
-	"audio/*",
-	"application/pdf",
-	"application/msword",
-	"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-	"application/vnd.ms-excel",
-	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-	"text/plain",
-	"text/csv",
-]
-
-const isFileTypeAccepted = (type: string) =>
-	ACCEPTED_FILE_TYPES.some((accepted) =>
-		accepted.endsWith("/*") ? type.startsWith(accepted.slice(0, -1)) : type === accepted,
-	)
-
 /** `withFilePaste`: copied files first, else image items (screenshots). */
 const pastedFiles = (data: DataTransfer): ReadonlyArray<File> => {
-	const files = Array.from(data.files).filter((file) => isFileTypeAccepted(file.type))
+	const files = Array.from(data.files).filter(isAcceptedFile)
 	if (files.length > 0) return files
 	return Array.from(data.items).flatMap((item) => {
-		const file = item.kind === "file" && isFileTypeAccepted(item.type) ? item.getAsFile() : null
+		const file = item.kind === "file" && isAcceptedMimeType(item.type) ? item.getAsFile() : null
 		return file ? [file] : []
 	})
 }
 
 const AUTOCOMPLETE_KEYS: ReadonlyArray<string> = ["ArrowDown", "ArrowUp", "Enter", "Tab", "Escape"]
 
-export const behaviorPlugin = (emit: (event: BehaviorEvent) => void, isUploading: () => boolean) => {
+/** Submitting while a file uploads is the host's call: it ignores `Submitted` then and the text stays. */
+export const behaviorPlugin = (emit: (event: BehaviorEvent) => void) => {
 	const submit = (view: EditorView) => {
-		if (isUploading()) return
 		// Legacy detects languages for unlabeled code blocks on submit.
 		let tr = view.state.tr
 		view.state.doc.forEach((node, offset) => {

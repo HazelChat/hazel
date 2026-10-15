@@ -119,7 +119,7 @@ export const channelItem = <M>(
 	notificationCount: number,
 	partners: ReadonlyArray<PartnerOrg>,
 	context: RowLinkContext,
-	menu: Html = dotsMenuTrigger(h),
+	menu: Html = dotsMenuTrigger(h, "Channel options"),
 ): Html => {
 	const href = chatHref(context, entry.channel.id)
 	return sidebarItem(h, {}, [
@@ -193,7 +193,6 @@ const statusEmoji = <M>(h: HtmlBuilder<M>, presence: Presence | undefined): Html
 						),
 						h.Attribute("type", "button"),
 						h.Attribute("tabindex", "0"),
-						h.Attribute("data-rac", ""),
 						h.Attribute("data-react-aria-pressable", "true"),
 					],
 					[presence.statusEmoji],
@@ -305,7 +304,7 @@ export const dmItem = <M>(
 				? singleDmContent(h, channel, only, context)
 				: groupDmContent(h, channel, partners),
 		),
-		dotsMenuTrigger(h),
+		dotsMenuTrigger(h, "Conversation options"),
 		...badgeIf(h, notificationCount),
 	])
 }

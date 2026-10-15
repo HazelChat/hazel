@@ -52,6 +52,15 @@ export class InvalidApiKeyError extends Schema.TaggedError<InvalidApiKeyError>()
 	message: Schema.String,
 }) {}
 
+/** The provider is rate limiting or failing right now; the same request may succeed later. */
+export class IntegrationUnavailableError extends Schema.TaggedError<IntegrationUnavailableError>()(
+	"IntegrationUnavailableError",
+	{
+		message: Schema.String,
+	},
+	{ httpApiStatus: 503 },
+) {}
+
 export class ConnectApiKeyRequest extends Schema.Class<ConnectApiKeyRequest>("ConnectApiKeyRequest")({
 	token: Schema.String,
 	baseUrl: Schema.String,
@@ -149,7 +158,13 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 			},
 			payload: ConnectApiKeyRequest,
 			success: ConnectApiKeyResponse,
-			error: [InvalidApiKeyError, UnsupportedProviderError, UnauthorizedError, InternalServerError],
+			error: [
+				InvalidApiKeyError,
+				IntegrationUnavailableError,
+				UnsupportedProviderError,
+				UnauthorizedError,
+				InternalServerError,
+			],
 		})
 			.middleware(CurrentUser.Authorization)
 			.annotateMerge(

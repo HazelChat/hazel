@@ -1,6 +1,6 @@
 import { Option } from "effect"
 import { Submodel } from "foldkit"
-import type { Html, HtmlBuilder } from "foldkit/html"
+import type { HtmlBuilder } from "foldkit/html"
 import { twMerge } from "tailwind-merge"
 import { BUILT_IN_PRESETS, COLOR_SWATCHES } from "~/lib/theme/presets"
 import { ariaRadioGroup } from "../../../ui/aria-radio"
@@ -9,22 +9,18 @@ import { view as selectView } from "../../../ui/select-view"
 import type { PageViewInputs } from "../../contract"
 import { divider, pageHeader, settingsRow } from "../shared"
 import { generateIcon, grayPalettePreview, radiusOption, remixOptionCard, themePresetCard } from "./cards"
-import { Dark, Light, System } from "./illustrations"
 import { Message } from "./message"
 import type { Model, ThemeMode } from "./model"
 import { RADIUS_PRESETS, SWATCH_COLOR_NAMES, toGrayPalette } from "./presets"
-import { GENERATE_TARGET, interaction, toGrayPaletteMessage } from "./update"
+import { GENERATE_TARGET, GRAY_PALETTE_ITEMS, interaction, toGrayPaletteMessage } from "./update"
 
 /** Port of `routes/_app/$orgSlug/my-settings/index.tsx` (Appearance). */
 
-const themeModes: ReadonlyArray<{
-	value: ThemeMode
-	label: string
-	illustration: <M>(h: HtmlBuilder<M>, className: string) => Html
-}> = [
-	{ value: "system", label: "System preference", illustration: System },
-	{ value: "light", label: "Light mode", illustration: Light },
-	{ value: "dark", label: "Dark mode", illustration: Dark },
+/** Static illustrations in `public/images/appearance` (shared with the onboarding theme step). */
+const themeModes: ReadonlyArray<{ value: ThemeMode; label: string; illustration: string }> = [
+	{ value: "system", label: "System preference", illustration: "/images/appearance/system.svg" },
+	{ value: "light", label: "Light mode", illustration: "/images/appearance/light.svg" },
+	{ value: "dark", label: "Dark mode", illustration: "/images/appearance/dark.svg" },
 ]
 
 const isThemeMode = (value: string): value is ThemeMode =>
@@ -149,7 +145,6 @@ export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, 
 												"ring-2 ring-ring ring-offset-2 ring-offset-bg",
 										),
 									),
-									h.DataAttribute("rac", ""),
 									h.Id(`color-${swatch.hex}`),
 									h.Role("img"),
 									h.Style({ backgroundColor: swatch.hex, forcedColorAdjust: "none" }),
@@ -167,6 +162,7 @@ export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, 
 		model: model.grayPalette,
 		view: selectView,
 		viewInputs: {
+			items: GRAY_PALETTE_ITEMS,
 			label: "",
 			ariaLabel: "Gray palette",
 			className: "w-full",
@@ -220,7 +216,12 @@ export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, 
 										),
 									],
 									[
-										option.illustration(h, "size-full"),
+										h.img([
+											h.Src(option.illustration),
+											h.Alt(""),
+											h.Attribute("draggable", "false"),
+											h.Class("size-full"),
+										]),
 										...(isSelected
 											? [
 													h.div(

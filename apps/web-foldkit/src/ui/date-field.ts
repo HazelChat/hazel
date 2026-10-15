@@ -34,10 +34,8 @@ export interface DateFieldParts {
 export const hiddenInputStyle =
 	"border: 0px; clip: rect(0px, 0px, 0px, 0px); clip-path: inset(50%); height: 1px; margin: -1px; overflow: hidden; padding: 0px; position: fixed; width: 1px; white-space: nowrap; top: 0px; left: 0px;"
 
-const fieldName = (type: Segments.SegmentType) =>
-	new Intl.DisplayNames(navigator.language, { type: "dateTimeField" }).of(
-		type === "dayPeriod" ? "dayPeriod" : type,
-	) ?? type
+const fieldName = (locale: string, type: Segments.SegmentType) =>
+	Segments.formattersFor(locale).fieldNames.of(type) ?? type
 
 /** useDateSegment's name: the field's aria-label after a comma, a trailing comma when labelled by an element. */
 const segmentName = (name: string, ariaLabel: string | undefined, labelledBy: string | undefined) =>
@@ -47,9 +45,10 @@ const segmentName = (name: string, ariaLabel: string | undefined, labelledBy: st
 export const selectedDescription = (model: Segments.Model) => {
 	if (model.committed === null) return null
 	const date = Segments.dateValueOf(model)
+	const formatters = Segments.formattersFor(model.locale)
 	return model.kind === "date"
-		? `Selected Date: ${new Intl.DateTimeFormat(navigator.language, { dateStyle: "long", timeZone: "UTC" }).format(date)}`
-		: `Selected Time: ${new Intl.DateTimeFormat(navigator.language, { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(date)}`
+		? `Selected Date: ${formatters.longDate.format(date)}`
+		: `Selected Time: ${formatters.time.format(date)}`
 }
 
 /** The DateInput's segments: contenteditable spinbuttons plus aria-hidden literals. */
@@ -79,7 +78,6 @@ export const dateSegments = <ParentMessage>(
 				[
 					h.AriaHidden(true),
 					h.Class(twJoin(...dateSegmentStyles)),
-					h.DataAttribute("rac", ""),
 					h.DataAttribute("type", "literal"),
 					...statusAttributes,
 				],
@@ -94,11 +92,10 @@ export const dateSegments = <ParentMessage>(
 				h.Id(id),
 				h.Class(twJoin(...dateSegmentStyles)),
 				h.Role("spinbutton"),
-				h.DataAttribute("rac", ""),
 				h.DataAttribute("type", type),
 				...statusAttributes,
 				...(part.isPlaceholder ? [h.DataAttribute("placeholder", "true")] : []),
-				h.AriaLabel(segmentName(fieldName(type), options.ariaLabel, options.labelledBy)),
+				h.AriaLabel(segmentName(fieldName(options.model.locale, type), options.ariaLabel, options.labelledBy)),
 				...(options.labelledBy === undefined
 					? []
 					: [h.AriaLabelledBy(`${id} ${options.labelledBy}`)]),
@@ -197,7 +194,6 @@ export const dateField = <ParentMessage>(
 								h.Id(ids.group),
 								h.Class(twMerge(twMerge(...dateInputStyles), part.className)),
 								h.Role("group"),
-								h.DataAttribute("rac", ""),
 								h.DataAttribute("react-aria-pressable", "true"),
 								h.Attribute("style", "unicode-bidi: isolate;"),
 								...statusAttributes,
@@ -226,7 +222,6 @@ export const dateField = <ParentMessage>(
 						h.input([
 							// React Aria's hidden Input renders an empty class attribute.
 							h.Attribute("class", ""),
-							h.DataAttribute("rac", ""),
 							h.Hidden(true),
 							h.Attribute("style", ""),
 							h.Type("text"),
@@ -246,7 +241,6 @@ export const dateField = <ParentMessage>(
 		h.div(
 			[
 				h.Class(twMerge(twMerge(fieldStyles({ className: dateFieldClassName })), options.className)),
-				h.DataAttribute("rac", ""),
 				h.DataAttribute("slot", "control"),
 				...statusAttributes,
 			],

@@ -38,7 +38,6 @@ export const dialog = <Message>(
 			...(options.labelledBy ? [h.Attribute("aria-labelledby", options.labelledBy)] : []),
 			...(options.ariaLabel ? [h.Attribute("aria-label", options.ariaLabel)] : []),
 			h.Class(twMerge(dialogBase, options.className)),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-slot", "dialog"),
 			h.Id(options.id),
 			h.Role(options.role),

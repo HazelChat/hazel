@@ -1,5 +1,3 @@
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
-
 /** Map of color names to Tailwind classes */
 export const colorMap: Record<string, string> = {
 	red: "text-red-500",

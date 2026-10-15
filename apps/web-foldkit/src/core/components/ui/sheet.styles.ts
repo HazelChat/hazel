@@ -1,7 +1,6 @@
 import { twJoin } from "tailwind-merge"
 import { tv } from "tailwind-variants"
 
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export type Sides = "top" | "bottom" | "left" | "right"
 const generateCompoundVariants = (sides: Array<Sides>) => {
 	return sides.map((side) => ({
@@ -31,10 +30,10 @@ export const sheetContentStyles = tv({
 			true: "fade-in animate-out duration-300",
 		},
 		side: {
-			top: "entering:slide-in-from-top exiting:slide-out-to-top inset-x-0 top-0 rounded-b-2xl border-b",
-			bottom: "entering:slide-in-from-bottom exiting:slide-out-to-bottom inset-x-0 bottom-0 rounded-t-2xl border-t",
-			left: "entering:slide-in-from-left exiting:slide-out-to-left-80 inset-y-0 left-0 h-auto w-3/4 overflow-y-auto border-r sm:max-w-80",
-			right: "entering:slide-in-from-right exiting:slide-out-to-right-80 inset-y-0 right-0 h-auto w-3/4 overflow-y-auto border-l sm:max-w-80",
+			top: "data-entering:slide-in-from-top data-exiting:slide-out-to-top inset-x-0 top-0 rounded-b-2xl border-b",
+			bottom: "data-entering:slide-in-from-bottom data-exiting:slide-out-to-bottom inset-x-0 bottom-0 rounded-t-2xl border-t",
+			left: "data-entering:slide-in-from-left data-exiting:slide-out-to-left-80 inset-y-0 left-0 h-auto w-3/4 overflow-y-auto border-r sm:max-w-80",
+			right: "data-entering:slide-in-from-right data-exiting:slide-out-to-right-80 inset-y-0 right-0 h-auto w-3/4 overflow-y-auto border-l sm:max-w-80",
 		},
 		isFloat: {
 			false: "border-fg/20 dark:border-border",

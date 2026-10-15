@@ -16,11 +16,21 @@ import * as Tabs from "../../ui/tabs"
 import { can, type PageViewInputs, type Shared } from "../contract"
 import { channelCard, dmCard } from "./cards"
 import { Message } from "./message"
-import type { ChannelGroups, ChannelSummary, Model } from "./model"
+import { type ChannelGroups, type ChannelSummary, ChatIndexTabs, type ChatIndexTab, type Model } from "./model"
 
 /** Port of `routes/_app/$orgSlug/chat/index.tsx`. */
 
 const toTabsMessage = (message: Tabs.Message) => Message.GotTabsMessage({ message })
+
+const TABS: ReadonlyArray<ChatIndexTab> = ["public", "private", "dms"]
+const TAB_LABELS: Record<ChatIndexTab, string> = {
+	public: "Public",
+	private: "Private",
+	dms: "Direct messages",
+}
+const countOf = (groups: ChannelGroups, tab: ChatIndexTab) =>
+	(tab === "public" ? groups.publicChannels : tab === "private" ? groups.privateChannels : groups.dmChannels)
+		.length
 
 const tabLabel = (h: HtmlBuilder<Message>, label: string, count: number): Html =>
 	h.span(
@@ -161,26 +171,23 @@ export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, 
 			h.submodel({
 				slotId: "tabs",
 				model: model.tabs,
-				view: Tabs.view,
+				view: ChatIndexTabs.view,
 				viewInputs: {
-					listClassName: "w-full",
-					tabs: [
-						{ key: "public", content: [tabLabel(h, "Public", groups.publicChannels.length)] },
-						{ key: "private", content: [tabLabel(h, "Private", groups.privateChannels.length)] },
-						{ key: "dms", content: [tabLabel(h, "Direct messages", groups.dmChannels.length)] },
-					],
-					panels: [
-						{ key: "public", content: [] },
-						{ key: "private", content: [] },
-						{ key: "dms", content: [] },
-					],
-					// The cards link into the org, so the panels wait for its slug.
-					renderPanel: (key: string) =>
-						shared.orgSlug === null
-							? []
-							: (panels(h, model, groups, shared, shared.orgSlug).find(
-									(panel) => panel.key === key,
-								)?.content ?? []),
+					tabs: TABS,
+					selectedValue: model.tab,
+					ariaLabel: "Channels",
+					toView: (render) =>
+						Tabs.layout(h, render, {
+							listClassName: "w-full",
+							tab: (tab) => [tabLabel(h, TAB_LABELS[tab], countOf(groups, tab))],
+							// The cards link into the org, so the panels wait for its slug.
+							panel: (tab) =>
+								shared.orgSlug === null
+									? []
+									: (panels(h, model, groups, shared, shared.orgSlug).find(
+											(panel) => panel.key === tab,
+										)?.content ?? []),
+						}),
 				},
 				toParentMessage: toTabsMessage,
 			}),

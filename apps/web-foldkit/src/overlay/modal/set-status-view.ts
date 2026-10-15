@@ -21,12 +21,15 @@ import {
 	Message,
 	type Model,
 	STATUS_PRESETS,
+	expirationItems,
 } from "./set-status-model"
 
 /** The set-status modal's view (legacy `SetStatusModal` markup). */
 
-const toCustomDateMessage = (message: DatePicker.Message): Message => Message.GotCustomDateMessage({ message })
-const toEmojiPickerMessage = (message: EmojiDialog.Message): Message => Message.GotEmojiPickerMessage({ message })
+const toCustomDateMessage = (message: DatePicker.Message): Message =>
+	Message.GotCustomDateMessage({ message })
+const toEmojiPickerMessage = (message: EmojiDialog.Message): Message =>
+	Message.GotEmojiPickerMessage({ message })
 
 /** Legacy `<DatePicker value onChange minValue><DatePickerTrigger /></DatePicker>`. */
 const datePicker = (h: HtmlBuilder<Message>, model: DatePicker.Model): ReadonlyArray<Html> => [
@@ -48,7 +51,10 @@ const customDateTimeRow = (h: HtmlBuilder<Message>, model: Model): Html =>
 				[
 					h.div(
 						[h.Class("flex flex-1 flex-col gap-1")],
-						[label(h, { className: "text-muted-fg text-xs" }, ["Date"]), ...datePicker(h, model.customDate)],
+						[
+							label(h, { className: "text-muted-fg text-xs" }, ["Date"]),
+							...datePicker(h, model.customDate),
+						],
 					),
 					h.div(
 						[h.Class("flex flex-col gap-1")],
@@ -101,7 +107,7 @@ export const view = Submodel.defineView<Model, Message, ModalViewInputs>((model,
 		slotId: `${ID}-expiration-select`,
 		model: model.expiration,
 		view: selectView,
-		viewInputs: {},
+		viewInputs: { items: expirationItems(model) },
 		toParentMessage: toExpirationMessage,
 	})
 	return frameView(
@@ -118,7 +124,11 @@ export const view = Submodel.defineView<Model, Message, ModalViewInputs>((model,
 				[
 					textField(
 						h,
-						{ id: `${ID}-message`, value: model.message, onInput: (value) => Message.ChangedMessage({ value }) },
+						{
+							id: `${ID}-message`,
+							value: model.message,
+							onInput: (value) => Message.ChangedMessage({ value }),
+						},
 						(field) => [
 							field.label(["Status"]),
 							h.div(
@@ -127,16 +137,26 @@ export const view = Submodel.defineView<Model, Message, ModalViewInputs>((model,
 									EmojiDialog.view(h, model.emojiPicker, {
 										toMessage: toEmojiPickerMessage,
 										customEmojis: model.customEmojis,
+										// The popover sits beside its trigger, never inside the <button>.
 										toTrigger: (attributes, overlay) =>
-											button(
-												h,
-												{
-													intent: "outline",
-													size: "md",
-													className: "min-w-12 text-lg",
-													attributes: [h.AriaLabel("Pick an emoji"), ...attributes],
-												},
-												[model.emoji || "😊", overlay],
+											h.div(
+												[h.Class("contents")],
+												[
+													button(
+														h,
+														{
+															intent: "outline",
+															size: "md",
+															className: "min-w-12 text-lg",
+															attributes: [
+																h.AriaLabel("Pick an emoji"),
+																...attributes,
+															],
+														},
+														[model.emoji || "😊"],
+													),
+													overlay,
+												],
 											),
 									}),
 									field.input({
@@ -165,7 +185,8 @@ export const view = Submodel.defineView<Model, Message, ModalViewInputs>((model,
 								{
 									id: `${ID}-pause`,
 									isSelected: model.pauseNotifications,
-									onChange: (isSelected) => Message.ToggledPauseNotifications({ isSelected }),
+									onChange: (isSelected) =>
+										Message.ToggledPauseNotifications({ isSelected }),
 								},
 								"Pause notifications",
 							),
@@ -189,7 +210,11 @@ export const view = Submodel.defineView<Model, Message, ModalViewInputs>((model,
 							? [
 									button(
 										h,
-										{ intent: "danger", onPress: Message.ClickedClear(), isDisabled: model.isSubmitting },
+										{
+											intent: "danger",
+											onPress: Message.ClickedClear(),
+											isDisabled: model.isSubmitting,
+										},
 										["Clear status"],
 									),
 								]
@@ -201,7 +226,11 @@ export const view = Submodel.defineView<Model, Message, ModalViewInputs>((model,
 							button(h, { intent: "outline", onPress: Message.ClickedCancel() }, ["Cancel"]),
 							button(
 								h,
-								{ intent: "primary", onPress: Message.ClickedSave(), isDisabled: isSaveDisabled(model) },
+								{
+									intent: "primary",
+									onPress: Message.ClickedSave(),
+									isDisabled: isSaveDisabled(model),
+								},
 								[model.isSubmitting ? "Saving..." : "Save"],
 							),
 						],

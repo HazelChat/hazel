@@ -15,10 +15,9 @@ import * as Select from "../../ui/select"
 import { closed, completed, ModalOutMessage } from "../out-message"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalSubscriptionInput } from "./contract"
-import { initFrame, isFrameClosed } from "./frame"
+import { initFrame, isCloseRequest } from "./frame"
 import {
 	customDateOf,
-	EXPIRATION_OPTIONS,
 	expirationDate,
 	expirationOf,
 	ID,
@@ -28,7 +27,6 @@ import {
 	nextHourValue,
 	type Presence,
 	todayValue,
-	withExpirationItems,
 } from "./set-status-model"
 import { view } from "./set-status-view"
 import { failureToast, successToast } from "../../data/actions"
@@ -85,7 +83,7 @@ const expirationChanged = (model: Model, result: ReturnType<typeof Select.update
 			})
 		: next
 	return {
-		model: withExpirationItems(withDefaults),
+		model: withDefaults,
 		commands: Command.mapMessages(result.commands, (message) => Message.GotExpirationMessage({ message })),
 	}
 }
@@ -94,7 +92,7 @@ const customDateChanged = (model: Model, message: DatePicker.Message): Return =>
 	if (model.customDate === null) return { model }
 	const result = DatePicker.update(model.customDate, message)
 	return {
-		model: withExpirationItems({ ...model, customDate: result.model }),
+		model: { ...model, customDate: result.model },
 		commands: Command.mapMessages(result.commands ?? [], (child) =>
 			Message.GotCustomDateMessage({ message: child }),
 		),
@@ -125,7 +123,7 @@ const segmentsChanged = (
 	if (current === null) return { model }
 	const result = Segments.update(current, message)
 	return {
-		model: withExpirationItems({ ...model, [field]: result.model }),
+		model: { ...model, [field]: result.model },
 		commands: Command.mapMessages(result.commands, toMessage),
 	}
 }
@@ -141,7 +139,7 @@ const presenceUpdated = (model: Model, presence: Presence | null): Return => ({
 
 const update = (model: Model, message: Message, shared: Shared): Return =>
 	Message.match<Return>(message, {
-		GotFrameMessage: ({ message }) => (isFrameClosed(model.frame, message) ? { model, outMessage: closed } : { model }),
+		GotFrameMessage: ({ message }) => (isCloseRequest(message) ? { model, outMessage: closed } : { model }),
 		GotExpirationMessage: ({ message }) => expirationChanged(model, Select.update(model.expiration, message), shared),
 		GotCustomDateMessage: ({ message }) => customDateChanged(model, message),
 		GotEmojiPickerMessage: ({ message }) => emojiPickerChanged(model, message),
@@ -264,11 +262,7 @@ export const modal = defineModal(
 				emojiPicker: EmojiDialog.init(`${ID}-emoji-picker`),
 				customEmojis: [],
 				message: "",
-				expiration: Select.init({
-					id: `${ID}-expiration-select`,
-					items: EXPIRATION_OPTIONS.map((option) => Select.item(option.id, option.label)),
-					selectedKey: "never",
-				}),
+				expiration: Select.init({ id: `${ID}-expiration-select`, selectedKey: "never" }),
 				customDate: null,
 				customTime: null,
 				pauseNotifications: false,

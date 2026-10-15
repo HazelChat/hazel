@@ -86,7 +86,8 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 									Effect.mapError(
 										(error) =>
 											new UploadError({
-												message: `Failed to generate presigned URL: ${error.message}`,
+												message: "Failed to generate presigned URL",
+												cause: error,
 											}),
 									),
 								)
@@ -161,7 +162,8 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 									Effect.mapError(
 										(error) =>
 											new UploadError({
-												message: `Failed to generate presigned URL: ${error.message}`,
+												message: "Failed to generate presigned URL",
+												cause: error,
 											}),
 									),
 								)
@@ -233,7 +235,8 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 									Effect.mapError(
 										(error) =>
 											new UploadError({
-												message: `Failed to generate presigned URL: ${error.message}`,
+												message: "Failed to generate presigned URL",
+												cause: error,
 											}),
 									),
 								)
@@ -295,7 +298,8 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 									Effect.mapError(
 										(error) =>
 											new UploadError({
-												message: `Failed to generate presigned URL: ${error.message}`,
+												message: "Failed to generate presigned URL",
+												cause: error,
 											}),
 									),
 								)
@@ -358,7 +362,8 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 									Effect.mapError(
 										(error) =>
 											new UploadError({
-												message: `Failed to generate presigned URL: ${error.message}`,
+												message: "Failed to generate presigned URL",
+												cause: error,
 											}),
 									),
 								)

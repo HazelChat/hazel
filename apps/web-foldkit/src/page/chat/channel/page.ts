@@ -1,4 +1,4 @@
-import type { ChannelId, ChannelMemberId, MessageId, UserId } from "@hazel/schema"
+import type { ChannelId, MessageId, UserId } from "@hazel/schema"
 import { Record, Struct } from "effect"
 import { Command } from "foldkit"
 import * as Live from "../../../chat/live-state"
@@ -339,7 +339,7 @@ export const update = (model: Model, message: Message, shared: Shared | null = n
 		GotListMessage: ({ message: listMessage }) =>
 			loadWhenNearEdge(liftList(model, MessageList.update(model.list, listMessage))),
 		GotOverlaysMessage: ({ message: overlaysMessage }) =>
-			liftOverlays(model, Overlays.update(model.overlays, overlaysMessage, factsOf(model))),
+			liftOverlays(model, Overlays.update(model.overlays, overlaysMessage)),
 		// Reported to the root as `RequestedMobileSidebar` by `index.ts`.
 		ClickedMobileMenu: () => ({ model }),
 		GotDraftMessage: ({ message: draftMessage }) => Write.updateDraft(model, "channel", draftMessage, shared),
