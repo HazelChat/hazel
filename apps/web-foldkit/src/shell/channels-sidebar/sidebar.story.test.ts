@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { ChannelId, ChannelMemberId, ChannelSectionId } from "@hazel/schema"
+import { ChannelId, ChannelMemberId, ChannelSectionId } from "@hazel/schema"
 import { Effect } from "effect"
 import { Command, expectNoOutMessage, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
@@ -17,12 +17,13 @@ import {
 } from "../channels-sidebar"
 import { UpdateChannelMember } from "./actions"
 import { PersistDismissedHint } from "./hints"
+import { rowMenuEntries, sectionMenuEntries } from "./menus"
 
 /** The sidebar's menus, hint and action toasts: typed menu identity, outcomes and reasons. */
 
-const channelId = "00000000-0000-4000-8000-000000000001" as ChannelId
-const memberId = "00000000-0000-4000-8000-000000000002" as ChannelMemberId
-const sectionId = "00000000-0000-4000-8000-000000000003" as ChannelSectionId
+const channelId = ChannelId.make("00000000-0000-4000-8000-000000000001")
+const memberId = ChannelMemberId.make("00000000-0000-4000-8000-000000000002")
+const sectionId = ChannelSectionId.make("00000000-0000-4000-8000-000000000003")
 
 const entry = {
 	channel: { id: channelId, name: "general", type: "public", icon: null, sectionId: null },
@@ -42,6 +43,10 @@ const sectionMenu = (state: Model, menuMessage: Menu.Message) =>
 	update(state, Message.GotSectionMenuMessage({ sectionId, message: menuMessage }))
 
 const pressed = Menu.Message.PressedTrigger({ pointerType: "mouse" })
+const rowClicked = (key: string) =>
+	Menu.Message.ClickedItem({ key, entries: rowMenuEntries(loaded.sections, false) })
+const sectionClicked = (key: string) =>
+	Menu.Message.ClickedItem({ key, entries: sectionMenuEntries(["create-channel", "join-channel"], true) })
 
 describe("open menu", () => {
 	test("opening a row menu keeps it as a Row, keyed by channel", () => {
@@ -64,7 +69,7 @@ describe("open menu", () => {
 
 	test("selecting mute closes the menu and mutes the member", () => {
 		const open = rowMenu(loaded, pressed).model
-		const { model: next, commands } = rowMenu(open, Menu.Message.ClickedItem({ key: "mute" }))
+		const { model: next, commands } = rowMenu(open, rowClicked("mute"))
 		expect(next.openMenu).toBeNull()
 		expect(commands?.find((command) => command.name === UpdateChannelMember.name)?.args).toEqual({
 			memberId,
@@ -75,7 +80,7 @@ describe("open menu", () => {
 
 	test("settings navigates to the channel's settings route", () => {
 		const open = rowMenu(loaded, pressed).model
-		const { outMessage } = rowMenu(open, Menu.Message.ClickedItem({ key: "settings" }))
+		const { outMessage } = rowMenu(open, rowClicked("settings"))
 		expect(outMessage).toEqual(
 			PageOutMessage.RequestedNavigation({
 				route: AppRoute.ChannelSettings({ orgSlug: "acme", channelId }),
@@ -86,12 +91,12 @@ describe("open menu", () => {
 
 	test("a section-menu action asks for its modal", () => {
 		const open = sectionMenu(loaded, pressed).model
-		const { outMessage } = sectionMenu(open, Menu.Message.ClickedItem({ key: "join-channel" }))
+		const { outMessage } = sectionMenu(open, sectionClicked("join-channel"))
 		expect(outMessage).toEqual(PageOutMessage.RequestedModal({ modal: { _tag: "JoinChannel" } }))
 	})
 
 	test("OpenMenu is a tagged union", () => {
-		const menu = Menu.init({ id: "x", entries: [] })
+		const menu = Menu.init({ id: "x" })
 		expect(OpenMenu.Section({ sectionKey: "dms", menu })._tag).toBe("Section")
 	})
 })
