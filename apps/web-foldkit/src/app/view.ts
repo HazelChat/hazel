@@ -23,7 +23,7 @@ import { mySettingsSidebar, notificationsSidebar, settingsSidebar } from "../she
 import type * as Menu from "../ui/menu"
 import type * as ModalKit from "../ui/modal"
 import { Message } from "./message"
-import { type Model, resolvedThemeOf, sharedOf } from "./model"
+import { type Model, sharedOf } from "./model"
 
 // Module-level and built as literals: memoized shell views compare them by reference, and
 // wrapper constructors would re-validate large payloads (sidebar rows, message pages) per dispatch.
@@ -43,7 +43,7 @@ const openedMobileSidebar = toShellMessage(Shell.Message.ToggledSidebar({ isOpen
 export const toPageMessage = (message: PageMessage): Message => ({ _tag: "GotPageMessage", message })
 const toToastsMessage = (message: Toasts.Message): Message => ({ _tag: "GotToastsMessage", message })
 const toaster = (h: HtmlBuilder<Message>, model: Model): Html =>
-	Toasts.view(h, model.toasts, resolvedThemeOf(model), toToastsMessage)
+	Toasts.view(h, model.toasts, toToastsMessage)
 const toModalMessage = (message: Modal.Message): Message => ({ _tag: "GotModalMessage", message })
 const toCommandPaletteMessage = (message: CommandPalette.Message): Message => ({
 	_tag: "GotCommandPaletteMessage",

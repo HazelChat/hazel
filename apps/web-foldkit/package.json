@@ -43,7 +43,6 @@
 		"prosemirror-view": "^1.42.6",
 		"remend": "^1.2.2",
 		"rivetkit": "2.1.6",
-		"sonner": "^2.0.7",
 		"tailwind-merge": "^3.5.0",
 		"tailwind-variants": "^3.2.2"
 	},

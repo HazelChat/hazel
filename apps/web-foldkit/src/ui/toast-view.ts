@@ -1,23 +1,15 @@
-import { Array, Option } from "effect"
-import { Submodel } from "foldkit"
+import type { EntryHandlers } from "@foldkit/ui/toast"
+import { Option } from "effect"
 import type { Html, HtmlBuilder } from "foldkit/html"
-import { toastClassName, toasterClassName, toasterStyle } from "~/components/ui/toast.styles"
-import {
-	GAP,
-	type Item,
-	type Kind,
-	MeasureToast,
-	Message,
-	type Model,
-	offsetOf,
-	VISIBLE_TOASTS,
-} from "./toast"
+import { toastStyles } from "~/components/ui/toast.styles"
+import { IconClose } from "../icons"
+import type { Action, Entry, Kind } from "./toast"
 // Pending-button announcements; every root renders the toaster, so they load with it.
 import "./aria/pending-announcement"
 
-/** sonner's Toaster markup (`position="bottom-right"`, `richColors`, the shared className and style). */
+/** One toast's card, drawn inside the kit's entry `<div>`: icon, title, description, action, close. */
 
-// sonner's built-in icons (dist/index.mjs), as React renders them.
+// sonner's built-in icons, which the app's toasts have always shown.
 const iconPaths: Readonly<Record<Exclude<Kind, "loading">, { viewBox: string; d: string }>> = {
 	success: {
 		viewBox: "0 0 20 20",
@@ -37,169 +29,96 @@ const iconPaths: Readonly<Record<Exclude<Kind, "loading">, { viewBox: string; d:
 	},
 }
 
-const icon = (h: HtmlBuilder<Message>, kind: Exclude<Kind, "loading">): Html =>
-	h.svg(
-		[
-			h.Attribute("xmlns", "http://www.w3.org/2000/svg"),
-			h.Attribute("viewBox", iconPaths[kind].viewBox),
-			h.Attribute("fill", "currentColor"),
-			h.Attribute("height", "20"),
-			h.Attribute("width", "20"),
-		],
-		[
-			h.path([
-				h.Attribute("fill-rule", "evenodd"),
-				h.Attribute("d", iconPaths[kind].d),
-				h.Attribute("clip-rule", "evenodd"),
-			]),
-		],
-	)
-
-const loader = (h: HtmlBuilder<Message>, isVisible: boolean): Html =>
-	h.div(
-		[h.Class("sonner-loading-wrapper"), h.DataAttribute("visible", String(isVisible))],
-		[
-			h.div(
-				[h.Class("sonner-spinner")],
-				Array.makeBy(12, () => h.div([h.Class("sonner-loading-bar")])),
-			),
-		],
-	)
-
-/** React writes `className=""` as an empty attribute. */
-const emptyClass = (h: HtmlBuilder<Message>) => h.Attribute("class", "")
-
-const iconSlot = (h: HtmlBuilder<Message>, item: Item): ReadonlyArray<Html> => {
-	if (item.kind === null && !item.isPromise) return []
-	const children = [
-		...(item.isPromise || item.kind === "loading" ? [loader(h, item.kind === "loading")] : []),
-		...(item.kind !== null && item.kind !== "loading" ? [icon(h, item.kind)] : []),
-	]
-	return [h.div([emptyClass(h), h.DataAttribute("icon", "")], children)]
-}
-
-const styleText = (properties: ReadonlyArray<readonly [string, string | number]>) =>
-	properties.map(([name, value]) => `${name}: ${value};`).join(" ")
-
-const toastView = (h: HtmlBuilder<Message>, model: Model, item: Item, index: number): Html => {
-	const flag = (name: string, value: boolean) => h.DataAttribute(name, String(value))
-	return h.li(
-		[
-			h.Key(String(item.id)),
-			h.Tabindex(0),
-			h.Class(toastClassName),
-			h.DataAttribute("sonner-toast", ""),
-			flag("rich-colors", true),
-			flag("styled", true),
-			flag("mounted", item.isMounted),
-			flag("promise", item.isPromise),
-			flag("swiped", false),
-			flag("removed", item.isRemoved),
-			flag("visible", index + 1 <= VISIBLE_TOASTS),
-			h.DataAttribute("y-position", "bottom"),
-			h.DataAttribute("x-position", "right"),
-			h.DataAttribute("index", String(index)),
-			flag("front", index === 0),
-			flag("swiping", false),
-			flag("dismissible", true),
-			...(item.kind === null ? [] : [h.DataAttribute("type", item.kind)]),
-			flag("swipe-out", false),
-			flag("expanded", model.isExpanded),
-			h.Attribute(
-				"style",
-				styleText([
-					["--index", index],
-					["--toasts-before", index],
-					["--z-index", model.toasts.length - index],
-					["--offset", `${offsetOf(model, item)}px`],
-					["--initial-height", `${item.initialHeight}px`],
-				]),
-			),
-			h.OnMount(MeasureToast({ id: item.id })),
-		],
-		[
-			...iconSlot(h, item),
-			h.div(
-				[emptyClass(h), h.DataAttribute("content", "")],
+const kindIcon = <M>(h: HtmlBuilder<M>, kind: Kind, className: string): Html =>
+	kind === "loading"
+		? h.svg(
 				[
-					h.div([emptyClass(h), h.DataAttribute("title", "")], [item.title]),
-					...(item.description === null
-						? []
-						: [h.div([emptyClass(h), h.DataAttribute("description", "")], [item.description])]),
+					h.Attribute("viewBox", "0 0 24 24"),
+					h.Attribute("fill", "none"),
+					h.Attribute("aria-hidden", "true"),
+					h.Attribute("class", className),
+					h.DataAttribute("slot", "icon"),
+				],
+				[
+					h.circle([
+						h.Attribute("cx", "12"),
+						h.Attribute("cy", "12"),
+						h.Attribute("r", "9"),
+						h.Attribute("stroke", "currentColor"),
+						h.Attribute("stroke-opacity", "0.25"),
+						h.Attribute("stroke-width", "3"),
+					]),
+					h.path([
+						h.Attribute("d", "M21 12a9 9 0 0 0-9-9"),
+						h.Attribute("stroke", "currentColor"),
+						h.Attribute("stroke-width", "3"),
+						h.Attribute("stroke-linecap", "round"),
+					]),
+				],
+			)
+		: h.svg(
+				[
+					h.Attribute("viewBox", iconPaths[kind].viewBox),
+					h.Attribute("fill", "currentColor"),
+					h.Attribute("aria-hidden", "true"),
+					h.Attribute("class", className),
+					h.DataAttribute("slot", "icon"),
+				],
+				[
+					h.path([
+						h.Attribute("fill-rule", "evenodd"),
+						h.Attribute("d", iconPaths[kind].d),
+						h.Attribute("clip-rule", "evenodd"),
+					]),
+				],
+			)
+
+/** `onAction` is the Message the action button dispatches; the close button dismisses through the kit. */
+export const entryView = <M>(
+	h: HtmlBuilder<M>,
+	entry: Entry,
+	handlers: EntryHandlers,
+	onAction: (entryId: string, action: Action) => M,
+): Html => {
+	const { kind, title, maybeDescription, maybeAction } = entry.payload
+	const styles = toastStyles({ kind })
+	return h.div(
+		[h.Class(styles.card()), h.DataAttribute("kind", kind)],
+		[
+			kindIcon(h, kind, styles.icon()),
+			h.div(
+				[h.Class(styles.content())],
+				[
+					h.div([h.Class(styles.title()), h.DataAttribute("slot", "title")], [title]),
+					...Option.match(maybeDescription, {
+						onNone: () => [],
+						onSome: (description) => [
+							h.div(
+								[h.Class(styles.description()), h.DataAttribute("slot", "description")],
+								[description],
+							),
+						],
+					}),
 				],
 			),
-			...(item.actionLabel === null
-				? []
-				: [
-						h.button(
-							[
-								emptyClass(h),
-								h.DataAttribute("button", "true"),
-								h.DataAttribute("action", "true"),
-								h.OnClick(Message.ClickedAction({ id: item.id })),
-							],
-							[item.actionLabel],
-						),
-					]),
-		],
-	)
-}
-
-export type ViewInputs = Readonly<{ theme: "light" | "dark" }>
-
-const regionAttributes = <M>(h: HtmlBuilder<M>) => [
-	h.Attribute("aria-label", "Notifications alt+T"),
-	h.Tabindex(-1),
-	h.Attribute("aria-live", "polite"),
-	h.Attribute("aria-relevant", "additions text"),
-	h.Attribute("aria-atomic", "false"),
-]
-
-/** The `<section>` sonner always renders, with the toast list while any toast is queued. */
-export const view = Submodel.defineView<Model, Message, ViewInputs>((model, viewInputs, h) =>
-	h.section(
-		regionAttributes(h),
-		model.toasts.length === 0
-			? []
-			: [
-					h.ol(
-						[
-							h.Attribute("dir", "ltr"),
-							h.Tabindex(-1),
-							h.Class(toasterClassName),
-							h.DataAttribute("sonner-toaster", "true"),
-							h.DataAttribute("sonner-theme", viewInputs.theme),
-							h.DataAttribute("y-position", "bottom"),
-							h.DataAttribute("x-position", "right"),
-							h.Attribute(
-								"style",
-								styleText([
-									[
-										"--front-toast-height",
-										`${Option.getOrElse(
-											Option.map(Array.head(model.heights), (height) => height.height),
-											() => 0,
-										)}px`,
-									],
-									["--width", "356px"],
-									["--gap", `${GAP}px`],
-									...Object.entries(toasterStyle),
-									...(["top", "right", "bottom", "left"] as const).map(
-										(side) => [`--offset-${side}`, "24px"] as const,
-									),
-									...(["top", "right", "bottom", "left"] as const).map(
-										(side) => [`--mobile-offset-${side}`, "16px"] as const,
-									),
-								]),
-							),
-							h.OnMouseEnter(Message.HoveredToaster()),
-							...(model.isExpanded ? [] : [h.OnMouseMove(Message.HoveredToaster())]),
-							h.OnMouseLeave(Message.LeftToaster()),
-							h.OnPointerDown(() => Option.some(Message.PressedToaster())),
-							h.OnPointerUp(() => Option.some(Message.ReleasedToaster())),
-						],
-						Array.map(model.toasts, (item, index) => toastView(h, model, item, index)),
+			...Option.match(maybeAction, {
+				onNone: () => [],
+				onSome: (action) => [
+					h.button(
+						[h.Type("button"), h.Class(styles.action()), h.OnClick(onAction(entry.id, action))],
+						[action.label],
 					),
 				],
-	),
-)
+			}),
+			h.button(
+				[
+					...handlers.dismiss,
+					h.Type("button"),
+					h.AriaLabel("Dismiss notification"),
+					h.Class(styles.close()),
+				],
+				[IconClose(h, { className: "size-3.5" })],
+			),
+		],
+	)
+}

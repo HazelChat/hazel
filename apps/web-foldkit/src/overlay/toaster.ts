@@ -1,107 +1,93 @@
-import { Schema } from "effect"
-import type { Update } from "foldkit"
+import { Option, Schema } from "effect"
+import { Command, Subscription, type Update } from "foldkit"
 import type { Html, HtmlBuilder } from "foldkit/html"
-import { modifyFields } from "foldkit/struct"
+import { defineMessageUnion } from "foldkit/message"
+import { toastEntryClassName } from "~/components/ui/toast.styles"
 import * as Toast from "../ui/toast"
 import * as ToastView from "../ui/toast-view"
+import { ToastAction, ToastRequest } from "./toasts"
 
 /**
- * The root's toaster (legacy sonner `<Toaster>`): every page, modal and palette toast lands here
- * through `push`. Sonner ids are strings; the kit's are numbers, so the slot keeps the mapping.
+ * The root's toaster: every page, modal and palette toast lands here through `push`. The stack is
+ * the `@foldkit/ui` Toast, pinned bottom-right; an action button reports its `ToastAction` from
+ * `update` for the root to carry out.
  */
-
-import { ToastAction, ToastRequest } from "./toasts"
 
 export { ToastRequest }
 
-export const Model = Schema.Struct({
-	toaster: Toast.Model,
-	/** Sonner id → the kit's numeric id of the toast it last showed. */
-	idsByKey: Schema.Record(Schema.String, Schema.Number),
-	/** The kit's numeric id → the action its button reports. */
-	actionsById: Schema.Record(Schema.String, ToastAction),
+export const Model = Toast.Toast.Model
+export type Model = Toast.Model
+
+export const Message = defineMessageUnion({
+	GotToastMessage: { message: Toast.Message },
+	ClickedAction: { entryId: Schema.String, action: ToastAction },
 })
-export type Model = typeof Model.Type
+export type Message = typeof Message.Type
 
-export const Message = Toast.Message
-export type Message = Toast.Message
-
-export const init = (): Model => ({ toaster: Toast.init(), idsByKey: {}, actionsById: {} })
+export const init = (): Model => Toast.init()
 
 type Return = Update.Return<Model, Message>
-type ReturnWithAction = Update.Return<Model, Message> & { readonly action?: ToastAction }
+type ReturnWithAction = Return & { readonly action?: ToastAction }
+
+/** The kit's `DismissedToast` OutMessage is dropped: nothing waits for a toast to leave. */
+const lift = (result: {
+	readonly model: Model
+	readonly commands?: Update.Return<Model, Toast.Message>["commands"]
+}): Return => ({
+	model: result.model,
+	commands: Command.mapMessages(result.commands ?? [], (message) => Message.GotToastMessage({ message })),
+})
 
 // UPDATE
 
 /** `toast.success(title, { id, description })` and friends; a known `id` updates that toast in place. */
-export const push = (model: Model, request: ToastRequest): Return => {
-	const previousId = request.id === undefined ? undefined : model.idsByKey[request.id]
-	const known = model.toaster.toasts.some((toast) => toast.id === previousId && !toast.isRemoved)
-		? previousId
-		: undefined
-	const { kind, title, description } = Toast.fromIntentRequest(request)
-	const extras = {
-		actionLabel: request.action?.label ?? null,
-		duration: request.isSticky ? Number.POSITIVE_INFINITY : 4000,
-	}
-	const shown =
-		known === undefined
-			? Toast.show(model.toaster, {
-					kind,
-					title,
-					...(description === undefined ? {} : { description }),
-					...extras,
-				})
-			: Toast.show(model.toaster, {
-					id: known,
-					kind,
-					title,
-					...(description === undefined ? {} : { description }),
-					...extras,
-				})
-	return {
-		model: modifyFields(model, {
-			toaster: () => shown.model,
-			idsByKey: (ids) => (request.id === undefined ? ids : { ...ids, [request.id]: shown.id }),
-			actionsById: (actions) =>
-				request.action === undefined
-					? Object.fromEntries(Object.entries(actions).filter(([id]) => id !== String(shown.id)))
-					: { ...actions, [String(shown.id)]: request.action.key },
-		}),
-		commands: shown.commands ?? [],
-	}
-}
+export const push = (model: Model, request: ToastRequest): Return =>
+	lift(
+		Toast.show(
+			model,
+			{
+				kind: request.intent,
+				title: request.title,
+				maybeDescription: Option.fromNullishOr(request.description),
+				maybeAction: Option.fromUndefinedOr(request.action),
+				maybeKey: Option.fromUndefinedOr(request.id),
+			},
+			request.isSticky === true,
+		),
+	)
 
-/** The kit's `ClickedAction` becomes the toast's `action`, for the root to carry out. */
-export const update = (model: Model, message: Message): ReturnWithAction => {
-	const result = Toast.update(model.toaster, message)
-	const next = {
-		model: modifyFields(model, { toaster: () => result.model }),
-		commands: result.commands ?? [],
-	}
-	const clicked = result.outMessage
-	if (clicked === undefined || clicked._tag !== "ClickedAction") return next
-	const action = model.actionsById[String(clicked.id)]
-	return action === undefined ? next : { ...next, action }
-}
+/** Clicking a toast's action dismisses it and hands its `action` to the root. */
+export const update = (model: Model, message: Message): ReturnWithAction =>
+	Message.match<ReturnWithAction>(message, {
+		GotToastMessage: ({ message: toastMessage }) => lift(Toast.update(model, toastMessage)),
+		ClickedAction: ({ entryId, action }) => ({ ...lift(Toast.dismiss(model, entryId)), action }),
+	})
 
 // SUBSCRIPTION
 
-export const subscriptions = Toast.subscriptions
+export const subscriptions = Subscription.lift(Toast.subscriptions)<Model, Message>({
+	read: (model) => Option.some(model),
+	toParentMessage: (message) => Message.GotToastMessage({ message }),
+})
 
 // VIEW
 
-/** Sonner's toaster section, the first child of `#app` where legacy renders `<Toaster>`. */
 export const view = <ParentMessage>(
 	h: HtmlBuilder<ParentMessage>,
 	model: Model,
-	theme: ToastView.ViewInputs["theme"],
 	toParentMessage: (message: Message) => ParentMessage,
 ): Html =>
 	h.submodel({
-		slotId: "toaster",
-		model: model.toaster,
-		view: ToastView.view,
-		viewInputs: { theme },
-		toParentMessage,
+		slotId: model.id,
+		model,
+		view: Toast.Toast.view,
+		viewInputs: {
+			position: "BottomRight",
+			entryClassName: toastEntryClassName,
+			entryToView: (entry, handlers) =>
+				ToastView.entryView(h, entry, handlers, (entryId, action) =>
+					toParentMessage(Message.ClickedAction({ entryId, action: action.key })),
+				),
+		},
+		toParentMessage: (message) => toParentMessage(Message.GotToastMessage({ message })),
 	})

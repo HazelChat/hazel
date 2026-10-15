@@ -5,10 +5,10 @@ import * as CreateSection from "../overlay/modal/create-section"
 import { orgSwitcherEntries } from "../shell/menus"
 import * as Shell from "../shell/model"
 import { after, hazelOrg, rootScene, signedIn } from "../test/root-fixtures"
+import { drainToast } from "../test/toast-fixtures"
 import * as Menu from "../ui/menu"
 import { FocusTriggerOnPress } from "../ui/menu-view"
 import * as Modal from "../ui/modal"
-import * as Toast from "../ui/toast"
 import { Message } from "./message"
 
 /** The root modal slot: a modal opened by the shell, its result toast, and closing (legacy `useModal`). */
@@ -36,7 +36,7 @@ const dialog = role("dialog", { name: "Create a new Section" })
 const mounted = [
 	Mount.resolve(FocusTriggerOnPress, Menu.Message.CompletedFocusTriggerOnPress()),
 	Mount.resolve(FocusTriggerOnPress, Menu.Message.CompletedFocusTriggerOnPress()),
-	Mount.resolve(Modal.PortalModal, Modal.Message.CompletedPortalModal()),
+	Mount.resolve(Modal.AcquireResources, Modal.Message.SucceededAcquireResources()),
 ] as const
 
 describe("modal host", () => {
@@ -58,13 +58,9 @@ describe("modal host", () => {
 			sceneExpect(role("button", { name: "Creating..." })).toBeDisabled(),
 			Command.resolve(CreateSection.CreateSection, CreateSection.Message.SucceededCreateSection()),
 			sceneExpect(dialog).toBeAbsent(),
-			Mount.expectEnded(Modal.PortalModal),
+			Mount.expectEnded(Modal.AcquireResources),
 			sceneExpect(text("Section created successfully")).toExist(),
-			Mount.resolve(Toast.MeasureToast, Toast.Message.MeasuredToast({ id: 1, height: 52 })),
-			Command.resolve(Toast.StartToastTimer, Toast.Message.StartedTimer({ id: 1, version: 1, at: 0 })),
-			Command.resolve(Toast.WaitForToastLifetime, Toast.Message.CompletedWaitForLifetime({ id: 1, version: 1 })),
-			Command.resolve(Toast.WaitForToastRemoval, Toast.Message.CompletedWaitForRemoval({ id: 1 })),
-			Mount.expectEnded(Toast.MeasureToast),
+			...drainToast(),
 		)
 	})
 
@@ -80,11 +76,7 @@ describe("modal host", () => {
 			sceneExpect(dialog).toExist(),
 			sceneExpect(role("button", { name: "Create section" })).toBeEnabled(),
 			sceneExpect(text("Could not create the section")).toExist(),
-			Mount.resolve(Toast.MeasureToast, Toast.Message.MeasuredToast({ id: 1, height: 52 })),
-			Command.resolve(Toast.StartToastTimer, Toast.Message.StartedTimer({ id: 1, version: 1, at: 0 })),
-			Command.resolve(Toast.WaitForToastLifetime, Toast.Message.CompletedWaitForLifetime({ id: 1, version: 1 })),
-			Command.resolve(Toast.WaitForToastRemoval, Toast.Message.CompletedWaitForRemoval({ id: 1 })),
-			Mount.expectEnded(Toast.MeasureToast),
+			...drainToast(),
 		)
 	})
 
@@ -95,7 +87,7 @@ describe("modal host", () => {
 			...mounted,
 			click(role("button", { name: "Cancel" })),
 			sceneExpect(dialog).toBeAbsent(),
-			Mount.expectEnded(Modal.PortalModal),
+			Mount.expectEnded(Modal.AcquireResources),
 			Command.expectNone(),
 		)
 	})

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
+import { Option } from "effect"
 import { describe, expect, test } from "vitest"
 import { update } from "../main"
+import * as Toaster from "../overlay/toaster"
 import * as Updates from "../platform/updates"
 import { signedIn } from "../test/root-fixtures"
-import * as Toast from "../ui/toast"
 import { Message } from "./message"
 
 /** The desktop app's update toast and menu, through the root. */
@@ -15,16 +16,23 @@ const found = Message.GotUpdatesMessage({
 describe("desktop updates", () => {
 	test("an available update shows a sticky toast whose button installs it", () => {
 		const available = update(signedIn("/hazel/chat"), found).model
-		const toast = available.toasts.toaster.toasts.find(
-			(item) => item.title === "Update available: v1.2.0",
+		const toast = available.toasts.entries.find(
+			(entry) => entry.payload.title === "Update available: v1.2.0",
 		)
-		expect(toast).toMatchObject({ actionLabel: "Install & Restart", duration: null })
+		expect(toast?.payload.maybeAction).toEqual(
+			Option.some({ label: "Install & Restart", key: "InstallUpdate" }),
+		)
+		expect(toast?.maybeDuration).toEqual(Option.none())
 
 		const clicked = update(
 			available,
-			Message.GotToastsMessage({ message: Toast.Message.ClickedAction({ id: toast!.id }) }),
+			Message.GotToastsMessage({
+				message: Toaster.Message.ClickedAction({ entryId: toast!.id, action: "InstallUpdate" }),
+			}),
 		)
 		expect(clicked.model.desktopUpdate._tag).toBe("Downloading")
+		// The clicked toast leaves; the download progress shows as a new loading toast.
+		expect(clicked.model.toasts.entries.map((entry) => entry.payload.kind)).toEqual(["info", "loading"])
 	})
 
 	test("the menu's Check for Updates starts a check", () => {

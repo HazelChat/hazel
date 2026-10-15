@@ -23,12 +23,12 @@ import * as CommandPalette from "../overlay/command-palette"
 import { CreateChannel, FocusInput } from "../overlay/command-palette/commands"
 import * as Shell from "../shell/model"
 import { ada, hazelOrg, rootScene, signedIn } from "../test/root-fixtures"
+import { drainToast } from "../test/toast-fixtures"
 import * as CommandMenu from "../ui/command-menu"
 import { PortalCommandMenu } from "../ui/command-menu-view"
 import * as Menu from "../ui/menu"
 import { FocusTriggerOnPress } from "../ui/menu-view"
 import * as Modal from "../ui/modal"
-import * as Toast from "../ui/toast"
 import { NavigateInternal } from "./command"
 import { Message } from "./message"
 
@@ -73,7 +73,7 @@ describe("mobile", () => {
 			sceneExpect(role("dialog", { name: "Sidebar" })).toBeAbsent(),
 			click(role("button", { name: /Menu/ })),
 			sceneExpect(role("dialog", { name: "Sidebar" })).toExist(),
-			Mount.resolve(Modal.PortalModal, Modal.Message.CompletedPortalModal()),
+			Mount.resolve(Modal.AcquireResources, Modal.Message.SucceededAcquireResources()),
 			...menusMounted,
 			sceneExpect(within(role("dialog", { name: "Sidebar" }), navItem("Settings"))).toExist(),
 		)
@@ -125,23 +125,14 @@ describe("command palette", () => {
 				}),
 			),
 			Command.resolve(CreateChannel, CommandPalette.Message.SucceededCreateChannel({ channelId })),
-			Command.expectExact(
-				NavigateInternal({ url: `/hazel/chat/${channelId}` }),
-				Toast.StartToastTimer({ id: 1, version: 1 }),
-			),
-			Command.resolveAll(
-				[NavigateInternal, Message.CompletedNavigateInternal()],
-				[Toast.StartToastTimer, Toast.Message.StartedTimer({ id: 1, version: 1, at: 0 })],
-			),
+			Command.expectHas(NavigateInternal({ url: `/hazel/chat/${channelId}` })),
+			Command.resolve(NavigateInternal, Message.CompletedNavigateInternal()),
 			sceneExpect(palette).toBeAbsent(),
 			Mount.expectEnded(PortalCommandMenu),
 			sceneExpect(text("Channel created successfully")).toExist(),
-			Mount.resolve(Toast.MeasureToast, Toast.Message.MeasuredToast({ id: 1, height: 52 })),
-			// The toast's lifetime runs out (sonner's 4s), then it is removed after its exit animation.
-			Command.resolve(Toast.WaitForToastLifetime, Toast.Message.CompletedWaitForLifetime({ id: 1, version: 1 })),
-			Command.resolve(Toast.WaitForToastRemoval, Toast.Message.CompletedWaitForRemoval({ id: 1 })),
+			// The toast enters, its 4s lifetime runs out, then it is removed after its exit animation.
+			...drainToast(),
 			sceneExpect(text("Channel created successfully")).toBeAbsent(),
-			Mount.expectEnded(Toast.MeasureToast),
 		)
 	})
 })

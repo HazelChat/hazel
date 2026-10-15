@@ -224,7 +224,7 @@ const desktopMenuSubscriptions = Subscription.make<Model, Message>()(() => ({
 }))
 
 const toastSubscriptions = Subscription.lift(Toasts.subscriptions)<Model, Message>({
-	read: (model) => Option.some(model.toasts.toaster),
+	read: (model) => Option.some(model.toasts),
 	toParentMessage: (message): Message => ({ _tag: "GotToastsMessage", message }),
 })
 
