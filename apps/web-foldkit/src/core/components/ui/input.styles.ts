@@ -4,10 +4,10 @@ export const inputStyles = [
 	"text-base/6 text-fg placeholder:text-muted-fg sm:text-sm/6",
 	"border border-input enabled:hover:border-muted-fg/30",
 	"outline-hidden focus:border-ring/70 focus:ring-3 focus:ring-ring/20 focus:enabled:hover:border-ring/80",
-	"invalid:border-danger-subtle-fg/70 focus:invalid:border-danger-subtle-fg/70 focus:invalid:ring-danger-subtle-fg/20 invalid:enabled:hover:border-danger-subtle-fg/80 focus:invalid:enabled:hover:border-danger-subtle-fg/80",
+	"data-invalid:border-danger-subtle-fg/70 focus:data-invalid:border-danger-subtle-fg/70 focus:data-invalid:ring-danger-subtle-fg/20 data-invalid:enabled:hover:border-danger-subtle-fg/80 focus:data-invalid:enabled:hover:border-danger-subtle-fg/80",
 	"[&::-ms-reveal]:hidden [&::-webkit-search-cancel-button]:hidden",
-	"disabled:bg-muted forced-colors:in-disabled:text-[GrayText]",
-	"in-disabled:bg-muted forced-colors:in-disabled:text-[GrayText]",
+	"data-disabled:bg-muted forced-colors:in-data-disabled:text-[GrayText]",
+	"in-data-disabled:bg-muted forced-colors:in-data-disabled:text-[GrayText]",
 	"dark:scheme-dark",
 ] satisfies string[]
 

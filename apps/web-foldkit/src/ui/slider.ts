@@ -279,7 +279,6 @@ export const slider = <ParentMessage>(
 		return h.div(
 			[
 				h.Class(twMerge(twMerge(sliderThumbStyles))),
-				h.DataAttribute("rac", ""),
 				h.Attribute(
 					"style",
 					`position: absolute; ${position} transform: translate(-50%, -50%); touch-action: none;`,
@@ -351,7 +350,6 @@ export const slider = <ParentMessage>(
 				[
 					h.Class(twMerge(twMerge(sliderOutputStyles), outputOptions.className)),
 					h.AriaLive("off"),
-					h.DataAttribute("rac", ""),
 					orientationAttribute,
 					...disabledAttributes,
 					h.For(model.values.map((_, index) => thumbId(index)).join(" ")),
@@ -366,7 +364,6 @@ export const slider = <ParentMessage>(
 				[
 					h.Id(ids.track),
 					h.Class(twMerge(twMerge(...sliderTrackStyles))),
-					h.DataAttribute("rac", ""),
 					orientationAttribute,
 					...disabledAttributes,
 					h.Attribute("style", "position: relative; touch-action: none;"),
@@ -435,7 +432,6 @@ export const slider = <ParentMessage>(
 	return h.div(
 		[
 			h.Class(twMerge(twMerge(...sliderStyles), options.className)),
-			h.DataAttribute("rac", ""),
 			h.DataAttribute("slot", "control"),
 			orientationAttribute,
 			h.Role("group"),

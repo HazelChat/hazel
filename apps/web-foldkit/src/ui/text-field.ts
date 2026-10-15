@@ -84,7 +84,6 @@ export const textField = <Message>(
 	return h.div(
 		[
 			h.Class(twMerge(twMerge(fieldStyles()), options.className)),
-			h.DataAttribute("rac", ""),
 			h.DataAttribute("slot", "control"),
 			...(isInvalid ? [h.DataAttribute("invalid", "true")] : []),
 			...(isDisabled ? [h.DataAttribute("disabled", "true")] : []),

@@ -96,7 +96,6 @@ export const view = defineView<Model, Message, ViewInputs>((model, viewInputs, h
 			h.AriaLabel(model.label),
 			h.AriaOrientation(model.orientation),
 			h.Attribute("data-orientation", model.orientation),
-			h.Attribute("data-rac", ""),
 			h.OnKeyDownPreventDefault(navigate),
 		],
 		[...(typeof viewInputs.content === "function" ? viewInputs.content() : viewInputs.content)],

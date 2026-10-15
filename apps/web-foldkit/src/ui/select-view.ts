@@ -144,7 +144,6 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 			...flag("data-disabled", model.isDisabled),
 			...flag("data-focused", isOpen || model.isTriggerFocused),
 			...flag("data-open", isOpen),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-slot", "control"),
 			...(viewInputs.style === undefined ? [] : [h.Attribute("style", viewInputs.style)]),
 		],
@@ -218,7 +217,6 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 													[
 														h.Class(selectValueClassName),
 														h.Attribute("data-placeholder", "true"),
-														h.Attribute("data-rac", ""),
 														h.Attribute("data-slot", "select-value"),
 														h.Id(valueId(model.id)),
 													],
@@ -228,7 +226,6 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 												h.span(
 													[
 														h.Class(selectValueClassName),
-														h.Attribute("data-rac", ""),
 														h.Attribute("data-slot", "select-value"),
 														h.Id(valueId(model.id)),
 													],
@@ -332,7 +329,6 @@ const selectPopover = (model: Model, open: Open, viewInputs: ViewInputs, h: Html
 								),
 							),
 							h.Attribute("data-popover", ""),
-							h.Attribute("data-rac", ""),
 							h.Attribute("data-select-popover", model.id),
 							h.Attribute("data-trigger", "Select"),
 							h.Attribute("dir", "ltr"),
@@ -383,7 +379,6 @@ const listbox = (model: Model, open: Open, viewInputs: ViewInputs, h: HtmlBuilde
 			h.Class(twMerge(twMerge(selectListBoxBase), viewInputs.listBoxClassName)),
 			h.Attribute("data-layout", "stack"),
 			h.Attribute("data-orientation", "vertical"),
-			h.Attribute("data-rac", ""),
 			h.Id(listboxId(model.id)),
 			h.Role("listbox"),
 			h.Attribute("tabindex", Option.isSome(open.focusedKey) ? "-1" : "0"),
@@ -417,7 +412,6 @@ const option = (
 			...flag("data-focused", isFocused),
 			...flag("data-hovered", isHovered),
 			h.Attribute("data-key", key),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-react-aria-pressable", "true"),
 			...flag("data-selected", isSelected),
 			h.Attribute("data-selection-mode", "single"),

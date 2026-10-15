@@ -152,7 +152,6 @@ const cell = (h: HtmlBuilder<Message>, model: Model, date: D.CalendarDate): Html
 					...flag("data-disabled", isDisabled),
 					...flag("data-outside-month", isOutside),
 					...flag("data-outside-visible-range", isOutside),
-					h.Attribute("data-rac", ""),
 					h.Attribute("data-react-aria-pressable", "true"),
 					...flag("data-selected", isSelected),
 					...flag("data-today", isToday),
@@ -177,7 +176,6 @@ const grid = (h: HtmlBuilder<Message>, model: Model, label: string): Html =>
 		[
 			h.AriaLabel(label),
 			h.Attribute("cellpadding", "0"),
-			h.Class("react-aria-CalendarGrid"),
 			h.Id(gridId(model.id)),
 			h.Role("grid"),
 			h.OnKeyDownPreventDefault((key) =>
@@ -186,7 +184,7 @@ const grid = (h: HtmlBuilder<Message>, model: Model, label: string): Html =>
 		],
 		[
 			h.thead(
-				[h.AriaHidden(true), h.Class("react-aria-CalendarGridHeader")],
+				[h.AriaHidden(true)],
 				[
 					h.tr(
 						[],
@@ -197,7 +195,7 @@ const grid = (h: HtmlBuilder<Message>, model: Model, label: string): Html =>
 				],
 			),
 			h.tbody(
-				[h.Class("react-aria-CalendarGridBody")],
+				[],
 				Array.map(D.monthWeeks(model.focusedDate), (week) =>
 					h.tr(
 						[],
@@ -214,8 +212,6 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 	return h.div(
 		[
 			h.AriaLabel(label),
-			h.Class("react-aria-Calendar"),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-slot", "calendar"),
 			h.Id(model.id),
 			h.Role("application"),

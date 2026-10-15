@@ -82,7 +82,6 @@ const overlay = (h: HtmlBuilder<Message>, model: Model): Html =>
 						[
 							h.Class(twMerge(twMerge(...popoverContentBase), datePickerOverlayClassName(1))),
 							h.Attribute("data-popover", ""),
-							h.Attribute("data-rac", ""),
 							h.Attribute("data-trigger", "DatePicker"),
 							h.Attribute("dir", "ltr"),
 							h.Id(popoverId(model.id)),
@@ -146,7 +145,6 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 			h.AriaLabel("Calendar"),
 			h.AriaLabelledBy(`${triggerId(model.id)} ${nameRef}`),
 			h.Class(datePickerTriggerClassName),
-			h.DataAttribute("rac", ""),
 			h.DataAttribute("react-aria-pressable", "true"),
 			h.DataAttribute("slot", "date-picker-trigger"),
 			h.Id(triggerId(model.id)),
@@ -181,7 +179,6 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 					h.div(
 						[
 							h.Class(twMerge(twMerge(...dateInputStyles), undefined)),
-							h.DataAttribute("rac", ""),
 							h.DataAttribute("react-aria-pressable", "true"),
 							h.Id(`${model.id}-input`),
 							h.Role("presentation"),
@@ -198,7 +195,6 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 					),
 					h.input([
 						h.Attribute("class", ""),
-						h.DataAttribute("rac", ""),
 						h.Hidden(true),
 						h.Attribute("style", ""),
 						h.Type("text"),
@@ -216,7 +212,6 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 			h.Class(twMerge(twMerge(fieldStyles()), viewInputs.className)),
 			...(model.isOpen ? [h.DataAttribute("open", "true")] : []),
 			...(rootState.isFocusWithin ? [h.DataAttribute("focus-within", "true")] : []),
-			h.DataAttribute("rac", ""),
 			h.DataAttribute("slot", "control"),
 			...Interaction.handlers(h, wiring, rootTarget, {
 				isWithin: true,

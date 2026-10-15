@@ -29,7 +29,6 @@ export const progressBar = <Message>(
 			h.AriaValuemax(100),
 			h.AriaValuemin(0),
 			h.Class(twMerge(twMerge(...progressBarStyles.root), options.className)),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-slot", "control"),
 			h.Role("progressbar"),
 		],

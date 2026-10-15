@@ -142,7 +142,7 @@ const ImageViewerPortal = Mount.defineStream("ImageViewerPortal", {
 
 const toolbarButton = <M>(h: HtmlBuilder<M>, onPress: M | undefined, icon: Html): Html =>
 	// `TooltipTrigger` is a bare React Aria Button wrapping the action Button; the tooltip shows on hover only.
-	ariaButton(h, { className: "react-aria-Button" }, [
+	ariaButton(h, {}, [
 		button(
 			h,
 			{

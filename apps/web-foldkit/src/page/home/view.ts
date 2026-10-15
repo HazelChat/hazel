@@ -58,7 +58,7 @@ const memberMenuTrigger =
 					menuTriggerClassName(
 						cn(
 							"inline-flex size-8 items-center justify-center rounded-lg border border-transparent hover:border-border hover:bg-secondary",
-							"pressed:bg-secondary group-hover:border-border",
+							"data-pressed:bg-secondary group-hover:border-border",
 						),
 					),
 				),
@@ -165,7 +165,7 @@ const memberRow = (
 										name: fullName,
 									}),
 									className:
-										"hidden border-transparent pressed:bg-muted group-hover:border-border sm:inline-flex",
+										"hidden border-transparent data-pressed:bg-muted group-hover:border-border sm:inline-flex",
 								},
 								[IconMsgs(h, { attributes: { "data-slot": "icon" } })],
 							),

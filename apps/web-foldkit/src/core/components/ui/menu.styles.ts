@@ -15,9 +15,9 @@ export const menuPopoverBase = "min-w-32"
 
 /** Extra item classes while an item's submenu is open, per intent. */
 export const menuItemSubmenuOpen = {
-	danger: "open:bg-danger-subtle open:text-danger-subtle-fg",
-	warning: "open:bg-warning-subtle open:text-warning-subtle-fg",
-	none: "open:bg-accent open:text-accent-fg open:*:data-[slot=icon]:text-accent-fg open:*:[.text-muted-fg]:text-accent-fg",
+	danger: "data-open:bg-danger-subtle data-open:text-danger-subtle-fg",
+	warning: "data-open:bg-warning-subtle data-open:text-warning-subtle-fg",
+	none: "data-open:bg-accent data-open:text-accent-fg data-open:*:data-[slot=icon]:text-accent-fg data-open:*:[.text-muted-fg]:text-accent-fg",
 } as const
 
 export const menuChevronClassName = "absolute right-2 size-3.5"

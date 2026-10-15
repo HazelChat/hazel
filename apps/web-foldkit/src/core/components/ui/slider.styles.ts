@@ -3,9 +3,9 @@ export const sliderGroupStyles = "flex items-center gap-x-3 *:data-[slot=icon]:s
 
 /** Slider root: `cx(...sliderStyles, className)`. */
 export const sliderStyles = [
-	"group relative flex touch-none select-none flex-col disabled:opacity-50",
-	"orientation-horizontal:w-full orientation-horizontal:min-w-fit orientation-horizontal:gap-y-2",
-	"orientation-vertical:h-full orientation-vertical:min-h-fit orientation-vertical:w-1.5 orientation-vertical:items-center orientation-vertical:gap-y-2",
+	"group relative flex touch-none select-none flex-col data-disabled:opacity-50",
+	"data-[orientation=horizontal]:w-full data-[orientation=horizontal]:min-w-fit data-[orientation=horizontal]:gap-y-2",
+	"data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-fit data-[orientation=vertical]:w-1.5 data-[orientation=vertical]:items-center data-[orientation=vertical]:gap-y-2",
 ]
 
 export const sliderOutputStyles = "font-medium text-base/6 sm:text-sm/6"
@@ -17,12 +17,12 @@ export const sliderThumbStyles =
 export const sliderTrackStyles = [
 	"bg-(--slider-track-bg,var(--color-secondary))",
 	"group/track relative cursor-default rounded-full",
-	"grow group-orientation-horizontal:h-1.5 group-orientation-horizontal:w-full group-orientation-vertical:w-1.5 group-orientation-vertical:flex-1",
-	"disabled:cursor-default disabled:opacity-60",
+	"grow group-data-[orientation=horizontal]:h-1.5 group-data-[orientation=horizontal]:w-full group-data-[orientation=vertical]:w-1.5 group-data-[orientation=vertical]:flex-1",
+	"data-disabled:cursor-default data-disabled:opacity-60",
 ]
 
 export const sliderFillStyles =
-	"group-orientation-horizontal/top-0 pointer-events-none absolute rounded-full bg-primary group-disabled/track:opacity-60 group-orientation-vertical/track:bottom-0 group-orientation-horizontal/track:h-full group-orientation-vertical/track:w-full"
+	"group-orientation-horizontal/top-0 pointer-events-none absolute rounded-full bg-primary group-data-disabled/track:opacity-60 group-data-[orientation=vertical]/track:bottom-0 group-data-[orientation=horizontal]/track:h-full group-data-[orientation=vertical]/track:w-full"
 
 /** SliderFill's inline style for one thumb (a width) or a range (offset plus width). */
 export const sliderFillStyle = (

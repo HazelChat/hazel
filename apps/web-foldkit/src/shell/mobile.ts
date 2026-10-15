@@ -136,7 +136,7 @@ export const mobileSidebarSheet = <Message>(
 			restoresFocusToPrevious: true,
 			overlayAttributes: { "data-slot": "sidebar", "data-intent": "default" },
 			className:
-				"w-(--sidebar-width) entering:blur-in exiting:blur-out [--sidebar-width:18rem] has-data-[slot=calendar]:[--sidebar-width:23rem]",
+				"w-(--sidebar-width) data-entering:blur-in data-exiting:blur-out [--sidebar-width:18rem] has-data-[slot=calendar]:[--sidebar-width:23rem]",
 		},
 		toParentMessage: options.toMessage,
 	})

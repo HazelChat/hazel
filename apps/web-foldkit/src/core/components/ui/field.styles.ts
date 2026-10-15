@@ -2,17 +2,17 @@ import { tv } from "tailwind-variants"
 
 /** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const labelStyles = tv({
-	base: "select-none text-base/6 text-fg in-disabled:opacity-50 group-disabled:opacity-50 sm:text-sm/6",
+	base: "select-none text-base/6 text-fg in-data-disabled:opacity-50 group-data-disabled:opacity-50 sm:text-sm/6",
 })
 
 export const descriptionStyles = tv({
-	base: "block text-muted-fg text-sm/6 in-disabled:opacity-50 group-disabled:opacity-50",
+	base: "block text-muted-fg text-sm/6 in-data-disabled:opacity-50 group-data-disabled:opacity-50",
 })
 
 export const fieldErrorStyles = tv({
 	base: [
 		"block text-danger-subtle-fg text-sm/6",
-		"in-disabled:opacity-50 group-disabled:opacity-50 forced-colors:text-[Mark]",
+		"in-data-disabled:opacity-50 group-data-disabled:opacity-50 forced-colors:text-[Mark]",
 		"animate-[field-error-enter_0.2s_ease-out]",
 	],
 })

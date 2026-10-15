@@ -59,7 +59,6 @@ export const fieldError = <Message>(
 	h.span(
 		[
 			h.Class(twMerge(twMerge(fieldErrorStyles()), options.className)),
-			h.DataAttribute("rac", ""),
 			h.Attribute("slot", "errorMessage"),
 			...(options.id === undefined ? [] : [h.Id(options.id)]),
 			...(options.attributes ?? []),

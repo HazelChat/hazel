@@ -317,7 +317,6 @@ const overlay = (model: Model, open: Open, viewInputs: ViewInputs, h: HtmlBuilde
 						[
 							...(isAtPointer ? [] : [h.Attribute("aria-labelledby", triggerId(model.id))]),
 							h.Class(popoverClassName(viewInputs.popoverClassName)),
-							h.Attribute("data-rac", ""),
 							...(isAtPointer ? [] : [h.Attribute("data-trigger", "MenuTrigger")]),
 							h.Attribute("data-menu-popover", model.id),
 							h.Attribute("data-popover", ""),
@@ -389,7 +388,6 @@ const submenuPopover = (
 		[
 			h.Attribute("aria-labelledby", itemId(model.id, triggerKey)),
 			h.Class(popoverClassName(undefined)),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-trigger", "SubmenuTrigger"),
 			h.Attribute("data-menu-popover", model.id),
 			h.Attribute("dir", "ltr"),
@@ -444,7 +442,6 @@ const menuElement = (
 		[
 			...(level.labelledBy ? [h.Attribute("aria-labelledby", level.labelledBy)] : []),
 			h.Class(menuContentStyles({ className: level.className })),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-slot", "menu-content"),
 			h.Id(level.elementId),
 			h.Role("menu"),
@@ -480,7 +477,6 @@ const menuElement = (
 							onSome: (id) => [h.Attribute("aria-labelledby", id)],
 						}),
 						h.Class(section()),
-						h.Attribute("data-rac", ""),
 						h.Role("group"),
 					],
 					[
@@ -578,7 +574,6 @@ const menuItem = (
 			...flag("data-has-submenu", hasSubmenu),
 			...flag("data-hovered", isHovered),
 			...flag("data-open", isSubmenuOpen),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-react-aria-pressable", "true"),
 			...flag("data-selected", isSelected),
 			...(isSelectable ? [h.Attribute("data-selection-mode", "single")] : []),

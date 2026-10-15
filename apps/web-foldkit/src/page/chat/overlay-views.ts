@@ -71,7 +71,6 @@ export const messageToolbarOverlay = <M>(
 						...attributes,
 						h.Attribute("aria-label", "More actions"),
 						h.Class(menuTriggerClassName("p-1.5! rounded-md hover:bg-secondary")),
-						h.Attribute("data-rac", ""),
 						h.Attribute("data-react-aria-pressable", "true"),
 						h.Attribute("data-slot", "menu-trigger"),
 						h.Attribute("tabindex", "0"),

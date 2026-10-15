@@ -2,7 +2,7 @@
 import * as Scene from "foldkit/scene"
 import type { HtmlBuilder } from "foldkit/html"
 import { describe, test } from "vitest"
-import { init, Message, type Model, page, update, wiring } from "../test/kit-forms-fixtures"
+import { init, Message, type Model, page, update } from "../test/kit-forms-fixtures"
 import { switchControl, type SwitchOptions } from "./switch"
 
 /** Switch: a native checkbox with role switch, toggled by its label like a Checkbox. */
@@ -17,7 +17,6 @@ const view =
 					id: "wifi",
 					isSelected: model.isSelected,
 					onChange: (isSelected) => Message.ChangedSelection({ isSelected }),
-					interaction: wiring(model),
 					...options,
 				},
 				"Wi-Fi",
@@ -51,38 +50,33 @@ describe("switch scene", () => {
 		)
 	})
 
-	test("Space on the focused switch flips it through the native change", () => {
+	test("Space on the switch flips it through the native change", () => {
 		Scene.scene(
 			{ update, view: view() },
 			Scene.given(init()),
-			Scene.focus(toggleSwitch),
 			Scene.change(toggleSwitch, "on"),
 			Scene.expect(toggleSwitch).toBeChecked(),
-			Scene.expect(control).toHaveAttr("data-focus-visible", "true"),
 		)
 	})
 
-	test("a pointer press marks the switch pressed and blocks text selection", () => {
+	test("the keyboard focus ring and hover are native CSS on the label, with no wiring", () => {
+		const track = Scene.selector(`[data-slot="indicator"]`)
 		Scene.scene(
 			{ update, view: view() },
 			Scene.given(init()),
-			Scene.pointerDown(control),
-			Scene.expect(control).toHaveAttr("data-pressed", "true"),
-			Scene.expect(control).toHaveAttr(
-				"style",
-				"-webkit-tap-highlight-color: transparent; user-select: none;",
-			),
+			Scene.expect(control).toHaveClass("group"),
+			Scene.expect(track).toHaveClass("group-has-focus-visible:ring-2"),
+			Scene.expect(track).toHaveClass("group-hover:inset-ring-muted-fg/30"),
 		)
 	})
 
-	test("a disabled switch is disabled with no click or hover handlers", () => {
+	test("a disabled switch is disabled with no click handler", () => {
 		Scene.scene(
 			{ update, view: view({ isDisabled: true }) },
 			Scene.given(init()),
 			Scene.expect(toggleSwitch).toBeDisabled(),
 			Scene.expect(control).toHaveAttr("data-disabled", "true"),
 			Scene.expect(control).not.toHaveHandler("click"),
-			Scene.expect(control).not.toHaveHandler("mouseenter"),
 		)
 	})
 })

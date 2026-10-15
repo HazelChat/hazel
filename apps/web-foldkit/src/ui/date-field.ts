@@ -79,7 +79,6 @@ export const dateSegments = <ParentMessage>(
 				[
 					h.AriaHidden(true),
 					h.Class(twJoin(...dateSegmentStyles)),
-					h.DataAttribute("rac", ""),
 					h.DataAttribute("type", "literal"),
 					...statusAttributes,
 				],
@@ -94,7 +93,6 @@ export const dateSegments = <ParentMessage>(
 				h.Id(id),
 				h.Class(twJoin(...dateSegmentStyles)),
 				h.Role("spinbutton"),
-				h.DataAttribute("rac", ""),
 				h.DataAttribute("type", type),
 				...statusAttributes,
 				...(part.isPlaceholder ? [h.DataAttribute("placeholder", "true")] : []),
@@ -197,7 +195,6 @@ export const dateField = <ParentMessage>(
 								h.Id(ids.group),
 								h.Class(twMerge(twMerge(...dateInputStyles), part.className)),
 								h.Role("group"),
-								h.DataAttribute("rac", ""),
 								h.DataAttribute("react-aria-pressable", "true"),
 								h.Attribute("style", "unicode-bidi: isolate;"),
 								...statusAttributes,
@@ -226,7 +223,6 @@ export const dateField = <ParentMessage>(
 						h.input([
 							// React Aria's hidden Input renders an empty class attribute.
 							h.Attribute("class", ""),
-							h.DataAttribute("rac", ""),
 							h.Hidden(true),
 							h.Attribute("style", ""),
 							h.Type("text"),
@@ -246,7 +242,6 @@ export const dateField = <ParentMessage>(
 		h.div(
 			[
 				h.Class(twMerge(twMerge(fieldStyles({ className: dateFieldClassName })), options.className)),
-				h.DataAttribute("rac", ""),
 				h.DataAttribute("slot", "control"),
 				...statusAttributes,
 			],

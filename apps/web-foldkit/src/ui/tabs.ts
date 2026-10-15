@@ -199,7 +199,6 @@ export const view = defineView<Model, Message, ViewInputs>((model, viewInputs, h
 				...(isSelected ? [h.AriaControls(panelId(model, tab.key))] : []),
 				h.Attribute("data-collection", model.id),
 				h.Attribute("data-key", tab.key),
-				h.Attribute("data-rac", ""),
 				h.Attribute("data-slot", "tab"),
 				...Collection.stateAttributes(h, { ...state, isSelected, isDisabled: isTabDisabled }),
 				...interactive,
@@ -210,7 +209,6 @@ export const view = defineView<Model, Message, ViewInputs>((model, viewInputs, h
 					? [
 							h.div([
 								h.Class(twMerge(tabsStyles.selectionIndicator(orientation))),
-								h.Attribute("data-rac", ""),
 								h.Attribute("data-slot", "selected-indicator"),
 							]),
 						]
@@ -228,7 +226,6 @@ export const view = defineView<Model, Message, ViewInputs>((model, viewInputs, h
 				h.Role("tabpanel"),
 				h.AriaLabelledBy(tabId(model, panel.key)),
 				h.Tabindex(0),
-				h.Attribute("data-rac", ""),
 				h.Attribute("data-slot", "tab-panel"),
 				...Collection.stateAttributes(h, {
 					isFocused: isPanelFocused,
@@ -245,7 +242,6 @@ export const view = defineView<Model, Message, ViewInputs>((model, viewInputs, h
 		[
 			h.Class(twMerge(twMerge(...tabsStyles.tabs(orientation)), viewInputs.className)),
 			h.Attribute("data-orientation", orientation),
-			h.Attribute("data-rac", ""),
 			...Collection.stateAttributes(h, {
 				isFocused: isRootFocused,
 				isFocusVisible: isRootFocused && isFocusVisible,
@@ -261,7 +257,6 @@ export const view = defineView<Model, Message, ViewInputs>((model, viewInputs, h
 					h.AriaOrientation(orientation),
 					h.Attribute("data-collection", model.id),
 					h.Attribute("data-orientation", orientation),
-					h.Attribute("data-rac", ""),
 					h.Attribute("data-slot", "tab-list"),
 				],
 				Array.map(viewInputs.tabs, tabView),

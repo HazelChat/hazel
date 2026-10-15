@@ -71,7 +71,6 @@ const addConnectionDropdown = (
 					[
 						...attributes,
 						h.Class(menuTriggerClassName(buttonStyles({ intent: "primary", size: "md" }))),
-						h.Attribute("data-rac", ""),
 						h.Attribute("data-react-aria-pressable", "true"),
 						h.Attribute("data-slot", "menu-trigger"),
 						h.Attribute("tabindex", "0"),

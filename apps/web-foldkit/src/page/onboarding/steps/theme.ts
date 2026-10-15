@@ -49,7 +49,6 @@ const ariaRadio = (
 	h.label(
 		[
 			h.Class(options.className),
-			h.DataAttribute("rac", ""),
 			h.DataAttribute("react-aria-pressable", "true"),
 			...(options.isSelected ? [h.DataAttribute("selected", "true")] : []),
 		],
@@ -82,7 +81,6 @@ const radioGroup = (h: HtmlBuilder<Message>, ariaLabel: string, className: strin
 			h.Attribute("aria-orientation", "vertical"),
 			h.Class(className),
 			h.DataAttribute("orientation", "vertical"),
-			h.DataAttribute("rac", ""),
 			h.Role("radiogroup"),
 		],
 		children,
@@ -115,7 +113,6 @@ const brandColors = (h: HtmlBuilder<Message>, theme: ThemeState): Html =>
 										isSelected && "ring-2 ring-ring ring-offset-2 ring-offset-bg",
 									),
 								),
-								h.DataAttribute("rac", ""),
 								h.Id(`color-${swatch.hex}`),
 								h.Role("img"),
 								h.Attribute(

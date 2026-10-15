@@ -4,7 +4,7 @@ import { twMerge } from "tailwind-merge"
 import { buttonStyles } from "~/components/ui/button.styles"
 import * as Interaction from "./aria/interaction"
 
-/** Port of `components/ui/button.tsx` (React Aria Button). */
+/** Button: the tv() variants over a native `<button>`. */
 export type ButtonVariants = VariantProps<typeof buttonStyles>
 
 export const buttonClassName = (variants: ButtonVariants, className?: string) =>
@@ -25,10 +25,7 @@ export interface AriaButtonOptions<Message> {
 	/** React Aria `preventFocusOnPress`: the button never reports focus. */
 	readonly preventFocusOnPress?: boolean
 	readonly onPress?: Message
-	/**
-	 * Hover, press and focus-visible state from the page's interaction Submodel. Without it an
-	 * enabled button omits `data-rac`, so the shared variants fall back to native `:hover`/`:focus-visible`.
-	 */
+	/** Press and focus state (`data-pressed`, ...) from the page's interaction Submodel; hover and focus rings are native CSS. */
 	readonly interaction?: { readonly wiring: Interaction.Wiring<Message>; readonly target: string }
 	readonly attributes?: ReadonlyArray<Attribute<Message> | ChildAttribute>
 }
@@ -66,7 +63,6 @@ export const ariaButton = <Message>(
 			...(isPending ? [h.AriaDisabled(true), h.DataAttribute("pending", "true")] : []),
 			...(interaction
 				? [
-						h.DataAttribute("rac", ""),
 						...Interaction.handlers(h, interaction.wiring, interaction.target, {
 							isHoverDisabled: isDisabled || isPending,
 							isPressDisabled: isDisabled || isPending,
@@ -78,10 +74,7 @@ export const ariaButton = <Message>(
 						}),
 						...Interaction.pressStyleAttributes(h, interaction.wiring.model, interaction.target),
 					]
-				: // RAC never hovers, presses or focuses a disabled button, unlike native `:hover`.
-					isDisabled
-					? [h.DataAttribute("rac", "")]
-					: []),
+				: []),
 			...(options.onPress !== undefined && !isDisabled && !isPending
 				? [h.OnClick(options.onPress)]
 				: []),

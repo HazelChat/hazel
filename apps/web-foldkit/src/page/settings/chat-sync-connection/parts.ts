@@ -154,7 +154,6 @@ export const channelLinkRow = (
 															"inline-flex size-7 items-center justify-center rounded-lg text-muted-fg hover:bg-secondary hover:text-fg",
 														),
 													),
-													h.Attribute("data-rac", ""),
 													h.Attribute("data-react-aria-pressable", "true"),
 													h.Attribute("data-slot", "menu-trigger"),
 													h.Attribute("tabindex", "0"),

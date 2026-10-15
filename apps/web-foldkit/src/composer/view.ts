@@ -43,7 +43,6 @@ const pickerButton =
 			[
 				...attributes,
 				h.Class(PICKER_BUTTON_CLASS),
-				h.Attribute("data-rac", ""),
 				h.Attribute("data-react-aria-pressable", "true"),
 				h.Attribute("tabindex", "0"),
 				h.Attribute("type", "button"),
@@ -93,7 +92,7 @@ const actions = <M>(h: HtmlBuilder<M>, extras: BoxExtras<M>): Array<Html> => [
 /** The whole composer box for a composer Model, in the parent's Message type. */
 export const composerBoxView = <M>(h: HtmlBuilder<M>, model: Model, extras: BoxExtras<M>): Html =>
 	h.div(
-		[h.Class("relative"), h.Attribute("data-rac", ""), ...(extras.dropZoneAttributes ?? [])],
+		[h.Class("relative"), ...(extras.dropZoneAttributes ?? [])],
 		[
 			h.div(
 				[h.Attribute("style", VISUALLY_HIDDEN)],

@@ -193,7 +193,6 @@ const statusEmoji = <M>(h: HtmlBuilder<M>, presence: Presence | undefined): Html
 						),
 						h.Attribute("type", "button"),
 						h.Attribute("tabindex", "0"),
-						h.Attribute("data-rac", ""),
 						h.Attribute("data-react-aria-pressable", "true"),
 					],
 					[presence.statusEmoji],
