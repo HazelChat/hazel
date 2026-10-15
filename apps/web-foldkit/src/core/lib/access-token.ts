@@ -23,7 +23,13 @@ const RENEW_BEFORE_MS = 60_000
 
 let generation = 0
 let cached: CachedToken | null = null
-let pending: Promise<string | null> | null = null
+let pending: Promise<AccessTokenResult> | null = null
+
+/**
+ * A token; `null` when there is no session (or the exchange was superseded by sign-out);
+ * `"unavailable"` when the API did not answer, which says nothing about the session.
+ */
+export type AccessTokenResult = string | null | "unavailable"
 
 const backendUrl = () => import.meta.env.VITE_BACKEND_URL || "http://localhost:3003"
 
@@ -40,8 +46,8 @@ const EXCHANGE_ATTEMPTS = 3
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
-/** `null` means the API answered and there is no session; `"retry"` means it could not answer. */
-const exchangeOnce = async (startedGeneration: number): Promise<string | null | "retry"> => {
+/** `null` means the API answered and there is no session; `"unavailable"` means it could not answer. */
+const exchangeOnce = async (startedGeneration: number): Promise<AccessTokenResult> => {
 	try {
 		const authorization = await sessionAuthorization()
 		const response = await fetch(`${backendUrl()}/auth/token`, {
@@ -52,7 +58,7 @@ const exchangeOnce = async (startedGeneration: number): Promise<string | null | 
 				: { credentials: "omit" as const, headers: { authorization } }),
 		})
 		if (startedGeneration !== generation) return null
-		if (response.status >= 500) return "retry"
+		if (response.status >= 500) return "unavailable"
 		if (!response.ok) {
 			cached = null
 			if (response.status === 401) window.dispatchEvent(new Event(SESSION_REJECTED_EVENT))
@@ -63,21 +69,25 @@ const exchangeOnce = async (startedGeneration: number): Promise<string | null | 
 		cached = { token: body.token, expiresAtMs: Date.now() + body.expiresIn * 1000 }
 		return body.token
 	} catch {
-		return "retry"
+		return "unavailable"
 	}
 }
 
-const exchange = async (startedGeneration: number): Promise<string | null> => {
+const exchange = async (startedGeneration: number): Promise<AccessTokenResult> => {
 	for (let attempt = 1; ; attempt++) {
 		const result = await exchangeOnce(startedGeneration)
-		if (result !== "retry") return result
-		if (attempt >= EXCHANGE_ATTEMPTS || startedGeneration !== generation) return null
+		if (result !== "unavailable") return result
+		if (startedGeneration !== generation) return null
+		if (attempt >= EXCHANGE_ATTEMPTS) return "unavailable"
 		await sleep(250 * 2 ** attempt)
 	}
 }
 
-/** The current access token, exchanged again shortly before it expires; `null` when signed out. */
-export const getAccessToken = async (): Promise<string | null> => {
+/**
+ * The current access token, exchanged again shortly before it expires. Tells a refused session
+ * (`null`) apart from an API that did not answer (`"unavailable"`), so callers can retry the latter.
+ */
+export const readAccessToken = async (): Promise<AccessTokenResult> => {
 	if (typeof window === "undefined") return null
 	if (cached !== null && cached.expiresAtMs - Date.now() > RENEW_BEFORE_MS) return cached.token
 	if (pending === null) {
@@ -87,6 +97,12 @@ export const getAccessToken = async (): Promise<string | null> => {
 		pending = request
 	}
 	return pending
+}
+
+/** The current access token; `null` when signed out or the API did not answer. */
+export const getAccessToken = async (): Promise<string | null> => {
+	const result = await readAccessToken()
+	return result === "unavailable" ? null : result
 }
 
 /** Forgets the cached token so the next request exchanges a new one, after a host rejected it. */

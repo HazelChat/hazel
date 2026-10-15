@@ -13,7 +13,8 @@ self.addEventListener("activate", (event) => {
 			await self.clients.claim()
 			await self.registration.unregister()
 			const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true })
-			await Promise.all(windows.map((client) => client.navigate(client.url)))
+			// One failed navigation must not stop the others.
+			await Promise.allSettled(windows.map((client) => client.navigate(client.url)))
 		})(),
 	)
 })

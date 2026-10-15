@@ -6,15 +6,19 @@
  * network errors without limit; every other error reaches `electricOnError`.
  */
 import { FetchError } from "@electric-sql/client"
-import { getAccessToken, invalidateAccessToken } from "./access-token"
+import { invalidateAccessToken, readAccessToken } from "./access-token"
 
 export const electricFetchClient = async (
 	input: RequestInfo | URL,
 	init?: RequestInit,
 ): Promise<Response> => {
-	const token = await getAccessToken()
-	// No token: the exchange failed or there is no session. `electricOnError` retries a 401.
-	if (!token) return new Response(null, { status: 401 })
+	const token = await readAccessToken()
+	// The API did not answer: a 503 sends this request through Electric's fetch backoff, which
+	// retries without limit. A 401 would count against `onError`'s 50-retry cap, and an outage
+	// that outlasted it would leave the shape stopped after the API came back.
+	if (token === "unavailable") return new Response(null, { status: 503 })
+	// No session: `electricOnError` retries the 401; the app re-reads the session meanwhile.
+	if (token === null) return new Response(null, { status: 401 })
 	const response = await fetch(input, {
 		...init,
 		headers: { ...init?.headers, Authorization: `Bearer ${token}` },

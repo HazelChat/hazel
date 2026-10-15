@@ -4,6 +4,7 @@ import {
 	clearAccessToken,
 	getAccessToken,
 	invalidateAccessToken,
+	readAccessToken,
 	SESSION_REJECTED_EVENT,
 } from "./access-token"
 
@@ -70,11 +71,15 @@ describe("session token exchange", () => {
 		const { seen, stop } = rejections()
 		const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response(null, { status: 503 }))
 		vi.stubGlobal("fetch", fetch)
-		const token = getAccessToken()
+		const token = readAccessToken()
 		await vi.runAllTimersAsync()
-		expect(await token).toBeNull()
+		expect(await token).toBe("unavailable")
 		expect(fetch).toHaveBeenCalledTimes(3)
 		expect(seen).not.toHaveBeenCalled()
+		// Callers that only want a token see none.
+		const plain = getAccessToken()
+		await vi.runAllTimersAsync()
+		expect(await plain).toBeNull()
 		stop()
 	})
 
@@ -82,7 +87,7 @@ describe("session token exchange", () => {
 		const { seen, stop } = rejections()
 		const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response(null, { status: 401 }))
 		vi.stubGlobal("fetch", fetch)
-		expect(await getAccessToken()).toBeNull()
+		expect(await readAccessToken()).toBeNull()
 		expect(fetch).toHaveBeenCalledOnce()
 		expect(seen).toHaveBeenCalledOnce()
 		stop()
