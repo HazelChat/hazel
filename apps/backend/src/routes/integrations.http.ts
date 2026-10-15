@@ -1,12 +1,13 @@
 import { HttpApiBuilder } from "effect/http-api"
 import { HttpServerRequest, HttpServerResponse, Cookies } from "effect/http"
 import { IntegrationConnectionRepo, OrganizationRepo } from "@hazel/backend-core"
-import { CurrentUser, InternalServerError, UnauthorizedError } from "@hazel/domain"
+import { CurrentUser, InternalServerError, UnauthorizedError, withRemapDbErrors } from "@hazel/domain"
 import type { OrganizationId, UserId } from "@hazel/schema"
 import {
 	ConnectApiKeyResponse,
 	ConnectionStatusResponse,
 	IntegrationNotConnectedError,
+	IntegrationUnavailableError,
 	InvalidApiKeyError,
 	InvalidOAuthStateError,
 	UnsupportedProviderError,
@@ -18,7 +19,7 @@ import {
 	CraftRateLimitError,
 } from "@hazel/integrations/craft"
 import type { IntegrationConnection } from "@hazel/domain/models"
-import { Config, DateTime, Effect, Layer, Option, Schedule, Schema, SchemaGetter } from "effect"
+import { Cause, Config, DateTime, Effect, Layer, Option, Schedule, Schema, SchemaGetter } from "effect"
 import * as Duration from "effect/Duration"
 import { HazelApi } from "../api"
 import { ChatSyncAttributionReconciler } from "../services/chat-sync/chat-sync-attribution-reconciler"
@@ -91,36 +92,24 @@ export const validateCraftBaseUrl = (rawBaseUrl: string) =>
 
 type CraftConnectApiKeyError = CraftApiError | CraftNotFoundError | CraftRateLimitError
 
+/** Rate limits, 5xx and transport failures are Craft being unavailable; other 4xx mean a bad key. */
 export const mapCraftConnectApiKeyError = (
 	error: CraftConnectApiKeyError,
-): InvalidApiKeyError | InternalServerError => {
-	if (error._tag === "CraftNotFoundError") {
-		return invalidCraftCredentialsError()
+): InvalidApiKeyError | IntegrationUnavailableError => {
+	const unavailable = () =>
+		new IntegrationUnavailableError({ message: "Craft API is temporarily unavailable" })
+	switch (error._tag) {
+		case "CraftNotFoundError":
+			return invalidCraftCredentialsError()
+		case "CraftRateLimitError":
+			return unavailable()
+		case "CraftApiError": {
+			const status = error.status
+			return status !== undefined && status >= 400 && status < 500 && status !== 429
+				? invalidCraftCredentialsError()
+				: unavailable()
+		}
 	}
-
-	if (error._tag === "CraftRateLimitError") {
-		return new InternalServerError({
-			message: "Craft API is temporarily unavailable",
-			detail: error.message,
-		})
-	}
-
-	const status = error.status
-	if (status === undefined || status === 429 || status >= 500) {
-		return new InternalServerError({
-			message: "Craft API is temporarily unavailable",
-			detail: error.message,
-		})
-	}
-
-	if (status >= 400 && status < 500) {
-		return invalidCraftCredentialsError()
-	}
-
-	return new InternalServerError({
-		message: "Craft API is temporarily unavailable",
-		detail: error.message,
-	})
 }
 
 const craftConnectApiKeyErrorLogFields = (error: CraftConnectApiKeyError): Record<string, unknown> => {
@@ -220,25 +209,15 @@ const getOAuthStateCandidates = (rawState: string): ReadonlyArray<string> => {
 	return candidates
 }
 
+const decodeOAuthState = Schema.decodeUnknownOption(Schema.fromJsonString(OAuthState))
+const decodeUriComponent = Option.liftThrowable(decodeURIComponent)
+
 /**
  * Parse OAuth state from callback query param.
  * Supports raw JSON, single-encoded JSON, and legacy double-encoded JSON.
  */
-export const parseOAuthStateParam = (rawState: string): typeof OAuthState.Type => {
-	const candidates = getOAuthStateCandidates(rawState)
-	let lastError: unknown = null
-
-	for (const candidate of candidates) {
-		try {
-			const parsed = JSON.parse(candidate)
-			return Schema.decodeUnknownSync(OAuthState)(parsed)
-		} catch (error) {
-			lastError = error
-		}
-	}
-
-	throw lastError ?? new Error("Failed to parse OAuth state")
-}
+export const parseOAuthStateParam = (rawState: string): Option.Option<typeof OAuthState.Type> =>
+	Option.firstSomeOf(getOAuthStateCandidates(rawState).map((candidate) => decodeOAuthState(candidate)))
 
 const makeOAuthSessionCookie = (
 	name: string,
@@ -262,7 +241,7 @@ const makeOAuthSessionCookie = (
 		catch: (error) =>
 			new InternalServerError({
 				message: "Failed to create OAuth session cookie",
-				detail: String(error),
+				cause: error,
 			}),
 	})
 
@@ -306,7 +285,7 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (
 			(error) =>
 				new InternalServerError({
 					message: `Provider not available: ${error._tag}`,
-					detail: String(error),
+					cause: error,
 				}),
 		),
 	)
@@ -321,7 +300,7 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (
 			(error) =>
 				new InternalServerError({
 					message: "Failed to fetch organization",
-					detail: String(error),
+					cause: error,
 				}),
 		),
 	)
@@ -403,9 +382,7 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (
 		},
 	).pipe(
 		Effect.catchTag("HttpBodyError", (e) =>
-			Effect.fail(
-				new InternalServerError({ message: "Failed to serialize response", detail: String(e) }),
-			),
+			Effect.fail(new InternalServerError({ message: "Failed to serialize response", cause: e })),
 		),
 	)
 })
@@ -485,10 +462,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 
 	if (encodedState) {
 		// Priority 1: State from URL parameter
-		const stateResult = yield* Effect.try({
-			try: () => parseOAuthStateParam(encodedState),
-			catch: (e) => new InvalidOAuthStateError({ message: `Invalid state: ${e}` }),
-		}).pipe(Effect.option)
+		const stateResult = parseOAuthStateParam(encodedState)
 
 		if (Option.isSome(stateResult)) {
 			parsedState = stateResult.value
@@ -503,11 +477,9 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 			provider,
 		})
 
-		const sessionResult = yield* Effect.try({
-			try: () =>
-				Schema.decodeUnknownSync(OAuthSessionState)(JSON.parse(decodeURIComponent(sessionCookie))),
-			catch: (e) => new InvalidOAuthStateError({ message: `Invalid session cookie: ${e}` }),
-		}).pipe(Effect.option)
+		const sessionResult = Option.flatMap(decodeUriComponent(sessionCookie), (json) =>
+			Schema.decodeUnknownOption(Schema.fromJsonString(OAuthSessionState))(json),
+		)
 
 		if (Option.isSome(sessionResult)) {
 			const session = sessionResult.value
@@ -577,9 +549,15 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		const connection = connections[0]!
 
 		// Get the organization to find its slug
-		const orgOption = yield* orgRepo
-			.findById(connection.organizationId)
-			.pipe(Effect.catchTag("DatabaseError", () => Effect.succeed(Option.none())))
+		const orgOption = yield* orgRepo.findById(connection.organizationId).pipe(
+			// The redirect below still works without the slug; don't fail the callback over it.
+			Effect.catchTag("DatabaseError", (error) =>
+				Effect.logWarning(
+					"GitHub update callback: organization lookup failed",
+					Cause.fail(error),
+				).pipe(Effect.as(Option.none())),
+			),
+		)
 
 		if (Option.isNone(orgOption)) {
 			yield* Effect.logWarning("GitHub update callback: organization not found", {
@@ -928,16 +906,11 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 							organizationId: parsedState.organizationId,
 						}),
 			),
-			// Note: catchAll is intentional here - this is a best-effort operation
-			// after OAuth success. We catch all errors to prevent disrupting the flow.
-			Effect.catch((error) =>
-				Effect.logWarning("Failed to add integration bot to org (non-critical)", {
-					event: "integration_bot_add_failed",
-					provider,
-					organizationId: parsedState.organizationId,
-					error: String(error),
-				}),
-			),
+			// Best-effort after a successful OAuth connection: a failure must not break the redirect.
+			Effect.catchTags({
+				DatabaseError: (error) => logBotAddFailure(provider, parsedState.organizationId, error),
+				SchemaError: (error) => logBotAddFailure(provider, parsedState.organizationId, error),
+			}),
 		)
 	}
 
@@ -958,6 +931,13 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
  * Connect an integration using an API key (non-OAuth providers like Craft).
  * Validates the token by calling the provider's API, then stores the connection.
  */
+const logBotAddFailure = (provider: string, organizationId: string, error: unknown) =>
+	Effect.logWarning("Failed to add integration bot to org (non-critical)", Cause.fail(error), {
+		event: "integration_bot_add_failed",
+		provider,
+		organizationId,
+	})
+
 const handleConnectApiKey = Effect.fn("integrations.connectApiKey")(function* (
 	path: {
 		orgId: OrganizationId
@@ -1051,14 +1031,10 @@ const handleConnectApiKey = Effect.fn("integrations.connectApiKey")(function* (
 	// Best-effort: add integration bot to org
 	const integrationBotService = yield* IntegrationBotService
 	yield* integrationBotService.addBotToOrg(provider, orgId).pipe(
-		Effect.catch((error) =>
-			Effect.logWarning("Failed to add integration bot to org (non-critical)", {
-				event: "integration_bot_add_failed",
-				provider,
-				organizationId: orgId,
-				error: String(error),
-			}),
-		),
+		Effect.catchTags({
+			DatabaseError: (error) => logBotAddFailure(provider, orgId, error),
+			SchemaError: (error) => logBotAddFailure(provider, orgId, error),
+		}),
 	)
 
 	return new ConnectApiKeyResponse({
@@ -1209,81 +1185,34 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 		.handle("getOAuthUrl", ({ params, query }) =>
 			handleGetOAuthUrl(params, query).pipe(
 				Effect.catchTag("ConfigError", (err) =>
-					Effect.fail(
-						new InternalServerError({ message: "Missing configuration", detail: String(err) }),
-					),
+					Effect.fail(new InternalServerError({ message: "Missing configuration", cause: err })),
 				),
 			),
 		)
 		.handle("oauthCallback", ({ params, query }) =>
 			handleOAuthCallback(params, query).pipe(
-				Effect.catchTag("DatabaseError", (error) =>
-					Effect.fail(
-						new InternalServerError({
-							message: "Database error during OAuth callback",
-							detail: String(error),
-						}),
-					),
-				),
+				withRemapDbErrors("IntegrationConnection", "create"),
 				Effect.catchTag("ConfigError", (err) =>
-					Effect.fail(
-						new InternalServerError({ message: "Missing configuration", detail: String(err) }),
-					),
+					Effect.fail(new InternalServerError({ message: "Missing configuration", cause: err })),
 				),
 			),
 		)
 		.handle("connectApiKey", ({ params, payload }) =>
 			handleConnectApiKey(params, payload).pipe(
-				Effect.catchTags({
-					DatabaseError: (error: { readonly _tag: "DatabaseError"; readonly message?: string }) =>
-						Effect.fail(
-							new InternalServerError({
-								message: "Database error during API key connection",
-								detail: String(error),
-							}),
-						),
-					SchemaError: (error: { readonly _tag: "SchemaError"; readonly message?: string }) =>
-						Effect.fail(
-							new InternalServerError({
-								message: "Failed to parse API response",
-								detail: String(error),
-							}),
-						),
-					IntegrationEncryptionError: (error: {
-						readonly _tag: "IntegrationEncryptionError"
-						readonly message?: string
-					}) =>
-						Effect.fail(
-							new InternalServerError({
-								message: "Failed to encrypt token",
-								detail: String(error),
-							}),
-						),
-				}),
+				withRemapDbErrors("IntegrationConnection", "create"),
+				Effect.catchTag("IntegrationEncryptionError", (error) =>
+					Effect.fail(
+						new InternalServerError({ message: "Failed to encrypt token", cause: error }),
+					),
+				),
 			),
 		)
 		.handle("getConnectionStatus", ({ params, query }) =>
 			handleGetConnectionStatus(params, query).pipe(
-				Effect.catchTag("DatabaseError", (error) =>
-					Effect.fail(
-						new InternalServerError({
-							message: "Failed to get connection status",
-							detail: String(error),
-						}),
-					),
-				),
+				withRemapDbErrors("IntegrationConnection", "select"),
 			),
 		)
 		.handle("disconnect", ({ params, query }) =>
-			handleDisconnect(params, query).pipe(
-				Effect.catchTag("DatabaseError", (error) =>
-					Effect.fail(
-						new InternalServerError({
-							message: "Failed to disconnect integration",
-							detail: String(error),
-						}),
-					),
-				),
-			),
+			handleDisconnect(params, query).pipe(withRemapDbErrors("IntegrationConnection", "delete")),
 		),
 ).pipe(Layer.provide(CraftApiClient.layer), Layer.provide(IntegrationBotService.layer))

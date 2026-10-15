@@ -42,6 +42,12 @@ const validateMessage = (message: string) =>
 
 const ID = "feedback-modal"
 
+const CATEGORY_ITEMS = [
+	Select.item("bug", "Bug"),
+	Select.item("feature_request", "Feature Request"),
+	Select.item("question", "Question"),
+]
+
 type Return = ModalReturn<Model, Message>
 
 const update = (model: Model, message: Message): Return =>
@@ -92,7 +98,7 @@ const view = Submodel.defineView<Model, Message, ModalViewInputs>((model, _input
 									slotId: `${ID}-category-select`,
 									model: model.category,
 									view: selectView,
-									viewInputs: {},
+									viewInputs: { items: CATEGORY_ITEMS },
 									toParentMessage: toCategoryMessage,
 								}),
 							]),
@@ -137,15 +143,7 @@ export const modal = defineModal(
 		init: () => ({
 			model: {
 				frame: initFrame(ID),
-				category: Select.init({
-					id: `${ID}-category-select`,
-					items: [
-						Select.item("bug", "Bug"),
-						Select.item("feature_request", "Feature Request"),
-						Select.item("question", "Question"),
-					],
-					selectedKey: "bug",
-				}),
+				category: Select.init({ id: `${ID}-category-select`, selectedKey: "bug" }),
 				message: "",
 				messageError: null,
 			},

@@ -1,5 +1,7 @@
 # S4b: @foldkit/ui VirtualList for the chat list
 
+> **Historical.** The legacy React app (`apps/web`) and the parity harness (`packages/ui-parity`, the `/dev/gallery` routes and the `legacy-ui-guard` agent) have been deleted. Parity commands and baselines referenced below no longer exist.
+
 Status: **evaluated, not adopted** · 2026-10-08 · Branch `fk/foldkit-167` (experiment on `fk/foldkit-167-virtuallist`, commit `1ac2fb6da`, not for merge)
 
 Question: Foldkit 0.167's VirtualList now has measured dynamic row heights, stable-key viewport anchors, initial and programmatic scroll targets (Index, Key, Offset, End with alignment) and an end behavior (`Follow { thresholdPx }` or `PreserveAnchor`). Can it replace `mount/message-list.ts` and `mount/message-list-pool.ts` (S4 and the final-polish LegendList pool)?

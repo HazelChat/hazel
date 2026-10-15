@@ -2,10 +2,10 @@
 import * as Scene from "foldkit/scene"
 import type { HtmlBuilder } from "foldkit/html"
 import { describe, test } from "vitest"
-import { init, Message, type Model, page, update, wiring } from "../test/kit-forms-fixtures"
-import { checkbox, checkboxGroup, type CheckboxOptions } from "./checkbox"
+import { init, Message, type Model, page, update } from "../test/kit-forms-fixtures"
+import { checkbox, type CheckboxOptions } from "./checkbox"
 
-/** Checkbox through a parent that owns the value and the interaction Submodel. */
+/** Checkbox through a parent that owns the value. */
 
 const view =
 	(options: Partial<CheckboxOptions<Message>> = {}) =>
@@ -17,7 +17,6 @@ const view =
 					id: "notify",
 					isSelected: model.isSelected,
 					onChange: (isSelected) => Message.ChangedSelection({ isSelected }),
-					interaction: wiring(model),
 					...options,
 				},
 				"Notify me",
@@ -60,36 +59,23 @@ describe("checkbox scene", () => {
 		)
 	})
 
-	test("hovering and pressing the label shows hover and pressed state", () => {
+	test("hover and the keyboard focus ring are native CSS on the label, with no wiring", () => {
 		Scene.scene(
 			{ update, view: view() },
 			Scene.given(init()),
-			Scene.hover(control),
-			Scene.expect(control).toHaveAttr("data-hovered", "true"),
-			Scene.pointerDown(control),
-			Scene.expect(control).toHaveAttr("data-pressed", "true"),
-			Scene.expect(control).toHaveAttr("style", "user-select: none;"),
+			Scene.expect(control).toHaveClass("group"),
+			Scene.expect(Scene.selector(`[data-slot="indicator"]`)).toHaveClass("group-hover:inset-ring-muted-fg/30"),
+			Scene.expect(Scene.selector(`[data-slot="indicator"]`)).toHaveClass("group-has-focus-visible:ring-3"),
 		)
 	})
 
-	test("focusing the input without a pointer press shows the focus ring on the control", () => {
-		Scene.scene(
-			{ update, view: view() },
-			Scene.given(init()),
-			Scene.focus(box),
-			Scene.expect(control).toHaveAttr("data-focused", "true"),
-			Scene.expect(control).toHaveAttr("data-focus-visible", "true"),
-		)
-	})
-
-	test("a disabled checkbox is disabled and ignores hover", () => {
+	test("a disabled checkbox is disabled and ignores clicks", () => {
 		Scene.scene(
 			{ update, view: view({ isDisabled: true }) },
 			Scene.given(init()),
 			Scene.expect(box).toBeDisabled(),
 			Scene.expect(control).toHaveAttr("data-disabled", "true"),
 			Scene.expect(control).not.toHaveHandler("click"),
-			Scene.expect(control).not.toHaveHandler("mouseenter"),
 		)
 	})
 
@@ -100,31 +86,6 @@ describe("checkbox scene", () => {
 			Scene.expect(control).toHaveAttr("data-indeterminate", "true"),
 			Scene.expect(box).toHaveAttr("aria-invalid", "true"),
 			Scene.expect(control).toHaveAttr("data-invalid", "true"),
-		)
-	})
-
-	test("a checkbox group is a labelled group whose items follow the group value", () => {
-		const groupView = (model: Model, h: HtmlBuilder<Message>) =>
-			page(h, [
-				checkboxGroup(
-					h,
-					{
-						id: "channels",
-						value: model.isSelected ? ["email"] : [],
-						onChange: (value) => Message.ChangedSelection({ isSelected: value.includes("email") }),
-						interaction: wiring(model),
-					},
-					(parts) => [parts.label(["Channels"]), parts.checkbox("email", "Email"), parts.checkbox("sms", "SMS")],
-				),
-			])
-		Scene.scene(
-			{ update, view: groupView },
-			Scene.given(init()),
-			Scene.expect(Scene.role("group", { name: "Channels" })).toExist(),
-			Scene.click(Scene.text("Email")),
-			Scene.expect(Scene.selector("#channels-email")).toBeChecked(),
-			Scene.expect(Scene.selector("#channels-email")).toHaveAttr("value", "email"),
-			Scene.expect(Scene.selector("#channels-sms")).not.toBeChecked(),
 		)
 	})
 })

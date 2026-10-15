@@ -195,7 +195,6 @@ const modalOverlay = <ParentMessage>(
 				[
 					h.Class(modalOverlayClassName(size, viewInputs.isBlurred ?? false)),
 					h.Attribute("data-modal-overlay", ""),
-					h.Attribute("data-rac", ""),
 					h.Attribute("data-slot", "modal-overlay"),
 				],
 				[
@@ -203,7 +202,6 @@ const modalOverlay = <ParentMessage>(
 						[
 							h.Class(twMerge(twMerge(...modalContentBase(size)), viewInputs.className)),
 							h.Attribute("data-modal-content", model.id),
-							h.Attribute("data-rac", ""),
 							h.Attribute("data-slot", "modal-content"),
 						],
 						[

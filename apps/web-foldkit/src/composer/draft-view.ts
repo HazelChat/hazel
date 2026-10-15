@@ -29,22 +29,17 @@ export interface DraftViewInputs<M> {
 	) => { readonly fileName: string; readonly fileSize: number } | null
 }
 
-const removeButton = <M>(h: HtmlBuilder<M>, onPress: M, label?: string) =>
+const removeButton = <M>(h: HtmlBuilder<M>, onPress: M, label: string, isCompact = false) =>
 	button(
 		h,
 		{
 			intent: "plain",
 			size: "sq-xs",
-			...(label === undefined ? {} : { className: "!p-1" }),
+			...(isCompact ? { className: "!p-1" } : {}),
 			onPress,
-			attributes: label === undefined ? [] : [h.Attribute("aria-label", label)],
+			attributes: [h.AriaLabel(label)],
 		},
-		[
-			IconClose(h, {
-				...(label === undefined ? {} : { className: "size-3.5" }),
-				attributes: { "data-slot": "icon" },
-			}),
-		],
+		[IconClose(h, { ...(isCompact ? { className: "size-3.5" } : {}), attributes: { "data-slot": "icon" } })],
 	)
 
 /** `ComposerAttachmentPreviews`. */
@@ -86,10 +81,7 @@ const attachmentPreviews = <M>(h: HtmlBuilder<M>, model: Model, inputs: DraftVie
 									className: "size-8 shrink-0 text-muted-fg",
 								}),
 								fileText(fileName, formatFileSize(info?.fileSize || 0)),
-								removeButton(
-									h,
-									inputs.toMessage(Message.ClickedRemoveAttachment({ attachmentId })),
-								),
+								removeButton(h, inputs.toMessage(Message.ClickedRemoveAttachment({ attachmentId })), `Remove ${fileName}`),
 							],
 						)
 					}),
@@ -145,7 +137,7 @@ const replyIndicator = <M>(h: HtmlBuilder<M>, model: Model, inputs: DraftViewInp
 					h.span([h.Class("max-w-xs truncate text-muted-fg")], [reply.firstLine]),
 				],
 			),
-			removeButton(h, inputs.toMessage(Message.ClickedCancelReply()), "Cancel reply"),
+			removeButton(h, inputs.toMessage(Message.ClickedCancelReply()), "Cancel reply", true),
 		],
 	)
 }
@@ -164,7 +156,7 @@ const editIndicator = <M>(h: HtmlBuilder<M>, model: Model, inputs: DraftViewInpu
 					h.span([h.Class("font-semibold text-primary")], ["Editing message"]),
 				],
 			),
-			removeButton(h, inputs.toMessage(Message.ClickedCancelEdit()), "Cancel editing"),
+			removeButton(h, inputs.toMessage(Message.ClickedCancelEdit()), "Cancel editing", true),
 		],
 	)
 }

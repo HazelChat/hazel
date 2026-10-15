@@ -92,6 +92,7 @@ const rssItem = (h: HtmlBuilder<Message>, model: Model, feed: RssFeed): Html => 
 				id: feed.id,
 				menu: menuOf(model, "rss", feed.id),
 				isEnabled: feed.isEnabled,
+				isToggling: model.togglingRowIds.includes(feed.id),
 				triggerClassName: "shrink-0 text-muted-fg",
 				labels: { enable: "Resume", disable: "Pause", remove: "Remove" },
 			}),

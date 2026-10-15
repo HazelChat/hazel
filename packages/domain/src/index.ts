@@ -20,5 +20,4 @@ export * as Scopes from "./scopes"
 export * from "./rate-limit-errors"
 // RPC contracts
 export * as Rpc from "./rpc"
-export * from "./session"
 export * from "./session-errors"

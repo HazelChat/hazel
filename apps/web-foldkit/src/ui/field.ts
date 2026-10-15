@@ -2,7 +2,6 @@ import type { Attribute, Html, HtmlBuilder } from "foldkit/html"
 import { twMerge } from "tailwind-merge"
 import {
 	descriptionStyles,
-	fieldErrorsStyles,
 	fieldErrorStyles,
 	fieldsetStyles,
 	labelStyles,
@@ -60,37 +59,12 @@ export const fieldError = <Message>(
 	h.span(
 		[
 			h.Class(twMerge(twMerge(fieldErrorStyles()), options.className)),
-			h.DataAttribute("rac", ""),
 			h.Attribute("slot", "errorMessage"),
 			...(options.id === undefined ? [] : [h.Id(options.id)]),
 			...(options.attributes ?? []),
 		],
 		children,
 	)
-
-/** Every error as a list; renders nothing without errors. */
-export const fieldErrors = <Message>(
-	h: HtmlBuilder<Message>,
-	options: { readonly errors: ReadonlyArray<{ readonly message?: string }>; readonly className?: string },
-): Html | null =>
-	options.errors.length === 0
-		? null
-		: h.ul(
-				[
-					h.Class(twMerge(fieldErrorStyles(), fieldErrorsStyles.list, options.className)),
-					h.Role("alert"),
-					h.AriaLive("polite"),
-				],
-				options.errors.map((error) =>
-					h.li(
-						[h.Class(fieldErrorsStyles.item)],
-						[
-							h.span([h.Class(fieldErrorsStyles.bullet), h.AriaHidden(true)]),
-							h.span([], [error.message ?? ""]),
-						],
-					),
-				),
-			)
 
 export const fieldset = <Message>(
 	h: HtmlBuilder<Message>,

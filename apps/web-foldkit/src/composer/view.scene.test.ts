@@ -1,16 +1,21 @@
 // @vitest-environment jsdom
 import { UserId } from "@hazel/schema"
 import { Schema } from "effect"
+import type { HtmlBuilder } from "foldkit/html"
 import * as Scene from "foldkit/scene"
 import { describe, test } from "vitest"
 import * as Composer from "./composer"
 import { update } from "./update"
-import { view } from "./view"
+import { composerBoxView } from "./view"
 
 /** The bare composer through its view: the editor's mount arguments and the autocomplete's accessibility. */
 
 const editorId = "composer-scene"
-const config = { update, view }
+const config = {
+	update,
+	view: (model: Composer.Model, h: HtmlBuilder<Composer.Message>) =>
+		composerBoxView(h, model, { toMessage: (message) => message }),
+}
 const grace: Composer.MentionMember = {
 	userId: Schema.decodeSync(UserId)("00000000-0000-4000-8000-000000000001"),
 	firstName: "Grace",

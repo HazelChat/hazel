@@ -72,12 +72,3 @@ export class SessionRefreshError extends Schema.TaggedError<SessionRefreshError>
 	},
 	{ httpApiStatus: 401 },
 ) {}
-
-export class ClerkUserFetchError extends Schema.TaggedError<ClerkUserFetchError>("ClerkUserFetchError")(
-	"ClerkUserFetchError",
-	{
-		message: Schema.String,
-		detail: Schema.String,
-	},
-	{ httpApiStatus: 503 },
-) {}

@@ -293,7 +293,6 @@ const tooltipOverlay = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder<Mes
 							className: viewInputs.className,
 						}),
 					),
-					h.Attribute("data-rac", ""),
 					h.Id(tooltipId(model.id)),
 					h.Role("tooltip"),
 				],
@@ -301,7 +300,7 @@ const tooltipOverlay = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder<Mes
 					...(arrow
 						? [
 								h.div(
-									[h.Class("group"), h.Attribute("data-rac", "")],
+									[h.Class("group")],
 									[
 										h.svg(
 											[

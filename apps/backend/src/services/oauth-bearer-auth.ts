@@ -1,8 +1,8 @@
-import { ClerkClient } from "@hazel/auth"
+import { createClerkClient } from "@clerk/backend"
 import { UserRepo } from "@hazel/backend-core"
-import { CurrentUser, UnauthorizedError } from "@hazel/domain"
+import { CurrentUser, SessionLoadError, UnauthorizedError } from "@hazel/domain"
 import { ClerkUserId } from "@hazel/schema"
-import { Context, Effect, Layer, Option, Schema } from "effect"
+import { Cause, Config, Context, Effect, Layer, Option, Redacted, Schema } from "effect"
 
 /**
  * Authenticates Bearer access tokens issued by Hazel's Clerk OAuth Applications.
@@ -12,28 +12,46 @@ import { Context, Effect, Layer, Option, Schema } from "effect"
  * Verifies the token via Clerk's IdP introspection endpoint, then resolves it
  * to a local Hazel user via `externalId` (Clerk user ID).
  *
- * This is distinct from `BackendAuth.authenticate`, which verifies *session*
- * JWTs minted by Clerk for browser-authenticated users. OAuth Application
- * access tokens are a different token class (issued via /oauth/token) and need
- * the IdP introspection path.
+ * NOTE: this is the last Clerk consumer in the backend. Sign-in itself runs on Hazel
+ * auth; `CLERK_SECRET_KEY` is optional and only read here, so the public API v1 answers
+ * 503 while it is unset. Drop this (and `@clerk/backend`) once Maple moves to Hazel-issued
+ * OAuth tokens.
  */
 export class OAuthBearerAuth extends Context.Service<OAuthBearerAuth>()("@hazel/backend/OAuthBearerAuth", {
 	make: Effect.gen(function* () {
-		const clerk = yield* ClerkClient
+		const secretKey = yield* Config.option(Config.Redacted("CLERK_SECRET_KEY"))
+		const clerk = Option.map(secretKey, (key) => createClerkClient({ secretKey: Redacted.value(key) }))
 		const userRepo = yield* UserRepo
 
 		const decodeClerkUserId = Schema.decodeUnknownEffect(ClerkUserId)
 
 		const authenticate = (accessToken: string) =>
 			Effect.gen(function* () {
-				const introspected = yield* Effect.tryPromise({
-					try: () => clerk.raw.idPOAuthAccessToken.verify(accessToken),
-					catch: (error) =>
-						new UnauthorizedError({
-							message: "Invalid OAuth access token",
-							detail: String(error),
+				if (Option.isNone(clerk)) {
+					return yield* Effect.fail(
+						new SessionLoadError({
+							message: "OAuth token verification is not configured",
+							detail: "CLERK_SECRET_KEY is not set",
 						}),
-				})
+					)
+				}
+				const client = clerk.value
+
+				const introspected = yield* Effect.tryPromise({
+					try: () => client.idPOAuthAccessToken.verify(accessToken),
+					catch: (error) => error,
+				}).pipe(
+					Effect.tapError((error) =>
+						Effect.logWarning("OAuth access token verification failed", Cause.fail(error)),
+					),
+					Effect.mapError(
+						() =>
+							new UnauthorizedError({
+								message: "Invalid OAuth access token",
+								detail: "The token could not be verified",
+							}),
+					),
+				)
 
 				if (introspected.revoked) {
 					return yield* Effect.fail(
@@ -64,12 +82,16 @@ export class OAuthBearerAuth extends Context.Service<OAuthBearerAuth>()("@hazel/
 				)
 
 				const userOption = yield* userRepo.findByExternalId(clerkUserId).pipe(
-					Effect.catchTag("DatabaseError", (err) =>
-						Effect.fail(
-							new UnauthorizedError({
-								message: "Failed to resolve OAuth user",
-								detail: String(err),
-							}),
+					Effect.catchTag("DatabaseError", (error) =>
+						Effect.logError("Failed to resolve OAuth user", Cause.fail(error)).pipe(
+							Effect.andThen(
+								Effect.fail(
+									new SessionLoadError({
+										message: "Failed to resolve OAuth user",
+										detail: "The user store is unavailable",
+									}),
+								),
+							),
 						),
 					),
 				)
@@ -109,8 +131,5 @@ export class OAuthBearerAuth extends Context.Service<OAuthBearerAuth>()("@hazel/
 		} as const
 	}),
 }) {
-	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(ClerkClient.layer),
-		Layer.provide(UserRepo.layer),
-	)
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(UserRepo.layer))
 }

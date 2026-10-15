@@ -5,6 +5,7 @@ import * as Scene from "foldkit/scene"
 import { describe, test } from "vitest"
 import { shared as memberShared } from "../chat/channel/fixtures.test-support"
 import type { Shared } from "../contract"
+import * as Tabs from "../../ui/tabs"
 import { PageOutMessage } from "../out-message"
 import { Message } from "./message"
 import type { ChannelGroups, ChannelSummary, Model } from "./model"
@@ -61,7 +62,8 @@ describe("chat index scene", () => {
 			sceneFor(admin),
 			Scene.given(init().model),
 			Scene.Subscription.emit(Message.UpdatedChannels({ groups })),
-			Scene.pointerDown(Scene.role("tab", { name: /Private/ })),
+			Scene.click(Scene.role("tab", { name: /Private/ })),
+			Scene.Command.resolve(Tabs.FocusTab, Tabs.Message.CompletedFocusTab()),
 			Scene.expect(Scene.text("No private channels")).toExist(),
 			Scene.click(Scene.role("button", { name: /Create a private channel$/ })),
 			Scene.expectOutMessage(PageOutMessage.RequestedModal({ modal: { _tag: "NewChannel" } })),
@@ -73,7 +75,8 @@ describe("chat index scene", () => {
 			config,
 			Scene.given(init().model),
 			Scene.Subscription.emit(Message.UpdatedChannels({ groups })),
-			Scene.pointerDown(Scene.role("tab", { name: /Private/ })),
+			Scene.click(Scene.role("tab", { name: /Private/ })),
+			Scene.Command.resolve(Tabs.FocusTab, Tabs.Message.CompletedFocusTab()),
 			Scene.expect(Scene.text("No private channels")).toExist(),
 			Scene.expect(Scene.role("button", { name: /Create a private channel$/ })).toBeAbsent(),
 		)

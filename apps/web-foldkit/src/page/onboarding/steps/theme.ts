@@ -1,6 +1,5 @@
 import type { Html, HtmlBuilder } from "foldkit/html"
 import { twMerge } from "tailwind-merge"
-import { appearanceDark, appearanceLight, appearanceSystem } from "../../../ui/appearance-previews"
 import { visuallyHiddenStyle } from "../../../ui/checkbox"
 import { Message } from "../message"
 import type { ThemeState } from "../../../theme"
@@ -8,7 +7,6 @@ import type { Theme } from "../model"
 import { onboardingNavigation, stepHeader } from "../navigation"
 
 /** `theme-selection-step.tsx`: React Aria's unstyled RadioGroup/Radio with ColorSwatch and previews. */
-
 
 /** `parseColor(hex).getColorName("en-US")` for each swatch. */
 const SWATCHES = [
@@ -22,10 +20,11 @@ const SWATCHES = [
 	{ hex: "#E04F16", name: "vibrant red orange" },
 ] as const
 
-const THEMES: ReadonlyArray<{ value: Theme; label: string; preview: (h: HtmlBuilder<Message>) => Html }> = [
-	{ value: "system", label: "System preference", preview: appearanceSystem },
-	{ value: "light", label: "Light mode", preview: appearanceLight },
-	{ value: "dark", label: "Dark mode", preview: appearanceDark },
+/** Static illustrations in `public/images/appearance`. */
+const THEMES: ReadonlyArray<{ value: Theme; label: string; preview: string }> = [
+	{ value: "system", label: "System preference", preview: "/images/appearance/system.svg" },
+	{ value: "light", label: "Light mode", preview: "/images/appearance/light.svg" },
+	{ value: "dark", label: "Dark mode", preview: "/images/appearance/dark.svg" },
 ]
 
 const rgbOf = (hex: string) => {
@@ -49,7 +48,6 @@ const ariaRadio = (
 	h.label(
 		[
 			h.Class(options.className),
-			h.DataAttribute("rac", ""),
 			h.DataAttribute("react-aria-pressable", "true"),
 			...(options.isSelected ? [h.DataAttribute("selected", "true")] : []),
 		],
@@ -82,7 +80,6 @@ const radioGroup = (h: HtmlBuilder<Message>, ariaLabel: string, className: strin
 			h.Attribute("aria-orientation", "vertical"),
 			h.Class(className),
 			h.DataAttribute("orientation", "vertical"),
-			h.DataAttribute("rac", ""),
 			h.Role("radiogroup"),
 		],
 		children,
@@ -115,7 +112,6 @@ const brandColors = (h: HtmlBuilder<Message>, theme: ThemeState): Html =>
 										isSelected && "ring-2 ring-ring ring-offset-2 ring-offset-bg",
 									),
 								),
-								h.DataAttribute("rac", ""),
 								h.Id(`color-${swatch.hex}`),
 								h.Role("img"),
 								h.Attribute(
@@ -158,7 +154,12 @@ const displayPreferences = (h: HtmlBuilder<Message>, theme: ThemeState): Html =>
 							),
 						],
 						[
-							option.preview(h),
+							h.img([
+								h.Src(option.preview),
+								h.Alt(""),
+								h.Attribute("draggable", "false"),
+								h.Class("size-full"),
+							]),
 							...(isSelected
 								? [
 										h.div(

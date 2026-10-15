@@ -6,7 +6,7 @@ import {
 	OrganizationRepo,
 } from "@hazel/backend-core"
 import { Database, type PG, type schema } from "@hazel/db"
-import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
+import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
 import {
 	Invitation,
 	InvitationAccepted,
@@ -111,11 +111,7 @@ export class Invitations extends Context.Service<Invitations>()("Invitations", {
 				Effect.gen(function* () {
 					yield* policy.canManage(organizationId, "create")
 					const currentUser = yield* CurrentUser.Context
-					const organization = yield* findOrganization(organizationId).pipe(
-						Effect.catchTag("OrganizationNotFoundError", () =>
-							Effect.fail(new InternalServerError({ message: "Organization not found" })),
-						),
-					)
+					const organization = yield* findOrganization(organizationId)
 					const inviterName =
 						`${currentUser.firstName} ${currentUser.lastName}`.trim() || currentUser.email
 

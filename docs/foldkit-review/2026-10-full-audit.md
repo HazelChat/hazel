@@ -113,7 +113,7 @@ Recurring Foldkit anti-patterns: boolean soup, nullable-means-loading, derived d
 
 - Keep hand-rolled virtual message list (Foldkit VirtualList still lacks sticky headers, forces list ARIA) — `s4b-virtual-list.md`.
 - Keep local Menu (submenus + context menu), Select, RadioGroup.
-- `@foldkit/ui` migrations (Dialog/Popover/Tooltip/Toast/Animation) are blocked on `packages/ui-parity` pinning React Aria DOM.
+- `@foldkit/ui` migrations (Dialog/Popover/Tooltip/Toast/Animation) were blocked on `packages/ui-parity` pinning React Aria DOM; the harness has since been deleted, so they are unblocked.
   Slider and Tabs could migrate now.
 
 ## Tooling

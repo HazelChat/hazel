@@ -118,6 +118,7 @@ const gitHubItem = (h: HtmlBuilder<Message>, model: Model, repo: GitHubRepo, log
 						id: repo.id,
 						menu: menuOf(model, "github", repo.id),
 						isEnabled: repo.isEnabled,
+						isToggling: model.togglingRowIds.includes(repo.id),
 						triggerClassName: "text-muted-fg",
 						labels: { enable: "Enable", disable: "Disable", remove: "Remove" },
 					}),

@@ -8,7 +8,7 @@ import { searchField } from "../../../ui/search-field"
 import { view as selectView } from "../../../ui/select-view"
 import { documentsOf, filterAttachments, formatRelativeTime, mediaOf, uploaderIdentity } from "./derive"
 import { type FilesContext, filesHref, mediaGalleryView, mediaGridView } from "./media-view"
-import { Message, type Model, SEARCH_FIELD_ID } from "./page"
+import { filterItems, Message, type Model, SEARCH_FIELD_ID } from "./page"
 import type { FileAttachment } from "./queries"
 
 /** The `files/` and `files/media` route outlets (the lead renders the chat header and tab bar). */
@@ -37,7 +37,7 @@ const headerView = <M>(context: FilesContext<M>, fileCount: number): Html => {
 				model: model.filter,
 				view: selectView,
 				// Kit gap: legacy has no Label and puts `w-36` on the trigger (see the report).
-				viewInputs: { triggerClassName: "w-36" },
+				viewInputs: { items: filterItems, triggerClassName: "w-36" },
 				toParentMessage: (message) => toParentMessage(Message.GotFilterSelectMessage({ message })),
 			}),
 			h.span(

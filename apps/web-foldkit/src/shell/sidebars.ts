@@ -91,7 +91,14 @@ export const settingsSidebar = <Message>(
 		(isActiveFuzzy(path, integrations) && !integrationSubRoutes.some((sub) => isActiveFuzzy(path, sub)))
 
 	return sidebarStatic(h, "flex flex-1", [
-		orgSwitcherHeader(h, chrome.orgSwitcher, context, chrome.organizations, chrome.toOrgSwitcherMessage),
+		orgSwitcherHeader(
+			h,
+			chrome.orgSwitcher,
+			chrome.orgSwitcherEntries,
+			context,
+			chrome.organizations,
+			chrome.toOrgSwitcherMessage,
+		),
 		sidebarContent(h, { state: "expanded" }, [
 			sidebarSectionGroup(h, [
 				sectionTitle(h, "Settings"),
@@ -136,6 +143,7 @@ export const settingsSidebar = <Message>(
 		userMenuFooter(
 			h,
 			chrome.userMenu,
+			chrome.userMenuEntries,
 			context,
 			chrome.toUserMenuMessage,
 			chrome.userStatus,
@@ -163,7 +171,14 @@ export const mySettingsSidebar = <Message>(
 		isLinkActive: isActiveFuzzy(path, to),
 	})
 	return sidebarStatic(h, "flex flex-1", [
-		orgSwitcherHeader(h, chrome.orgSwitcher, context, chrome.organizations, chrome.toOrgSwitcherMessage),
+		orgSwitcherHeader(
+			h,
+			chrome.orgSwitcher,
+			chrome.orgSwitcherEntries,
+			context,
+			chrome.organizations,
+			chrome.toOrgSwitcherMessage,
+		),
 		sidebarContent(h, { state: "expanded" }, [
 			sidebarSectionGroup(h, [
 				sectionTitle(h, "My Settings"),
@@ -184,6 +199,7 @@ export const mySettingsSidebar = <Message>(
 		userMenuFooter(
 			h,
 			chrome.userMenu,
+			chrome.userMenuEntries,
 			context,
 			chrome.toUserMenuMessage,
 			chrome.userStatus,
@@ -250,6 +266,7 @@ export const notificationsSidebar = <Message>(
 		userMenuFooter(
 			h,
 			chrome.userMenu,
+			chrome.userMenuEntries,
 			context,
 			chrome.toUserMenuMessage,
 			chrome.userStatus,

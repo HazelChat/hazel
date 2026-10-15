@@ -5,14 +5,20 @@ import * as ComboBox from "./combo-box"
 import { view as comboBoxView, type ViewInputs as ComboBoxViewInputs } from "./combo-box-view"
 
 /**
- * Port of `components/ui/timezone-select.tsx`: a ComboBox over every IANA timezone. Embed it with
- * `h.submodel({ view: TimezoneSelect.view, viewInputs: TimezoneSelect.viewInputs(className) })`;
- * the chosen zone arrives as `ComboBox.OutMessage.ChangedSelection`.
+ * A ComboBox over every IANA timezone. Embed it with
+ * `h.submodel({ view: TimezoneSelect.view, viewInputs: TimezoneSelect.viewInputs(className) })` and
+ * fold it with `TimezoneSelect.update`; the chosen zone arrives as `ComboBox.OutMessage.ChangedSelection`.
  */
+export const items: ReadonlyArray<ComboBox.Item> = Array.map(getTimezones(), (zone) =>
+	ComboBox.item(zone.id, zone.label),
+)
+
+export const update = (model: ComboBox.Model, message: ComboBox.Message) => ComboBox.update(model, message, items)
+
 export const init = (config: { readonly id: string; readonly value?: string }): ComboBox.Model =>
 	ComboBox.init({
 		id: config.id,
-		items: Array.map(getTimezones(), (zone) => ComboBox.item(zone.id, zone.label)),
+		items,
 		selectedKey: config.value,
 		// Read once at init so update stays pure; a platform Flag from the page is the follow-up.
 		isAppleDevice: isAppleDevice(),
@@ -21,6 +27,7 @@ export const init = (config: { readonly id: string; readonly value?: string }): 
 export const viewInputs = (
 	options: { readonly className?: string; readonly placeholder?: string } = {},
 ): ComboBoxViewInputs => ({
+	items,
 	placeholder: options.placeholder ?? "Select timezone...",
 	className: options.className,
 	listBoxClassName: "max-h-60",

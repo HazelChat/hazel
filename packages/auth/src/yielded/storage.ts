@@ -2,7 +2,7 @@ import { OAuth, Schema as AuthSchema, Sessions } from "@yielded/auth"
 import { AuthPersistence, PersistenceMappingError } from "@yielded/auth-persistence"
 import type { SubjectIdCodec } from "@yielded/auth-persistence/Adapter"
 import * as Mapping from "@yielded/auth-persistence/OAuthPersistence"
-import { Context, Crypto, Effect, Layer, Schema } from "effect"
+import { Cause, Context, Crypto, Effect, Layer, Schema } from "effect"
 import { SqlClient } from "effect/sql"
 
 import { HazelAuth, requirement } from "./auth.ts"
@@ -144,10 +144,10 @@ const emailFromIntent = (intent: OAuth.OAuthRegistrationIntent) =>
 
 /**
  * A first-time GitHub or Google sign-in whose provider-verified email belongs to exactly
- * one existing user is linked to that user (users who signed up through Clerk with
- * email). The registration intent is still issued; the callback then sees the link and
- * restarts sign-in, which resolves to the existing account. Matching failures only log:
- * the user falls back to registering.
+ * one existing user is linked to that user (users who signed up before Hazel sign-in,
+ * with email). The registration intent is still issued; the callback then sees the link and
+ * restarts sign-in, which resolves to the existing account. If the lookup or the link
+ * fails, sign-in fails with OAuthUnavailable rather than continuing to registration.
  */
 const linkByVerifiedEmail = (intent: OAuth.OAuthRegistrationIntent) =>
 	Effect.gen(function* () {
@@ -166,9 +166,19 @@ const linkByVerifiedEmail = (intent: OAuth.OAuthRegistrationIntent) =>
 			result: linked._tag,
 		})
 	}).pipe(
-		Effect.catchCause((cause) =>
-			Effect.logWarning("[auth] verified-email linking failed; continuing to registration", cause),
-		),
+		// Linking must not quietly fall through: registering instead would create a second
+		// account for the same email (`users.email` is not unique). An unavailable sign-in the
+		// user can retry is the honest answer.
+		Effect.catchTags({
+			SqlError: (cause) =>
+				Effect.logError("[auth] verified-email linking failed", Cause.fail(cause)).pipe(
+					Effect.andThen(Effect.fail(OAuth.OAuthUnavailable.make({}))),
+				),
+			PlatformError: (cause) =>
+				Effect.logError("[auth] verified-email linking failed", Cause.fail(cause)).pipe(
+					Effect.andThen(Effect.fail(OAuth.OAuthUnavailable.make({}))),
+				),
+		}),
 	)
 
 export const OAuthStorageLive = Layer.effectContext(

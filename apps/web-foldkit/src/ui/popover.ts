@@ -153,7 +153,6 @@ const popoverOverlay = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder<Mes
 							h.Attribute("aria-labelledby", triggerId(model.id)),
 							h.Class(twMerge(twMerge(...popoverContentBase), viewInputs.className)),
 							h.Attribute("data-popover", ""),
-							h.Attribute("data-rac", ""),
 							h.Attribute("data-trigger", "DialogTrigger"),
 							h.Attribute("dir", "ltr"),
 							h.Id(popoverId(model.id)),
@@ -168,7 +167,7 @@ const popoverOverlay = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder<Mes
 							...(arrow
 								? [
 										h.div(
-											[h.Class("group"), h.Attribute("data-rac", "")],
+											[h.Class("group")],
 											[
 												h.svg(
 													[

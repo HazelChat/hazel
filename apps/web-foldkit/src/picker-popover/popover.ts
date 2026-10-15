@@ -81,9 +81,7 @@ const overlay = <M>(h: HtmlBuilder<M>, inputs: PopoverInputs<M>): Html => {
 					h.div(
 						[
 							h.Attribute("aria-labelledby", triggerId(id)),
-							h.Class("react-aria-Popover"),
 							h.Attribute("data-popover", ""),
-							h.Attribute("data-rac", ""),
 							h.Attribute("data-trigger", "DialogTrigger"),
 							h.Attribute("dir", "ltr"),
 							h.Id(popoverId(id)),
@@ -99,7 +97,6 @@ const overlay = <M>(h: HtmlBuilder<M>, inputs: PopoverInputs<M>): Html => {
 								[
 									h.Attribute("aria-label", inputs.ariaLabel),
 									h.Class("rounded-lg"),
-									h.Attribute("data-rac", ""),
 									h.Id(dialogId(id)),
 									h.Role("dialog"),
 									h.Attribute("tabindex", "-1"),

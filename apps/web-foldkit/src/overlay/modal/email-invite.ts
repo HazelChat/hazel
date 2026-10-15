@@ -61,14 +61,12 @@ const SendInvites = Command.define("SendInvites", {
 const ID = "email-invite-modal"
 const MAX_INVITES = 10
 
+const ROLE_ITEMS = [Select.item("member", "Member"), Select.item("admin", "Admin")]
+
 const newRow = (rowId: number): Row => ({
 	rowId,
 	email: "",
-	role: Select.init({
-		id: `${ID}-role-${rowId}`,
-		items: [Select.item("member", "Member"), Select.item("admin", "Admin")],
-		selectedKey: "member",
-	}),
+	role: Select.init({ id: `${ID}-role-${rowId}`, selectedKey: "member" }),
 })
 
 const roleOf = (row: Row): InvitationRole =>
@@ -185,7 +183,7 @@ const inviteRow = (h: HtmlBuilder<Message>, row: Row, index: number, count: numb
 						slotId: row.role.id,
 						model: row.role,
 						view: selectView,
-						viewInputs: {},
+						viewInputs: { items: ROLE_ITEMS },
 						toParentMessage: (message: Select.Message) => Message.GotRoleMessage({ rowId: row.rowId, message }),
 					}),
 				],

@@ -68,7 +68,6 @@ export const avatarButton = <M>(
 		[
 			...attributes,
 			h.Class("size-fit outline-hidden"),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-react-aria-pressable", "true"),
 			h.Attribute("tabindex", "0"),
 			h.Attribute("type", "button"),

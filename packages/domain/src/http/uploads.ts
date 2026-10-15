@@ -1,6 +1,7 @@
 import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api"
 import { Schema } from "effect"
 import { CurrentUser, InternalServerError, UnauthorizedError } from "../"
+import { attachCause } from "../errors"
 import { AttachmentId, BotId, ChannelId, OrganizationId } from "@hazel/schema"
 import { RateLimitExceededError } from "../rate-limit-errors"
 import { RequiredScopes } from "../scopes/required-scopes"
@@ -115,13 +116,20 @@ export class PresignUploadResponse extends Schema.Class<PresignUploadResponse>("
 
 // ============ Error Schemas ============
 
+/** The upload could not be prepared. `cause` stays server-side, as on `InternalServerError`. */
 export class UploadError extends Schema.TaggedError<UploadError>("UploadError")(
 	"UploadError",
 	{
 		message: Schema.String,
 	},
 	{ httpApiStatus: 500 },
-) {}
+) {
+	constructor(props: { readonly message: string; readonly cause?: unknown }, options?: Schema.MakeOptions) {
+		const { cause, ...fields } = props
+		super(fields, options)
+		attachCause(this, cause)
+	}
+}
 
 export class BotNotFoundForUploadError extends Schema.TaggedError<BotNotFoundForUploadError>(
 	"BotNotFoundForUploadError",

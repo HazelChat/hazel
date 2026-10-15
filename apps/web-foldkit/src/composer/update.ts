@@ -190,7 +190,7 @@ export const update = (model: Model, message: Message): Return =>
 		// The draft executes (it knows the organization and channel).
 		ClickedExecuteCommand: () => ({ model }),
 		ClickedCancelCommand: () => cancelCommand(model),
-		// The draft (`draft-update.ts`) acts on these; a bare composer (the gallery) ignores them.
+		// The draft (`draft-update.ts`) acts on these; the bare composer ignores them.
 		SubmittedDraft: () => ({ model }),
 		PressedEscape: () => ({ model }),
 		PressedArrowUpInEmpty: () => ({ model }),

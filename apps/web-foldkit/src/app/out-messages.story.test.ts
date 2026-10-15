@@ -7,6 +7,7 @@ import * as CommandPalette from "../overlay/command-palette"
 import { FocusInput, SetPresenceStatus } from "../overlay/command-palette/commands"
 import { LayoutHotkeyActionId } from "../overlay/hotkeys"
 import * as ChannelsSidebar from "../shell/channels-sidebar"
+import { userMenuEntries } from "../shell/menus"
 import * as Shell from "../shell/model"
 import * as Platform from "../platform"
 import * as Presence from "../platform/presence/message"
@@ -122,7 +123,7 @@ describe("RequestedSignOut", () => {
 			update,
 			given(signedIn("/hazel/chat")),
 			message(userMenu(Menu.Message.PressedTrigger({ pointerType: "mouse" }))),
-			message(userMenu(Menu.Message.ClickedItem({ key: "logout" }))),
+			message(userMenu(Menu.Message.ClickedItem({ key: "logout", entries: userMenuEntries("hazel", ada.id) }))),
 			Command.expectExact(SignOut()),
 			Command.resolve(SignOut, Message.CompletedSignOut()),
 		)

@@ -61,8 +61,7 @@ export const ariaRadioGroup = <Message>(
 		}
 		return h.label(
 			[
-				h.Class(part.className ?? "react-aria-Radio"),
-				h.DataAttribute("rac", ""),
+				...(part.className === undefined ? [] : [h.Class(part.className)]),
 				h.DataAttribute("react-aria-pressable", "true"),
 				...(isSelected ? [h.DataAttribute("selected", "true")] : []),
 				...(isDisabled ? [h.DataAttribute("disabled", "true")] : []),
@@ -120,8 +119,7 @@ export const ariaRadioGroup = <Message>(
 
 	return h.div(
 		[
-			h.Class(options.className ?? "react-aria-RadioGroup"),
-			h.DataAttribute("rac", ""),
+			...(options.className === undefined ? [] : [h.Class(options.className)]),
 			h.DataAttribute("orientation", "vertical"),
 			h.Role("radiogroup"),
 			h.Id(options.id),

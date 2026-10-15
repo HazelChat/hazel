@@ -1,5 +1,7 @@
 # Orchestrator prompt: continue the Foldkit migration
 
+> **Historical.** The legacy React app (`apps/web`) and the parity harness (`packages/ui-parity`, the `/dev/gallery` routes and the `legacy-ui-guard` agent) have been deleted. Parity commands and baselines referenced below no longer exist.
+
 Paste the block below into a fresh Claude Code session at the repo root.
 
 ````text

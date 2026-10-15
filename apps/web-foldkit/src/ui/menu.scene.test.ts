@@ -15,17 +15,18 @@ const labels: Readonly<Record<string, string>> = {
 	email: "Email",
 	slack: "Slack",
 }
-const viewInputs = {
-	toTrigger: (attributes: ReadonlyArray<ChildAttribute>, overlay: Html) =>
-		ih.button([...attributes, ih.Attribute("aria-label", "File")], ["File", overlay]),
-	content: (key: string) => [menuLabel(ih, "file", key, labels[key] ?? key)],
-}
 const entries = [
 	item("new", { textValue: "New file" }),
 	item("open", { textValue: "Open file" }),
 	item("archive", { isDisabled: true }),
 	item("share", { submenu: [leaf("email"), leaf("slack")] }),
 ]
+const viewInputs = {
+	entries,
+	toTrigger: (attributes: ReadonlyArray<ChildAttribute>, overlay: Html) =>
+		ih.button([...attributes, ih.Attribute("aria-label", "File")], ["File", overlay]),
+	content: (key: string) => [menuLabel(ih, "file", key, labels[key] ?? key)],
+}
 const config = { update, view: Scene.withViewInputs(view, viewInputs)() }
 const trigger = Scene.role("button", { name: "File" })
 const menuItem = (name: string) => Scene.role("menuitem", { name })
@@ -38,7 +39,7 @@ describe("menu scene", () => {
 	test("a closed trigger advertises its popup and renders no menu", () => {
 		Scene.scene(
 			config,
-			Scene.given(init({ id: "file", entries })),
+			Scene.given(init({ id: "file" })),
 			mounted,
 			Scene.expect(trigger).toHaveAttr("aria-haspopup", "true"),
 			Scene.expect(trigger).toHaveAttr("aria-expanded", "false"),
@@ -50,7 +51,7 @@ describe("menu scene", () => {
 	test("pressing the trigger opens a menu labelled by it with every item", () => {
 		Scene.scene(
 			config,
-			Scene.given(init({ id: "file", entries })),
+			Scene.given(init({ id: "file" })),
 			mounted,
 			Scene.pointerDown(trigger),
 			portalled,
@@ -66,7 +67,7 @@ describe("menu scene", () => {
 	test("a right-button press on the trigger is ignored", () => {
 		Scene.scene(
 			config,
-			Scene.given(init({ id: "file", entries })),
+			Scene.given(init({ id: "file" })),
 			mounted,
 			Scene.pointerDown(trigger, { button: 2 }),
 			Scene.expectIgnored(),
@@ -77,7 +78,7 @@ describe("menu scene", () => {
 	test("ArrowDown on the trigger opens the menu and focuses the first item", () => {
 		Scene.scene(
 			config,
-			Scene.given(init({ id: "file", entries })),
+			Scene.given(init({ id: "file" })),
 			mounted,
 			Scene.keydown(trigger, "ArrowDown"),
 			Scene.expectHandled(),
@@ -96,7 +97,7 @@ describe("menu scene", () => {
 	test("a key the trigger does not handle falls through", () => {
 		Scene.scene(
 			config,
-			Scene.given(init({ id: "file", entries })),
+			Scene.given(init({ id: "file" })),
 			mounted,
 			Scene.keydown(trigger, "a"),
 			Scene.expectIgnored(),
@@ -107,7 +108,7 @@ describe("menu scene", () => {
 	test("clicking an item closes the menu and reports the selection", () => {
 		Scene.scene(
 			config,
-			Scene.given(init({ id: "file", entries })),
+			Scene.given(init({ id: "file" })),
 			mounted,
 			Scene.pointerDown(trigger),
 			portalled,
@@ -122,7 +123,7 @@ describe("menu scene", () => {
 	test("a disabled item is aria-disabled and clicking it keeps the menu open", () => {
 		Scene.scene(
 			config,
-			Scene.given(init({ id: "file", entries })),
+			Scene.given(init({ id: "file" })),
 			mounted,
 			Scene.pointerDown(trigger),
 			portalled,
@@ -136,7 +137,7 @@ describe("menu scene", () => {
 	test("a single-selection menu renders radio items with the selected one checked", () => {
 		Scene.scene(
 			config,
-			Scene.given(init({ id: "file", entries, selectionMode: "Single", selectedKeys: ["open"] })),
+			Scene.given(init({ id: "file", selectionMode: "Single", selectedKeys: ["open"] })),
 			mounted,
 			Scene.pointerDown(trigger),
 			portalled,
@@ -163,7 +164,7 @@ describe("menu scene", () => {
 	test("ArrowRight on a submenu trigger expands it and Escape collapses it again", () => {
 		Scene.scene(
 			config,
-			Scene.given(init({ id: "file", entries })),
+			Scene.given(init({ id: "file" })),
 			mounted,
 			Scene.keydown(trigger, "ArrowUp"),
 			portalled,
@@ -190,7 +191,7 @@ describe("menu scene", () => {
 	test("the hidden Dismiss button closes the menu", () => {
 		Scene.scene(
 			config,
-			Scene.given(init({ id: "file", entries })),
+			Scene.given(init({ id: "file" })),
 			mounted,
 			Scene.pointerDown(trigger),
 			portalled,
@@ -208,7 +209,7 @@ describe("context menu scene", () => {
 	test("a right-click opens the menu at the pointer, unlabelled by the trigger", () => {
 		Scene.scene(
 			contextConfig,
-			Scene.given(init({ id: "file", entries, anchor: "Pointer" })),
+			Scene.given(init({ id: "file", anchor: "Pointer" })),
 			Scene.expect(trigger).toHaveAttr("aria-haspopup", "menu"),
 			Scene.Mount.resolve(capture, Message.PressedContextMenu({ offset: -20, crossOffset: 40 })),
 			portalled,
@@ -222,7 +223,7 @@ describe("context menu scene", () => {
 	test("arrow keys go to the menu, the popover itself only handles Escape", () => {
 		Scene.scene(
 			contextConfig,
-			Scene.given(init({ id: "file", entries, anchor: "Pointer" })),
+			Scene.given(init({ id: "file", anchor: "Pointer" })),
 			Scene.Mount.resolve(capture, Message.PressedContextMenu({ offset: 0, crossOffset: 0 })),
 			portalled,
 			Scene.keydown(Scene.role("dialog"), "ArrowDown"),
