@@ -1,3 +1,4 @@
+import { routeOfPath } from "../../../route"
 import "../../channel-settings/document-stub"
 import {
 	ChannelId,
@@ -102,7 +103,7 @@ describe("chat sync connection", () => {
 			Command.resolve(DisconnectConnection, Message.SucceededDisconnect()),
 			expectOutMessage(
 				PageOutMessage.RequestedNavigation({
-					href: "/hazel/settings/chat-sync",
+					route: routeOfPath("/hazel/settings/chat-sync"),
 					replace: false,
 					toast: { intent: "success", title: "Connection deleted", description: null },
 				}),

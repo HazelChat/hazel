@@ -80,7 +80,7 @@ const update = (model: Model, message: Message, shared: Shared): Return =>
 			model,
 			outMessage: completed({
 				...(isOnDeletedChannel && shared.orgSlug !== null
-					? { href: hrefOf(AppRoute.ChatIndex({ orgSlug: shared.orgSlug })) }
+					? { route: AppRoute.ChatIndex({ orgSlug: shared.orgSlug }) }
 					: {}),
 				toast: successToast("Channel deleted successfully"),
 			}),

@@ -30,6 +30,7 @@ import {
 import { AuthMiddlewareClientLive, RpcCredentialsLive } from "~/lib/rpc-auth-middleware"
 import { CustomFetchLive } from "~/lib/services/common/api-client"
 import { HazelAuthClient, HazelAuthClientLive } from "./auth/client"
+import { NotificationSinks } from "./app/notification-sinks"
 import { MessageWindows, MessageWindowsLive } from "./data/message-windows"
 
 /** Same groups, transport and auth middleware as the legacy `HazelRpcClient`, as a plain Effect service. */
@@ -83,11 +84,12 @@ export const HazelApiClientLive = Layer.effect(HazelApiClient, makeApiClient).pi
 )
 
 /** The app's `resources`: what every Command and Subscription may use. */
-export type Resources = HazelRpc | HazelApiClient | MessageWindows | HazelAuthClient
+export type Resources = HazelRpc | HazelApiClient | MessageWindows | HazelAuthClient | NotificationSinks
 
 export const ResourcesLive = Layer.mergeAll(
 	HazelRpcLive,
 	HazelApiClientLive,
 	MessageWindowsLive,
 	HazelAuthClientLive,
+	NotificationSinks.layer,
 )

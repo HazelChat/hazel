@@ -7,7 +7,7 @@ import { setPublicModeAction, updateOrganizationAction } from "~/db/actions"
 import type { ToastRequest } from "../../../overlay/toasts"
 import * as Modal from "../../../ui/modal"
 import { HazelRpc } from "../../../rpc"
-import type { RouteOf } from "../../../route"
+import { AppRoute, type RouteOf } from "../../../route"
 import type { PageReturn, Shared } from "../../contract"
 import { PageOutMessage } from "../../out-message"
 import { errorToast, failureToast, settle, successToast } from "../../../data/actions"
@@ -294,7 +294,7 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 			return {
 				...closed,
 				outMessage: PageOutMessage.RequestedNavigation({
-					href: "/",
+					route: AppRoute.Root(),
 					replace: false,
 					toast: successToast("Workspace deleted successfully"),
 				}),

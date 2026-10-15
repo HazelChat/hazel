@@ -3,6 +3,8 @@ import { Clock, Effect, Schema } from "effect"
 import { Command, type Update } from "foldkit"
 import { defineMessageUnion } from "foldkit/message"
 import { modifyFields } from "foldkit/struct"
+import { CommonReason } from "~/lib/error-messages"
+import { catchCommon } from "../data/actions"
 import { HazelRpc } from "../rpc"
 
 /** "Mark all as read" (`markAllAsRead` in `hooks/use-notifications.ts`), owned by the shell. */
@@ -27,7 +29,7 @@ export const Message = defineMessageUnion({
 	UpdatedUnreadNotifications: { ids: Schema.Array(NotificationId) },
 	ClickedMarkAllRead: {},
 	SucceededMarkNotificationRead: { id: NotificationId },
-	FailedMarkNotificationRead: { id: NotificationId, reason: Schema.String },
+	FailedMarkNotificationRead: { id: NotificationId, reason: Schema.Union([Schema.Literal("NotFound"), CommonReason]) },
 })
 export type Message = typeof Message.Type
 
@@ -44,9 +46,10 @@ export const MarkNotificationRead = Command.define("MarkNotificationRead", {
 			yield* client("notification.update", { id, readAt: new Date(nowMs) })
 			return Message.SucceededMarkNotificationRead({ id })
 		}).pipe(
-			Effect.catch((error) =>
-				Effect.succeed(Message.FailedMarkNotificationRead({ id, reason: String(error) })),
+			Effect.catchTag("NotificationNotFoundError", () =>
+				Effect.succeed(Message.FailedMarkNotificationRead({ id, reason: "NotFound" })),
 			),
+			catchCommon((reason) => Message.FailedMarkNotificationRead({ id, reason })),
 		),
 })
 
@@ -65,7 +68,13 @@ const without = (ids: ReadonlyArray<NotificationId>, id: NotificationId) =>
 
 export const update = (model: Model, message: Message): Update.Return<Model, Message, HazelRpc> =>
 	Message.match<Update.Return<Model, Message, HazelRpc>>(message, {
-		UpdatedUnreadNotifications: ({ ids }) => ({ model: modifyFields(model, { unreadIds: () => ids }) }),
+		// An optimistic id that left the unread rows has synced as read: it is no longer needed.
+		UpdatedUnreadNotifications: ({ ids }) => ({
+			model: modifyFields(model, {
+				unreadIds: () => ids,
+				optimisticReadIds: (optimistic) => optimistic.filter((id) => ids.includes(id)),
+			}),
+		}),
 		// Every unread id is marked read at once and the calls go out in parallel, across all tabs.
 		ClickedMarkAllRead: () => {
 			const ids = unreadIdsOf(model)
@@ -81,7 +90,7 @@ export const update = (model: Model, message: Message): Update.Return<Model, Mes
 		SucceededMarkNotificationRead: ({ id }) => ({
 			model: modifyFields(model, { pendingIds: (ids) => without(ids, id) }),
 		}),
-		// A failed call rolls its id back, so it counts as unread again.
+		// A failed call rolls its id back, so it counts as unread again (the count is the feedback, no toast).
 		FailedMarkNotificationRead: ({ id }) => ({
 			model: modifyFields(model, {
 				pendingIds: (ids) => without(ids, id),

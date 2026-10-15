@@ -1,3 +1,4 @@
+import { routeOfPath } from "../../../../route"
 import { BotId } from "@hazel/schema"
 import { Schema } from "effect"
 import { Command, expectOutMessage, given, message, story } from "foldkit/story"
@@ -53,7 +54,7 @@ describe("installed apps outcomes", () => {
 			message(Message.ClickedBrowseMarketplace()),
 			expectOutMessage(
 				PageOutMessage.RequestedNavigation({
-					href: "/hazel/settings/integrations/marketplace",
+					route: routeOfPath("/hazel/settings/integrations/marketplace"),
 					replace: false,
 				}),
 			),

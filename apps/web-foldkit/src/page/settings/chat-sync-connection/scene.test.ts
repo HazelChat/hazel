@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { routeOfPath } from "../../../route"
 import { ChannelId, ExternalChannelId, SyncChannelLinkId } from "@hazel/schema"
 import { Schema } from "effect"
 import * as Scene from "foldkit/scene"
@@ -79,7 +80,7 @@ describe("connection states", () => {
 			Scene.expect(Scene.text("Connection not found")).toExist(),
 			Scene.click(Scene.role("button", { name: "Go back" })),
 			Scene.expectOutMessage(
-				PageOutMessage.RequestedNavigation({ href: "/hazel/settings/chat-sync", replace: false }),
+				PageOutMessage.RequestedNavigation({ route: routeOfPath("/hazel/settings/chat-sync"), replace: false }),
 			),
 		)
 	})
@@ -111,7 +112,7 @@ describe("disconnect", () => {
 			Scene.Command.resolve(DisconnectConnection, Message.SucceededDisconnect()),
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedNavigation({
-					href: "/hazel/settings/chat-sync",
+					route: routeOfPath("/hazel/settings/chat-sync"),
 					replace: false,
 					toast: successToast("Connection deleted"),
 				}),

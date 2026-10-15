@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { routeOfPath } from "../../../route"
 import { Command, expectNoOutMessage, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
 import { errorToast, successToast } from "../../../data/actions"
@@ -189,7 +190,7 @@ describe("delete workspace", () => {
 			Command.resolve(DeleteOrganization, Message.SucceededDeleteWorkspace()),
 			expectOutMessage(
 				PageOutMessage.RequestedNavigation({
-					href: "/",
+					route: routeOfPath("/"),
 					replace: false,
 					toast: successToast("Workspace deleted successfully"),
 				}),

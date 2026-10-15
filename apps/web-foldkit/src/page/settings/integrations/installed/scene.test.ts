@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { routeOfPath } from "../../../../route"
 import * as Scene from "foldkit/scene"
 import { describe, test } from "vitest"
 import { failureToastFixture, makeShared, pageScene } from "../../../../test/pages-fixtures"
@@ -25,7 +26,7 @@ describe("installed apps", () => {
 			Scene.click(Scene.role("button", { name: "Browse Marketplace" })),
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedNavigation({
-					href: "/hazel/settings/integrations/marketplace",
+					route: routeOfPath("/hazel/settings/integrations/marketplace"),
 					replace: false,
 				}),
 			),

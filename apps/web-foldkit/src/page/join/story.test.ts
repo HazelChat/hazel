@@ -1,7 +1,7 @@
 import { Command, expectNoOutMessage, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
 import { errorToast } from "../../data/actions"
-import { AppRoute } from "../../route"
+import { AppRoute, routeOfPath } from "../../route"
 import { PageOutMessage } from "../out-message"
 import { FetchPublicOrganization, JoinWorkspace, RedirectToSignIn } from "./command"
 import { Message } from "./message"
@@ -56,7 +56,7 @@ describe("join workspace", () => {
 			Command.resolve(JoinWorkspace, Message.SucceededJoinWorkspace()),
 			expectOutMessage(
 				PageOutMessage.RequestedNavigation({
-					href: "/hazel",
+					route: routeOfPath("/hazel"),
 					replace: false,
 					toast: { intent: "success", title: "Successfully joined workspace!", description: null },
 				}),

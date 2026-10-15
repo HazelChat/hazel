@@ -47,6 +47,7 @@ export const urlOf = (path: string): Url =>
 export interface BootOptions {
 	readonly themePreference?: ThemePreference
 	readonly systemTheme?: "light" | "dark"
+	readonly isMobile?: boolean
 }
 
 /** `init` at `path` with default flags (the Model and its Commands). */
@@ -57,6 +58,8 @@ export const bootReturn = (path: string, options: BootOptions = {}) =>
 			systemTheme: options.systemTheme ?? "light",
 			soundSettings: DEFAULT_SOUND_SETTINGS,
 			sessionStartMs: 0,
+			isMobile: options.isMobile ?? false,
+			isCreateChannelHintDismissed: false,
 		},
 		urlOf(path),
 	)
@@ -72,7 +75,7 @@ export const sessionMessages = (member: Member | null = owner): ReadonlyArray<Me
 	Message.ChangedAuth({ auth: "SignedIn" }),
 	Message.SucceededFetchCurrentUser({ user: ada }),
 	Message.UpdatedOrganization({ orgSlug: "hazel", organization: hazelOrg }),
-	Message.UpdatedMember({ member }),
+	Message.UpdatedMember({ organizationId: hazelOrg.id, member }),
 ]
 
 /** The app at `path` once the session has loaded (the org shell renders). */

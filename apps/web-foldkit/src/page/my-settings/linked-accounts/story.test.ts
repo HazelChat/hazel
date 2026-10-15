@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { routeOfPath } from "../../../route"
 import { Option } from "effect"
 import { Command, expectNoOutMessage, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
@@ -119,7 +120,7 @@ describe("link callback", () => {
 		expect(callback.commands).toBeUndefined()
 		expect(callback.outMessage).toEqual(
 			PageOutMessage.RequestedNavigation({
-				href: "/hazel/my-settings/linked-accounts",
+				route: routeOfPath("/hazel/my-settings/linked-accounts"),
 				replace: true,
 				toast: { intent: "success", title: "Discord account linked", description: null },
 			}),

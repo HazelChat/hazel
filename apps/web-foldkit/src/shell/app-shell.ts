@@ -1,6 +1,6 @@
 import type { Attribute, Html, HtmlBuilder } from "foldkit/html"
 import { IconBell, IconDashboard, IconGear, IconMsgs, Logo } from "../icons"
-import { AppRoute, hrefOf } from "../route"
+import { AppRoute, hrefOf, isChatRoute, isNotificationsRoute, isSettingsRoute } from "../route"
 import { linkClassName } from "../ui/link"
 import {
 	sidebarContent,
@@ -16,7 +16,7 @@ import {
 	sidebarStatic,
 } from "../ui/sidebar"
 import type * as Modal from "../ui/modal"
-import { isActiveFuzzy, type ShellContext } from "./context"
+import type { ShellContext } from "./context"
 import { mobileNav, mobileSidebarPlaceholder, mobileSidebarSheet } from "./mobile"
 import { hasDesktopTitlebar } from "../platform/desktop"
 
@@ -51,7 +51,7 @@ const bellIcon = <Message>(h: HtmlBuilder<Message>, unreadCount: number): Html =
 
 /** `NavSidebar` */
 const navRail = <Message>(h: HtmlBuilder<Message>, context: ShellContext, unreadCount: number): Html => {
-	const { orgSlug } = context
+	const { orgSlug, route } = context
 	const home = hrefOf(AppRoute.OrgHome({ orgSlug }))
 	const chat = hrefOf(AppRoute.ChatIndex({ orgSlug }))
 	const notifications = hrefOf(AppRoute.NotificationsAll({ orgSlug }))
@@ -79,25 +79,25 @@ const navRail = <Message>(h: HtmlBuilder<Message>, context: ShellContext, unread
 					navItem(
 						"Home",
 						home,
-						context.pathname === home,
+						route._tag === "OrgHome",
 						IconDashboard(h, { className: "size-5" }),
 					),
 					navItem(
 						"Chat",
 						chat,
-						isActiveFuzzy(context.pathname, chat),
+						isChatRoute(route),
 						IconMsgs(h, { className: "size-5" }),
 					),
 					navItem(
 						"Notifications",
 						notifications,
-						isActiveFuzzy(context.pathname, notifications),
+						isNotificationsRoute(route),
 						bellIcon(h, unreadCount),
 					),
 					navItem(
 						"Settings",
 						settings,
-						isActiveFuzzy(context.pathname, settings),
+						isSettingsRoute(route),
 						IconGear(h, { className: "size-5" }),
 					),
 				]),

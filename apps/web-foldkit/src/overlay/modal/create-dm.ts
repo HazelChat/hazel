@@ -6,7 +6,7 @@ import { defineMessageUnion } from "foldkit/message"
 import { modifyFields } from "foldkit/struct"
 import { HazelRpc } from "../../rpc"
 import type { Shared } from "../../page/contract"
-import { AppRoute, orgHrefOf } from "../../route"
+import { AppRoute, orgRouteOf } from "../../route"
 import { closed, completed, ModalOutMessage } from "../out-message"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalSubscriptionInput } from "./contract"
@@ -50,8 +50,8 @@ const StartConversation = Command.define("StartConversation", {
 
 type Return = ModalReturn<Model, Message>
 
-const chatHref = (shared: Shared, channelId: ChannelId) =>
-	orgHrefOf(shared.orgSlug, (orgSlug) => AppRoute.ChatChannel({ orgSlug, channelId })) ?? undefined
+const chatRoute = (shared: Shared, channelId: ChannelId) =>
+	orgRouteOf(shared.orgSlug, (orgSlug) => AppRoute.ChatChannel({ orgSlug, channelId }))
 
 const submitted = (model: Model, shared: Shared): Return => {
 	const ids = model.selectedUserIds
@@ -104,10 +104,10 @@ const update = (model: Model, message: Message, shared: Shared): Return =>
 		ClickedCancel: () => ({ model, outMessage: closed }),
 		ClickedStartConversation: () => submitted(model, shared),
 		UpdatedOrganizationUsers: ({ users }) => ({ model: modifyFields(model, { organizationUsers: () => users }) }),
-		FoundExistingDm: ({ channelId }) => ({ model, outMessage: completed({ href: chatHref(shared, channelId) }) }),
+		FoundExistingDm: ({ channelId }) => ({ model, outMessage: completed({ route: chatRoute(shared, channelId) }) }),
 		SucceededCreateDm: ({ channelId }) => ({
 			model,
-			outMessage: completed({ href: chatHref(shared, channelId), toast: successToast(successMessage(model)) }),
+			outMessage: completed({ route: chatRoute(shared, channelId), toast: successToast(successMessage(model)) }),
 		}),
 		FailedCreateDm: ({ toast }) => ({
 			model: modifyFields(model, { isSubmitting: () => false }),

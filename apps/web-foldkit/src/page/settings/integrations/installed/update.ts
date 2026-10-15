@@ -3,7 +3,7 @@ import { Effect, Exit } from "effect"
 import { Command } from "foldkit"
 import { modifyFields } from "foldkit/struct"
 import { HazelRpc } from "../../../../rpc"
-import { AppRoute, hrefOf, type RouteOf } from "../../../../route"
+import { AppRoute, type RouteOf } from "../../../../route"
 import type { PageReturn } from "../../../contract"
 import { PageOutMessage } from "../../../out-message"
 import { failureToast, rateLimitMessage, successToast } from "../../../../data/actions"
@@ -66,7 +66,7 @@ export const update = (model: Model, message: Message): Return =>
 		ClickedBrowseMarketplace: () => ({
 			model,
 			outMessage: PageOutMessage.RequestedNavigation({
-				href: hrefOf(AppRoute.SettingsIntegrationsMarketplace({ orgSlug: model.orgSlug })),
+				route: AppRoute.SettingsIntegrationsMarketplace({ orgSlug: model.orgSlug }),
 				replace: false,
 			}),
 		}),

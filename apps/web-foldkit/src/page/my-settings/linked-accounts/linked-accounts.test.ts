@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { routeOfPath } from "../../../route"
 import { Option } from "effect"
 import { describe, expect, test } from "vitest"
 import { PageOutMessage } from "../../out-message"
@@ -19,7 +20,7 @@ describe("linked accounts callback", () => {
 		const page = init(routeWith({ status: "success", provider: "discord" }))
 		expect(page.outMessage).toEqual(
 			PageOutMessage.RequestedNavigation({
-				href: "/hazel/my-settings/linked-accounts",
+				route: routeOfPath("/hazel/my-settings/linked-accounts"),
 				replace: true,
 				toast: { intent: "success", title: "Discord account linked", description: null },
 			}),
@@ -31,7 +32,7 @@ describe("linked accounts callback", () => {
 		const page = init(routeWith({ status: "error", provider: "discord", errorCode: "db_error" }))
 		expect(page.outMessage).toEqual(
 			PageOutMessage.RequestedNavigation({
-				href: "/hazel/my-settings/linked-accounts",
+				route: routeOfPath("/hazel/my-settings/linked-accounts"),
 				replace: true,
 				toast: { intent: "error", title: "Failed to link Discord account", description: "db_error" },
 			}),

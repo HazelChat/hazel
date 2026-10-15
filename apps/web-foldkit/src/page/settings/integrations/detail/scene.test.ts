@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { routeOfPath } from "../../../../route"
 import { OrganizationId } from "@hazel/schema"
 import { Option, Schema } from "effect"
 import {
@@ -57,7 +58,7 @@ describe("integration detail page", () => {
 		const page = pageFor("linear", { status: "error", errorCode: "token_exchange_failed" })
 		expect(page.outMessage).toEqual(
 			PageOutMessage.RequestedNavigation({
-				href: "/hazel/settings/integrations/linear",
+				route: routeOfPath("/hazel/settings/integrations/linear"),
 				replace: true,
 				toast: errorToast(
 					"Failed to connect to Linear",
@@ -133,7 +134,7 @@ describe("integration detail page", () => {
 		const page = pageFor("linear", { status: "success" })
 		expect(page.outMessage).toEqual(
 			PageOutMessage.RequestedNavigation({
-				href: "/hazel/settings/integrations/linear",
+				route: routeOfPath("/hazel/settings/integrations/linear"),
 				replace: true,
 				toast: successToast("Connected to Linear", "Your account has been successfully connected."),
 			}),
@@ -152,7 +153,7 @@ describe("integration detail page", () => {
 			given(pageFor("linear").model),
 			click(role("button", { name: "Back to integrations" })),
 			expectOutMessage(
-				PageOutMessage.RequestedNavigation({ href: "/hazel/settings/integrations", replace: false }),
+				PageOutMessage.RequestedNavigation({ route: routeOfPath("/hazel/settings/integrations"), replace: false }),
 			),
 		)
 	})

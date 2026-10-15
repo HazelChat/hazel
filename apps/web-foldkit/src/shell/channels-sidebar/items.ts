@@ -18,21 +18,15 @@ export const CHANNEL_ACTIVE = "bg-sidebar-accent font-medium text-sidebar-accent
 
 export interface ItemContext {
 	readonly orgSlug: string
-	readonly pathname: string
+	/** The channel the route shows (its chat or its files), whose link is active. */
+	readonly activeChannelId: ChannelId | null
 	readonly currentUserId: string | null
 	readonly nowMs: number
 	readonly presenceByUser: ReadonlyMap<string, Presence>
 }
 
-/** TanStack's default (non-exact) active match. */
-const isActiveFuzzy = (pathname: string, to: string) => pathname === to || pathname.startsWith(`${to}/`)
-
 const chatHref = (context: { readonly orgSlug: string }, channelId: ChannelId) =>
 	hrefOf(AppRoute.ChatChannel({ orgSlug: context.orgSlug, channelId }))
-
-/** Whether a channel's sidebar link is active at `pathname`, read before the row's memo. */
-export const isChannelLinkActive = (pathname: string, orgSlug: string, channelId: ChannelId) =>
-	isActiveFuzzy(pathname, chatHref({ orgSlug }, channelId))
 
 /** What one memoized row reads instead of the whole `ItemContext`. */
 export interface RowLinkContext {
@@ -147,7 +141,7 @@ export const discoverableItem = <M>(
 			h,
 			{
 				href,
-				isActive: isActiveFuzzy(context.pathname, href),
+				isActive: context.activeChannelId === channel.id,
 				activeClassName: `active ${CHANNEL_ACTIVE}`,
 			},
 			[channelIcon(h, channel.icon), label(h, [channel.name])],

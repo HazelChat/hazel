@@ -2,7 +2,7 @@ import { Submodel } from "foldkit"
 import type { Html, HtmlBuilder } from "foldkit/html"
 import { IconCheck, IconCube, IconDownload } from "../../../icons"
 import { isDesktop } from "../../../platform/desktop"
-import type * as Updates from "../../../platform/updates"
+import * as Updates from "../../../platform/updates"
 import { badge } from "../../../ui/badge"
 import { button } from "../../../ui/button"
 import { progressBar, progressBarTrack } from "../../../ui/progress-bar"
@@ -116,7 +116,7 @@ const updateStatus = (h: HtmlBuilder<Message>, state: Updates.Model): Html => {
 				],
 			)
 		case "CheckFailed":
-			return retry(h, state.message, "Retry")
+			return retry(h, Updates.CHECK_FAILURE_TEXT, "Retry")
 		case "Downloading": {
 			const percent =
 				state.totalBytes === null ? 0 : Math.round((state.downloadedBytes / state.totalBytes) * 100)
@@ -148,7 +148,7 @@ const updateStatus = (h: HtmlBuilder<Message>, state: Updates.Model): Html => {
 		case "Restarting":
 			return spinner(h, "Restarting...")
 		case "InstallFailed":
-			return retry(h, state.message, "Retry")
+			return retry(h, Updates.installFailureText(state.reason), "Retry")
 	}
 }
 

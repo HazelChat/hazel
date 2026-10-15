@@ -1,5 +1,5 @@
 import { ChannelId, MessageId, type NotificationId, type UserId } from "@hazel/schema"
-import { Effect, Option, Schema, Stream } from "effect"
+import { Clock, Context, Effect, Layer, Option, Schema, Stream } from "effect"
 import { channelCollection, messageCollection, notificationCollection, userCollection } from "~/db/collections"
 import { notificationSoundManager } from "~/lib/notification-sound-manager"
 import {
@@ -11,12 +11,19 @@ import {
 import { isSoundMuted, type SoundSettings } from "../notification-sound"
 
 /**
- * The legacy `NotificationSoundProvider` (org layout) at the root: the singletons it wires (sound
- * manager, orchestrator, sound and native sinks) and the recent notifications it feeds them.
+ * The legacy `NotificationSoundProvider` (org layout) at the root: the sinks it wires into the
+ * orchestrator, and the recent notifications it feeds them.
  */
 
-const soundSink = new SoundNotificationSink({ notificationSoundManager })
-const nativeSink = new NativeNotificationSink()
+/** The sound and native sinks, made once for the app and handed to the orchestrator while wired. */
+export class NotificationSinks extends Context.Service<NotificationSinks>()("NotificationSinks", {
+	make: Effect.sync(() => ({
+		soundSink: new SoundNotificationSink({ notificationSoundManager }),
+		nativeSink: new NativeNotificationSink(),
+	})),
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}
 
 export interface SinkContext {
 	readonly userId: UserId
@@ -35,10 +42,11 @@ export const wireNotificationSinks = ({
 	settings,
 	currentChannelId,
 	sessionStartMs,
-}: SinkContext): Stream.Stream<never> =>
-	Stream.callback<never>(() =>
+}: SinkContext): Stream.Stream<never, never, NotificationSinks> =>
+	Stream.callback<never, never, NotificationSinks>(() =>
 		Effect.acquireRelease(
-			Effect.sync(() => {
+			NotificationSinks.use(({ soundSink, nativeSink }) =>
+				Effect.sync(() => {
 				const sessionStartTime = new Date(sessionStartMs)
 				const cleanupPriming = notificationSoundManager.initPriming()
 				notificationSoundManager.setDependencies({
@@ -72,6 +80,7 @@ export const wireNotificationSinks = ({
 				})
 				return cleanupPriming
 			}),
+			),
 			(cleanupPriming) => Effect.sync(cleanupPriming),
 		).pipe(Effect.flatMap(() => Effect.never)),
 	)
@@ -81,7 +90,8 @@ const decodeChannelId = Schema.decodeUnknownOption(ChannelId)
 
 /** The provider's `recentNotifications` effect: oldest first, with the rows the sinks describe. */
 export const deliverNotifications = (ids: ReadonlyArray<NotificationId>) =>
-	Effect.sync(() => {
+	Effect.flatMap(Clock.currentTimeMillis, (receivedAtMs) =>
+		Effect.sync(() => {
 		const events = ids.flatMap((id): ReadonlyArray<NotificationEvent> => {
 			const notification = notificationCollection.state.get(id)
 			if (notification === undefined) return []
@@ -96,7 +106,8 @@ export const deliverNotifications = (ids: ReadonlyArray<NotificationId>) =>
 					channelCollection.state.get(id),
 				),
 			)
-			return [{ id: notification.id, notification, message, author, channel, receivedAt: Date.now() }]
+			return [{ id: notification.id, notification, message, author, channel, receivedAt: receivedAtMs }]
 		})
 		notificationOrchestrator.enqueue([...events].reverse())
-	})
+	}),
+	)

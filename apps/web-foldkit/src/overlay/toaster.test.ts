@@ -48,6 +48,8 @@ describe("root toaster", () => {
 						systemTheme: "light",
 						soundSettings: DEFAULT_SOUND_SETTINGS,
 						sessionStartMs: 0,
+						isMobile: false,
+						isCreateChannelHintDismissed: false,
 					},
 					url,
 				),

@@ -4,6 +4,7 @@ import { Command, Submodel } from "foldkit"
 import { defineMessageUnion } from "foldkit/message"
 import { modifyFields } from "foldkit/struct"
 import { IconWarning } from "../../icons"
+import { AppRoute } from "../../route"
 import { HazelRpc } from "../../rpc"
 import { button } from "../../ui/button"
 import { dialogBody, dialogFooter, dialogHeader } from "../../ui/dialog"
@@ -89,7 +90,7 @@ const update = (model: Model, message: Message): Return =>
 		// The settings page's `onDeleted` navigated to the root.
 		SucceededDeleteWorkspace: () => ({
 			model,
-			outMessage: completed({ href: "/", toast: successToast("Workspace deleted successfully") }),
+			outMessage: completed({ route: AppRoute.Root(), toast: successToast("Workspace deleted successfully") }),
 		}),
 		FailedDeleteWorkspace: ({ toast }) => ({
 			model: modifyFields(model, { isDeleting: () => false }),

@@ -89,7 +89,7 @@ const switchLink = (h: HtmlBuilder<Message>, model: Model): Html => {
 				[
 					h.Class("text-fg underline underline-offset-2"),
 					h.Href(
-						hrefOf(target({ splat: "", redirectUrl: Option.fromNullishOr(model.redirectUrl) })),
+						hrefOf(target({ redirectUrl: Option.fromNullishOr(model.redirectUrl) })),
 					),
 				],
 				[isSignIn ? "Create an account" : "Sign in"],

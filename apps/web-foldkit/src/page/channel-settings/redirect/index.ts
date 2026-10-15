@@ -1,7 +1,7 @@
 import { Schema } from "effect"
 import { Submodel } from "foldkit"
 import { defineMessageUnion } from "foldkit/message"
-import { AppRoute, hrefOf } from "../../../route"
+import { AppRoute } from "../../../route"
 import { definePage, type PageViewInputs } from "../../contract"
 import { PageOutMessage } from "../../out-message"
 
@@ -18,9 +18,7 @@ export const page = definePage(
 		init: (route) => ({
 			model: {},
 			outMessage: PageOutMessage.RequestedNavigation({
-				href: hrefOf(
-					AppRoute.ChannelSettingsOverview({ orgSlug: route.orgSlug, channelId: route.channelId }),
-				),
+				route: AppRoute.ChannelSettingsOverview({ orgSlug: route.orgSlug, channelId: route.channelId }),
 				replace: true,
 			}),
 		}),

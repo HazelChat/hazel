@@ -2,7 +2,7 @@ import { Effect } from "effect"
 import { Command } from "foldkit"
 import { modifyFields } from "foldkit/struct"
 import { HazelRpc } from "../../../../rpc"
-import { integrationHref, type RouteOf } from "../../../../route"
+import { integrationRoute, type RouteOf } from "../../../../route"
 import type { PageReturn, Shared } from "../../../contract"
 import { PageOutMessage } from "../../../out-message"
 import { Message } from "./message"
@@ -48,7 +48,7 @@ export const update = (model: Model, message: Message): PageReturn<Model, Messag
 		ClickedIntegration: ({ integrationId }) => ({
 			model,
 			outMessage: PageOutMessage.RequestedNavigation({
-				href: integrationHref(model.orgSlug, integrationId),
+				route: integrationRoute(model.orgSlug, integrationId),
 				replace: false,
 			}),
 		}),

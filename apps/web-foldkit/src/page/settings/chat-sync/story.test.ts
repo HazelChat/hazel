@@ -1,3 +1,4 @@
+import { routeOfPath } from "../../../route"
 import "../../channel-settings/document-stub"
 import { OrganizationId, SyncConnectionId } from "@hazel/schema"
 import { Schema } from "effect"
@@ -268,14 +269,14 @@ describe("chat sync guards", () => {
 			message(Message.ClickedConnection({ connectionId })),
 			expectOutMessage(
 				PageOutMessage.RequestedNavigation({
-					href: `/hazel/settings/chat-sync/${connectionId}`,
+					route: routeOfPath(`/hazel/settings/chat-sync/${connectionId}`),
 					replace: false,
 				}),
 			),
 			message(Message.ClickedOpenDiscordIntegration()),
 			expectOutMessage(
 				PageOutMessage.RequestedNavigation({
-					href: "/hazel/settings/integrations/discord",
+					route: routeOfPath("/hazel/settings/integrations/discord"),
 					replace: false,
 				}),
 			),

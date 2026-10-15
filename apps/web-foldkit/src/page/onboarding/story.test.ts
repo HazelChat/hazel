@@ -10,7 +10,7 @@ import {
 	onboardingRoute,
 	withForm,
 } from "../../test/pages-entry-fixtures"
-import { onboardingHref } from "../../route"
+import { onboardingHref, routeOfPath } from "../../route"
 import * as ChoiceBox from "../../ui/choice-box"
 import { PageOutMessage } from "../out-message"
 import {
@@ -40,7 +40,7 @@ describe("start-up", () => {
 	test("an onboarded user is sent home once, and later shared changes do not redirect again", () => {
 		const onboarded = makeShared()
 		const started = init(onboardingRoute(null), onboarded)
-		expect(started.outMessage).toEqual(PageOutMessage.RequestedNavigation({ href: "/", replace: false }))
+		expect(started.outMessage).toEqual(PageOutMessage.RequestedNavigation({ route: routeOfPath("/"), replace: false }))
 		expect(started.commands?.map((command) => command.name)).toEqual([ReadBrowserTimezone.name])
 		expect(sharedChanged(started.model, onboarded).outMessage).toBeUndefined()
 	})

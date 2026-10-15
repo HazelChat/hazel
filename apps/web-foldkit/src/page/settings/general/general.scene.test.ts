@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { routeOfPath } from "../../../route"
 import * as Scene from "foldkit/scene"
 import { describe, test } from "vitest"
 import {
@@ -136,7 +137,7 @@ describe("delete workspace", () => {
 			Scene.Command.resolve(DeleteOrganization, Message.SucceededDeleteWorkspace()),
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedNavigation({
-					href: "/",
+					route: routeOfPath("/"),
 					replace: false,
 					toast: successToast("Workspace deleted successfully"),
 				}),

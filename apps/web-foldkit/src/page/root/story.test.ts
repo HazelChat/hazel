@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
+import { routeOfPath } from "../../route"
 import { Command, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
 import { currentUser, makeShared, organizationId, storyUpdate } from "../../test/pages-fixtures"
 import { PageOutMessage } from "../out-message"
-import { init, Reload, TakeReturnTo, update } from "./index"
+import { ForgetReturnTo, init, ReadReturnTo, Reload, update } from "./index"
 import { Message } from "./model"
 
 /** `/` forwards once the user, their membership and the page sign-in started from are known. */
@@ -11,11 +12,11 @@ import { Message } from "./model"
 const membership = { organizationId, slug: "hazel" }
 const signedIn = storyUpdate(update, makeShared())
 const notOnboarded = storyUpdate(update, makeShared({ currentUser: { ...currentUser, isOnboarded: false } }))
-const go = (href: string) => expectOutMessage(PageOutMessage.RequestedNavigation({ href, replace: true }))
+const go = (href: string) => expectOutMessage(PageOutMessage.RequestedNavigation({ route: routeOfPath(href), replace: true }))
 
 describe("root redirect", () => {
 	test("reads the remembered page first", () => {
-		expect(init().commands?.map((command) => command.name)).toEqual([TakeReturnTo.name])
+		expect(init().commands?.map((command) => command.name)).toEqual([ReadReturnTo.name])
 	})
 
 	test("without a remembered page it goes to the user's organization", () => {
@@ -24,7 +25,7 @@ describe("root redirect", () => {
 			given(init().model),
 			message(Message.UpdatedMembership({ membership })),
 			Command.expectNone(),
-			message(Message.TookReturnTo({ returnTo: null })),
+			message(Message.ReadReturnTo({ returnTo: null })),
 			go("/hazel"),
 		)
 	})
@@ -33,8 +34,11 @@ describe("root redirect", () => {
 		story(
 			signedIn,
 			given(init().model),
-			message(Message.TookReturnTo({ returnTo: "/join/acme" })),
+			message(Message.ReadReturnTo({ returnTo: "/join/acme" })),
 			go("/join/acme"),
+			// Only now, with the redirect going there, is the remembered page used up.
+			Command.expectExact(ForgetReturnTo()),
+			Command.resolve(ForgetReturnTo, Message.CompletedForgetReturnTo()),
 		)
 	})
 
@@ -42,7 +46,7 @@ describe("root redirect", () => {
 		story(
 			signedIn,
 			given(init().model),
-			message(Message.TookReturnTo({ returnTo: null })),
+			message(Message.ReadReturnTo({ returnTo: null })),
 			message(Message.StalledMembership()),
 			model((m) => expect(m.isStalled).toBe(true)),
 			message(Message.PressedReload()),
@@ -58,9 +62,11 @@ describe("root redirect", () => {
 		story(
 			notOnboarded,
 			given(init().model),
-			message(Message.TookReturnTo({ returnTo: "/join/acme" })),
+			message(Message.ReadReturnTo({ returnTo: "/join/acme" })),
 			message(Message.UpdatedMembership({ membership: null })),
 			go("/onboarding"),
+			// The remembered page stays for after onboarding, when `/` runs this redirect again.
+			Command.expectNone(),
 		)
 	})
 })

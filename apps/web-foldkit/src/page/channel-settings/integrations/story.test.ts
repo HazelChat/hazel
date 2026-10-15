@@ -1,3 +1,4 @@
+import { routeOfPath } from "../../../route"
 import "../document-stub"
 import { ChannelId, ChannelWebhookId } from "@hazel/schema"
 import { Schema } from "effect"
@@ -509,7 +510,7 @@ describe("copy and GitHub", () => {
 			message(Message.ClickedConnectGitHub()),
 			expectOutMessage(
 				PageOutMessage.RequestedNavigation({
-					href: "/hazel/settings/integrations/github",
+					route: routeOfPath("/hazel/settings/integrations/github"),
 					replace: false,
 				}),
 			),

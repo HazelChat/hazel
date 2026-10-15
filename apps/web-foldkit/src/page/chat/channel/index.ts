@@ -10,7 +10,7 @@ import {
 	setCurrentUserId,
 	setTab,
 	switchChannel,
-	tabPath,
+	tabRoute,
 	update,
 } from "./page"
 import { clearNotificationsOnMount } from "./clear-notifications"
@@ -49,7 +49,7 @@ export const page = definePage(
 					? {
 							model,
 							outMessage: PageOutMessage.RequestedNavigation({
-								href: tabPath(model.orgSlug, model.channelId, message.tab),
+								route: tabRoute(model.orgSlug, model.channelId, message.tab),
 								replace: false,
 							}),
 						}

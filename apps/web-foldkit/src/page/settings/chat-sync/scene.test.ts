@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { routeOfPath } from "../../../route"
 import * as Scene from "foldkit/scene"
 import { describe, test } from "vitest"
 import { errorToast, successToast } from "../../../data/actions"
@@ -83,7 +84,7 @@ describe("list states", () => {
 			Scene.click(Scene.text("Hazel Community")),
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedNavigation({
-					href: `/hazel/settings/chat-sync/${syncConnectionId}`,
+					route: routeOfPath(`/hazel/settings/chat-sync/${syncConnectionId}`),
 					replace: false,
 				}),
 			),
@@ -237,7 +238,7 @@ describe("connect a Discord server", () => {
 			Scene.click(Scene.role("button", { name: "Open Discord Integration" })),
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedNavigation({
-					href: "/hazel/settings/integrations/discord",
+					route: routeOfPath("/hazel/settings/integrations/discord"),
 					replace: false,
 				}),
 			),

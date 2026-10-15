@@ -1,8 +1,9 @@
-import { getTauriProcess, getTauriUpdater, type TauriUpdaterApi } from "@hazel/desktop/bridge"
-import { Duration, Effect, Queue, Schema, Stream } from "effect"
+import { getTauriProcess, getTauriUpdater } from "@hazel/desktop/bridge"
+import { Clock, Duration, Effect, Queue, Schema, Stream } from "effect"
 import { Command, Subscription, type Update } from "foldkit"
 import { defineMessageUnion } from "foldkit/message"
 import { defineTaggedUnion } from "foldkit/schema"
+import { ToastRequest } from "../overlay/toasts"
 import { isDesktop } from "./desktop"
 
 /**
@@ -10,23 +11,28 @@ import { isDesktop } from "./desktop"
  * and every 6 hours, then download, install and relaunch on request. Web builds never check.
  */
 
-type TauriUpdate = NonNullable<Awaited<ReturnType<TauriUpdaterApi["check"]>>>
-
-/** The update `check` found. It is a live Tauri resource, so it stays out of the Model. */
-let pendingUpdate: TauriUpdate | undefined
-
 export const CHECK_INTERVAL = Duration.hours(6)
+
+/** Why an install did not finish. */
+export const InstallFailure = Schema.Literals([
+	"NoUpdate",
+	"DownloadFailed",
+	"InstallFailed",
+	"RestartUnavailable",
+	"RestartFailed",
+])
+export type InstallFailure = typeof InstallFailure.Type
 
 export const Model = defineTaggedUnion({
 	Idle: {},
 	Checking: {},
 	Available: { version: Schema.String, body: Schema.NullOr(Schema.String) },
 	UpToDate: { checkedAtMs: Schema.Number },
-	CheckFailed: { message: Schema.String },
+	CheckFailed: {},
 	Downloading: { downloadedBytes: Schema.Number, totalBytes: Schema.NullOr(Schema.Number) },
 	Installing: {},
 	Restarting: {},
-	InstallFailed: { message: Schema.String },
+	InstallFailed: { reason: InstallFailure },
 })
 export type Model = typeof Model.Type
 
@@ -36,36 +42,54 @@ export const Message = defineMessageUnion({
 	TickedUpdateCheck: {},
 	FoundUpdate: { version: Schema.String, body: Schema.NullOr(Schema.String) },
 	FoundNoUpdate: { checkedAtMs: Schema.Number },
-	FailedUpdateCheck: { message: Schema.String },
+	FailedUpdateCheck: {},
 	ProgressedDownload: { downloadedBytes: Schema.Number, totalBytes: Schema.NullOr(Schema.Number) },
 	StartedInstall: {},
 	StartedRelaunch: {},
-	FailedInstall: { message: Schema.String },
+	FailedInstall: { reason: InstallFailure },
 })
 export type Message = typeof Message.Type
 
-const messageOf = (error: unknown, fallback: string) => (error instanceof Error ? error.message : fallback)
+/** What the update state asks the root for: the toast that follows each step (legacy `TauriUpdateCheck`). */
+export const OutMessage = defineMessageUnion({
+	RequestedToast: { toast: ToastRequest },
+})
+export type OutMessage = typeof OutMessage.Type
+
+// COPY
+
+const INSTALL_FAILURE_TEXT: { readonly [Reason in InstallFailure]: string } = {
+	NoUpdate: "No update to install",
+	DownloadFailed: "Download failed",
+	InstallFailed: "Installation failed",
+	RestartUnavailable: "Update installed, but restart is unavailable. Please quit and reopen Hazel manually.",
+	RestartFailed:
+		"Update installed, but restart failed and Hazel could not quit automatically. Please quit and reopen Hazel manually.",
+}
+
+export const CHECK_FAILURE_TEXT = "Update check failed"
+
+export const installFailureText = (reason: InstallFailure): string => INSTALL_FAILURE_TEXT[reason]
+
+// COMMANDS
+
+/** The Tauri updater rejected a call. */
+class UpdaterError extends Schema.TaggedError<UpdaterError>()("UpdaterError", { cause: Schema.Defect() }) {}
+
+const updaterCall = <A>(call: () => Promise<A>) =>
+	Effect.tryPromise({ try: call, catch: (cause) => new UpdaterError({ cause }) })
 
 export const CheckForUpdate = Command.define("CheckForUpdate", {
 	messages: [Message.FoundUpdate, Message.FoundNoUpdate, Message.FailedUpdateCheck],
-	execute: Effect.suspend(() => {
+	execute: Effect.gen(function* () {
 		const updater = getTauriUpdater()
-		if (updater === undefined) return Effect.succeed(Message.FoundNoUpdate({ checkedAtMs: Date.now() }))
-		return Effect.tryPromise(() => updater.check()).pipe(
-			Effect.map((update) => {
-				pendingUpdate = update ?? undefined
-				return update
-					? Message.FoundUpdate({ version: update.version, body: update.body ?? null })
-					: Message.FoundNoUpdate({ checkedAtMs: Date.now() })
-			}),
-			Effect.catch((error) =>
-				Effect.succeed(
-					Message.FailedUpdateCheck({ message: messageOf(error.cause, "Update check failed") }),
-				),
-			),
-		)
-	}),
+		const found = updater === undefined ? null : yield* updaterCall(() => updater.check())
+		if (found) return Message.FoundUpdate({ version: found.version, body: found.body ?? null })
+		return Message.FoundNoUpdate({ checkedAtMs: yield* Clock.currentTimeMillis })
+	}).pipe(Effect.catchTag("UpdaterError", () => Effect.succeed(Message.FailedUpdateCheck()))),
 })
+
+// UPDATE
 
 const isBusy = (model: Model) =>
 	model._tag === "Checking" ||
@@ -77,75 +101,114 @@ const isBusy = (model: Model) =>
 export const isInstalling = (model: Model) =>
 	model._tag === "Downloading" || model._tag === "Installing" || model._tag === "Restarting"
 
-type Return = Update.Return<Model, Message>
+export type Return = Update.ReturnWithOutMessage<Model, Message, OutMessage>
+
+const TOAST_ID = "tauri-update"
+
+const megabytes = (bytes: number) => (bytes / 1024 / 1024).toFixed(1)
+
+/** The toast for a change of update state, if it needs one. */
+const toastOf = (previous: Model, next: Model): ToastRequest | undefined =>
+	Model.match(next, {
+		Idle: () => undefined,
+		Checking: () => undefined,
+		UpToDate: () => undefined,
+		CheckFailed: () => undefined,
+		Available: ({ version, body }): ToastRequest | undefined =>
+			previous._tag === "Available"
+				? undefined
+				: {
+						intent: "info",
+						title: `Update available: v${version}`,
+						description: body ?? "A new version is ready to install",
+						id: TOAST_ID,
+						isSticky: true,
+						action: { label: "Install & Restart", key: "InstallUpdate" },
+					},
+		Downloading: ({ downloadedBytes, totalBytes }): ToastRequest => ({
+			intent: "loading",
+			title:
+				totalBytes === null
+					? `Downloading update... ${megabytes(downloadedBytes)} MB`
+					: `Downloading update... ${Math.round((downloadedBytes / totalBytes) * 100)}%`,
+			description: null,
+			id: TOAST_ID,
+		}),
+		Installing: (): ToastRequest => ({ intent: "loading", title: "Installing update...", description: null, id: TOAST_ID }),
+		Restarting: (): ToastRequest => ({ intent: "loading", title: "Restarting...", description: null, id: TOAST_ID }),
+		InstallFailed: ({ reason }): ToastRequest | undefined =>
+			previous._tag === "InstallFailed"
+				? undefined
+				: { intent: "error", title: "Update failed", description: installFailureText(reason), id: TOAST_ID },
+	})
+
+/** The next state, with the toast it calls for. */
+const transition = (previous: Model, next: Model, commands: Return["commands"] = []): Return => {
+	const toast = toastOf(previous, next)
+	return toast === undefined
+		? { model: next, commands }
+		: { model: next, commands, outMessage: OutMessage.RequestedToast({ toast }) }
+}
 
 /** Check now (the menu item, the settings button, the timer); ignored while busy. */
 export const check = (model: Model): Return =>
-	isBusy(model) ? { model } : { model: Model.Checking(), commands: [CheckForUpdate()] }
+	isBusy(model) ? { model } : transition(model, Model.Checking(), [CheckForUpdate()])
 
 /** Install the update `check` found; the install stream starts once the state says Downloading. */
 export const install = (model: Model): Return =>
-	model._tag === "Available"
-		? { model: Model.Downloading({ downloadedBytes: 0, totalBytes: null }) }
-		: { model }
+	model._tag === "Available" ? transition(model, Model.Downloading({ downloadedBytes: 0, totalBytes: null })) : { model }
 
 export const update = (model: Model, message: Message): Return =>
 	Message.match<Return>(message, {
 		TickedUpdateCheck: () => check(model),
-		FoundUpdate: ({ version, body }) => ({ model: Model.Available({ version, body }) }),
-		FoundNoUpdate: ({ checkedAtMs }) => ({ model: Model.UpToDate({ checkedAtMs }) }),
-		FailedUpdateCheck: ({ message }) => ({ model: Model.CheckFailed({ message }) }),
-		ProgressedDownload: ({ downloadedBytes, totalBytes }) => ({
-			model: Model.Downloading({ downloadedBytes, totalBytes }),
-		}),
-		StartedInstall: () => ({ model: Model.Installing() }),
-		StartedRelaunch: () => ({ model: Model.Restarting() }),
-		FailedInstall: ({ message }) => ({ model: Model.InstallFailed({ message }) }),
+		FoundUpdate: ({ version, body }) => transition(model, Model.Available({ version, body })),
+		FoundNoUpdate: ({ checkedAtMs }) => transition(model, Model.UpToDate({ checkedAtMs })),
+		FailedUpdateCheck: () => transition(model, Model.CheckFailed()),
+		ProgressedDownload: ({ downloadedBytes, totalBytes }) =>
+			transition(model, Model.Downloading({ downloadedBytes, totalBytes })),
+		StartedInstall: () => transition(model, Model.Installing()),
+		StartedRelaunch: () => transition(model, Model.Restarting()),
+		FailedInstall: ({ reason }) => transition(model, Model.InstallFailed({ reason })),
 	})
 
-/** Download with progress, install, then relaunch (or quit, if relaunch fails). */
+// SUBSCRIPTION
+
+/**
+ * Download with progress, install, then relaunch (or quit, if relaunch fails). The update handle is
+ * a live Tauri resource, so it is looked up again here instead of being kept between check and install.
+ */
 const installStream: Stream.Stream<Message> = Stream.callback<Message>((queue) =>
 	Effect.gen(function* () {
-		const update = pendingUpdate
-		if (update === undefined) {
-			Queue.offerUnsafe(queue, Message.FailedInstall({ message: "No update to install" }))
-			return
-		}
+		const offer = (message: Message) => Effect.sync(() => Queue.offerUnsafe(queue, message))
+		const fail = (reason: InstallFailure) => offer(Message.FailedInstall({ reason }))
+		const updater = getTauriUpdater()
+		const found = updater === undefined ? null : yield* updaterCall(() => updater.check()).pipe(Effect.orElseSucceed(() => null))
+		if (found === null) return yield* fail("NoUpdate")
+
 		let downloadedBytes = 0
 		let totalBytes: number | null = null
-		const fail = (message: string) =>
-			Effect.sync(() => Queue.offerUnsafe(queue, Message.FailedInstall({ message })))
-
-		const downloaded = yield* Effect.tryPromise(() =>
-			update.download((event) => {
+		const downloaded = yield* updaterCall(() =>
+			found.download((event) => {
 				if (event.event === "Started") totalBytes = event.data.contentLength ?? null
 				if (event.event === "Progress") downloadedBytes += event.data.chunkLength
 				Queue.offerUnsafe(queue, Message.ProgressedDownload({ downloadedBytes, totalBytes }))
 			}),
 		).pipe(Effect.result)
-		if (downloaded._tag === "Failure")
-			return yield* fail(messageOf(downloaded.failure.cause, "Download failed"))
+		if (downloaded._tag === "Failure") return yield* fail("DownloadFailed")
 
-		Queue.offerUnsafe(queue, Message.StartedInstall())
-		const installed = yield* Effect.tryPromise(() => update.install()).pipe(Effect.result)
-		if (installed._tag === "Failure")
-			return yield* fail(messageOf(installed.failure.cause, "Installation failed"))
+		yield* offer(Message.StartedInstall())
+		const installed = yield* updaterCall(() => found.install()).pipe(Effect.result)
+		if (installed._tag === "Failure") return yield* fail("InstallFailed")
 
-		Queue.offerUnsafe(queue, Message.StartedRelaunch())
+		yield* offer(Message.StartedRelaunch())
 		// Give the installer a moment to finish before restarting.
 		yield* Effect.sleep(Duration.millis(500))
 		const process = getTauriProcess()
-		if (process === undefined)
-			return yield* fail(
-				"Update installed, but restart is unavailable. Please quit and reopen Hazel manually.",
-			)
-		const relaunched = yield* Effect.tryPromise(() => process.relaunch()).pipe(Effect.result)
+		if (process === undefined) return yield* fail("RestartUnavailable")
+		const relaunched = yield* updaterCall(() => process.relaunch()).pipe(Effect.result)
 		if (relaunched._tag === "Success") return
-		const exited = yield* Effect.tryPromise(() => process.exit(0)).pipe(Effect.result)
-		if (exited._tag === "Failure")
-			yield* fail(
-				"Update installed, but restart failed and Hazel could not quit automatically. Please quit and reopen Hazel manually.",
-			)
+		const exited = yield* updaterCall(() => process.exit(0)).pipe(Effect.result)
+		if (exited._tag === "Failure") yield* fail("RestartFailed")
 	}).pipe(Effect.andThen(Effect.never)),
 )
 

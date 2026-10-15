@@ -4,7 +4,7 @@ import type { Html, HtmlBuilder } from "foldkit/html"
 import { defineMessageUnion } from "foldkit/message"
 import { modifyFields } from "foldkit/struct"
 import { IconServers } from "../../icons"
-import { organizationHref } from "../../route"
+import { AppRoute, organizationRoute } from "../../route"
 import { HazelRpc } from "../../rpc"
 import { button } from "../../ui/button"
 import { dialogBody, dialogFooter, dialogHeader } from "../../ui/dialog"
@@ -38,7 +38,7 @@ const Message = defineMessageUnion({
 	ChangedSlug: { value: Schema.String },
 	ClickedCancel: {},
 	SubmittedForm: {},
-	SucceededCreateOrganization: { href: Schema.String },
+	SucceededCreateOrganization: { route: AppRoute },
 	FailedCreateOrganization: { toast: ToastRequest },
 })
 type Message = typeof Message.Type
@@ -56,7 +56,7 @@ const CreateOrganization = Command.define("CreateOrganization", {
 				settings: null,
 				isPublic: false,
 			})
-			return Message.SucceededCreateOrganization({ href: organizationHref(result.data) })
+			return Message.SucceededCreateOrganization({ route: organizationRoute(result.data) })
 		}).pipe(
 			Effect.catchCause((cause) =>
 				Effect.succeed(
@@ -110,9 +110,9 @@ const update = (model: Model, message: Message): Return =>
 		}),
 		ClickedCancel: () => ({ model, outMessage: closed }),
 		SubmittedForm: () => submitted(model),
-		SucceededCreateOrganization: ({ href }) => ({
+		SucceededCreateOrganization: ({ route }) => ({
 			model,
-			outMessage: completed({ href, toast: successToast("Server created successfully") }),
+			outMessage: completed({ route, toast: successToast("Server created successfully") }),
 		}),
 		FailedCreateOrganization: ({ toast }) => ({
 			model: modifyFields(model, { isSubmitting: () => false }),

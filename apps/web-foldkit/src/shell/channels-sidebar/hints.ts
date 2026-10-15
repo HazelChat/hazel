@@ -1,37 +1,33 @@
-import { Effect, Option, Schema, Stream } from "effect"
+import { Effect, Option, Schema } from "effect"
 import { Command } from "foldkit"
+import { readStored, writeStored } from "../../data/storage"
 import { Message } from "./model"
 
 /**
  * `useFeatureHint` (`atoms/feature-discovery-atoms.ts`): dismissed hints live in the same
- * `hazel-dismissed-hints` localStorage entry, JSON-encoded like `Atom.kvs` writes it.
+ * `hazel-dismissed-hints` storage entry, JSON-encoded like `Atom.kvs` writes it.
  */
 
 const STORAGE_KEY = "hazel-dismissed-hints"
-const DismissedHints = Schema.fromJsonString(Schema.Record(Schema.String, Schema.Boolean))
-const decodeHints = Schema.decodeUnknownOption(DismissedHints)
-const encodeHints = Schema.encodeSync(DismissedHints)
+const DismissedHints = Schema.toCodecJson(Schema.Record(Schema.String, Schema.Boolean))
 
-const readHints = Effect.sync(
-	(): Readonly<Record<string, boolean>> =>
-		Option.getOrElse(decodeHints(globalThis.localStorage?.getItem(STORAGE_KEY) ?? "{}"), () => ({})),
+/** Every dismissed hint; missing or undecodable storage reads as none dismissed. */
+const readHints = readStored(STORAGE_KEY, DismissedHints).pipe(
+	Effect.map(Option.getOrElse((): Readonly<Record<string, boolean>> => ({}))),
 )
 
-/** Emits whether the create-channel hint was dismissed, once, at startup. */
-export const dismissedHintStream = Stream.fromEffect(readHints).pipe(
-	Stream.map((hints) =>
-		Message.LoadedDismissedHints({ isCreateChannelHintDismissed: hints["create-channel"] === true }),
-	),
+/** Whether the create-channel hint was dismissed; the root reads it once at boot, before the first render. */
+export const loadIsCreateChannelHintDismissed: Effect.Effect<boolean> = readHints.pipe(
+	Effect.map((hints) => hints["create-channel"] === true),
 )
 
 export const PersistDismissedHint = Command.define("PersistDismissedHint", {
 	args: { hintId: Schema.String },
-	messages: [Message.CompletedPersistDismissedHint],
+	messages: [Message.CompletedPersistDismissedHint, Message.FailedPersistDismissedHint],
 	execute: ({ hintId }) =>
-		Effect.flatMap(readHints, (hints) =>
-			Effect.sync(() => {
-				globalThis.localStorage?.setItem(STORAGE_KEY, encodeHints({ ...hints, [hintId]: true }))
-				return Message.CompletedPersistDismissedHint()
-			}),
+		readHints.pipe(
+			Effect.flatMap((hints) => writeStored(STORAGE_KEY, DismissedHints, { ...hints, [hintId]: true })),
+			Effect.as(Message.CompletedPersistDismissedHint()),
+			Effect.catchTag("StorageWriteError", () => Effect.succeed(Message.FailedPersistDismissedHint())),
 		),
 })
