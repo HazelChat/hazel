@@ -115,6 +115,7 @@ export const providerCard = (
 											successMessage: "URL copied",
 											failureMessage: "Failed to copy",
 										}),
+										attributes: [h.AriaLabel("Copy URL")],
 									},
 									[copyIcon(h, isCopied)],
 								),
@@ -259,7 +260,12 @@ export const providerCard = (
 					),
 					button(
 						h,
-						{ intent: "outline", size: "sq-sm", onPress: Message.ClickedProviderUrlInfo() },
+						{
+							intent: "outline",
+							size: "sq-sm",
+							onPress: Message.ClickedProviderUrlInfo(),
+							attributes: [h.AriaLabel("URL info")],
+						},
 						[IconCopy(h, { className: "size-4" })],
 					),
 				],

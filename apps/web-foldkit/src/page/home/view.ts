@@ -167,6 +167,7 @@ const memberRow = (
 									}),
 									className:
 										"hidden border-transparent data-pressed:bg-muted group-hover:border-border sm:inline-flex",
+									attributes: [h.AriaLabel(`Message ${fullName}`)],
 								},
 								[IconMsgs(h, { attributes: { "data-slot": "icon" } })],
 							),

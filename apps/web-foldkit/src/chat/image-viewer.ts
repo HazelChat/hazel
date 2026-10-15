@@ -140,7 +140,7 @@ const ImageViewerPortal = Mount.defineStream("ImageViewerPortal", {
 		),
 })
 
-const toolbarButton = <M>(h: HtmlBuilder<M>, onPress: M | undefined, icon: Html): Html =>
+const toolbarButton = <M>(h: HtmlBuilder<M>, onPress: M | undefined, label: string, icon: Html): Html =>
 	// `TooltipTrigger` is a bare React Aria Button wrapping the action Button; the tooltip shows on hover only.
 	ariaButton(h, {}, [
 		button(
@@ -150,6 +150,7 @@ const toolbarButton = <M>(h: HtmlBuilder<M>, onPress: M | undefined, icon: Html)
 				size: "sq-sm",
 				...(onPress === undefined ? {} : { onPress }),
 				className: "text-white hover:bg-white/10",
+				attributes: [h.AriaLabel(label)],
 			},
 			[icon],
 		),
@@ -183,11 +184,11 @@ export const imageViewerView = <M>(h: HtmlBuilder<M>, inputs: ImageViewerInputs<
 	const hasMany = images.length > 1
 	const act = (action: ImageViewerAction) =>
 		inputs.toAction && current ? inputs.toAction(action, current) : undefined
-	const actions: ReadonlyArray<readonly [M | undefined, Html]> = [
-		[act("download"), IconDownload(h, { className: "size-4" })],
-		[act("copyUrl"), IconCopy(h, { className: "size-4" })],
-		[act("openInBrowser"), IconExternalLink(h, { className: "size-4" })],
-		[inputs.toClose(), IconClose(h, { className: "size-4" })],
+	const actions: ReadonlyArray<readonly [M | undefined, string, Html]> = [
+		[act("download"), "Download", IconDownload(h, { className: "size-4" })],
+		[act("copyUrl"), "Copy image URL", IconCopy(h, { className: "size-4" })],
+		[act("openInBrowser"), "Open in browser", IconExternalLink(h, { className: "size-4" })],
+		[inputs.toClose(), "Close", IconClose(h, { className: "size-4" })],
 	]
 	const toMessage = (intent: Intent) =>
 		intent._tag === "PressedClose" ? inputs.toClose() : inputs.toSelect(intent.index)
@@ -286,7 +287,7 @@ export const imageViewerView = <M>(h: HtmlBuilder<M>, inputs: ImageViewerInputs<
 						"absolute top-5 right-5 flex gap-1 rounded-md border border-white/10 bg-black/50 p-1",
 					),
 				],
-				actions.map(([onPress, icon]) => toolbarButton(h, onPress, icon)),
+				actions.map(([onPress, label, icon]) => toolbarButton(h, onPress, label, icon)),
 			),
 			...(hasMany
 				? [

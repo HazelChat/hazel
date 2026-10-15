@@ -90,6 +90,7 @@ const compactWebhookItem = (
 								successMessage: "URL copied",
 								failureMessage: "Failed to copy",
 							}),
+							attributes: [h.AriaLabel("Copy webhook URL")],
 						},
 						[copyIcon(h, model.copiedIds.includes(webhook.id))],
 					),

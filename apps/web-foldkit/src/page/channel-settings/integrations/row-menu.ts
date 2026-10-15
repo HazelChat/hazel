@@ -46,7 +46,12 @@ export const rowMenu = (
 			toTrigger: (attributes: ReadonlyArray<ChildAttribute>, overlay: Html) =>
 				button(
 					h,
-					{ intent: "plain", size: "sq-xs", className: options.triggerClassName, attributes },
+					{
+						intent: "plain",
+						size: "sq-xs",
+						className: options.triggerClassName,
+						attributes: [h.AriaLabel("Subscription actions"), ...attributes],
+					},
 					[IconDotsVertical(h, { className: "size-4" }), overlay],
 				),
 			content,

@@ -22,27 +22,31 @@ const menuTriggerAttributes = <M>(h: HtmlBuilder<M>) => [
 ]
 
 /** The row actions trigger in channel and DM items. */
-export const dotsMenuTrigger = <M>(h: HtmlBuilder<M>): Html =>
+export const dotsMenuTrigger = <M>(h: HtmlBuilder<M>, label: string): Html =>
 	button(
 		h,
 		{
 			intent: "plain",
 			size: "sq-xs",
 			className: "size-5 text-muted-fg",
-			attributes: [h.Attribute("data-slot", "menu-trigger"), ...menuTriggerAttributes(h)],
+			attributes: [h.Attribute("data-slot", "menu-trigger"), h.AriaLabel(label), ...menuTriggerAttributes(h)],
 		},
 		[IconDots(h, { className: "size-4" })],
 	)
 
 /** `SectionGroup`'s single-action "+" button (no menu). */
-export const sectionPlusButton = <M>(h: HtmlBuilder<M>, attributes: ReadonlyArray<Attribute<M>>): Html =>
+export const sectionPlusButton = <M>(
+	h: HtmlBuilder<M>,
+	label: string,
+	attributes: ReadonlyArray<Attribute<M>>,
+): Html =>
 	button(
 		h,
 		{
 			intent: "plain",
 			isCircle: true,
 			size: "sq-xs",
-			attributes: [...attributes],
+			attributes: [h.AriaLabel(label), ...attributes],
 		},
 		[IconPlus(h)],
 	)

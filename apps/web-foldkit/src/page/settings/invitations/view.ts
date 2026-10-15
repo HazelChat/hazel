@@ -37,10 +37,20 @@ const rowActions = (h: HtmlBuilder<Message>, row: RowMenu, isRevoking: boolean):
 		viewInputs: {
 			entries: rowMenuEntries(isRevoking),
 			toTrigger: (attributes, overlay) =>
-				button(h, { intent: "plain", size: "sq-xs", isPending: isRevoking, isDisabled: isRevoking, attributes }, [
-					IconDots(h),
-					overlay,
-				]),
+				button(
+					h,
+					{
+						intent: "plain",
+						size: "sq-xs",
+						isPending: isRevoking,
+						isDisabled: isRevoking,
+						attributes: [h.AriaLabel("Invitation actions"), ...attributes],
+					},
+					[
+						IconDots(h),
+						overlay,
+					],
+				),
 			content: (key) => [
 				IconClose(h, { attributes: { "data-slot": "icon" } }),
 				menuLabel(h, row.menu.id, key, isRevoking ? "Revoking..." : "Revoke Invitation"),

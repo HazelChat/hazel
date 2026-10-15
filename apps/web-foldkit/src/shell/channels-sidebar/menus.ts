@@ -138,7 +138,15 @@ export const rowMenuView = <M>(
 						intent: "plain",
 						size: "sq-xs",
 						className: "size-5 text-muted-fg",
-						attributes: [h.Attribute("data-slot", "menu-trigger"), ...attributes],
+						attributes: [
+							h.Attribute("data-slot", "menu-trigger"),
+							h.AriaLabel(
+								options.entry.channel.type === "single" || options.entry.channel.type === "direct"
+									? "Conversation options"
+									: "Channel options",
+							),
+							...attributes,
+						],
 					},
 					[IconDots(h, { className: "size-4" }), overlay],
 				),
@@ -149,6 +157,14 @@ export const rowMenuView = <M>(
 		},
 		toParentMessage: options.toMessage,
 	})
+
+/** The accessible name of a section's single-action "+" button (the same words as its menu item). */
+export const sectionActionLabel = (action: SectionAction): string =>
+	action === "create-channel"
+		? "Create new channel"
+		: action === "join-channel"
+			? "Join existing channel"
+			: "Start a conversation"
 
 const sectionMenuContent =
 	<M>(h: HtmlBuilder<M>, id: string) =>
@@ -177,10 +193,16 @@ export const sectionMenuView = <M>(
 		viewInputs: {
 			entries: options.entries,
 			toTrigger: (attributes: ReadonlyArray<ChildAttribute>, overlay: Html) =>
-				button(h, { intent: "plain", isCircle: true, size: "sq-xs", attributes: [...attributes] }, [
-					IconPlus(h),
-					overlay,
-				]),
+				button(
+					h,
+					{
+						intent: "plain",
+						isCircle: true,
+						size: "sq-xs",
+						attributes: [h.AriaLabel("Section actions"), ...attributes],
+					},
+					[IconPlus(h), overlay],
+				),
 			content: sectionMenuContent(h, options.menu.id),
 		},
 		toParentMessage: options.toMessage,

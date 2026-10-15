@@ -189,6 +189,7 @@ const connectionCard = (h: HtmlBuilder<Message>, connection: Connection): Html =
 										"rounded-sm p-1 text-muted-fg opacity-0 transition-all hover:bg-danger/10 hover:text-danger group-hover:opacity-100",
 									),
 									h.Title("Delete connection"),
+									h.AriaLabel("Delete connection"),
 									h.Type("button"),
 									h.OnClick(
 										Message.ClickedDeleteConnection({

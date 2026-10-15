@@ -38,7 +38,7 @@ const loadedMembers = [
 	Scene.Mount.resolve(FocusTriggerOnPress, Menu.Message.CompletedFocusTriggerOnPress()),
 ]
 // The Message button is icon-only with no accessible name, so it is reached by CSS.
-const messageButton = Scene.selector("button:not([aria-label])")
+const messageButton = Scene.role("button", { name: "Message Grace Hopper" })
 
 describe("member directory", () => {
 	test("shows a loader until the members arrive, then lists them", () => {
@@ -107,14 +107,13 @@ describe("member directory", () => {
 		)
 	})
 
-	// A11y bug: the icon-only Message button has no accessible name (legacy had none either).
-	test.fails("the Message button is named", () => {
+	test("the icon-only Message button is named after the member", () => {
 		Scene.scene(
 			pageScene(update, view, shared),
 			Scene.given(init().model),
 			focused,
 			...loadedMembers,
-			Scene.expect(Scene.role("button", { name: /Message/ })).toExist(),
+			Scene.expect(messageButton).toExist(),
 		)
 	})
 })

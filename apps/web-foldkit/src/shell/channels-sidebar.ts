@@ -20,7 +20,7 @@ import {
 	updateRowMenu,
 	updateSectionMenu,
 } from "./channels-sidebar/menu-update"
-import { sectionMenuEntries, sectionMenuView } from "./channels-sidebar/menus"
+import { sectionActionLabel, sectionMenuEntries, sectionMenuView } from "./channels-sidebar/menus"
 import { dragDescription, sectionPlusButton } from "./channels-sidebar/tree"
 import { sectionGroupContent } from "./channels-sidebar/view"
 
@@ -256,7 +256,9 @@ const sectionActionView = <ParentMessage>(
 	const { actions, isEditable } = sectionActionsOf(model, sectionKey)
 	const [only] = actions
 	return only !== undefined && actions.length === 1 && !isEditable
-		? sectionPlusButton(h, [h.OnClick(toParentMessage(Message.ClickedSectionAction({ action: only })))])
+		? sectionPlusButton(h, sectionActionLabel(only), [
+				h.OnClick(toParentMessage(Message.ClickedSectionAction({ action: only }))),
+			])
 		: sectionMenuView(h, {
 				menu: sectionMenuOf(model, sectionKey),
 				entries: sectionMenuEntries(actions, isEditable),

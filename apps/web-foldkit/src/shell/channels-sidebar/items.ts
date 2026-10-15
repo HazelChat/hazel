@@ -119,7 +119,7 @@ export const channelItem = <M>(
 	notificationCount: number,
 	partners: ReadonlyArray<PartnerOrg>,
 	context: RowLinkContext,
-	menu: Html = dotsMenuTrigger(h),
+	menu: Html = dotsMenuTrigger(h, "Channel options"),
 ): Html => {
 	const href = chatHref(context, entry.channel.id)
 	return sidebarItem(h, {}, [
@@ -304,7 +304,7 @@ export const dmItem = <M>(
 				? singleDmContent(h, channel, only, context)
 				: groupDmContent(h, channel, partners),
 		),
-		dotsMenuTrigger(h),
+		dotsMenuTrigger(h, "Conversation options"),
 		...badgeIf(h, notificationCount),
 	])
 }

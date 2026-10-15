@@ -104,7 +104,7 @@ export const mobileMenuButton = <Message>(
 			intent: "plain",
 			size: "sq-xs",
 			className: twMerge("-ml-1 md:hidden", options.className),
-			attributes: [options.onPress],
+			attributes: [h.AriaLabel("Open sidebar"), options.onPress],
 		},
 		[IconMenu(h, { className: "size-5" })],
 	)
