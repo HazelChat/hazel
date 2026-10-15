@@ -19,10 +19,10 @@ import {
 import { describe, expect, test } from "vitest"
 import type { Shared } from "../../../contract"
 import { PageOutMessage } from "../../../out-message"
-import { errorToast, successToast } from "../../../../data/actions"
+import { errorToast, reasonToast, successToast } from "../../../../data/actions"
 import { ConnectApiKey, Disconnect, GetOAuthUrl, RedirectToProvider } from "./command"
 import { Message } from "./message"
-import type { Model } from "./model"
+import { Activity, type Model } from "./model"
 import { init, update } from "./update"
 import { view } from "./view"
 import { sharedDefaults } from "../../../test-shared"
@@ -108,7 +108,6 @@ describe("integration detail page", () => {
 		scene(
 			config,
 			given(pageFor("craft").model),
-			expectView(role("button", { name: "Connect" })).toBeDisabled(),
 			typeInto(placeholder("Enter your API token"), " secret "),
 			typeInto(placeholder("https://connect.craft.do/links/{linkId}/api/v1"), "https://craft.test/api"),
 			submit("form"),
@@ -138,7 +137,7 @@ describe("integration detail page", () => {
 				toast: successToast("Connected to Linear", "Your account has been successfully connected."),
 			}),
 		)
-		expect(page.model.pendingVerification).toBe(true)
+		expect(page.model.activity).toEqual(Activity.Verifying())
 	})
 
 	test("no callback params, or an unknown status, show nothing", () => {
@@ -187,15 +186,8 @@ describe("integration detail flows", () => {
 			config,
 			given(pageFor("linear").model),
 			click(role("button", { name: /Connect with Linear$/ })),
-			Command.resolve(GetOAuthUrl, Message.FailedGetOAuthUrl()),
-			expectOutMessage(
-				PageOutMessage.RequestedToast({
-					toast: errorToast(
-						"Failed to connect to Linear",
-						"Could not initiate the connection. Please try again.",
-					),
-				}),
-			),
+			Command.resolve(GetOAuthUrl, Message.FailedGetOAuthUrl({ reason: "Offline" })),
+			expectOutMessage(PageOutMessage.RequestedToast({ toast: reasonToast("Offline") })),
 			expectView(role("button", { name: /Connect with Linear$/ })).toBeEnabled(),
 		)
 	})
@@ -206,27 +198,46 @@ describe("integration detail flows", () => {
 			config,
 			given({ ...pageFor("linear").model, connection: linear }),
 			click(role("button", { name: "Disconnect" })),
-			Command.resolve(Disconnect, Message.FailedDisconnect({ toast: failure })),
+			Command.resolve(Disconnect, Message.FailedDisconnect({ reason: "NotConnected" })),
 			expectOutMessage(PageOutMessage.RequestedToast({ toast: failure })),
 			expectView(text("Hazel Labs")).toExist(),
 			expectView(role("button", { name: "Disconnect" })).toBeEnabled(),
 		)
 	})
 
-	test("Connect stays disabled until both API key fields have text; a failure re-enables it", () => {
-		const failure = errorToast("Invalid credentials", "Token rejected")
+	test("submitting an empty API key form shows each field's error and sends nothing", () => {
+		scene(
+			config,
+			given(pageFor("craft").model),
+			submit("form"),
+			Command.expectNone(),
+			expectView(text("Bearer token is required")).toExist(),
+			expectView(text("Base URL is required")).toExist(),
+			expectView(role("button", { name: /Connect$/ })).toBeDisabled(),
+		)
+	})
+
+	test("invalid fields show their error and block Connect until fixed; a failure re-enables it", () => {
+		const failure = errorToast(
+			"Invalid credentials",
+			"Check the bearer token and base URL, then try again.",
+		)
 		scene(
 			config,
 			given(pageFor("craft").model),
 			typeInto(label("Bearer Token"), "   "),
-			typeInto(label("Base URL"), "https://craft.test/api"),
+			expectView(text("Bearer token is required")).toExist(),
+			typeInto(label("Base URL"), "craft.test/api"),
+			expectView(text("Enter a full URL starting with https://")).toExist(),
 			expectView(role("button", { name: /Connect$/ })).toBeDisabled(),
 			typeInto(label("Bearer Token"), "secret"),
+			typeInto(label("Base URL"), "https://craft.test/api"),
+			expectView(text("Enter a full URL starting with https://")).toBeAbsent(),
 			expectView(role("button", { name: /Connect$/ })).toBeEnabled(),
 			click(role("button", { name: /Connect$/ })),
 			Command.expectHas(ConnectApiKey),
 			expectView(role("button", { name: /Connecting\.\.\.$/ })).toBeDisabled(),
-			Command.resolve(ConnectApiKey, Message.FailedConnectApiKey({ toast: failure })),
+			Command.resolve(ConnectApiKey, Message.FailedConnectApiKey({ reason: "InvalidApiKey" })),
 			expectOutMessage(PageOutMessage.RequestedToast({ toast: failure })),
 			expectView(role("button", { name: /Connect$/ })).toBeEnabled(),
 		)

@@ -1,10 +1,10 @@
 import { IntegrationConnection } from "@hazel/domain/models"
 import { OrganizationId } from "@hazel/schema"
-import { Effect, Exit, Schema } from "effect"
+import { Effect, Schema } from "effect"
 import { Command } from "foldkit"
 import { load } from "foldkit/navigation"
 import { HazelApiClient } from "../../../../rpc"
-import { failureToast } from "../../../../data/actions"
+import { catchCommon } from "../../../../data/actions"
 import { Message } from "./message"
 
 const Provider = IntegrationConnection.IntegrationProvider
@@ -22,7 +22,11 @@ export const GetOAuthUrl = Command.define("GetOAuthUrl", {
 			Effect.map((response) =>
 				Message.SucceededGetOAuthUrl({ authorizationUrl: response.authorizationUrl }),
 			),
-			Effect.catch(() => Effect.succeed(Message.FailedGetOAuthUrl())),
+			Effect.catchTags({
+				UnsupportedProviderError: () =>
+					Effect.succeed(Message.FailedGetOAuthUrl({ reason: "UnsupportedProvider" })),
+			}),
+			catchCommon((reason) => Message.FailedGetOAuthUrl({ reason })),
 		),
 })
 
@@ -34,71 +38,46 @@ export const RedirectToProvider = Command.define("RedirectToProvider", {
 		load(authorizationUrl).pipe(Effect.as(Message.CompletedRedirectToProvider())),
 })
 
-/** `disconnectMutation` with the `exitToast` of `handleDisconnect` (no success toast). */
+/** `disconnectMutation`, organization level. */
 export const Disconnect = Command.define("Disconnect", {
 	args: target,
 	messages: [Message.SucceededDisconnect, Message.FailedDisconnect],
 	execute: (params) =>
-		Effect.exit(
-			HazelApiClient.use((client) =>
-				client.integrations.disconnect({ params, query: { level: "organization" } }),
-			),
+		HazelApiClient.use((client) =>
+			client.integrations.disconnect({ params, query: { level: "organization" } }),
 		).pipe(
-			Effect.map((exit) =>
-				Exit.isSuccess(exit)
-					? Message.SucceededDisconnect()
-					: Message.FailedDisconnect({
-							toast: failureToast(exit.cause, "exitToast", {
-								IntegrationNotConnectedError: () => ({
-									title: "Integration not connected",
-									description: "This integration is already disconnected.",
-									isRetryable: false,
-								}),
-								UnsupportedProviderError: () => ({
-									title: "Unsupported provider",
-									description: "This integration provider is not supported.",
-									isRetryable: false,
-								}),
-							}),
-						}),
-			),
+			Effect.as(Message.SucceededDisconnect()),
+			Effect.catchTags({
+				IntegrationNotConnectedError: () =>
+					Effect.succeed(Message.FailedDisconnect({ reason: "NotConnected" })),
+				UnsupportedProviderError: () =>
+					Effect.succeed(Message.FailedDisconnect({ reason: "UnsupportedProvider" })),
+			}),
+			catchCommon((reason) => Message.FailedDisconnect({ reason })),
 		),
 })
 
-const messageOf = (error: unknown) =>
-	typeof error === "object" && error !== null && "message" in error ? String(error.message) : undefined
-
-/** `connectApiKeyMutation` with the toasts of `handleConnectApiKey`. */
+/** `connectApiKeyMutation` */
 export const ConnectApiKey = Command.define("ConnectApiKey", {
 	args: { ...target, token: Schema.String, baseUrl: Schema.String },
 	messages: [Message.SucceededConnectApiKey, Message.FailedConnectApiKey],
 	execute: ({ orgId, provider, token, baseUrl }) =>
-		Effect.exit(
-			HazelApiClient.use((client) =>
-				client.integrations.connectApiKey({
-					params: { orgId, provider },
-					payload: { token, baseUrl },
-				}),
-			),
+		HazelApiClient.use((client) =>
+			client.integrations.connectApiKey({
+				params: { orgId, provider },
+				payload: { token, baseUrl },
+			}),
 		).pipe(
-			Effect.map((exit) =>
-				Exit.isSuccess(exit)
-					? Message.SucceededConnectApiKey({ externalAccountName: exit.value.externalAccountName })
-					: Message.FailedConnectApiKey({
-							toast: failureToast(exit.cause, "exitToast", {
-								InvalidApiKeyError: (error) => ({
-									title: "Invalid credentials",
-									description: messageOf(error),
-									isRetryable: true,
-								}),
-								UnsupportedProviderError: () => ({
-									title: "Unsupported provider",
-									description: "This integration does not support API key connections.",
-									isRetryable: false,
-								}),
-							}),
-						}),
+			Effect.map((response) =>
+				Message.SucceededConnectApiKey({ externalAccountName: response.externalAccountName }),
 			),
+			Effect.catchTags({
+				InvalidApiKeyError: () =>
+					Effect.succeed(Message.FailedConnectApiKey({ reason: "InvalidApiKey" })),
+				UnsupportedProviderError: () =>
+					Effect.succeed(Message.FailedConnectApiKey({ reason: "UnsupportedProvider" })),
+			}),
+			catchCommon((reason) => Message.FailedConnectApiKey({ reason })),
 		),
 })
 

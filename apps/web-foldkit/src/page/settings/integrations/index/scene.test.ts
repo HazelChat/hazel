@@ -34,7 +34,9 @@ describe("integrations catalog", () => {
 		Scene.scene(
 			config,
 			Scene.given(initial),
-			Scene.Subscription.emit(Message.UpdatedConnections({ connections: [{ ...linear, isActive: false }] })),
+			Scene.Subscription.emit(
+				Message.UpdatedConnections({ connections: [{ ...linear, isActive: false }] }),
+			),
 			Scene.expect(card("Linear")).toContainText("Not connected"),
 		)
 	})
@@ -60,7 +62,10 @@ describe("integrations catalog", () => {
 			Scene.expect(Scene.text("Figma")).toExist(),
 			Scene.click(card("Linear")),
 			Scene.expectOutMessage(
-				PageOutMessage.RequestedNavigation({ href: "/hazel/settings/integrations/linear", replace: false }),
+				PageOutMessage.RequestedNavigation({
+					href: "/hazel/settings/integrations/linear",
+					replace: false,
+				}),
 			),
 		)
 	})

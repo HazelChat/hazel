@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { Option } from "effect"
+import { NotValidated } from "foldkit/fieldValidation"
 import { Command, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
 import { makeShared, organizationId, storyUpdate } from "../../../../test/pages-fixtures"
 import { ConnectApiKey, Disconnect, GetOAuthUrl } from "./command"
 import { Message } from "./message"
+import { Activity } from "./model"
 import { init, update } from "./update"
 
 /** The integration detail update: organization gating, config toggles and request guards. */
@@ -45,13 +47,50 @@ describe("integration detail update", () => {
 		)
 	})
 
-	test("an API key form with a blank field sends nothing", () => {
+	test("submitting an untouched API key form sends nothing and shows why", () => {
 		story(
 			run,
-			given({ ...pageFor("craft"), apiToken: "secret", apiBaseUrl: "   " }),
+			given(pageFor("craft")),
 			message(Message.SubmittedApiKeyForm()),
 			Command.expectNone(),
-			model((current) => expect(current.isConnecting).toBe(false)),
+			model((current) => {
+				expect(current.activity).toEqual(Activity.Idle())
+				expect(current.apiToken).toEqual({
+					_tag: "Invalid",
+					value: "",
+					errors: ["Bearer token is required"],
+				})
+				expect(current.apiBaseUrl).toEqual({
+					_tag: "Invalid",
+					value: "",
+					errors: ["Base URL is required"],
+				})
+			}),
+		)
+	})
+
+	test("a blank token or a base URL that is not a URL sends nothing", () => {
+		story(
+			run,
+			given({
+				...pageFor("craft"),
+				apiToken: NotValidated({ value: "secret" }),
+				apiBaseUrl: NotValidated({ value: "   " }),
+			}),
+			message(Message.SubmittedApiKeyForm()),
+			Command.expectNone(),
+			message(Message.ChangedApiBaseUrl({ value: "craft.test/api" })),
+			message(Message.SubmittedApiKeyForm()),
+			Command.expectNone(),
+			model((current) =>
+				expect(current.apiBaseUrl).toEqual({
+					_tag: "Invalid",
+					value: "craft.test/api",
+					errors: ["Enter a full URL starting with https://"],
+				}),
+			),
+			message(Message.ChangedApiToken({ value: "  " })),
+			model((current) => expect(current.apiToken._tag).toBe("Invalid")),
 		)
 	})
 
@@ -60,10 +99,11 @@ describe("integration detail update", () => {
 			run,
 			given(linear),
 			message(Message.ClickedConnect()),
-			Command.resolve(GetOAuthUrl, Message.FailedGetOAuthUrl()),
+			Command.resolve(GetOAuthUrl, Message.FailedGetOAuthUrl({ reason: "Offline" })),
 		)
 		expect(
-			update({ ...linear, isConnecting: true }, Message.ClickedConnect(), shared).commands ?? [],
+			update({ ...linear, activity: Activity.Connecting() }, Message.ClickedConnect(), shared)
+				.commands ?? [],
 		).toHaveLength(0)
 	})
 
@@ -75,12 +115,17 @@ describe("integration detail update", () => {
 			Command.resolve(Disconnect, Message.SucceededDisconnect()),
 		)
 		expect(
-			update({ ...linear, isDisconnecting: true }, Message.ClickedDisconnect(), shared).commands ?? [],
+			update({ ...linear, activity: Activity.Disconnecting() }, Message.ClickedDisconnect(), shared)
+				.commands ?? [],
 		).toHaveLength(0)
 	})
 
 	test("a second API key submit while connecting sends nothing", () => {
-		const filled = { ...pageFor("craft"), apiToken: "secret", apiBaseUrl: "https://craft.test/api" }
+		const filled = {
+			...pageFor("craft"),
+			apiToken: NotValidated({ value: "secret" }),
+			apiBaseUrl: NotValidated({ value: " https://craft.test/api " }),
+		}
 		story(
 			run,
 			given(filled),
@@ -96,7 +141,8 @@ describe("integration detail update", () => {
 			Command.resolve(ConnectApiKey, Message.SucceededConnectApiKey({ externalAccountName: null })),
 		)
 		expect(
-			update({ ...filled, isConnecting: true }, Message.SubmittedApiKeyForm(), shared).commands ?? [],
+			update({ ...filled, activity: Activity.Connecting() }, Message.SubmittedApiKeyForm(), shared)
+				.commands ?? [],
 		).toHaveLength(0)
 	})
 })

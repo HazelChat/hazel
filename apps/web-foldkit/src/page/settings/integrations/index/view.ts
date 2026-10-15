@@ -30,9 +30,7 @@ const connectionStatus = (h: HtmlBuilder<Message>, connected: boolean, comingSoo
 		: h.div(
 				[h.Class("flex items-center gap-1.5")],
 				[
-					h.div(
-						[h.Class(`size-1.5 rounded-full ${connected ? "bg-success" : "bg-secondary"}`)],
-					),
+					h.div([h.Class(`size-1.5 rounded-full ${connected ? "bg-success" : "bg-secondary"}`)]),
 					h.span(
 						[h.Class(`text-xs ${connected ? "text-success" : "text-muted-fg"}`)],
 						[connected ? "Connected" : "Not connected"],
@@ -173,11 +171,13 @@ export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, 
 				),
 				button(
 					h,
-					{ intent: "secondary", size: "md", className: "shrink-0", onPress: Message.ClickedRequestIntegration() },
-					[
-						IconPlus(h, { attributes: { "data-slot": "icon" } }),
-						"Request integration",
-					],
+					{
+						intent: "secondary",
+						size: "md",
+						className: "shrink-0",
+						onPress: Message.ClickedRequestIntegration(),
+					},
+					[IconPlus(h, { attributes: { "data-slot": "icon" } }), "Request integration"],
 				),
 			]),
 		]),

@@ -1,21 +1,23 @@
 import { ConnectInviteId, OrganizationId } from "@hazel/schema"
-import { Effect, Schema } from "effect"
+import { Effect, Option, Result, Schema } from "effect"
 import { Command } from "foldkit"
+import * as AsyncData from "foldkit/asyncData"
 import { modifyFields } from "foldkit/struct"
+import { failureMessage } from "~/lib/error-messages"
 import { toDate } from "~/lib/utils"
+import { catchCommon, errorToastOf, successToast } from "../../../data/actions"
 import { HazelRpc } from "../../../rpc"
-import type { PageReturn, Shared } from "../../contract"
-import { PageOutMessage } from "../../out-message"
-import { failureToast, settle, successToast } from "../../../data/actions"
 import * as Interaction from "../../../ui/aria/interaction"
-import { embedInteraction } from "../integrations/shared/interaction"
+import type { PageReturn, PageSubscriptionInput, Shared } from "../../contract"
+import { PageOutMessage } from "../../out-message"
 import { Message } from "./message"
-import type { Model } from "./model"
+import { type AcceptFailure, type DeclineFailure, type Invite, Invites, type Model } from "./model"
 
 type Return = PageReturn<Model, Message>
 
-export const interaction = embedInteraction<Model, Message>((message) =>
-	Message.GotInteractionMessage({ message }),
+export const interaction = Interaction.embed<Model, Message, PageSubscriptionInput<Model>>(
+	(message) => Message.GotInteractionMessage({ message }),
+	(input) => input.model,
 )
 
 /** The interaction targets of one invite's Decline and Accept buttons. */
@@ -29,9 +31,9 @@ const busy = (model: Model, inviteId: ConnectInviteId) =>
 			Interaction.disabledTargets(state, [declineTarget(inviteId), acceptTarget(inviteId)]),
 	})
 
-const inviteNotFound = (description: string) => ({
-	ConnectInviteNotFoundError: { title: "Invite not found", description },
-})
+/** The invites on screen: the loaded list, kept while a refetch runs or after one failed. */
+export const invitesOf = (model: Model): ReadonlyArray<Invite> =>
+	Option.getOrElse(AsyncData.getData(model.invites), () => [])
 
 // COMMAND
 
@@ -39,12 +41,8 @@ export const ListIncomingInvites = Command.define("ListIncomingInvites", {
 	args: { organizationId: OrganizationId, version: Schema.Number },
 	messages: [Message.SucceededListInvites, Message.FailedListInvites],
 	execute: ({ organizationId, version }) =>
-		settle(
-			Effect.gen(function* () {
-				const client = yield* HazelRpc
-				return yield* client("connectShare.invite.listIncoming", { organizationId })
-			}),
-			(response) =>
+		HazelRpc.use((client) => client("connectShare.invite.listIncoming", { organizationId })).pipe(
+			Effect.map((response) =>
 				Message.SucceededListInvites({
 					organizationId,
 					version,
@@ -55,68 +53,46 @@ export const ListIncomingInvites = Command.define("ListIncomingInvites", {
 						createdAtMs: toDate(invite.createdAt).getTime(),
 					})),
 				}),
-			() => Message.FailedListInvites({ organizationId, version }),
+			),
+			catchCommon((reason) => Message.FailedListInvites({ organizationId, version, reason })),
 		),
 })
 
 export const AcceptInvite = Command.define("AcceptInvite", {
 	args: { inviteId: ConnectInviteId, guestOrganizationId: OrganizationId },
 	messages: [Message.SucceededAccept, Message.FailedAccept],
-	execute: ({ inviteId, guestOrganizationId }) =>
-		settle(
-			Effect.gen(function* () {
-				const client = yield* HazelRpc
-				return yield* client("connectShare.invite.accept", { inviteId, guestOrganizationId })
+	execute: ({ inviteId, guestOrganizationId }) => {
+		const failed = (reason: AcceptFailure) => Effect.succeed(Message.FailedAccept({ inviteId, reason }))
+		return HazelRpc.use((client) =>
+			client("connectShare.invite.accept", { inviteId, guestOrganizationId }),
+		).pipe(
+			Effect.as(Message.SucceededAccept({ inviteId })),
+			Effect.catchTags({
+				ConnectInviteNotFoundError: () => failed("NotFound"),
+				ConnectInviteInvalidStateError: () => failed("InvalidState"),
+				ConnectWorkspaceNotFoundError: () => failed("WorkspaceNotFound"),
+				ConnectChannelAlreadySharedError: () => failed("AlreadyShared"),
 			}),
-			() => Message.SucceededAccept({ inviteId }),
-			(cause) =>
-				Message.FailedAccept({
-					inviteId,
-					toast: failureToast(cause, "friendly", {
-						...inviteNotFound("This invite may have been revoked or expired."),
-						ConnectInviteInvalidStateError: {
-							title: "Cannot accept",
-							description: "This invite is no longer in an acceptable state.",
-						},
-						ConnectWorkspaceNotFoundError: {
-							title: "Workspace not found",
-							description: "The target workspace could not be found.",
-						},
-						ConnectChannelAlreadySharedError: {
-							title: "Already shared",
-							description: "This channel is already shared with that organization.",
-						},
-					}),
-				}),
-		),
+			catchCommon((reason) => Message.FailedAccept({ inviteId, reason })),
+		)
+	},
 })
 
 export const DeclineInvite = Command.define("DeclineInvite", {
 	args: { inviteId: ConnectInviteId },
 	messages: [Message.SucceededDecline, Message.FailedDecline],
-	execute: ({ inviteId }) =>
-		settle(
-			Effect.gen(function* () {
-				const client = yield* HazelRpc
-				return yield* client("connectShare.invite.decline", { inviteId })
+	execute: ({ inviteId }) => {
+		const failed = (reason: DeclineFailure) => Effect.succeed(Message.FailedDecline({ inviteId, reason }))
+		return HazelRpc.use((client) => client("connectShare.invite.decline", { inviteId })).pipe(
+			Effect.as(Message.SucceededDecline({ inviteId })),
+			Effect.catchTags({
+				ConnectInviteNotFoundError: () => failed("NotFound"),
+				ConnectInviteInvalidStateError: () => failed("InvalidState"),
+				ConnectWorkspaceNotFoundError: () => failed("WorkspaceNotFound"),
 			}),
-			() => Message.SucceededDecline({ inviteId }),
-			(cause) =>
-				Message.FailedDecline({
-					inviteId,
-					toast: failureToast(cause, "friendly", {
-						...inviteNotFound("This invite may have already been revoked or expired."),
-						ConnectInviteInvalidStateError: {
-							title: "Cannot decline",
-							description: "This invite is no longer in a declinable state.",
-						},
-						ConnectWorkspaceNotFoundError: {
-							title: "Workspace not found",
-							description: "This invite is not bound to a workspace.",
-						},
-					}),
-				}),
-		),
+			catchCommon((reason) => Message.FailedDecline({ inviteId, reason })),
+		)
+	},
 })
 
 // INIT
@@ -130,7 +106,8 @@ const requestFor = (model: Model, shared: Shared): Return => {
 		model: modifyFields(model, {
 			requestedFor: () => organizationId,
 			listVersion: () => version,
-			invites: () => [],
+			// Another organization's invites are not this one's stale data.
+			invites: () => Invites.Loading(),
 		}),
 		commands: [ListIncomingInvites({ organizationId, version })],
 	}
@@ -141,7 +118,7 @@ export const init = (_route: unknown, shared: Shared): Return =>
 		{
 			requestedFor: null,
 			listVersion: 0,
-			invites: [],
+			invites: Invites.Idle(),
 			hostOrganizations: [],
 			acceptingIds: [],
 			decliningIds: [],
@@ -157,12 +134,18 @@ export const sharedChanged = requestFor
 const without = (ids: ReadonlyArray<ConnectInviteId>, id: ConnectInviteId) =>
 	ids.filter((other) => other !== id)
 
-/** Legacy invalidates the `connectInvites:incoming:<org>` reactivity key after a successful mutation. */
-const refetch = (model: Model, settled: Model): Return => {
-	if (model.requestedFor === null) return { model: settled }
+/**
+ * Lists again under a new version, keeping loaded rows on screen. Legacy invalidates the
+ * `connectInvites:incoming:<org>` reactivity key after a successful mutation.
+ */
+const refetch = (model: Model): Return => {
+	if (model.requestedFor === null) return { model }
 	const version = model.listVersion + 1
 	return {
-		model: modifyFields(settled, { listVersion: () => version }),
+		model: modifyFields(model, {
+			listVersion: () => version,
+			invites: (invites) => Option.getOrElse(AsyncData.revalidateOrLoad(invites), () => invites),
+		}),
 		commands: [ListIncomingInvites({ organizationId: model.requestedFor, version })],
 	}
 }
@@ -175,16 +158,25 @@ const isCurrentList = (model: Model, organizationId: OrganizationId, version: nu
 const isBusy = (model: Model, inviteId: ConnectInviteId) =>
 	model.acceptingIds.includes(inviteId) || model.decliningIds.includes(inviteId)
 
+const notFound = (description: string) => ({ title: "Invite not found", description })
+const workspaceNotFound = (description: string) => ({ title: "Workspace not found", description })
+
 export const update = (model: Model, message: Message, shared: Shared): Return =>
 	Message.match<Return>(message, {
 		SucceededListInvites: ({ organizationId, version, invites }) =>
 			isCurrentList(model, organizationId, version)
-				? { model: modifyFields(model, { invites: () => invites }) }
+				? { model: modifyFields(model, { invites: () => Invites.Success({ data: invites }) }) }
 				: { model },
-		FailedListInvites: ({ organizationId, version }) =>
+		// A failed refetch keeps the rows it had (`Stale`); a failed first load shows the error.
+		FailedListInvites: ({ organizationId, version, reason }) =>
 			isCurrentList(model, organizationId, version)
-				? { model: modifyFields(model, { invites: () => [] }) }
+				? {
+						model: modifyFields(model, {
+							invites: (invites) => AsyncData.settle(invites, Result.fail(reason)),
+						}),
+					}
 				: { model },
+		ClickedRetryListInvites: () => refetch(model),
 		UpdatedHostOrganizations: ({ organizations }) => ({
 			model: modifyFields(model, { hostOrganizations: () => organizations }),
 		}),
@@ -198,12 +190,27 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 						commands: [AcceptInvite({ inviteId, guestOrganizationId: shared.organization.id })],
 					},
 		SucceededAccept: ({ inviteId }) => ({
-			...refetch(model, modifyFields(model, { acceptingIds: (ids) => without(ids, inviteId) })),
+			...refetch(modifyFields(model, { acceptingIds: (ids) => without(ids, inviteId) })),
 			outMessage: PageOutMessage.RequestedToast({ toast: successToast("Channel connected") }),
 		}),
-		FailedAccept: ({ inviteId, toast }) => ({
+		FailedAccept: ({ inviteId, reason }) => ({
 			model: modifyFields(model, { acceptingIds: (ids) => without(ids, inviteId) }),
-			outMessage: PageOutMessage.RequestedToast({ toast }),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToastOf(
+					failureMessage(reason, {
+						NotFound: notFound("This invite may have been revoked or expired."),
+						InvalidState: {
+							title: "Cannot accept",
+							description: "This invite is no longer in an acceptable state.",
+						},
+						WorkspaceNotFound: workspaceNotFound("The target workspace could not be found."),
+						AlreadyShared: {
+							title: "Already shared",
+							description: "This channel is already shared with that organization.",
+						},
+					}),
+				),
+			}),
 		}),
 		ClickedDecline: ({ inviteId }) =>
 			isBusy(model, inviteId)
@@ -215,12 +222,23 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 						commands: [DeclineInvite({ inviteId })],
 					},
 		SucceededDecline: ({ inviteId }) => ({
-			...refetch(model, modifyFields(model, { decliningIds: (ids) => without(ids, inviteId) })),
+			...refetch(modifyFields(model, { decliningIds: (ids) => without(ids, inviteId) })),
 			outMessage: PageOutMessage.RequestedToast({ toast: successToast("Invite declined") }),
 		}),
-		FailedDecline: ({ inviteId, toast }) => ({
+		FailedDecline: ({ inviteId, reason }) => ({
 			model: modifyFields(model, { decliningIds: (ids) => without(ids, inviteId) }),
-			outMessage: PageOutMessage.RequestedToast({ toast }),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToastOf(
+					failureMessage(reason, {
+						NotFound: notFound("This invite may have already been revoked or expired."),
+						InvalidState: {
+							title: "Cannot decline",
+							description: "This invite is no longer in a declinable state.",
+						},
+						WorkspaceNotFound: workspaceNotFound("This invite is not bound to a workspace."),
+					}),
+				),
+			}),
 		}),
 		GotInteractionMessage: ({ message }) => interaction.fold(model, message),
 	})

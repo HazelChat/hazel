@@ -51,9 +51,14 @@ const foldMenu = (model: Model, botId: BotId, message: Menu.Message): Return =>
 			onSome: (menu) => {
 				const result = Menu.update(menu, message)
 				const bot = model.bots?.find((candidate) => candidate.id === botId)
-				const selected = result.outMessage?._tag === "SelectedItem" && bot ? modalFor(bot, result.outMessage.key) : null
+				const selected =
+					result.outMessage?._tag === "SelectedItem" && bot
+						? modalFor(bot, result.outMessage.key)
+						: null
 				return {
-					...(selected === null ? {} : { outMessage: PageOutMessage.RequestedModal({ modal: selected }) }),
+					...(selected === null
+						? {}
+						: { outMessage: PageOutMessage.RequestedModal({ modal: selected }) }),
 					model: {
 						...model,
 						menus: model.menus.map((other) => (other.id === menu.id ? result.model : other)),

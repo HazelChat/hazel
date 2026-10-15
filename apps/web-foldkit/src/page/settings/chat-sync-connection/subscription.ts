@@ -5,7 +5,7 @@ import { Subscription } from "foldkit"
 import { channelCollection } from "~/db/collections"
 import { liveQueryStream } from "../../../data/live-query"
 import type { PageSubscriptionInput } from "../../contract"
-import { Message, type Model } from "./model"
+import { foundConnection, listedLinks, Message, type Model } from "./model"
 import { interaction } from "./update"
 
 interface ChannelNameRow {
@@ -15,9 +15,7 @@ interface ChannelNameRow {
 
 /** Joined with "," so the dependency is a stable string. */
 const linkedChannelIds = (model: Model) =>
-	model.links._tag === "Loaded"
-		? [...new Set(model.links.links.map((link) => link.hazelChannelId))].sort().join(",")
-		: ""
+	[...new Set(listedLinks(model).map((link) => link.hazelChannelId))].sort().join(",")
 
 const dataSubscriptions = Subscription.make<PageSubscriptionInput<Model>, Message>()((entry) => ({
 	// `ChannelLinkRow`'s lookup of the Hazel channel name, once for every row.
@@ -46,10 +44,7 @@ const dataSubscriptions = Subscription.make<PageSubscriptionInput<Model>, Messag
 		{ organizationId: Schema.NullOr(OrganizationId) },
 		{
 			modelToDependencies: ({ model }) => ({
-				organizationId:
-					model.connection._tag === "Loaded" && model.connection.connection !== null
-						? model.requestedOrganizationId
-						: null,
+				organizationId: foundConnection(model) === null ? null : model.requestedOrganizationId,
 			}),
 			dependenciesToStream: ({ organizationId }) =>
 				organizationId === null

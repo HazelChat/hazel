@@ -2,7 +2,6 @@
 import * as Scene from "foldkit/scene"
 import { describe, test } from "vitest"
 import {
-	failureToastFixture,
 	makeShared,
 	memberWithRole,
 	organizationId,
@@ -10,7 +9,7 @@ import {
 	portalModalMounted,
 } from "../../../test/pages-fixtures"
 import { PageOutMessage } from "../../out-message"
-import { successToast } from "../../../data/actions"
+import { errorToast, reasonToast, successToast } from "../../../data/actions"
 import * as Modal from "../../../ui/modal"
 import { Message } from "./message"
 import { DeleteOrganization, init, SetPublicMode, update, UpdateOrganizationName } from "./update"
@@ -51,11 +50,8 @@ describe("organization name", () => {
 			Scene.type(nameInput, "Hazel HQ"),
 			Scene.keydown(nameInput, "Enter"),
 			Scene.expectHandled(),
-			Scene.Command.resolve(
-				UpdateOrganizationName,
-				Message.FailedUpdateName({ toast: failureToastFixture }),
-			),
-			Scene.expectOutMessage(PageOutMessage.RequestedToast({ toast: failureToastFixture })),
+			Scene.Command.resolve(UpdateOrganizationName, Message.FailedUpdateName({ reason: "Offline" })),
+			Scene.expectOutMessage(PageOutMessage.RequestedToast({ toast: reasonToast("Offline") })),
 			Scene.expect(Scene.role("button", { name: "Save Changes" })).toBeEnabled(),
 		)
 	})
@@ -156,9 +152,13 @@ describe("delete workspace", () => {
 			Scene.click(confirmDelete),
 			Scene.Command.resolve(
 				DeleteOrganization,
-				Message.FailedDeleteWorkspace({ toast: failureToastFixture }),
+				Message.FailedDeleteWorkspace({ reason: "NotPermitted" }),
 			),
-			Scene.expectOutMessage(PageOutMessage.RequestedToast({ toast: failureToastFixture })),
+			Scene.expectOutMessage(
+				PageOutMessage.RequestedToast({
+					toast: errorToast("Unauthorized", "You don't have permission to delete this workspace."),
+				}),
+			),
 			Scene.expect(confirmInput).toHaveValue("Hazel Labs"),
 			Scene.expect(confirmDelete).toBeEnabled(),
 		)

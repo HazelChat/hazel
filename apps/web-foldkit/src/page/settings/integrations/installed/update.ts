@@ -1,37 +1,29 @@
 import { BotId } from "@hazel/schema"
-import { Effect, Exit } from "effect"
+import { Effect } from "effect"
 import { Command } from "foldkit"
 import { modifyFields } from "foldkit/struct"
 import { HazelRpc } from "../../../../rpc"
 import { AppRoute, hrefOf, type RouteOf } from "../../../../route"
 import type { PageReturn } from "../../../contract"
 import { PageOutMessage } from "../../../out-message"
-import { failureToast, rateLimitMessage, successToast } from "../../../../data/actions"
+import { catchCommon, errorToastOf, successToast } from "../../../../data/actions"
+import { failureMessage } from "~/lib/error-messages"
 import { Message } from "./message"
 import type { Model } from "./model"
 
-/** `uninstallBotMutation` with the toasts of `handleUninstall`. */
+/** `uninstallBotMutation` */
 export const UninstallBot = Command.define("UninstallBot", {
 	args: { botId: BotId },
 	messages: [Message.SucceededUninstallBot, Message.FailedUninstallBot],
 	execute: ({ botId }) =>
-		Effect.gen(function* () {
-			const client = yield* HazelRpc
-			const exit = yield* Effect.exit(client("bot.uninstall", { botId }))
-			return Exit.isSuccess(exit)
-				? Message.SucceededUninstallBot({ botId })
-				: Message.FailedUninstallBot({
-						botId,
-						toast: failureToast(exit.cause, "exitToast", {
-							BotNotFoundError: () => ({
-								title: "Application not found",
-								description: "This application may have already been uninstalled.",
-								isRetryable: false,
-							}),
-							RateLimitExceededError: rateLimitMessage,
-						}),
-					})
-		}),
+		HazelRpc.use((rpc) => rpc("bot.uninstall", { botId })).pipe(
+			Effect.as(Message.SucceededUninstallBot({ botId })),
+			Effect.catchTags({
+				BotNotFoundError: () =>
+					Effect.succeed(Message.FailedUninstallBot({ botId, reason: "NotFound" })),
+			}),
+			catchCommon((reason) => Message.FailedUninstallBot({ botId, reason })),
+		),
 })
 
 type Return = PageReturn<Model, Message>
@@ -59,9 +51,18 @@ export const update = (model: Model, message: Message): Return =>
 				toast: successToast("Application uninstalled successfully"),
 			}),
 		}),
-		FailedUninstallBot: ({ botId, toast }) => ({
+		FailedUninstallBot: ({ botId, reason }) => ({
 			model: settled(model, botId),
-			outMessage: PageOutMessage.RequestedToast({ toast }),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToastOf(
+					failureMessage(reason, {
+						NotFound: {
+							title: "Application not found",
+							description: "This application may have already been uninstalled.",
+						},
+					}),
+				),
+			}),
 		}),
 		ClickedBrowseMarketplace: () => ({
 			model,

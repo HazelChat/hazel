@@ -113,14 +113,14 @@ const mainColumn = (h: H, integration: Integration, model: Model, hasOrganizatio
 					: apiKeyConnectionForm(h, integration, model),
 			]),
 		]
-	const isVerifying = model.pendingVerification && !isConnected
+	const isVerifying = model.activity._tag === "Verifying" && !isConnected
 	return [
 		panel(h, "Connection", [
 			isVerifying
 				? verifyingState(h, integration)
 				: isConnected
 					? connectedState(h, integration, model, { canConfigure: true })
-					: disconnectedState(h, integration, model.isConnecting),
+					: disconnectedState(h, integration, model.activity._tag === "Connecting"),
 		]),
 		...(isConnected
 			? [

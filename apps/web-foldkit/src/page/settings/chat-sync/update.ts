@@ -1,26 +1,29 @@
 import { OrganizationId, SyncConnectionId } from "@hazel/schema"
-import { Effect, Exit, Option, Schema } from "effect"
+import { Effect, Option, Schema } from "effect"
 import { Command, Update } from "foldkit"
+import * as AsyncData from "foldkit/asyncData"
 import { modifyFields } from "foldkit/struct"
+import { failureMessage } from "~/lib/error-messages"
 import { AppRoute } from "../../../route"
 import { HazelRpc } from "../../../rpc"
 import * as Interaction from "../../../ui/aria/interaction"
 import * as Menu from "../../../ui/menu"
 import * as Modal from "../../../ui/modal"
-import { failureToast, successToast } from "../../../data/actions"
-import type { PageReturn, Shared } from "../../contract"
+import { catchCommon, errorToastOf, reasonToast, successToast } from "../../../data/actions"
+import type { PageReturn, PageSubscriptionInput, Shared } from "../../contract"
 import { PageOutMessage, requestedOrgNavigation } from "../../out-message"
-import { addMenuEntries, Message, type Model } from "./model"
-import { fetchDiscordGuilds } from "./discord"
+import * as ConfirmAction from "../../shared/confirm-action"
+import { addMenuEntries, Connections, type DeleteTarget, Message, type Model, Submission } from "./model"
+import { DiscordGuilds, fetchDiscordGuilds } from "./discord"
 import { fetchConnections } from "./rpc"
 import { ADD_CONNECTION_MODAL_ID, CreateConnection, FocusGuildSearch } from "./add-connection"
-import { embedInteraction } from "../integrations/shared/interaction"
 
 type Return = PageReturn<Model, Message>
 type Step = Update.StepWithOutMessage<Model, Message, PageOutMessage>
 
-export const interaction = embedInteraction<Model, Message>((message) =>
-	Message.GotInteractionMessage({ message }),
+export const interaction = Interaction.embed<Model, Message, PageSubscriptionInput<Model>>(
+	(message) => Message.GotInteractionMessage({ message }),
+	(input) => input.model,
 )
 
 /** Interaction targets in the add connection modal. */
@@ -35,7 +38,7 @@ export const ListConnections = Command.define("ListConnections", {
 	execute: ({ organizationId }) =>
 		fetchConnections(organizationId).pipe(
 			Effect.map((connections) => Message.SucceededListConnections({ organizationId, connections })),
-			Effect.catch(() => Effect.succeed(Message.FailedListConnections({ organizationId }))),
+			catchCommon((reason) => Message.FailedListConnections({ organizationId, reason })),
 		),
 })
 
@@ -43,23 +46,14 @@ export const DeleteConnection = Command.define("DeleteConnection", {
 	args: { syncConnectionId: SyncConnectionId },
 	messages: [Message.SucceededDeleteConnection, Message.FailedDeleteConnection],
 	execute: ({ syncConnectionId }) =>
-		Effect.gen(function* () {
-			const client = yield* HazelRpc
-			const exit = yield* Effect.exit(client("chatSync.connection.delete", { syncConnectionId }))
-			return Exit.match(exit, {
-				onSuccess: () => Message.SucceededDeleteConnection(),
-				onFailure: (cause) => {
-					const toast = failureToast(cause, "exitToast", {
-						ChatSyncConnectionNotFoundError: {
-							title: "Connection not found",
-							description: "This connection may have already been deleted.",
-							isRetryable: false,
-						},
-					})
-					return Message.FailedDeleteConnection({ toast })
-				},
-			})
-		}),
+		HazelRpc.use((rpc) => rpc("chatSync.connection.delete", { syncConnectionId })).pipe(
+			Effect.as(Message.SucceededDeleteConnection()),
+			Effect.catchTags({
+				ChatSyncConnectionNotFoundError: () =>
+					Effect.succeed(Message.FailedDeleteConnection({ reason: "NotFound" })),
+			}),
+			catchCommon((reason) => Message.FailedDeleteConnection({ reason })),
+		),
 })
 
 /** `AddConnectionModal`'s guild query; the modal mounts with the loaded list. */
@@ -69,7 +63,17 @@ export const ListDiscordGuilds = Command.define("ListDiscordGuilds", {
 	execute: ({ organizationId, version }) =>
 		fetchDiscordGuilds(organizationId).pipe(
 			Effect.map((guilds) => Message.SucceededListDiscordGuilds({ organizationId, version, guilds })),
-			Effect.catch(() => Effect.succeed(Message.FailedListDiscordGuilds({ organizationId, version }))),
+			Effect.catchTags({
+				IntegrationNotConnectedForPreviewError: () =>
+					Effect.succeed(
+						Message.FailedListDiscordGuilds({ organizationId, version, reason: "NotConnected" }),
+					),
+				IntegrationResourceError: () =>
+					Effect.succeed(
+						Message.FailedListDiscordGuilds({ organizationId, version, reason: "ProviderError" }),
+					),
+			}),
+			catchCommon((reason) => Message.FailedListDiscordGuilds({ organizationId, version, reason })),
 		),
 })
 
@@ -82,7 +86,7 @@ const requestList = (model: Model, shared: Shared): Return => {
 	return {
 		model: modifyFields(model, {
 			requestedOrganizationId: () => organizationId,
-			connections: () => ({ _tag: "Loading" as const }),
+			connections: () => Connections.Loading(),
 		}),
 		commands: [ListConnections({ organizationId })],
 	}
@@ -92,7 +96,7 @@ export const init = (_route: unknown, shared: Shared): Return =>
 	requestList(
 		{
 			requestedOrganizationId: null,
-			connections: { _tag: "Loading" },
+			connections: Connections.Loading(),
 			addMenu: Menu.init({ id: "chat-sync-add", entries: addMenuEntries, placement: "bottom end" }),
 			emptyAddMenu: Menu.init({
 				id: "chat-sync-add-empty",
@@ -100,15 +104,13 @@ export const init = (_route: unknown, shared: Shared): Return =>
 				placement: "bottom end",
 			}),
 			addModal: Modal.init(ADD_CONNECTION_MODAL_ID),
-			discordGuilds: { _tag: "Loading" },
+			discordGuilds: DiscordGuilds.Loading(),
 			guildsVersion: 0,
 			selectedGuild: null,
 			guildSearch: "",
 			isGuildSearchFocused: false,
-			isCreating: false,
-			deleteTarget: null,
-			deleteModal: Modal.init("chat-sync-delete"),
-			isDeleting: false,
+			submission: Submission.NotSubmitted(),
+			deleteConfirm: ConfirmAction.init("chat-sync-delete"),
 			interaction: Interaction.init(),
 		},
 		shared,
@@ -118,7 +120,32 @@ export const sharedChanged = (model: Model, shared: Shared): Return => requestLi
 
 // UPDATE
 
-/** `handleClose`: a closed add modal has no selection and no search. */
+/** `setRefreshKey(k => k + 1)`: the list loads again, keeping the shown list while it does. */
+const reloadConnections = (model: Model): Pick<Return, "model" | "commands"> => {
+	const organizationId = model.requestedOrganizationId
+	if (organizationId === null) return { model }
+	return {
+		model: modifyFields(model, {
+			connections: (connections) =>
+				Option.getOrElse(AsyncData.revalidateOrLoad(connections), () => connections),
+		}),
+		commands: [ListConnections({ organizationId })],
+	}
+}
+
+/** A new guild request; a reply for an older one is dropped. */
+const requestGuilds = (model: Model, organizationId: OrganizationId): Return => {
+	const version = model.guildsVersion + 1
+	return {
+		model: modifyFields(model, {
+			discordGuilds: () => DiscordGuilds.Loading(),
+			guildsVersion: () => version,
+		}),
+		commands: [ListDiscordGuilds({ organizationId, version })],
+	}
+}
+
+/** `handleClose`: a closed add modal has no selection, no search and no failed attempt. */
 const addModal = {
 	read: (model: Model) => Option.some(model.addModal),
 	write: (model: Model, modal: Modal.Model): Model =>
@@ -129,6 +156,8 @@ const addModal = {
 					selectedGuild: () => null,
 					guildSearch: () => "",
 					isGuildSearchFocused: () => false,
+					submission: (submission) =>
+						submission._tag === "Failed" ? Submission.NotSubmitted() : submission,
 				}),
 	toParentMessage: (message: Modal.Message) => Message.GotAddModalMessage({ message }),
 }
@@ -147,16 +176,17 @@ const foldAddModal = (model: Model, message: Modal.Message): Return => {
 }
 
 /** The search Input is rendered while the guilds are listed and none is selected. */
-const hasGuildSearch = (model: Model) => model.discordGuilds._tag === "Loaded" && model.selectedGuild === null
+const hasGuildSearch = (model: Model) =>
+	AsyncData.isSuccess(model.discordGuilds) && model.selectedGuild === null
 
 const submitConnection = (model: Model): Return => {
 	const organizationId = model.requestedOrganizationId
 	const guild = model.selectedGuild
-	if (organizationId === null || guild === null || model.isCreating) return { model }
+	if (organizationId === null || guild === null || model.submission._tag === "Submitting") return { model }
 	return {
 		// The Connect button disables while it runs, which ends its hover (useHover).
 		model: modifyFields(model, {
-			isCreating: () => true,
+			submission: () => Submission.Submitting(),
 			interaction: (state) => Interaction.disabledTargets(state, [CONNECT_TARGET]),
 		}),
 		commands: [
@@ -193,24 +223,17 @@ const foldEmptyAddMenu = Update.foldChild({
 	foldOutMessage: foldAddMenuOutMessage,
 })
 
-/** `onOpenChange={(open) => !open && setDeleteTarget(null)}` */
-const deleteModal = {
-	read: (model: Model) => Option.some(model.deleteModal),
-	write: (model: Model, modal: Modal.Model): Model =>
-		modifyFields(model, {
-			deleteModal: () => modal,
-			deleteTarget: (target) => (modal.isOpen ? target : null),
-		}),
-	toParentMessage: (message: Modal.Message) => Message.GotDeleteModalMessage({ message }),
-}
-const foldDeleteModal = Update.foldChild({ update: Modal.update, ...deleteModal })
-const openDeleteModal = Update.foldChildStep({ update: Modal.open, ...deleteModal })
-const closeDeleteModal = Update.foldChildStep({ update: Modal.close, ...deleteModal })
-
-const withCommands = (result: Return, commands: Return["commands"]): Return => ({
-	...result,
-	commands: [...(result.commands ?? []), ...(commands ?? [])],
+const foldDeleteConfirm = Update.foldChild({
+	update: (confirm: ConfirmAction.Model<DeleteTarget>, message: ConfirmAction.Message) =>
+		ConfirmAction.update(confirm, message),
+	read: (model: Model) => Option.some(model.deleteConfirm),
+	write: (model: Model, deleteConfirm: ConfirmAction.Model<DeleteTarget>): Model =>
+		modifyFields(model, { deleteConfirm: () => deleteConfirm }),
+	toParentMessage: (message: ConfirmAction.Message) => Message.GotDeleteConfirmMessage({ message }),
 })
+
+const withDeleteConfirm = (model: Model, deleteConfirm: ConfirmAction.Model<DeleteTarget>): Model =>
+	modifyFields(model, { deleteConfirm: () => deleteConfirm })
 
 const isCurrentGuildList = (model: Model, organizationId: OrganizationId, version: number) =>
 	organizationId === model.requestedOrganizationId && version === model.guildsVersion
@@ -220,75 +243,87 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 		SucceededListConnections: ({ organizationId, connections }) => {
 			if (organizationId !== model.requestedOrganizationId) return { model }
 			const next = modifyFields(model, {
-				connections: () => ({ _tag: "Loaded" as const, connections }),
+				connections: () => Connections.Success({ data: connections }),
 			})
-			// The loading and error states return early, so a fresh list remounts the modal.
-			if (model.connections._tag === "Loaded") return { model: next }
-			const version = model.guildsVersion + 1
-			return {
-				model: modifyFields(next, {
-					discordGuilds: () => ({ _tag: "Loading" as const }),
-					guildsVersion: () => version,
-				}),
-				commands: [ListDiscordGuilds({ organizationId, version })],
-			}
+			// The add modal mounts with the first list and queries the guilds then; a refresh keeps it mounted.
+			return AsyncData.hasData(model.connections)
+				? { model: next }
+				: requestGuilds(next, organizationId)
 		},
+		FailedListConnections: ({ organizationId, reason }) => {
+			if (organizationId !== model.requestedOrganizationId) return { model }
+			// A failed refresh keeps the shown list and says so; a failed first load replaces the spinner.
+			return Option.match(AsyncData.getData(model.connections), {
+				onSome: (data) => ({
+					model: modifyFields(model, {
+						connections: () => Connections.Stale({ error: reason, data }),
+					}),
+					outMessage: PageOutMessage.RequestedToast({ toast: reasonToast(reason) }),
+				}),
+				onNone: () => ({
+					model: modifyFields(model, { connections: () => Connections.Failure({ error: reason }) }),
+				}),
+			})
+		},
+		ClickedRetryListConnections: () => reloadConnections(model),
 		SucceededListDiscordGuilds: ({ organizationId, version, guilds }) => {
 			if (!isCurrentGuildList(model, organizationId, version)) return { model }
-			const next = modifyFields(model, {
-				discordGuilds: () => ({ _tag: "Loaded" as const, items: guilds }),
-			})
+			const next = modifyFields(model, { discordGuilds: () => DiscordGuilds.Success({ data: guilds }) })
 			// The search mounts with `autoFocus` when the guilds arrive while the modal is open.
 			return {
 				model: next,
 				commands: model.addModal.isOpen && hasGuildSearch(next) ? [FocusGuildSearch()] : [],
 			}
 		},
-		FailedListDiscordGuilds: ({ organizationId, version }) =>
+		FailedListDiscordGuilds: ({ organizationId, version, reason }) =>
 			isCurrentGuildList(model, organizationId, version)
-				? { model: modifyFields(model, { discordGuilds: () => ({ _tag: "Failed" as const }) }) }
+				? {
+						model: modifyFields(model, {
+							discordGuilds: () => DiscordGuilds.Failure({ error: reason }),
+						}),
+					}
 				: { model },
-		FailedListConnections: ({ organizationId }) =>
-			organizationId === model.requestedOrganizationId
-				? { model: modifyFields(model, { connections: () => ({ _tag: "Failed" as const }) }) }
-				: { model },
+		ClickedRetryListDiscordGuilds: () =>
+			model.requestedOrganizationId === null
+				? { model }
+				: requestGuilds(model, model.requestedOrganizationId),
 		ClickedConnection: ({ connectionId }) => ({
 			model,
 			outMessage: requestedOrgNavigation(shared.orgSlug, (orgSlug) =>
 				AppRoute.SettingsChatSyncConnection({ orgSlug, connectionId }),
 			),
 		}),
-		ClickedDeleteConnection: ({ target }) =>
-			openDeleteModal(modifyFields(model, { deleteTarget: () => target })),
+		ClickedDeleteConnection: ({ target }) => ({
+			model: withDeleteConfirm(model, ConfirmAction.ask(model.deleteConfirm, target)),
+		}),
 		ClickedConfirmDelete: () =>
-			model.deleteTarget === null || model.isDeleting
-				? { model }
-				: {
-						model: modifyFields(model, { isDeleting: () => true }),
-						commands: [DeleteConnection({ syncConnectionId: model.deleteTarget.id })],
-					},
-		// `setRefreshKey(k => k + 1)`: a new query key, so the list loads again.
-		SucceededDeleteConnection: () => {
-			const organizationId = model.requestedOrganizationId
-			const closed = closeDeleteModal(
-				modifyFields(model, {
-					isDeleting: () => false,
-					connections: (connections) =>
-						organizationId === null ? connections : { _tag: "Loading" as const },
+			Option.match(ConfirmAction.confirm(model.deleteConfirm), {
+				onNone: () => ({ model }),
+				onSome: ([running, target]) => ({
+					model: withDeleteConfirm(model, running),
+					commands: [DeleteConnection({ syncConnectionId: target.id })],
 				}),
-			)
-			return {
-				...withCommands(closed, organizationId === null ? [] : [ListConnections({ organizationId })]),
-				outMessage: PageOutMessage.RequestedToast({ toast: successToast("Connection deleted") }),
-			}
-		},
-		FailedDeleteConnection: ({ toast }) => ({
-			model: modifyFields(model, { isDeleting: () => false }),
-			outMessage: PageOutMessage.RequestedToast({ toast }),
+			}),
+		SucceededDeleteConnection: () => ({
+			...reloadConnections(withDeleteConfirm(model, ConfirmAction.close(model.deleteConfirm))),
+			outMessage: PageOutMessage.RequestedToast({ toast: successToast("Connection deleted") }),
+		}),
+		FailedDeleteConnection: ({ reason }) => ({
+			model: withDeleteConfirm(model, ConfirmAction.failed(model.deleteConfirm)),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToastOf(
+					failureMessage(reason, {
+						NotFound: {
+							title: "Connection not found",
+							description: "This connection may have already been deleted.",
+						},
+					}),
+				),
+			}),
 		}),
 		GotAddMenuMessage: ({ message: menuMessage }) => foldAddMenu(model, menuMessage),
 		GotEmptyAddMenuMessage: ({ message: menuMessage }) => foldEmptyAddMenu(model, menuMessage),
-		GotDeleteModalMessage: ({ message: modalMessage }) => foldDeleteModal(model, modalMessage),
+		GotDeleteConfirmMessage: ({ message: confirmMessage }) => foldDeleteConfirm(model, confirmMessage),
 		GotAddModalMessage: ({ message: modalMessage }) => foldAddModal(model, modalMessage),
 		ChangedGuildSearch: ({ value }) => ({ model: modifyFields(model, { guildSearch: () => value }) }),
 		FocusedGuildSearch: () => ({ model: modifyFields(model, { isGuildSearchFocused: () => true }) }),
@@ -315,24 +350,29 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 		ClickedConnect: () => submitConnection(model),
 		GotInteractionMessage: ({ message }) => interaction.fold(model, message),
 		// `onSuccess()` reloads the list (a new query key), then `handleClose()`.
-		SucceededCreateConnection: () => {
-			const organizationId = model.requestedOrganizationId
-			const closed = closeAddModal(
-				modifyFields(model, {
-					isCreating: () => false,
-					connections: (connections) =>
-						organizationId === null ? connections : { _tag: "Loading" as const },
-				}),
-			)
-			return {
-				...withCommands(closed, organizationId === null ? [] : [ListConnections({ organizationId })]),
-				outMessage: PageOutMessage.RequestedToast({
-					toast: successToast("Discord connection created"),
-				}),
-			}
-		},
-		FailedCreateConnection: ({ toast }) => ({
-			model: modifyFields(model, { isCreating: () => false }),
-			outMessage: PageOutMessage.RequestedToast({ toast }),
+		SucceededCreateConnection: () => ({
+			...Update.combine(modifyFields(model, { submission: () => Submission.NotSubmitted() }), [
+				closeAddModal,
+				reloadConnections,
+			]),
+			outMessage: PageOutMessage.RequestedToast({ toast: successToast("Discord connection created") }),
+		}),
+		FailedCreateConnection: ({ reason }) => ({
+			model: modifyFields(model, { submission: () => Submission.Failed({ reason }) }),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToastOf(
+					failureMessage(reason, {
+						AlreadyExists: {
+							title: "Connection already exists",
+							description:
+								"A connection to this Discord server already exists in your workspace.",
+						},
+						DiscordNotConnected: {
+							title: "Discord not connected",
+							description: "Connect Discord first to load your guilds.",
+						},
+					}),
+				),
+			}),
 		}),
 	})

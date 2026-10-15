@@ -1,5 +1,6 @@
 import { Schema } from "effect"
 import { defineMessageUnion } from "foldkit/message"
+import { CommonReason } from "~/lib/error-messages"
 import { Connection } from "../shared/connections"
 
 export const Message = defineMessageUnion({
@@ -7,7 +8,7 @@ export const Message = defineMessageUnion({
 	ClickedIntegration: { integrationId: Schema.String },
 	UpdatedConnections: { connections: Schema.Array(Connection) },
 	SucceededListWebhooks: { names: Schema.Array(Schema.String) },
-	FailedListWebhooks: {},
+	FailedListWebhooks: { reason: CommonReason },
 	ClickedRequestIntegration: {},
 })
 export type Message = typeof Message.Type

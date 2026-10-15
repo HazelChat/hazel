@@ -1,15 +1,16 @@
-import "../../channel-settings/document-stub"
+import "../../../test/document-stub"
 import { OrganizationId, SyncConnectionId } from "@hazel/schema"
-import { Schema } from "effect"
+import { Option, Schema } from "effect"
 import { Command, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
 import type { Shared } from "../../contract"
 import { PageOutMessage } from "../../out-message"
-import { Message } from "./model"
+import * as ConfirmAction from "../../shared/confirm-action"
+import { Connections, Message, Submission } from "./model"
 import { DeleteConnection, init, ListConnections, ListDiscordGuilds, sharedChanged, update } from "./update"
 import { sharedDefaults } from "../../test-shared"
 import { CreateConnection } from "./add-connection"
-import { errorToast } from "../../../data/actions"
+import { DiscordGuilds } from "./discord"
 
 const organizationId = Schema.decodeSync(OrganizationId)("00000000-0000-4000-8000-000000000001")
 const connectionId = Schema.decodeSync(SyncConnectionId)("00000000-0000-4000-8000-000000000002")
@@ -30,6 +31,7 @@ const connection = {
 	errorMessage: null,
 	lastSyncedAtMs: null,
 }
+const target = { id: connectionId, name: "Hazel Community" }
 const updateWithShared = (current: Parameters<typeof update>[0], next: Message) =>
 	update(current, next, shared)
 
@@ -41,7 +43,7 @@ describe("chat sync connections", () => {
 		expect(ready.commands?.map((command) => command.name)).toEqual(["ListConnections"])
 	})
 
-	test("deleting closes the dialog, toasts, and reloads the list", () => {
+	test("deleting closes the dialog, toasts, and refreshes the list while keeping it shown", () => {
 		const loaded = updateWithShared(
 			init(undefined, shared).model,
 			Message.SucceededListConnections({ organizationId, connections: [connection] }),
@@ -49,11 +51,10 @@ describe("chat sync connections", () => {
 		story(
 			updateWithShared,
 			given(loaded),
-			message(
-				Message.ClickedDeleteConnection({ target: { id: connectionId, name: "Hazel Community" } }),
-			),
-			model((current) => expect(current.deleteModal.isOpen).toBe(true)),
+			message(Message.ClickedDeleteConnection({ target })),
+			model((current) => expect(current.deleteConfirm.modal.isOpen).toBe(true)),
 			message(Message.ClickedConfirmDelete()),
+			model((current) => expect(ConfirmAction.isRunning(current.deleteConfirm)).toBe(true)),
 			Command.resolve(DeleteConnection, Message.SucceededDeleteConnection()),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
@@ -61,19 +62,17 @@ describe("chat sync connections", () => {
 				}),
 			),
 			model((current) => {
-				expect(current.deleteTarget).toBeNull()
-				expect(current.connections._tag).toBe("Loading")
+				expect(current.deleteConfirm.state._tag).toBe("Closed")
+				expect(current.deleteConfirm.modal.isOpen).toBe(false)
+				expect(current.connections).toEqual(Connections.Refreshing({ data: [connection] }))
 			}),
+			// The add modal stays mounted through a refresh, so the guilds are not queried again.
 			Command.resolve(
 				ListConnections,
 				Message.SucceededListConnections({ organizationId, connections: [] }),
 			),
-			// The reloaded list remounts the add modal, so its guild query runs again.
-			Command.resolve(
-				ListDiscordGuilds,
-				Message.FailedListDiscordGuilds({ organizationId, version: 2 }),
-			),
-			model((current) => expect(current.connections).toEqual({ _tag: "Loaded", connections: [] })),
+			Command.expectNone(),
+			model((current) => expect(current.connections).toEqual(Connections.Success({ data: [] }))),
 		)
 	})
 
@@ -88,7 +87,9 @@ describe("chat sync connections", () => {
 				ListDiscordGuilds,
 				Message.SucceededListDiscordGuilds({ organizationId, version: 1, guilds: [guild] }),
 			),
-			model((current) => expect(current.discordGuilds).toEqual({ _tag: "Loaded", items: [guild] })),
+			model((current) =>
+				expect(current.discordGuilds).toEqual(DiscordGuilds.Success({ data: [guild] })),
+			),
 		)
 	})
 
@@ -103,23 +104,83 @@ describe("chat sync connections", () => {
 			refetching,
 			Message.SucceededListDiscordGuilds({ organizationId, version: 1, guilds: [guild] }),
 		)
-		expect(stale.model.discordGuilds).toEqual({ _tag: "Loading" })
+		expect(stale.model.discordGuilds).toEqual(DiscordGuilds.Loading())
 		const staleFailure = updateWithShared(
 			refetching,
-			Message.FailedListDiscordGuilds({ organizationId, version: 1 }),
+			Message.FailedListDiscordGuilds({ organizationId, version: 1, reason: "Offline" }),
 		)
-		expect(staleFailure.model.discordGuilds).toEqual({ _tag: "Loading" })
+		expect(staleFailure.model.discordGuilds).toEqual(DiscordGuilds.Loading())
 	})
 
-	test("a failed list renders no modal and sends no guild query", () => {
-		const failed = updateWithShared(
+	test("a failed guild list keeps its reason, and Try again queries the guilds anew", () => {
+		const listing = updateWithShared(
 			init(undefined, shared).model,
-			Message.FailedListConnections({ organizationId }),
+			Message.SucceededListConnections({ organizationId, connections: [connection] }),
+		).model
+		story(
+			updateWithShared,
+			given(listing),
+			message(Message.FailedListDiscordGuilds({ organizationId, version: 1, reason: "Offline" })),
+			model((current) =>
+				expect(current.discordGuilds).toEqual(DiscordGuilds.Failure({ error: "Offline" })),
+			),
+			message(Message.ClickedRetryListDiscordGuilds()),
+			Command.expectExact(ListDiscordGuilds({ organizationId, version: 2 })),
+			model((current) => expect(current.discordGuilds).toEqual(DiscordGuilds.Loading())),
+			Command.resolve(
+				ListDiscordGuilds,
+				Message.SucceededListDiscordGuilds({ organizationId, version: 2, guilds: [] }),
+			),
 		)
-		expect(failed.commands ?? []).toHaveLength(0)
 	})
 
-	test("connecting a picked guild closes the modal, toasts, and reloads the list", () => {
+	test("a failed first list keeps its reason, sends no guild query, and Try again reloads", () => {
+		story(
+			updateWithShared,
+			given(init(undefined, shared).model),
+			message(Message.FailedListConnections({ organizationId, reason: "Offline" })),
+			Command.expectNone(),
+			model((current) =>
+				expect(current.connections).toEqual(Connections.Failure({ error: "Offline" })),
+			),
+			message(Message.ClickedRetryListConnections()),
+			Command.expectExact(ListConnections({ organizationId })),
+			model((current) => expect(current.connections).toEqual(Connections.Loading())),
+			Command.resolve(
+				ListConnections,
+				Message.SucceededListConnections({ organizationId, connections: [connection] }),
+			),
+			// The list mounts the add modal now, so the guilds are queried.
+			Command.expectHas(ListDiscordGuilds),
+			Command.resolve(
+				ListDiscordGuilds,
+				Message.SucceededListDiscordGuilds({ organizationId, version: 1, guilds: [] }),
+			),
+		)
+	})
+
+	test("a failed refresh keeps the shown list and toasts", () => {
+		const loaded = updateWithShared(
+			init(undefined, shared).model,
+			Message.SucceededListConnections({ organizationId, connections: [connection] }),
+		).model
+		const failed = updateWithShared(
+			{ ...loaded, connections: Connections.Refreshing({ data: [connection] }) },
+			Message.FailedListConnections({ organizationId, reason: "Timeout" }),
+		)
+		expect(failed.model.connections).toEqual(Connections.Stale({ error: "Timeout", data: [connection] }))
+		expect(failed.outMessage).toEqual(
+			PageOutMessage.RequestedToast({
+				toast: {
+					intent: "error",
+					title: "Request timed out",
+					description: "The server is taking too long to respond. Please try again.",
+				},
+			}),
+		)
+	})
+
+	test("connecting a picked guild closes the modal, toasts, and refreshes the list", () => {
 		const guild = { id: "918273645500901", name: "Design Systems Guild", icon: null, owner: true }
 		const loaded = updateWithShared(
 			updateWithShared(
@@ -152,28 +213,29 @@ describe("chat sync connections", () => {
 				expect(current.addModal.isOpen).toBe(false)
 				expect(current.selectedGuild).toBeNull()
 				expect(current.guildSearch).toBe("")
-				expect(current.connections._tag).toBe("Loading")
+				expect(current.submission).toEqual(Submission.NotSubmitted())
+				expect(current.connections._tag).toBe("Refreshing")
 			}),
 			Command.resolve(
 				ListConnections,
 				Message.SucceededListConnections({ organizationId, connections: [connection] }),
 			),
-			Command.resolve(
-				ListDiscordGuilds,
-				Message.SucceededListDiscordGuilds({ organizationId, version: 2, guilds: [guild] }),
-			),
 		)
 	})
 
-	test("a failed create keeps the modal open with an error toast", () => {
+	test("a failed create keeps the modal open with the reason's toast", () => {
 		const failed = updateWithShared(
-			{ ...init(undefined, shared).model, isCreating: true },
-			Message.FailedCreateConnection({ toast: errorToast("Connection already exists") }),
+			{ ...init(undefined, shared).model, submission: Submission.Submitting() },
+			Message.FailedCreateConnection({ reason: "AlreadyExists" }),
 		)
-		expect(failed.model.isCreating).toBe(false)
+		expect(failed.model.submission).toEqual(Submission.Failed({ reason: "AlreadyExists" }))
 		expect(failed.outMessage).toEqual(
 			PageOutMessage.RequestedToast({
-				toast: { intent: "error", title: "Connection already exists", description: null },
+				toast: {
+					intent: "error",
+					title: "Connection already exists",
+					description: "A connection to this Discord server already exists in your workspace.",
+				},
 			}),
 		)
 	})
@@ -199,36 +261,39 @@ describe("chat sync guards", () => {
 			),
 			Command.expectNone(),
 			model((current) => expect(current.connections._tag).toBe("Loading")),
-			message(Message.FailedListConnections({ organizationId: otherOrganizationId })),
+			message(
+				Message.FailedListConnections({ organizationId: otherOrganizationId, reason: "Offline" }),
+			),
 			model((current) => expect(current.connections._tag).toBe("Loading")),
 		)
 	})
 
-	test("a second confirm while deleting sends no second delete", () => {
+	test("a second confirm while deleting sends no second delete; a failure re-asks", () => {
 		story(
 			updateWithShared,
-			given({ ...loaded, discordGuilds: { _tag: "Failed" } }),
-			message(
-				Message.ClickedDeleteConnection({ target: { id: connectionId, name: "Hazel Community" } }),
-			),
+			given({ ...loaded, discordGuilds: DiscordGuilds.Failure({ error: "NotConnected" }) }),
+			message(Message.ClickedDeleteConnection({ target })),
 			message(Message.ClickedConfirmDelete()),
 			Command.expectExact(DeleteConnection({ syncConnectionId: connectionId })),
-			Command.resolve(
-				DeleteConnection,
-				Message.FailedDeleteConnection({ toast: errorToast("Connection not found", "Gone.") }),
-			),
+			Command.resolve(DeleteConnection, Message.FailedDeleteConnection({ reason: "NotFound" })),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Connection not found", description: "Gone." },
+					toast: {
+						intent: "error",
+						title: "Connection not found",
+						description: "This connection may have already been deleted.",
+					},
 				}),
 			),
 			model((current) => {
-				expect(current.isDeleting).toBe(false)
-				expect(current.deleteModal.isOpen).toBe(true)
+				expect(current.deleteConfirm.state).toEqual({ _tag: "Confirming", target })
+				expect(current.deleteConfirm.modal.isOpen).toBe(true)
 			}),
 		)
+		const asked = ConfirmAction.ask(loaded.deleteConfirm, target)
+		const [running] = Option.getOrThrow(ConfirmAction.confirm(asked))
 		const deleting = updateWithShared(
-			{ ...loaded, deleteTarget: { id: connectionId, name: "Hazel Community" }, isDeleting: true },
+			{ ...loaded, deleteConfirm: running },
 			Message.ClickedConfirmDelete(),
 		)
 		expect(deleting.commands ?? []).toHaveLength(0)
@@ -243,19 +308,23 @@ describe("chat sync guards", () => {
 			message(Message.ClickedGuild({ guild })),
 			message(Message.ClickedConnect()),
 			Command.expectHas(CreateConnection),
-			model((current) => expect(current.isCreating).toBe(true)),
+			model((current) => expect(current.submission).toEqual(Submission.Submitting())),
 			Command.resolve(
 				CreateConnection,
-				Message.FailedCreateConnection({ toast: errorToast("Discord not connected") }),
+				Message.FailedCreateConnection({ reason: "DiscordNotConnected" }),
 			),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Discord not connected", description: null },
+					toast: {
+						intent: "error",
+						title: "Discord not connected",
+						description: "Connect Discord first to load your guilds.",
+					},
 				}),
 			),
 		)
 		const creating = updateWithShared(
-			{ ...loaded, selectedGuild: guild, isCreating: true },
+			{ ...loaded, selectedGuild: guild, submission: Submission.Submitting() },
 			Message.ClickedConnect(),
 		)
 		expect(creating.commands ?? []).toHaveLength(0)

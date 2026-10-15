@@ -53,9 +53,16 @@ describe("your apps menu actions", () => {
 		story(
 			update,
 			given(withOpenMenu),
-			message(Message.GotMenuMessage({ botId: deploy.id, message: Menu.Message.ClickedItem({ key: "regenerate" }) })),
+			message(
+				Message.GotMenuMessage({
+					botId: deploy.id,
+					message: Menu.Message.ClickedItem({ key: "regenerate" }),
+				}),
+			),
 			expectOutMessage(
-				PageOutMessage.RequestedModal({ modal: { _tag: "RegenerateBotToken", botId: deploy.id, botName: "Deploy Bot" } }),
+				PageOutMessage.RequestedModal({
+					modal: { _tag: "RegenerateBotToken", botId: deploy.id, botName: "Deploy Bot" },
+				}),
 			),
 			model((current) => expect(current.menus[0]?.popup._tag).toBe("Closed")),
 		)
@@ -65,7 +72,12 @@ describe("your apps menu actions", () => {
 		story(
 			update,
 			given(withOpenMenu),
-			message(Message.GotMenuMessage({ botId: triage.id, message: Menu.Message.ClickedItem({ key: "delete" }) })),
+			message(
+				Message.GotMenuMessage({
+					botId: triage.id,
+					message: Menu.Message.ClickedItem({ key: "delete" }),
+				}),
+			),
 			expectNoOutMessage(),
 			model((current) => expect(current).toEqual(withOpenMenu)),
 		)

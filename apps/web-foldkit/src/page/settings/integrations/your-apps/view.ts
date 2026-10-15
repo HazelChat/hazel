@@ -24,10 +24,7 @@ const createButton = (h: HtmlBuilder<Message>, size?: "md"): Html =>
 		size === "md"
 			? { intent: "primary", size, className: "shrink-0", onPress: Message.ClickedCreateApplication() }
 			: { intent: "primary", onPress: Message.ClickedCreateApplication() },
-		[
-			IconPlus(h, { attributes: { "data-slot": "icon" } }),
-			"Create Application",
-		],
+		[IconPlus(h, { attributes: { "data-slot": "icon" } }), "Create Application"],
 	)
 
 export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, _inputs, h) =>

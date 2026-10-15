@@ -1,49 +1,39 @@
 import { BotId } from "@hazel/schema"
-import { Effect, Exit } from "effect"
+import { Effect } from "effect"
 import { Command } from "foldkit"
 import { modifyFields } from "foldkit/struct"
 import * as Interaction from "../../../../ui/aria/interaction"
 import { HazelRpc } from "../../../../rpc"
 import type { PageReturn } from "../../../contract"
 import { PageOutMessage } from "../../../out-message"
-import { embedInteraction } from "../shared/interaction"
-import { failureToast, rateLimitMessage, successToast } from "../../../../data/actions"
+import { catchCommon, errorToastOf, successToast } from "../../../../data/actions"
+import type { PageSubscriptionInput } from "../../../contract"
+import { failureMessage } from "~/lib/error-messages"
 import { Message } from "./message"
 import type { Model } from "./model"
 
-/** `installBotMutation` with the toasts of `handleInstall`. */
+/** `installBotMutation` */
 export const InstallBot = Command.define("InstallBot", {
 	args: { botId: BotId },
 	messages: [Message.SucceededInstallBot, Message.FailedInstallBot],
 	execute: ({ botId }) =>
-		Effect.gen(function* () {
-			const client = yield* HazelRpc
-			const exit = yield* Effect.exit(client("bot.install", { botId }))
-			return Exit.isSuccess(exit)
-				? Message.SucceededInstallBot({ botId })
-				: Message.FailedInstallBot({
-						botId,
-						toast: failureToast(exit.cause, "exitToast", {
-							BotNotFoundError: () => ({
-								title: "Application not found",
-								description: "This application may no longer be available.",
-								isRetryable: false,
-							}),
-							BotAlreadyInstalledError: () => ({
-								title: "Already installed",
-								description: "This application is already installed in your workspace.",
-								isRetryable: false,
-							}),
-							RateLimitExceededError: rateLimitMessage,
-						}),
-					})
-		}),
+		HazelRpc.use((rpc) => rpc("bot.install", { botId })).pipe(
+			Effect.as(Message.SucceededInstallBot({ botId })),
+			Effect.catchTags({
+				BotNotFoundError: () =>
+					Effect.succeed(Message.FailedInstallBot({ botId, reason: "NotFound" })),
+				BotAlreadyInstalledError: () =>
+					Effect.succeed(Message.FailedInstallBot({ botId, reason: "AlreadyInstalled" })),
+			}),
+			catchCommon((reason) => Message.FailedInstallBot({ botId, reason })),
+		),
 })
 
 type Return = PageReturn<Model, Message>
 
-export const interaction = embedInteraction<Model, Message>((message) =>
-	Message.GotInteractionMessage({ message }),
+export const interaction = Interaction.embed<Model, Message, PageSubscriptionInput<Model>>(
+	(message) => Message.GotInteractionMessage({ message }),
+	(input) => input.model,
 )
 
 /** The interaction target of a bot card's Install button. */
@@ -86,9 +76,22 @@ export const update = (model: Model, message: Message): Return =>
 				toast: successToast("Application installed successfully"),
 			}),
 		}),
-		FailedInstallBot: ({ botId, toast }) => ({
+		FailedInstallBot: ({ botId, reason }) => ({
 			model: doneInstalling(model, botId),
-			outMessage: PageOutMessage.RequestedToast({ toast }),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToastOf(
+					failureMessage(reason, {
+						NotFound: {
+							title: "Application not found",
+							description: "This application may no longer be available.",
+						},
+						AlreadyInstalled: {
+							title: "Already installed",
+							description: "This application is already installed in your workspace.",
+						},
+					}),
+				),
+			}),
 		}),
 		GotInteractionMessage: ({ message }) => interaction.fold(model, message),
 	})
