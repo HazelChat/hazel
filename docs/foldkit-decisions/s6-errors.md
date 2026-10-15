@@ -26,14 +26,14 @@ FailedRenameChannel: { reason: RenameFailure },
 
 `CommonReason` (from `~/lib/error-messages`) is the closed set every RPC / HttpApi / optimistic-action failure collapses to:
 
-| reason | from |
-| --- | --- |
-| `Offline` | `HttpClientError` with `reason._tag === "TransportError"`, `RpcClientError` whose HTTP `kind` is `TransportError`, socket errors |
-| `Timeout` | `TimeoutError`, `TxIdTimeoutError` |
-| `SignedOut` | `UnauthorizedError`(401 middleware) / `Session*Error` / `InvalidJwtPayloadError` / `InvalidBearerTokenError` |
-| `RateLimited` | `RateLimitExceededError` |
-| `Unavailable` | `SessionLoadError`, `WorkflowServiceUnavailableError`, 5xx `StatusCodeError`, `CollectionSyncEffectError` |
-| `Unexpected` | `InternalServerError`, `SchemaError`, decode/encode errors, `OptimisticActionError`, TanStack key errors, defects |
+| reason        | from                                                                                                                             |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `Offline`     | `HttpClientError` with `reason._tag === "TransportError"`, `RpcClientError` whose HTTP `kind` is `TransportError`, socket errors |
+| `Timeout`     | `TimeoutError`, `TxIdTimeoutError`                                                                                               |
+| `SignedOut`   | `UnauthorizedError`(401 middleware) / `Session*Error` / `InvalidJwtPayloadError` / `InvalidBearerTokenError`                     |
+| `RateLimited` | `RateLimitExceededError`                                                                                                         |
+| `Unavailable` | `SessionLoadError`, `WorkflowServiceUnavailableError`, 5xx `StatusCodeError`, `CollectionSyncEffectError`                        |
+| `Unexpected`  | `InternalServerError`, `SchemaError`, decode/encode errors, `OptimisticActionError`, TanStack key errors, defects                |
 
 ## 2. Building the reason in the Command: `Effect.catchTags` + `catchCommon`
 
@@ -48,8 +48,10 @@ const RenameChannel = Command.define("RenameChannel", {
 			Effect.as(Message.SucceededRenameChannel()),
 			// 1. the errors this feature has words for
 			Effect.catchTags({
-				ChannelNotFoundError: () => Effect.succeed(Message.FailedRenameChannel({ reason: "NotFound" })),
-				ChannelNameTakenError: () => Effect.succeed(Message.FailedRenameChannel({ reason: "NameTaken" })),
+				ChannelNotFoundError: () =>
+					Effect.succeed(Message.FailedRenameChannel({ reason: "NotFound" })),
+				ChannelNameTakenError: () =>
+					Effect.succeed(Message.FailedRenameChannel({ reason: "NameTaken" })),
 			}),
 			// 2. everything left must be a CommonError (compile error otherwise), plus defects
 			catchCommon((reason) => Message.FailedRenameChannel({ reason })),
