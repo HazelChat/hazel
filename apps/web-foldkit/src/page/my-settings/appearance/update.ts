@@ -5,9 +5,8 @@ import { modifyFields } from "foldkit/struct"
 import { GRAY_PALETTE_LABELS, getBuiltInPreset } from "~/lib/theme/presets"
 import * as Interaction from "../../../ui/aria/interaction"
 import * as Select from "../../../ui/select"
-import type { PageReturn, Shared } from "../../contract"
+import type { PageReturn, PageSubscriptionInput, Shared } from "../../contract"
 import { PageOutMessage } from "../../out-message"
-import { embedInteraction } from "../shared"
 import { GenerateRemixOptions } from "./command"
 import { Message } from "./message"
 import type { Customization, Model, ThemeMode } from "./model"
@@ -17,8 +16,9 @@ type Return = PageReturn<Model, Message>
 
 export const GENERATE_TARGET = "remix-generate"
 
-export const interaction = embedInteraction<Model, Message>((message) =>
-	Message.GotInteractionMessage({ message }),
+export const interaction = Interaction.embed<Model, Message, PageSubscriptionInput<Model>>(
+	(message) => Message.GotInteractionMessage({ message }),
+	(input) => input.model,
 )
 
 export const toGrayPaletteMessage = (message: Select.Message) => Message.GotGrayPaletteMessage({ message })
@@ -68,7 +68,9 @@ export const init = (_route: unknown, shared: Shared): Return => ({
 	},
 })
 
-export const sharedChanged = (model: Model, shared: Shared): Return => ({ model: withGrayPalette(model, shared) })
+export const sharedChanged = (model: Model, shared: Shared): Return => ({
+	model: withGrayPalette(model, shared),
+})
 
 export const update = (model: Model, message: Message, shared: Shared): Return => {
 	const { mode, customization } = shared.theme

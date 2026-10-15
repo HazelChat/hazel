@@ -69,10 +69,14 @@ describe("notification preferences", () => {
 					doNotDisturb: true,
 				}),
 			),
-			Command.resolve(UpdateUserSettings, Message.FailedUpdateUserSettings()),
+			Command.resolve(UpdateUserSettings, Message.FailedUpdateUserSettings({ reason: "UserNotFound" })),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Failed to update setting", description: null },
+					toast: {
+						intent: "error",
+						title: "Failed to update setting",
+						description: "Please sign in again.",
+					},
 				}),
 			),
 			model((current) => expect(settingsOf(current)?.doNotDisturb).toBeUndefined()),
@@ -129,8 +133,12 @@ describe("user settings writes", () => {
 	})
 
 	const synced = () =>
-		pageUpdate(init(undefined, shared).model, Message.UpdatedUserRow({ row: Schema.decodeUnknownSync(UserRow)(row) })).model
-	const settingsWith = (patch: object) => Schema.decodeUnknownSync(User.UserSettingsSchema)({ ...row.settings, ...patch })
+		pageUpdate(
+			init(undefined, shared).model,
+			Message.UpdatedUserRow({ row: Schema.decodeUnknownSync(UserRow)(row) }),
+		).model
+	const settingsWith = (patch: object) =>
+		Schema.decodeUnknownSync(User.UserSettingsSchema)({ ...row.settings, ...patch })
 	const writeOf = (result: ReturnType<typeof pageUpdate>) =>
 		result.commands?.map((command) => ({ name: command.name, args: command.args }))
 
@@ -138,7 +146,10 @@ describe("user settings writes", () => {
 		const both = settingsWith({ showQuietHoursInStatus: true, doNotDisturb: true })
 		const first = pageUpdate(synced(), Message.ToggledDoNotDisturb({ isSelected: true }))
 		expect(writeOf(first)).toEqual([
-			{ name: UpdateUserSettings.name, args: { userId: ada, settings: settingsWith({ doNotDisturb: true }) } },
+			{
+				name: UpdateUserSettings.name,
+				args: { userId: ada, settings: settingsWith({ doNotDisturb: true }) },
+			},
 		])
 		const queued = pageUpdate(first.model, Message.ToggledShowQuietHours({ isSelected: true }))
 		expect(queued.commands ?? []).toEqual([])
@@ -146,11 +157,18 @@ describe("user settings writes", () => {
 		// The first write's echo arrives while the second change is still unsent.
 		const echoed = pageUpdate(
 			queued.model,
-			Message.UpdatedUserRow({ row: Schema.decodeUnknownSync(UserRow)({ ...row, settings: settingsWith({ doNotDisturb: true }) }) }),
+			Message.UpdatedUserRow({
+				row: Schema.decodeUnknownSync(UserRow)({
+					...row,
+					settings: settingsWith({ doNotDisturb: true }),
+				}),
+			}),
 		)
 		expect(settingsOf(echoed.model)).toEqual(both)
 		const second = pageUpdate(echoed.model, Message.SucceededUpdateUserSettings())
-		expect(writeOf(second)).toEqual([{ name: UpdateUserSettings.name, args: { userId: ada, settings: both } }])
+		expect(writeOf(second)).toEqual([
+			{ name: UpdateUserSettings.name, args: { userId: ada, settings: both } },
+		])
 		const done = pageUpdate(second.model, Message.SucceededUpdateUserSettings()).model
 		expect(done.settingsWrite).toBe("Idle")
 		expect(done.optimisticSettings).toBeNull()
@@ -160,15 +178,26 @@ describe("user settings writes", () => {
 	test("an older write failing still sends the newer queued snapshot", () => {
 		const first = pageUpdate(synced(), Message.ToggledDoNotDisturb({ isSelected: true })).model
 		const queued = pageUpdate(first, Message.ToggledDoNotDisturb({ isSelected: false })).model
-		const failed = pageUpdate(queued, Message.FailedUpdateUserSettings())
+		const failed = pageUpdate(queued, Message.FailedUpdateUserSettings({ reason: "Unexpected" }))
 		expect(failed.outMessage).toEqual(
-			PageOutMessage.RequestedToast({ toast: { intent: "error", title: "Failed to update setting", description: null } }),
+			PageOutMessage.RequestedToast({
+				toast: {
+					intent: "error",
+					title: "Failed to update setting",
+					description: "Please try again.",
+				},
+			}),
 		)
 		expect(writeOf(failed)).toEqual([
-			{ name: UpdateUserSettings.name, args: { userId: ada, settings: settingsWith({ doNotDisturb: false }) } },
+			{
+				name: UpdateUserSettings.name,
+				args: { userId: ada, settings: settingsWith({ doNotDisturb: false }) },
+			},
 		])
 		expect(settingsOf(failed.model)?.doNotDisturb).toBe(false)
-		expect(pageUpdate(failed.model, Message.SucceededUpdateUserSettings()).model.settingsWrite).toBe("Idle")
+		expect(pageUpdate(failed.model, Message.SucceededUpdateUserSettings()).model.settingsWrite).toBe(
+			"Idle",
+		)
 	})
 
 	test("without a signed-in user nothing is written", () => {
@@ -190,7 +219,7 @@ describe("test notification", () => {
 			given(init(undefined, shared).model),
 			message(Message.ClickedTestNotification()),
 			Command.expectExact(SendTestNotification()),
-			Command.resolve(SendTestNotification, Message.CompletedTestNotification({ isSent: true })),
+			Command.resolve(SendTestNotification, Message.SucceededSendTestNotification()),
 			model((current) => expect(current.notificationStatus).toBe("sent")),
 			Command.expectExact(ExpireNotificationStatus({ version: 1 })),
 			Command.resolve(ExpireNotificationStatus, Message.ExpiredNotificationStatus({ version: 1 })),
@@ -199,10 +228,13 @@ describe("test notification", () => {
 	})
 
 	test("an older expiry timer leaves a newer result showing", () => {
-		const first = pageUpdate(init(undefined, shared).model, Message.CompletedTestNotification({ isSent: true })).model
-		const second = pageUpdate(first, Message.CompletedTestNotification({ isSent: false })).model
+		const first = pageUpdate(init(undefined, shared).model, Message.SucceededSendTestNotification()).model
+		const second = pageUpdate(first, Message.FailedSendTestNotification({ reason: "SendFailed" })).model
 		const expiredFirst = pageUpdate(second, Message.ExpiredNotificationStatus({ version: 1 })).model
 		expect(expiredFirst.notificationStatus).toBe("unavailable")
-		expect(pageUpdate(expiredFirst, Message.ExpiredNotificationStatus({ version: 2 })).model.notificationStatus).toBe("idle")
+		expect(
+			pageUpdate(expiredFirst, Message.ExpiredNotificationStatus({ version: 2 })).model
+				.notificationStatus,
+		).toBe("idle")
 	})
 })

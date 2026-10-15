@@ -2,10 +2,11 @@ import { UserId } from "@hazel/schema"
 import { Effect, Schema } from "effect"
 import { Command } from "foldkit"
 import { File } from "foldkit/file"
+import { catchCommon } from "../../../data/actions"
 import { calculateInitialCrop, cropImage, loadImage } from "~/utils/image-crop"
 import { detectBrowserTimezone } from "~/utils/timezone"
-import { publicUrlOf, uploadFile } from "../../settings/upload"
-import { updateUser } from "../user"
+import { UploadTarget, uploadFile } from "../../settings/upload"
+import { settleUpdateUser, updateUser } from "../user"
 import { CropRect } from "./crop"
 import { Message } from "./message"
 import { FILE_INPUT_ID, FormValues } from "./model"
@@ -46,12 +47,13 @@ export const LoadCropImage = Command.define("LoadCropImage", {
 					},
 				}),
 			),
-			Effect.catch(() =>
-				Effect.sync(() => {
-					URL.revokeObjectURL(src)
-					return Message.FailedLoadCropImage({ loadId })
-				}),
-			),
+			Effect.catchTags({
+				CropError: ({ reason }) =>
+					Effect.sync(() => {
+						URL.revokeObjectURL(src)
+						return Message.FailedLoadCropImage({ loadId, reason })
+					}),
+			}),
 		)
 	},
 })
@@ -68,57 +70,62 @@ export const RevokeCropImage = Command.define("RevokeCropImage", {
 
 export const CropAvatarImage = Command.define("CropAvatarImage", {
 	args: { src: Schema.String, crop: CropRect },
-	messages: [Message.CompletedCropImage],
+	messages: [Message.SucceededCropImage, Message.FailedCropImage],
 	execute: ({ src, crop }) =>
 		loadImage(src).pipe(
 			Effect.flatMap((image) => cropImage(image, crop, OUTPUT_SIZE)),
-			Effect.map((blob) => Message.CompletedCropImage({ blob })),
-			Effect.catch(() => Effect.succeed(Message.CompletedCropImage({ blob: null }))),
+			Effect.map((blob) => Message.SucceededCropImage({ blob })),
+			Effect.catchTags({
+				CropError: ({ reason }) => Effect.succeed(Message.FailedCropImage({ reason })),
+			}),
 		),
 })
 
 /** `useProfilePictureUpload`: upload the cropped image, then point the user's avatar at it. */
 export const UploadAvatar = Command.define("UploadAvatar", {
 	args: { userId: UserId, blob: Schema.instanceOf(Blob) },
-	messages: [Message.CompletedUploadAvatar],
+	messages: [Message.SucceededUploadAvatar, Message.FailedUploadAvatar],
 	execute: ({ userId, blob }) =>
 		Effect.gen(function* () {
 			const file = new globalThis.File([blob], "avatar.webp", { type: "image/webp" })
-			const key = yield* uploadFile({ type: "user-avatar" }, file)
-			const avatarUrl = publicUrlOf(key)
-			if (avatarUrl === null) return false
+			const avatarUrl = yield* uploadFile(UploadTarget.UserAvatar(), file)
 			yield* updateUser({ id: userId, avatarUrl })
-			return true
+			return Message.SucceededUploadAvatar()
 		}).pipe(
-			Effect.catch(() => Effect.succeed(false)),
-			Effect.map((isUploaded) => Message.CompletedUploadAvatar({ isUploaded })),
+			Effect.catchTags({
+				UploadFailedError: ({ problem }) =>
+					Effect.succeed(Message.FailedUploadAvatar({ reason: problem })),
+				UserNotFoundError: () =>
+					Effect.succeed(Message.FailedUploadAvatar({ reason: "UserNotFound" })),
+			}),
+			catchCommon((reason) => Message.FailedUploadAvatar({ reason })),
 		),
 })
 
 export const ResetAvatar = Command.define("ResetAvatar", {
 	args: { userId: UserId },
-	messages: [Message.CompletedResetAvatar],
+	messages: [Message.SucceededResetAvatar, Message.FailedResetAvatar],
 	execute: ({ userId }) =>
-		updateUser({ id: userId, avatarUrl: null }).pipe(
-			Effect.as(true),
-			Effect.catch(() => Effect.succeed(false)),
-			Effect.map((isReset) => Message.CompletedResetAvatar({ isReset })),
+		settleUpdateUser(
+			updateUser({ id: userId, avatarUrl: null }),
+			Message.SucceededResetAvatar(),
+			(reason) => Message.FailedResetAvatar({ reason }),
 		),
 })
 
 /** The legacy `onSubmit`: name and timezone in one `user.update`. */
 export const SaveProfile = Command.define("SaveProfile", {
 	args: { userId: UserId, values: FormValues },
-	messages: [Message.CompletedSaveProfile],
+	messages: [Message.SucceededSaveProfile, Message.FailedSaveProfile],
 	execute: ({ userId, values }) =>
-		updateUser({
-			id: userId,
-			firstName: values.firstName,
-			lastName: values.lastName,
-			timezone: values.timezone,
-		}).pipe(
-			Effect.as(true),
-			Effect.catch(() => Effect.succeed(false)),
-			Effect.map((isSaved) => Message.CompletedSaveProfile({ isSaved })),
+		settleUpdateUser(
+			updateUser({
+				id: userId,
+				firstName: values.firstName,
+				lastName: values.lastName,
+				timezone: values.timezone,
+			}),
+			Message.SucceededSaveProfile({ values }),
+			(reason) => Message.FailedSaveProfile({ reason }),
 		),
 })

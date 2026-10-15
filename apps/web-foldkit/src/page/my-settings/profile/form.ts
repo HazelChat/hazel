@@ -1,30 +1,32 @@
+import { anyInvalid, makeRules, Rule } from "foldkit/fieldValidation"
 import type { FormValues, Model } from "./model"
 
-/** The legacy arktype schema (`firstName: "string > 0"`, ...) and its messages. */
-export interface FormErrors {
-	readonly firstName: string | null
-	readonly lastName: string | null
-}
-
-const nonEmpty = (field: string, value: string) => (value.length > 0 ? null : `${field} must be non-empty`)
-
-export const validate = (values: FormValues): FormErrors => ({
-	firstName: nonEmpty("firstName", values.firstName),
-	lastName: nonEmpty("lastName", values.lastName),
+/** `user.update` takes a non-empty first name and at most 100 characters for either name. */
+export const firstNameRules = makeRules({
+	required: "First name is required",
+	rules: [Rule.maxLength(100, "First name must be at most 100 characters")],
 })
 
-/** Form-level `onChange` validation: nothing shows until the first change. */
-export const errorsOf = (model: Model): FormErrors =>
-	model.isDirty ? validate(model.values) : { firstName: null, lastName: null }
+export const lastNameRules = makeRules({
+	required: "Last name is required",
+	rules: [Rule.maxLength(100, "Last name must be at most 100 characters")],
+})
 
-export const canSubmit = (model: Model): boolean => {
-	const errors = errorsOf(model)
-	return errors.firstName === null && errors.lastName === null
-}
+export const valuesOf = (model: Model): FormValues => ({
+	firstName: model.firstName.value,
+	lastName: model.lastName.value,
+	timezone: model.selectedTimezone,
+})
+
+/** Derived: the values differ from the ones the form started from (or last saved). */
+export const isDirty = (model: Model): boolean =>
+	model.firstName.value !== model.defaults.firstName ||
+	model.lastName.value !== model.defaults.lastName ||
+	model.selectedTimezone !== model.defaults.timezone
 
 /** `isDisabled={!canSubmit || isSubmitting || !isDirty}` */
 export const isSaveDisabled = (model: Model): boolean =>
-	!canSubmit(model) || model.isSubmitting || !model.isDirty
+	!isDirty(model) || model.save._tag === "Saving" || anyInvalid([model.firstName, model.lastName])
 
 export const initialsOf = (firstName: string, lastName: string) =>
 	`${firstName.charAt(0)}${lastName.charAt(0)}`
