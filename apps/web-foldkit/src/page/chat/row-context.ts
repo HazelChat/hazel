@@ -134,7 +134,7 @@ const buildIdleContext = (
 					toOverlays(Overlays.Message.GotPopoverMessage({ messageId: row.message.id, message })),
 				placement: "right top",
 				className: "w-72 p-0 lg:w-80",
-				toTrigger: (attributes, overlay) => avatarButton(h, row, attributes, overlay),
+				toTrigger: (attributes) => avatarButton(h, row, attributes),
 				toContent: () => [],
 			}),
 	}
@@ -182,7 +182,7 @@ const buildOwnerContext = (h: H, model: Model, nowMs: number): RowContext<Messag
 					toOverlays(Overlays.Message.GotPopoverMessage({ messageId: row.message.id, message })),
 				placement: "right top",
 				className: "w-72 p-0 lg:w-80",
-				toTrigger: (attributes, overlay) => avatarButton(h, row, attributes, overlay),
+				toTrigger: (attributes) => avatarButton(h, row, attributes),
 				toContent: () => {
 					const user = users.find((candidate) => candidate.id === row.message.authorId)
 					if (user === undefined) return []

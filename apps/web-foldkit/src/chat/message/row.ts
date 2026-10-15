@@ -63,15 +63,11 @@ export const avatarButton = <M>(
 	h: HtmlBuilder<M>,
 	row: MessageRow,
 	attributes: ReadonlyArray<ChildAttribute>,
-	overlay: Html,
 ) =>
 	h.button(
 		[
 			...attributes,
 			h.Class("size-fit outline-hidden"),
-			h.Attribute("data-react-aria-pressable", "true"),
-			h.Attribute("tabindex", "0"),
-			h.Attribute("type", "button"),
 		],
 		[
 			avatar(h, {
@@ -80,7 +76,6 @@ export const avatarButton = <M>(
 				src: row.author.avatarUrl,
 				seed: row.author.displayName || undefined,
 			}),
-			overlay,
 		],
 	)
 

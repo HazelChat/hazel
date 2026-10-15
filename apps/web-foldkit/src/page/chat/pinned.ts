@@ -141,7 +141,7 @@ export const pinnedPopoverView = <M>(
 		model: popover,
 		view: Popover.view,
 		viewInputs: {
-			toTrigger: (attributes, overlay) => pinnedButton(h, attributes, overlay),
+			toTrigger: (attributes) => pinnedButton(h, attributes),
 			toContent: () => (popover.isOpen ? content(h, pins) : []),
 			placement: "bottom end",
 			className: "w-96 p-0",

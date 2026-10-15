@@ -1,15 +1,27 @@
+/**
+ * Popover panel classes, merged with the caller's `className`. Anchor writes `data-placement`
+ * (top|bottom|left|right) and `--button-width`; the panel fades in from `@starting-style` (150ms).
+ */
 export const popoverContentBase = [
-	"group/popover min-w-(--trigger-width) max-w-xs origin-(--trigger-anchor-point) rounded-(--popover-radius) border border-fg/10 bg-overlay text-overlay-fg shadow-xs outline-hidden transition-transform [--gutter:--spacing(6)] [--popover-radius:var(--radius-xl)] sm:text-sm dark:backdrop-saturate-200 **:[[role=dialog]]:[--gutter:--spacing(6)]",
-	"data-entering:fade-in data-exiting:fade-out data-entering:animate-in data-exiting:animate-out",
-	"data-[placement=left]:data-entering:slide-in-from-right-1 data-[placement=right]:data-entering:slide-in-from-left-1 data-[placement=top]:data-entering:slide-in-from-bottom-1 data-[placement=bottom]:data-entering:slide-in-from-top-1",
-	"data-[placement=left]:data-exiting:slide-out-to-right-1 data-[placement=right]:data-exiting:slide-out-to-left-1 data-[placement=top]:data-exiting:slide-out-to-bottom-1 data-[placement=bottom]:data-exiting:slide-out-to-top-1",
+	"group/popover z-50 min-w-(--button-width) max-w-xs rounded-(--popover-radius) border border-fg/10 bg-overlay text-overlay-fg shadow-xs outline-hidden [--gutter:--spacing(6)] [--popover-radius:var(--radius-xl)] sm:text-sm dark:backdrop-saturate-200 **:[[role=dialog]]:[--gutter:--spacing(6)]",
+	"flex flex-col transition-opacity duration-150 ease-out starting:opacity-0",
 	"forced-colors:bg-[Canvas]",
 ] as const
 
-export const popoverArrowClassName =
-	"block fill-overlay stroke-border group-data-[placement=bottom]:rotate-180 group-data-[placement=left]:-rotate-90 group-data-[placement=right]:rotate-90 forced-colors:fill-[Canvas] forced-colors:stroke-[ButtonBorder]"
+/** The click-outside backdrop: transparent, under the panel. */
+export const popoverBackdropClassName = "fixed inset-0 z-40"
 
-export const popoverInnerClassName = "max-h-[inherit] overflow-y-auto"
+/** The arrow sits outside the panel edge facing the trigger, at Anchor's `--arrow-x`/`--arrow-y`. */
+export const popoverArrowClassName = [
+	"absolute block left-(--arrow-x) top-(--arrow-y) fill-overlay stroke-border",
+	"group-data-[placement=top]/popover:top-full",
+	"group-data-[placement=bottom]/popover:bottom-full group-data-[placement=bottom]/popover:rotate-180",
+	"group-data-[placement=left]/popover:left-full group-data-[placement=left]/popover:-rotate-90",
+	"group-data-[placement=right]/popover:right-full group-data-[placement=right]/popover:rotate-90",
+	"forced-colors:fill-[Canvas] forced-colors:stroke-[ButtonBorder]",
+].join(" ")
+
+export const popoverInnerClassName = "min-h-0 flex-1 overflow-y-auto outline-hidden"
 
 /** Merged with the footer's `className` by `twMerge`. */
 export const popoverFooterBase = "justify-start has-[button]:justify-end"
