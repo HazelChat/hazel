@@ -30,7 +30,7 @@ import {
 import { AuthMiddlewareClientLive, RpcCredentialsLive } from "~/lib/rpc-auth-middleware"
 import { CustomFetchLive } from "~/lib/services/common/api-client"
 import { HazelAuthClient, HazelAuthClientLive } from "./auth/client"
-import { NotificationSinks } from "./app/notification-sinks"
+import type { NotificationSinks } from "./app/notification-sinks"
 import { MessageWindows, MessageWindowsLive } from "./data/message-windows"
 import { EditorRegistry, EditorRegistryLive } from "./editor/registry"
 
@@ -91,6 +91,7 @@ export type Resources =
 	| MessageWindows
 	| HazelAuthClient
 	| EditorRegistry
+	// Provided by `entry.ts`: building the sinks touches audio, which tests importing this module lack.
 	| NotificationSinks
 
 export const ResourcesLive = Layer.mergeAll(
@@ -99,5 +100,4 @@ export const ResourcesLive = Layer.mergeAll(
 	MessageWindowsLive,
 	HazelAuthClientLive,
 	EditorRegistryLive,
-	NotificationSinks.layer,
 )

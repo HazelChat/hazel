@@ -6,7 +6,15 @@ import { catchCommon } from "../../data/actions"
 import { HazelRpc } from "../../rpc"
 import { broadcastActivity } from "./activity"
 import { Message } from "./message"
-import { computedStatusOf, isAfkAt, type Model, payloadOf, PresenceStatus, Sent, syncRetryDelayMs } from "./model"
+import {
+	computedStatusOf,
+	isAfkAt,
+	type Model,
+	payloadOf,
+	PresenceStatus,
+	Sent,
+	syncRetryDelayMs,
+} from "./model"
 
 export type Return = Update.Return<Model, Message, HazelRpc>
 

@@ -29,7 +29,10 @@ export const Message = defineMessageUnion({
 	UpdatedUnreadNotifications: { ids: Schema.Array(NotificationId) },
 	ClickedMarkAllRead: {},
 	SucceededMarkNotificationRead: { id: NotificationId },
-	FailedMarkNotificationRead: { id: NotificationId, reason: Schema.Union([Schema.Literal("NotFound"), CommonReason]) },
+	FailedMarkNotificationRead: {
+		id: NotificationId,
+		reason: Schema.Union([Schema.Literal("NotFound"), CommonReason]),
+	},
 })
 export type Message = typeof Message.Type
 

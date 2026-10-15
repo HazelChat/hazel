@@ -21,7 +21,10 @@ const invokeVault = <A>(command: string, args?: Record<string, unknown>) =>
 		const core = getTauriCore()
 		return core === undefined
 			? Effect.fail(unavailable("storage"))
-			: Effect.tryPromise({ try: () => core.invoke<A>(command, args), catch: () => unavailable("storage") })
+			: Effect.tryPromise({
+					try: () => core.invoke<A>(command, args),
+					catch: () => unavailable("storage"),
+				})
 	})
 
 /** One JSON record in the OS keychain; the Rust side never interprets it. */
@@ -68,9 +71,10 @@ export const BrowserLive = Layer.effect(
 			))
 		if (deepLink !== undefined && isListening) {
 			// Best effort: a cold-start callback is a convenience; sign-in can always be started again.
-			const initial = yield* Effect.tryPromise({ try: () => deepLink.getCurrent(), catch: () => unavailable() }).pipe(
-				Effect.orElseSucceed(() => null),
-			)
+			const initial = yield* Effect.tryPromise({
+				try: () => deepLink.getCurrent(),
+				catch: () => unavailable(),
+			}).pipe(Effect.orElseSucceed(() => null))
 			if (initial !== null) capture(initial)
 		}
 

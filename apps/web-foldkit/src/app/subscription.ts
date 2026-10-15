@@ -1,6 +1,6 @@
 import { ChannelId, type NotificationId, OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import { eq } from "@tanstack/db"
-import { Clock, Duration, Effect, Option, Schema, Stream } from "effect"
+import { Clock, Duration, Option, Schema, Stream } from "effect"
 import { Dom, Subscription } from "foldkit"
 import {
 	notificationCollection,
@@ -67,7 +67,7 @@ const rootSubscriptions = Subscription.make<Model, Message>()((entry) => ({
 	sessionRejected: entry(
 		{ isSignedIn: Schema.Boolean },
 		{
-				modelToDependencies: (model) => ({ isSignedIn: authOf(model.session) === "SignedIn" }),
+			modelToDependencies: (model) => ({ isSignedIn: authOf(model.session) === "SignedIn" }),
 			dependenciesToStream: ({ isSignedIn }) =>
 				isSignedIn
 					? Stream.fromEventListener(window, SESSION_REJECTED_EVENT).pipe(
@@ -120,7 +120,9 @@ const rootSubscriptions = Subscription.make<Model, Message>()((entry) => ({
 		{ organizationId: Schema.NullOr(OrganizationId), userId: Schema.NullOr(UserId) },
 		{
 			modelToDependencies: (model) => ({
-				organizationId: Option.getOrNull(Option.map(loadedOrgOf(model), (org) => org.organization.id)),
+				organizationId: Option.getOrNull(
+					Option.map(loadedOrgOf(model), (org) => org.organization.id),
+				),
 				userId: currentUserOf(model)?.id ?? null,
 			}),
 			dependenciesToStream: ({ organizationId, userId }) =>
@@ -221,7 +223,8 @@ const shellSubscriptions = Subscription.lift(ShellSubscription.subscriptions)<Mo
 })
 
 /** `PresenceProvider` runs inside the loaded `$orgSlug` layout, once `user.me` answered. */
-const presenceUserIdOf = (model: Model): UserId | null => (isShellReady(model) ? (currentUserOf(model)?.id ?? null) : null)
+const presenceUserIdOf = (model: Model): UserId | null =>
+	isShellReady(model) ? (currentUserOf(model)?.id ?? null) : null
 
 const platformSubscriptions = Subscription.lift(Platform.subscriptions)<Model, Message>({
 	read: (model) =>

@@ -1,5 +1,19 @@
 // @vitest-environment jsdom
-import { Command, Mount, click, expect as sceneExpect, given, label, role, scene, submit, text, type, within, selector } from "foldkit/scene"
+import {
+	Command,
+	Mount,
+	click,
+	expect as sceneExpect,
+	given,
+	label,
+	role,
+	scene,
+	submit,
+	text,
+	type,
+	within,
+	selector,
+} from "foldkit/scene"
 import { describe, test } from "vitest"
 import * as CreateSection from "../overlay/modal/create-section"
 import { orgSwitcherEntries } from "../shell/menus"
@@ -62,7 +76,10 @@ describe("modal host", () => {
 			sceneExpect(text("Section created successfully")).toExist(),
 			Mount.resolve(Toast.MeasureToast, Toast.Message.MeasuredToast({ id: 1, height: 52 })),
 			Command.resolve(Toast.StartToastTimer, Toast.Message.StartedTimer({ id: 1, version: 1, at: 0 })),
-			Command.resolve(Toast.WaitForToastLifetime, Toast.Message.CompletedWaitForLifetime({ id: 1, version: 1 })),
+			Command.resolve(
+				Toast.WaitForToastLifetime,
+				Toast.Message.CompletedWaitForLifetime({ id: 1, version: 1 }),
+			),
 			Command.resolve(Toast.WaitForToastRemoval, Toast.Message.CompletedWaitForRemoval({ id: 1 })),
 			Mount.expectEnded(Toast.MeasureToast),
 		)
@@ -76,13 +93,19 @@ describe("modal host", () => {
 			...mounted,
 			type(label("Section Name"), "Design"),
 			submit(within(dialog, selector("form"))),
-			Command.resolve(CreateSection.CreateSection, CreateSection.Message.FailedCreateSection({ toast: failed })),
+			Command.resolve(
+				CreateSection.CreateSection,
+				CreateSection.Message.FailedCreateSection({ toast: failed }),
+			),
 			sceneExpect(dialog).toExist(),
 			sceneExpect(role("button", { name: "Create section" })).toBeEnabled(),
 			sceneExpect(text("Could not create the section")).toExist(),
 			Mount.resolve(Toast.MeasureToast, Toast.Message.MeasuredToast({ id: 1, height: 52 })),
 			Command.resolve(Toast.StartToastTimer, Toast.Message.StartedTimer({ id: 1, version: 1, at: 0 })),
-			Command.resolve(Toast.WaitForToastLifetime, Toast.Message.CompletedWaitForLifetime({ id: 1, version: 1 })),
+			Command.resolve(
+				Toast.WaitForToastLifetime,
+				Toast.Message.CompletedWaitForLifetime({ id: 1, version: 1 }),
+			),
 			Command.resolve(Toast.WaitForToastRemoval, Toast.Message.CompletedWaitForRemoval({ id: 1 })),
 			Mount.expectEnded(Toast.MeasureToast),
 		)

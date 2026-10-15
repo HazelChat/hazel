@@ -39,7 +39,8 @@ export const DeleteChannel = Command.define("DeleteChannel", {
 		deleteChannelAction({ channelId }).pipe(
 			Effect.as(Message.SucceededDeleteChannel()),
 			Effect.catchTags({
-				ChannelNotFoundError: () => Effect.succeed(Message.FailedDeleteChannel({ reason: "NotFound" })),
+				ChannelNotFoundError: () =>
+					Effect.succeed(Message.FailedDeleteChannel({ reason: "NotFound" })),
 			}),
 			catchCommon((reason) => Message.FailedDeleteChannel({ reason })),
 		),
@@ -56,13 +57,15 @@ const isChannelRoute = AppRoute.isAnyOf([
 	"ChannelSettingsConnect",
 ])
 
-const isOnChannel = (route: AppRoute, channelId: ChannelId) => isChannelRoute(route) && route.channelId === channelId
+const isOnChannel = (route: AppRoute, channelId: ChannelId) =>
+	isChannelRoute(route) && route.channelId === channelId
 
 type Return = ModalReturn<Model, Message>
 
 const update = (model: Model, message: Message, context: ModalContext): Return =>
 	Message.match<Return>(message, {
-		GotFrameMessage: ({ message }) => (isCloseRequest(message) ? { model, outMessage: closed } : { model }),
+		GotFrameMessage: ({ message }) =>
+			isCloseRequest(message) ? { model, outMessage: closed } : { model },
 		ClickedCancel: () => ({ model, outMessage: closed }),
 		ClickedDelete: () => ({ model, commands: [DeleteChannel({ channelId: model.channelId })] }),
 		// Leave the deleted channel's pages for the chat index (the route is read when the result lands).
@@ -80,7 +83,10 @@ const update = (model: Model, message: Message, context: ModalContext): Return =
 			outMessage: ModalOutMessage.RequestedToast({
 				toast: errorToastOf(
 					failureMessage(reason, {
-						NotFound: { title: "Channel not found", description: "This channel may have already been deleted." },
+						NotFound: {
+							title: "Channel not found",
+							description: "This channel may have already been deleted.",
+						},
 					}),
 				),
 			}),

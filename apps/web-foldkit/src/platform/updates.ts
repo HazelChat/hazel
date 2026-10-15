@@ -62,7 +62,8 @@ const INSTALL_FAILURE_TEXT: { readonly [Reason in InstallFailure]: string } = {
 	NoUpdate: "No update to install",
 	DownloadFailed: "Download failed",
 	InstallFailed: "Installation failed",
-	RestartUnavailable: "Update installed, but restart is unavailable. Please quit and reopen Hazel manually.",
+	RestartUnavailable:
+		"Update installed, but restart is unavailable. Please quit and reopen Hazel manually.",
 	RestartFailed:
 		"Update installed, but restart failed and Hazel could not quit automatically. Please quit and reopen Hazel manually.",
 }
@@ -134,12 +135,27 @@ const toastOf = (previous: Model, next: Model): ToastRequest | undefined =>
 			description: null,
 			id: TOAST_ID,
 		}),
-		Installing: (): ToastRequest => ({ intent: "loading", title: "Installing update...", description: null, id: TOAST_ID }),
-		Restarting: (): ToastRequest => ({ intent: "loading", title: "Restarting...", description: null, id: TOAST_ID }),
+		Installing: (): ToastRequest => ({
+			intent: "loading",
+			title: "Installing update...",
+			description: null,
+			id: TOAST_ID,
+		}),
+		Restarting: (): ToastRequest => ({
+			intent: "loading",
+			title: "Restarting...",
+			description: null,
+			id: TOAST_ID,
+		}),
 		InstallFailed: ({ reason }): ToastRequest | undefined =>
 			previous._tag === "InstallFailed"
 				? undefined
-				: { intent: "error", title: "Update failed", description: installFailureText(reason), id: TOAST_ID },
+				: {
+						intent: "error",
+						title: "Update failed",
+						description: installFailureText(reason),
+						id: TOAST_ID,
+					},
 	})
 
 /** The next state, with the toast it calls for. */
@@ -156,7 +172,9 @@ export const check = (model: Model): Return =>
 
 /** Install the update `check` found; the install stream starts once the state says Downloading. */
 export const install = (model: Model): Return =>
-	model._tag === "Available" ? transition(model, Model.Downloading({ downloadedBytes: 0, totalBytes: null })) : { model }
+	model._tag === "Available"
+		? transition(model, Model.Downloading({ downloadedBytes: 0, totalBytes: null }))
+		: { model }
 
 export const update = (model: Model, message: Message): Return =>
 	Message.match<Return>(message, {
@@ -182,7 +200,10 @@ const installStream: Stream.Stream<Message> = Stream.callback<Message>((queue) =
 		const offer = (message: Message) => Effect.sync(() => Queue.offerUnsafe(queue, message))
 		const fail = (reason: InstallFailure) => offer(Message.FailedInstall({ reason }))
 		const updater = getTauriUpdater()
-		const found = updater === undefined ? null : yield* updaterCall(() => updater.check()).pipe(Effect.orElseSucceed(() => null))
+		const found =
+			updater === undefined
+				? null
+				: yield* updaterCall(() => updater.check()).pipe(Effect.orElseSucceed(() => null))
 		if (found === null) return yield* fail("NoUpdate")
 
 		let downloadedBytes = 0

@@ -29,7 +29,8 @@ const userMenu = (inner: Menu.Message) => Message.GotUserMenuMessage({ message: 
 const orgSwitcher = (inner: Menu.Message) => Message.GotOrgSwitcherMessage({ message: inner })
 const opened = Menu.Message.PressedTrigger({ pointerType: "mouse" })
 /** A click on `key`, with the entries the view passes the menu (the shell Model's, as `app/view.ts` does). */
-const clicked = (key: string, entries: ReadonlyArray<Menu.Entry>) => Menu.Message.ClickedItem({ key, entries })
+const clicked = (key: string, entries: ReadonlyArray<Menu.Entry>) =>
+	Menu.Message.ClickedItem({ key, entries })
 
 const otherOrgId = Schema.decodeSync(OrganizationId)("00000000-0000-4000-8000-0000000000a2")
 const unfinishedOrgId = Schema.decodeSync(OrganizationId)("00000000-0000-4000-8000-0000000000a3")
@@ -85,7 +86,10 @@ describe("org switcher", () => {
 			message(orgSwitcher(clicked("switch-server", switcherEntries))),
 			message(orgSwitcher(clicked(otherOrgId, switcherEntries))),
 			expectOutMessage(
-				PageOutMessage.RequestedNavigation({ route: AppRoute.OrgHome({ orgSlug: "acme" }), replace: false }),
+				PageOutMessage.RequestedNavigation({
+					route: AppRoute.OrgHome({ orgSlug: "acme" }),
+					replace: false,
+				}),
 			),
 		)
 	})
@@ -104,8 +108,10 @@ describe("org switcher", () => {
 	describe("on mobile (a flat list of organizations)", () => {
 		const mobileContext: Context = { ...context, isMobile: true }
 		const runMobile = (model: Model, msg: Message) => update(model, msg, mobileContext)
-		const mobile = runMobile(informContext(ready, mobileContext), Message.UpdatedUserOrganizations({ organizations }))
-			.model
+		const mobile = runMobile(
+			informContext(ready, mobileContext),
+			Message.UpdatedUserOrganizations({ organizations }),
+		).model
 
 		test("checks the current organization", () => {
 			expect(mobile.orgSwitcher.selectionMode).toBe("Single")
@@ -120,7 +126,10 @@ describe("org switcher", () => {
 				message(orgSwitcher(opened)),
 				message(orgSwitcher(clicked(otherOrgId, mobile.orgSwitcherEntries))),
 				expectOutMessage(
-					PageOutMessage.RequestedNavigation({ route: AppRoute.OrgHome({ orgSlug: "acme" }), replace: false }),
+					PageOutMessage.RequestedNavigation({
+						route: AppRoute.OrgHome({ orgSlug: "acme" }),
+						replace: false,
+					}),
 				),
 			)
 		})

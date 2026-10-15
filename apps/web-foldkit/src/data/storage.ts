@@ -20,12 +20,10 @@ export class StorageWriteError extends Schema.TaggedError<StorageWriteError>()("
 	cause: Schema.Defect(),
 }) {}
 
-export const writeStored = <S extends Schema.Constraint>(
-	key: string,
-	schema: S,
-	value: S["Type"],
-) =>
-	KeyValueStore.KeyValueStore.use((store) => KeyValueStore.toSchemaStore(store, schema).set(key, value)).pipe(
+export const writeStored = <S extends Schema.Constraint>(key: string, schema: S, value: S["Type"]) =>
+	KeyValueStore.KeyValueStore.use((store) =>
+		KeyValueStore.toSchemaStore(store, schema).set(key, value),
+	).pipe(
 		Effect.provide(platformStorageLayer),
 		Effect.mapError((cause) => new StorageWriteError({ key, cause })),
 	)

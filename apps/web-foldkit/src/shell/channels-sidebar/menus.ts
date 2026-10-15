@@ -157,7 +157,8 @@ export const rowMenuView = <M>(
 						attributes: [
 							h.Attribute("data-slot", "menu-trigger"),
 							h.AriaLabel(
-								options.entry.channel.type === "single" || options.entry.channel.type === "direct"
+								options.entry.channel.type === "single" ||
+									options.entry.channel.type === "direct"
 									? "Conversation options"
 									: "Channel options",
 							),

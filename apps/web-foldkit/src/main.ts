@@ -115,8 +115,10 @@ const setModel =
 /** Each child folds through one lens; the input is the child entry point to run (open, push, update...). */
 
 const foldToasts = Update.foldChild({
-	update: (toasts: Toasts.Model, step: (toasts: Toasts.Model) => Update.Return<Toasts.Model, Toasts.Message>) =>
-		step(toasts),
+	update: (
+		toasts: Toasts.Model,
+		step: (toasts: Toasts.Model) => Update.Return<Toasts.Model, Toasts.Message>,
+	) => step(toasts),
 	read: (model: Model) => Option.some(model.toasts),
 	write: (model, toasts) => modifyFields(model, { toasts: () => toasts }),
 	toParentMessage: (message: Toasts.Message) => Message.GotToastsMessage({ message }),
@@ -213,7 +215,10 @@ const foldCommandPalette = Update.foldChild({
 		CommandPalette.OutMessage.match<Step>(outMessage, {
 			// The palette's links can carry a search (`?messageId=`), so they stay URLs.
 			Completed: ({ href, toast }) =>
-				Update.combine([href === null ? unchanged : command(NavigateInternal({ url: href })), showToastIf(toast)]),
+				Update.combine([
+					href === null ? unchanged : command(NavigateInternal({ url: href })),
+					showToastIf(toast),
+				]),
 			RequestedModal: ({ modal }) => openModal(modal),
 			RequestedToast: ({ toast }) => showToast(toast),
 			RequestedTheme: ({ preference }) => requestedTheme(preference),
@@ -258,7 +263,8 @@ const foldPage = Update.foldChild({
 
 const informPage: Step = (model) => foldPage(model, (page) => informShared(page, sharedOf(model)))
 
-const enteredRoute: Step = (model) => foldPage(model, (page) => enterRoute(page, model.route, sharedOf(model)))
+const enteredRoute: Step = (model) =>
+	foldPage(model, (page) => enterRoute(page, model.route, sharedOf(model)))
 
 /** `useAppHotkey` handlers in `$orgSlug/layout.tsx`. */
 const pressedHotkey = (actionId: LayoutHotkeyActionId): Step =>
@@ -267,8 +273,10 @@ const pressedHotkey = (actionId: LayoutHotkeyActionId): Step =>
 		// Legacy passes `initialPage`, but the palette shows its own (reset) page: always home.
 		Match.when("commandPalette.open", () => openCommandPalette("home")),
 		Match.when("search.open", () => openCommandPalette("home")),
-		Match.when("channel.create", () => (model) =>
-			can(sharedOf(model), "channel.create") ? openModal({ _tag: "NewChannel" })(model) : { model },
+		Match.when(
+			"channel.create",
+			() => (model) =>
+				can(sharedOf(model), "channel.create") ? openModal({ _tag: "NewChannel" })(model) : { model },
 		),
 		Match.when("dm.create", () => openModal({ _tag: "CreateDm" })),
 		Match.when("invite.email", () => openModal({ _tag: "EmailInvite" })),
@@ -281,7 +289,9 @@ const pressedDesktopMenuItem = (item: DesktopMenuItem): Step =>
 		Match.withReturnType<Step>(),
 		Match.when("OpenSettings", () => (model) => {
 			const orgSlug = orgSlugOf(model.route)
-			return orgSlug === undefined ? { model } : navigateTo(AppRoute.MySettingsDesktop({ orgSlug }))(model)
+			return orgSlug === undefined
+				? { model }
+				: navigateTo(AppRoute.MySettingsDesktop({ orgSlug }))(model)
 		}),
 		Match.when("CheckForUpdates", () => stepUpdates(Updates.check)),
 		Match.when("NewChannel", () => pressedHotkey("channel.create")),
@@ -343,85 +353,99 @@ const refreshCurrentUser: Step = (model) =>
 
 const signedInSession = Session.SignedIn({ user: AsyncData.Loading(), retries: 0 })
 
-const changedAuth = (auth: "SignedIn" | "SignedOut"): Step => (model) => {
-	if (auth === "SignedOut")
-		return model.session._tag === "SignedOut"
-			? { model }
-			: sessionChanged(modifyFields(model, { session: () => Session.SignedOut() }))
-	// A session check that confirms the session changes nothing; a new one loads its user.
-	if (model.session._tag === "SignedIn") return { model }
-	return Update.combine(modifyFields(model, { session: () => signedInSession }), [
-		sessionChanged,
-		command(FetchCurrentUser()),
-	])
-}
+const changedAuth =
+	(auth: "SignedIn" | "SignedOut"): Step =>
+	(model) => {
+		if (auth === "SignedOut")
+			return model.session._tag === "SignedOut"
+				? { model }
+				: sessionChanged(modifyFields(model, { session: () => Session.SignedOut() }))
+		// A session check that confirms the session changes nothing; a new one loads its user.
+		if (model.session._tag === "SignedIn") return { model }
+		return Update.combine(modifyFields(model, { session: () => signedInSession }), [
+			sessionChanged,
+			command(FetchCurrentUser()),
+		])
+	}
 
 /** The API did not answer the session check. A signed-in session stays: only the boot check can stall. */
-const failedCheckSession = (reason: CommonReason): Step => (model) => {
-	if (model.session._tag === "SignedIn" || model.session._tag === "SignedOut") return { model }
-	const retries = model.session._tag === "Unreachable" ? model.session.retries : 0
-	const isAutoRetried = retries < MAX_AUTO_RETRIES
-	return {
-		model: modifyFields(model, { session: () => Session.Unreachable({ reason, retries: retries + 1 }) }),
-		commands: isAutoRetried ? [RetryCheckSession()] : [],
+const failedCheckSession =
+	(reason: CommonReason): Step =>
+	(model) => {
+		if (model.session._tag === "SignedIn" || model.session._tag === "SignedOut") return { model }
+		const retries = model.session._tag === "Unreachable" ? model.session.retries : 0
+		const isAutoRetried = retries < MAX_AUTO_RETRIES
+		return {
+			model: modifyFields(model, {
+				session: () => Session.Unreachable({ reason, retries: retries + 1 }),
+			}),
+			commands: isAutoRetried ? [RetryCheckSession()] : [],
+		}
 	}
-}
 
 /** `user.me` failed. A transient failure is retried a few times; after that, or an ended session, it shows. */
-const failedFetchCurrentUser = (reason: CommonReason): Step => (model) => {
-	if (model.session._tag !== "SignedIn") return { model }
-	const { user, retries } = model.session
-	const hasUser = AsyncData.hasData(user)
-	if (!hasUser && isRetryableReason(reason) && retries < MAX_AUTO_RETRIES)
-		return {
-			model: modifyFields(model, { session: () => Session.SignedIn({ user, retries: retries + 1 }) }),
-			commands: [RetryFetchCurrentUser()],
-		}
-	const failed = Session.SignedIn({
-		user: Option.match(AsyncData.getData(user), {
-			onNone: () => AsyncData.Failure({ error: reason }),
-			onSome: (data) => AsyncData.Stale({ error: reason, data }),
-		}),
-		retries,
-	})
-	// An ended session re-reads it: if it is gone, ChangedAuth sends the browser to sign-in.
-	return Update.combine(modifyFields(model, { session: () => failed }), [
-		sessionChanged,
-		reason === "SignedOut" ? command(CheckSession()) : unchanged,
-	])
-}
+const failedFetchCurrentUser =
+	(reason: CommonReason): Step =>
+	(model) => {
+		if (model.session._tag !== "SignedIn") return { model }
+		const { user, retries } = model.session
+		const hasUser = AsyncData.hasData(user)
+		if (!hasUser && isRetryableReason(reason) && retries < MAX_AUTO_RETRIES)
+			return {
+				model: modifyFields(model, {
+					session: () => Session.SignedIn({ user, retries: retries + 1 }),
+				}),
+				commands: [RetryFetchCurrentUser()],
+			}
+		const failed = Session.SignedIn({
+			user: Option.match(AsyncData.getData(user), {
+				onNone: () => AsyncData.Failure({ error: reason }),
+				onSome: (data) => AsyncData.Stale({ error: reason, data }),
+			}),
+			retries,
+		})
+		// An ended session re-reads it: if it is gone, ChangedAuth sends the browser to sign-in.
+		return Update.combine(modifyFields(model, { session: () => failed }), [
+			sessionChanged,
+			reason === "SignedOut" ? command(CheckSession()) : unchanged,
+		])
+	}
 
 // ORGANIZATION
 
-const updatedOrganization = (orgSlug: string, organization: Organization | null): Step => (model) => {
-	const current = model.org
-	if (current._tag === "None" || current.slug !== orgSlug) return { model }
-	const next: OrgState =
-		organization === null
-			? OrgState.NotFound({ slug: orgSlug })
-			: OrgState.Loaded({
-					slug: orgSlug,
-					organization,
-					// The role belongs to one organization; another one's must not show until its own arrives.
-					member:
-						current._tag === "Loaded" && current.organization.id === organization.id
-							? current.member
-							: MemberData.Loading(),
-				})
-	return Update.combine(modifyFields(model, { org: () => next }), [informPage, informShell])
-}
+const updatedOrganization =
+	(orgSlug: string, organization: Organization | null): Step =>
+	(model) => {
+		const current = model.org
+		if (current._tag === "None" || current.slug !== orgSlug) return { model }
+		const next: OrgState =
+			organization === null
+				? OrgState.NotFound({ slug: orgSlug })
+				: OrgState.Loaded({
+						slug: orgSlug,
+						organization,
+						// The role belongs to one organization; another one's must not show until its own arrives.
+						member:
+							current._tag === "Loaded" && current.organization.id === organization.id
+								? current.member
+								: MemberData.Loading(),
+					})
+		return Update.combine(modifyFields(model, { org: () => next }), [informPage, informShell])
+	}
 
 /** The user's row in the loaded organization; a row for another organization is stale and ignored. */
-const updatedMember = (organizationId: OrganizationId, member: Member | null): Step => (model) => {
-	const current = model.org
-	if (current._tag !== "Loaded" || current.organization.id !== organizationId) return { model }
-	return Update.combine(
-		modifyFields(model, {
-			org: () => OrgState.Loaded({ ...current, member: MemberData.Success({ data: member }) }),
-		}),
-		[informPage, informShell],
-	)
-}
+const updatedMember =
+	(organizationId: OrganizationId, member: Member | null): Step =>
+	(model) => {
+		const current = model.org
+		if (current._tag !== "Loaded" || current.organization.id !== organizationId) return { model }
+		return Update.combine(
+			modifyFields(model, {
+				org: () => OrgState.Loaded({ ...current, member: MemberData.Success({ data: member }) }),
+			}),
+			[informPage, informShell],
+		)
+	}
 
 // URL
 
@@ -431,7 +455,10 @@ const withUrl = (model: Model, url: Url): Model => {
 		route: () => route,
 		// Foldkit's `Url.search` holds the query without its `?`.
 		currentUrl: () =>
-			Option.match(url.search, { onNone: () => url.pathname, onSome: (search) => `${url.pathname}?${search}` }),
+			Option.match(url.search, {
+				onNone: () => url.pathname,
+				onSome: (search) => `${url.pathname}?${search}`,
+			}),
 		org: (org) => orgStateFor(org, route),
 	})
 }
@@ -439,7 +466,9 @@ const withUrl = (model: Model, url: Url): Model => {
 // THEME
 
 const isSameCustomization = (first: ThemeCustomization, second: ThemeCustomization) =>
-	first.primary === second.primary && first.grayPalette === second.grayPalette && first.radius === second.radius
+	first.primary === second.primary &&
+	first.grayPalette === second.grayPalette &&
+	first.radius === second.radius
 
 /**
  * The legacy theme atoms' effects after a change: re-apply when the resolved mode or the
@@ -468,12 +497,13 @@ const transitionTheme =
 const requestedTheme = (preference: ThemePreference): Step =>
 	transitionTheme((model) => modifyFields(model, { themePreference: () => preference }), true)
 
-export const requestTheme = (model: Model, preference: ThemePreference): Return => requestedTheme(preference)(model)
+export const requestTheme = (model: Model, preference: ThemePreference): Return =>
+	requestedTheme(preference)(model)
 
 const appliedTheme: Step = (model) =>
-	command(ApplyTheme({ resolved: resolvedThemeOf(model), customization: model.themePreference.customization }))(
-		model,
-	)
+	command(
+		ApplyTheme({ resolved: resolvedThemeOf(model), customization: model.themePreference.customization }),
+	)(model)
 
 // INIT
 
@@ -538,14 +568,18 @@ export const update = (model: Model, message: Message): Return =>
 		FailedCheckSession: ({ reason }) => failedCheckSession(reason)(model),
 		PressedRetrySession: () =>
 			model.session._tag === "Unreachable"
-				? { model: modifyFields(model, { session: () => Session.Loading() }), commands: [CheckSession()] }
+				? {
+						model: modifyFields(model, { session: () => Session.Loading() }),
+						commands: [CheckSession()],
+					}
 				: { model },
 		RejectedSession: () => ({ model, commands: [CheckSession()] }),
 		SucceededFetchCurrentUser: ({ user }) =>
 			model.session._tag === "SignedIn"
 				? sessionChanged(
 						modifyFields(model, {
-							session: () => Session.SignedIn({ user: AsyncData.Success({ data: user }), retries: 0 }),
+							session: () =>
+								Session.SignedIn({ user: AsyncData.Success({ data: user }), retries: 0 }),
 						}),
 					)
 				: { model },
@@ -554,28 +588,36 @@ export const update = (model: Model, message: Message): Return =>
 		// A full load of `/`: every collection, token and subscription starts over, signed out.
 		SucceededSignOut: () => ({ model, commands: [LoadExternal({ href: hrefOf(AppRoute.Root()) })] }),
 		FailedSignOut: ({ reason }) =>
-			showToast(errorToastOf({ title: "Failed to sign out", description: commonMessage(reason).description }))(
-				model,
-			),
+			showToast(
+				errorToastOf({ title: "Failed to sign out", description: commonMessage(reason).description }),
+			)(model),
 		UpdatedOrganization: ({ orgSlug, organization }) => updatedOrganization(orgSlug, organization)(model),
 		// Only a slug still loading counts: data already on screen stays when its sync hiccups.
 		StalledOrganization: ({ orgSlug }) =>
 			model.org._tag === "Loading" && model.org.slug === orgSlug && !model.org.isStalled
-				? { model: modifyFields(model, { org: () => OrgState.Loading({ slug: orgSlug, isStalled: true }) }) }
+				? {
+						model: modifyFields(model, {
+							org: () => OrgState.Loading({ slug: orgSlug, isStalled: true }),
+						}),
+					}
 				: { model },
 		PressedReload: () => ({ model, commands: [Reload()] }),
 		CompletedReload: () => ({ model }),
 		UpdatedMember: ({ organizationId, member }) => updatedMember(organizationId, member)(model),
 		TickedClock: ({ nowMs }) => ({ model: modifyFields(model, { nowMs: () => nowMs }) }),
 		ClickedLayoutTab: ({ route }) => navigateTo(route)(model),
-		GotPageMessage: ({ message }) => foldPage(model, (page) => updatePage(page, message, sharedOf(model))),
-		GotShellMessage: ({ message }) => foldShell(model, (shell) => Shell.update(shell, message, shellContextOf(model))),
-		GotModalMessage: ({ message }) => foldModal(model, (modal) => Modal.update(modal, message, modalContextOf(model))),
+		GotPageMessage: ({ message }) =>
+			foldPage(model, (page) => updatePage(page, message, sharedOf(model))),
+		GotShellMessage: ({ message }) =>
+			foldShell(model, (shell) => Shell.update(shell, message, shellContextOf(model))),
+		GotModalMessage: ({ message }) =>
+			foldModal(model, (modal) => Modal.update(modal, message, modalContextOf(model))),
 		GotCommandPaletteMessage: ({ message }) =>
 			foldCommandPalette(model, (palette) => CommandPalette.update(palette, message, sharedOf(model))),
 		PressedHotkey: ({ actionId }) => pressedHotkey(actionId)(model),
 		GotToastsMessage: ({ message }) => foldToastsWithAction(model, message),
 		GotUpdatesMessage: ({ message }) => stepUpdates((updates) => Updates.update(updates, message))(model),
 		PressedDesktopMenuItem: ({ item }) => pressedDesktopMenuItem(item)(model),
-		GotPlatformMessage: ({ message }) => foldPlatform(model, (platform) => Platform.update(platform, message)),
+		GotPlatformMessage: ({ message }) =>
+			foldPlatform(model, (platform) => Platform.update(platform, message)),
 	})

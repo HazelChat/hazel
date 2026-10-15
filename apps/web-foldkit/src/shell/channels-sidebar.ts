@@ -144,19 +144,18 @@ export const update = (model: Model, message: Message): SidebarReturn =>
 	})
 
 /** The root learned the organization or the signed-in user; the sidebar's queries depend on both. */
+/** The data the sidebar holds belongs to one organization and user; another pair starts it empty. */
 export const setContext = (
 	model: Model,
 	context: { readonly organizationId: OrganizationId | null; readonly currentUserId: UserId | null },
-): SidebarReturn =>
+): Model =>
 	model.organizationId === context.organizationId && model.currentUserId === context.currentUserId
-		? { model }
+		? model
 		: {
-				model: {
-					...model,
-					...emptyData,
-					organizationId: context.organizationId,
-					currentUserId: context.currentUserId,
-				},
+				...model,
+				...emptyData,
+				organizationId: context.organizationId,
+				currentUserId: context.currentUserId,
 			}
 
 // SUBSCRIPTION

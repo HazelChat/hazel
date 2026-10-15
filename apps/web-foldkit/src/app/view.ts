@@ -18,7 +18,14 @@ import { type CurrentUser, displayNameOf, type Organization } from "../session"
 import { orgShell } from "../shell/app-shell"
 import * as ChannelsSidebar from "../shell/channels-sidebar"
 import type { ShellContext } from "../shell/context"
-import { appError, appLoader, channelSettingsLayout, organizationNotFound, sectionLayout, contentColumnLayout } from "../shell/layouts"
+import {
+	appError,
+	appLoader,
+	channelSettingsLayout,
+	organizationNotFound,
+	sectionLayout,
+	contentColumnLayout,
+} from "../shell/layouts"
 import { formatStatusExpirationAt } from "../shell/menus"
 import * as Shell from "../shell/model"
 import * as Notifications from "../shell/notifications"
@@ -33,7 +40,8 @@ import { type Model, OrgState, resolvedThemeOf, Session, sharedOf } from "./mode
 const toShellMessage = (message: Shell.Message): Message => ({ _tag: "GotShellMessage", message })
 const toChannelsSidebarMessage = (message: ChannelsSidebar.Message) =>
 	toShellMessage({ _tag: "GotChannelsSidebarMessage", message })
-const toUserMenuMessage = (message: Menu.Message) => toShellMessage(Shell.Message.GotUserMenuMessage({ message }))
+const toUserMenuMessage = (message: Menu.Message) =>
+	toShellMessage(Shell.Message.GotUserMenuMessage({ message }))
 const toOrgSwitcherMessage = (message: Menu.Message) =>
 	toShellMessage(Shell.Message.GotOrgSwitcherMessage({ message }))
 const toMobileSidebarMessage = (message: ModalKit.Message) =>
@@ -85,9 +93,12 @@ const sectionBody = (model: Model, h: HtmlBuilder<Message>): Html => {
 	if (section === "Settings")
 		return sectionLayout(
 			h,
-			hasContentColumn(route) ? contentColumnLayout(h, pageBody(model, h, true)) : pageBody(model, h, true),
+			hasContentColumn(route)
+				? contentColumnLayout(h, pageBody(model, h, true))
+				: pageBody(model, h, true),
 		)
-	if (section === "MySettings" || section === "Notifications") return sectionLayout(h, pageBody(model, h, true))
+	if (section === "MySettings" || section === "Notifications")
+		return sectionLayout(h, pageBody(model, h, true))
 	const tab = channelSettingsTabOf(route)
 	if (tab !== undefined && "channelId" in route)
 		return channelSettingsLayout(
@@ -98,7 +109,8 @@ const sectionBody = (model: Model, h: HtmlBuilder<Message>): Html => {
 				channel: model.shell.settingsChannel,
 				selectedTab: tab,
 				onSelectTab: (tabRoute) => h.OnClick(Message.ClickedLayoutTab({ route: tabRoute })),
-				onChangeTab: (toRoute) => h.OnChange((value) => Message.ClickedLayoutTab({ route: toRoute(value) })),
+				onChangeTab: (toRoute) =>
+					h.OnChange((value) => Message.ClickedLayoutTab({ route: toRoute(value) })),
 			},
 			pageBody(model, h, true),
 		)

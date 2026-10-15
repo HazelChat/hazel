@@ -62,8 +62,7 @@ export const SaveSoundSettings = Command.define("SaveSoundSettings", {
 export const DeliverNotifications = Command.define("DeliverNotifications", {
 	args: { ids: Schema.Array(NotificationId) },
 	messages: [Message.CompletedDeliverNotifications],
-	execute: ({ ids }) =>
-		deliverNotifications(ids).pipe(Effect.as(Message.CompletedDeliverNotifications())),
+	execute: ({ ids }) => deliverNotifications(ids).pipe(Effect.as(Message.CompletedDeliverNotifications())),
 })
 
 /** How long the app waits before asking again after the API did not answer. */
@@ -71,7 +70,9 @@ export const RETRY_DELAY = Duration.seconds(10)
 
 const checkSession = readSession.pipe(
 	Effect.map((auth) => Message.ChangedAuth({ auth })),
-	Effect.catchTag("SessionCheckError", ({ reason }) => Effect.succeed(Message.FailedCheckSession({ reason }))),
+	Effect.catchTag("SessionCheckError", ({ reason }) =>
+		Effect.succeed(Message.FailedCheckSession({ reason })),
+	),
 	catchCommon((reason) => Message.FailedCheckSession({ reason })),
 )
 

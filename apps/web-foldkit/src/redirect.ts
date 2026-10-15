@@ -9,7 +9,10 @@ import type { Auth, CurrentUser } from "./session"
  * Index routes that only forward somewhere else, whatever the session. Redirect-only routes with
  * a page (`ChannelSettings`) forward from the page's `init` instead.
  */
-export const routeRedirect = (route: AppRoute, options: { readonly isProd: boolean }): Option.Option<AppRoute> =>
+export const routeRedirect = (
+	route: AppRoute,
+	options: { readonly isProd: boolean },
+): Option.Option<AppRoute> =>
 	Match.value(route).pipe(
 		// `settings/debug.tsx` is dev-only.
 		Match.tag("SettingsDebug", ({ orgSlug }) =>

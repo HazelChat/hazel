@@ -39,7 +39,10 @@ export const ForgetReturnTo = Command.define("ForgetReturnTo", {
  * Where to go: back to where sign-in started, unless onboarding comes first; else `rootRedirect`.
  * Before onboarding the remembered page is kept, so `/` after onboarding still goes back to it.
  */
-const targetOf = (model: Model, user: CurrentUser): { readonly route: AppRoute; readonly isReturn: boolean } =>
+const targetOf = (
+	model: Model,
+	user: CurrentUser,
+): { readonly route: AppRoute; readonly isReturn: boolean } =>
 	model.returnTo && user.isOnboarded
 		? { route: routeOfPath(model.returnTo), isReturn: true }
 		: { route: rootRedirect(user, Option.fromNullishOr(model.membership)), isReturn: false }

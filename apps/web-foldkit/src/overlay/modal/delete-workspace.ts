@@ -90,7 +90,10 @@ const update = (model: Model, message: Message): Return =>
 		// The settings page's `onDeleted` navigated to the root.
 		SucceededDeleteWorkspace: () => ({
 			model,
-			outMessage: completed({ route: AppRoute.Root(), toast: successToast("Workspace deleted successfully") }),
+			outMessage: completed({
+				route: AppRoute.Root(),
+				toast: successToast("Workspace deleted successfully"),
+			}),
 		}),
 		FailedDeleteWorkspace: ({ toast }) => ({
 			model: modifyFields(model, { isDeleting: () => false }),

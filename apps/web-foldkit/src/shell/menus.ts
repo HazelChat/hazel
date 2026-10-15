@@ -32,7 +32,14 @@ export const USER_MENU_ID = "user-menu"
 export const ORG_SWITCHER_ID = "org-switcher"
 
 /** The user menu's items; `status`, `feedback` and `logout` act, the others are links. */
-export const UserMenuKey = Schema.Literals(["header", "profile", "status", "my-settings", "feedback", "logout"])
+export const UserMenuKey = Schema.Literals([
+	"header",
+	"profile",
+	"status",
+	"my-settings",
+	"feedback",
+	"logout",
+])
 export type UserMenuKey = typeof UserMenuKey.Type
 
 /** The org switcher's fixed items; each organization's item is keyed by its id. */
@@ -53,7 +60,11 @@ export const decodeUserMenuKey = Schema.decodeUnknownOption(UserMenuKey)
 export const decodeSwitcherKey = Schema.decodeUnknownOption(SwitcherKey)
 
 /** Where a user menu link item goes. */
-export const userMenuLinkRoute = (key: UserMenuKey, orgSlug: string, userId: UserId): Option.Option<AppRoute> =>
+export const userMenuLinkRoute = (
+	key: UserMenuKey,
+	orgSlug: string,
+	userId: UserId,
+): Option.Option<AppRoute> =>
 	Match.value(key).pipe(
 		Match.when("profile", () => Option.some(AppRoute.Profile({ orgSlug, userId }))),
 		Match.when("my-settings", () => Option.some(AppRoute.MySettingsAppearance({ orgSlug }))),
@@ -96,9 +107,7 @@ export const userMenuEntries = (orgSlug: string, userId: UserId): ReadonlyArray<
 const switchServerEntries = (organizations: ReadonlyArray<SwitcherOrg>): ReadonlyArray<Menu.Entry> => [
 	Menu.section(
 		undefined,
-		organizations.map((organization) =>
-			Menu.item(organization.id, { textValue: organization.name }),
-		),
+		organizations.map((organization) => Menu.item(organization.id, { textValue: organization.name })),
 	),
 	Menu.separator,
 	Menu.item("create-server" satisfies SwitcherKey, { textValue: "Create server" }),
@@ -132,9 +141,7 @@ export const orgSwitcherEntries = (options: {
 			people,
 			switchServer,
 			Menu.separator,
-			Menu.section(undefined, [
-				switcherItem("server-settings", orgSlug),
-			]),
+			Menu.section(undefined, [switcherItem("server-settings", orgSlug)]),
 		]
 	return [
 		people,

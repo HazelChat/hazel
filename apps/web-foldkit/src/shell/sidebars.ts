@@ -112,12 +112,18 @@ export const settingsSidebar = <Message>(
 						"Integrations",
 						integrations,
 						{
-							isCurrent: onRoutes(route, "SettingsIntegrations", "SettingsIntegration").isCurrent,
+							isCurrent: onRoutes(route, "SettingsIntegrations", "SettingsIntegration")
+								.isCurrent,
 							isLinkActive: route._tag === "SettingsIntegrations",
 						},
 						IconIntegratio,
 					),
-					item("Marketplace", marketplace, onRoutes(route, "SettingsIntegrationsMarketplace"), IconShop),
+					item(
+						"Marketplace",
+						marketplace,
+						onRoutes(route, "SettingsIntegrationsMarketplace"),
+						IconShop,
+					),
 					item(
 						"Installed Apps",
 						installed,
@@ -191,7 +197,12 @@ export const mySettingsSidebar = <Message>(
 						onRoutes(route, "MySettingsLinkedAccounts"),
 						IconArrowPath,
 					),
-					item("Notifications", notifications, onRoutes(route, "MySettingsNotifications"), IconBell),
+					item(
+						"Notifications",
+						notifications,
+						onRoutes(route, "MySettingsNotifications"),
+						IconBell,
+					),
 					...(isDesktop
 						? [item("Desktop", desktop, onRoutes(route, "MySettingsDesktop"), IconCube)]
 						: []),
@@ -235,7 +246,10 @@ export const notificationsSidebar = <Message>(
 					item(
 						"All Activity",
 						all,
-						{ isCurrent: isNotificationsRoute(route), isLinkActive: route._tag === "NotificationsAll" },
+						{
+							isCurrent: isNotificationsRoute(route),
+							isLinkActive: route._tag === "NotificationsAll",
+						},
 						IconBell,
 					),
 					item("Channels", general, onRoutes(route, "NotificationsGeneral"), IconHashtag),

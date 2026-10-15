@@ -175,7 +175,10 @@ describe("a failed write", () => {
 			given(synced({ manualStatus: "busy", isSyncPending: true, syncVersion: 2 })),
 			message(Message.ElapsedSyncDebounce({ version: 2 })),
 			Command.expectExact(send(busy, { status: "busy" })),
-			Command.resolve(SendPresenceUpdate, Message.FailedSendPresenceUpdate({ userId: ada, reason: "Offline" })),
+			Command.resolve(
+				SendPresenceUpdate,
+				Message.FailedSendPresenceUpdate({ userId: ada, reason: "Offline" }),
+			),
 			model((m) => {
 				expect(m.sent).toEqual(snapshot("online", general))
 				expect(m.failedSyncs).toBe(1)

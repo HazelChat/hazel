@@ -18,7 +18,14 @@ import * as CommandMenu from "../ui/command-menu"
 import { DEFAULT_SOUND_SETTINGS } from "../notification-sound"
 import * as Menu from "../ui/menu"
 import * as Toast from "../ui/toast"
-import { ApplyTheme, NavigateInternal, SaveSoundSettings, SaveThemePreference, SignOut } from "./command"
+import {
+	ApplyTheme,
+	LoadExternal,
+	NavigateInternal,
+	SaveSoundSettings,
+	SaveThemePreference,
+	SignOut,
+} from "./command"
 import { Message } from "./message"
 
 /** The facts children report (OutMessages) and what the root does with them. */
@@ -116,16 +123,22 @@ describe("Completed (palette navigation)", () => {
 })
 
 describe("RequestedSignOut", () => {
-	test("Log out in the user menu signs out through Clerk", () => {
+	test("Log out in the user menu signs out, then loads `/` afresh", () => {
 		const userMenu = (inner: Menu.Message): Message =>
 			Message.GotShellMessage({ message: Shell.Message.GotUserMenuMessage({ message: inner }) })
 		story(
 			update,
 			given(signedIn("/hazel/chat")),
 			message(userMenu(Menu.Message.PressedTrigger({ pointerType: "mouse" }))),
-			message(userMenu(Menu.Message.ClickedItem({ key: "logout", entries: userMenuEntries("hazel", ada.id) }))),
+			message(
+				userMenu(
+					Menu.Message.ClickedItem({ key: "logout", entries: userMenuEntries("hazel", ada.id) }),
+				),
+			),
 			Command.expectExact(SignOut()),
-			Command.resolve(SignOut, Message.CompletedSignOut()),
+			Command.resolve(SignOut, Message.SucceededSignOut()),
+			Command.expectExact(LoadExternal({ href: "/" })),
+			Command.resolve(LoadExternal, Message.CompletedLoadExternal()),
 		)
 	})
 
@@ -133,10 +146,15 @@ describe("RequestedSignOut", () => {
 		story(
 			update,
 			given(signedIn("/hazel/chat")),
-			message(Message.FailedSignOut({ reason: "offline" })),
-			model((m) => expect(m.toasts.toaster.toasts.map((toast) => toast.title)).toEqual(["Failed to sign out"])),
+			message(Message.FailedSignOut({ reason: "Offline" })),
+			model((m) =>
+				expect(m.toasts.toaster.toasts.map((toast) => toast.title)).toEqual(["Failed to sign out"]),
+			),
 			Command.resolve(Toast.StartToastTimer, Toast.Message.StartedTimer({ id: 1, version: 1, at: 0 })),
-			Command.resolve(Toast.WaitForToastLifetime, Toast.Message.CompletedWaitForLifetime({ id: 1, version: 1 })),
+			Command.resolve(
+				Toast.WaitForToastLifetime,
+				Toast.Message.CompletedWaitForLifetime({ id: 1, version: 1 }),
+			),
 			Command.resolve(Toast.WaitForToastRemoval, Toast.Message.CompletedWaitForRemoval({ id: 1 })),
 		)
 	})
@@ -148,7 +166,11 @@ describe("RequestedMobileSidebar", () => {
 		story(
 			update,
 			given(signedIn(`/hazel/chat/${channelId}`)),
-			message(Message.GotPageMessage({ message: { _tag: "ChatChannel", message: { _tag: "ClickedMobileMenu" } } })),
+			message(
+				Message.GotPageMessage({
+					message: { _tag: "ChatChannel", message: { _tag: "ClickedMobileMenu" } },
+				}),
+			),
 			Command.expectNone(),
 			model((m) => expect(m.shell.isSidebarOpen).toBe(true)),
 		)
@@ -163,7 +185,10 @@ describe("RequestedSoundSettings", () => {
 			given(signedIn("/hazel/my-settings/notifications")),
 			message(
 				Message.GotPageMessage({
-					message: { _tag: "MySettingsNotifications", message: { _tag: "ToggledSounds", isSelected: false } },
+					message: {
+						_tag: "MySettingsNotifications",
+						message: { _tag: "ToggledSounds", isSelected: false },
+					},
 				}),
 			),
 			Command.expectHas(SaveSoundSettings({ settings: off })),
@@ -218,17 +243,39 @@ describe("palette status and presence", () => {
 		story(
 			update,
 			given(signedIn("/hazel/chat")),
-			message(presence(Presence.Message.ChangedContext({ userId: ada.id, activeChannelId: null, nowMs: 1 }))),
+			message(
+				presence(
+					Presence.Message.ChangedContext({ userId: ada.id, activeChannelId: null, nowMs: 1 }),
+				),
+			),
 			message(presence(Presence.Message.ElapsedSyncDebounce({ version: 1 }))),
-			Command.resolve(SendPresenceUpdate, Presence.Message.SucceededSendPresenceUpdate()),
+			Command.resolve(
+				SendPresenceUpdate,
+				Presence.Message.SucceededSendPresenceUpdate({
+					userId: ada.id,
+					sent: { status: "online", activeChannelId: null },
+				}),
+			),
 			message(Message.PressedHotkey({ actionId: "commandPalette.open" })),
 			Command.resolve(FocusInput, focused),
 			message(paletteItem("status:dnd")),
 			Command.resolve(SetPresenceStatus, succeeded),
 			model((m) => expect(m.platform.presence.manualStatus).toBe("dnd")),
 			message(presence(Presence.Message.ElapsedSyncDebounce({ version: 2 }))),
-			Command.expectExact(SendPresenceUpdate({ status: "dnd" })),
-			Command.resolve(SendPresenceUpdate, Presence.Message.SucceededSendPresenceUpdate()),
+			Command.expectExact(
+				SendPresenceUpdate({
+					userId: ada.id,
+					snapshot: { status: "dnd", activeChannelId: null },
+					status: "dnd",
+				}),
+			),
+			Command.resolve(
+				SendPresenceUpdate,
+				Presence.Message.SucceededSendPresenceUpdate({
+					userId: ada.id,
+					sent: { status: "dnd", activeChannelId: null },
+				}),
+			),
 			message(presence(Presence.Message.ReachedAfkTimeout({ nowMs: 1 + AFK_TIMEOUT_MS }))),
 			message(presence(Presence.Message.DetectedActivity({ atMs: 2 + AFK_TIMEOUT_MS }))),
 			Command.resolve(BroadcastActivity, Presence.Message.CompletedBroadcastActivity()),

@@ -21,7 +21,6 @@ import {
 import { describe, test } from "vitest"
 import * as CommandPalette from "../overlay/command-palette"
 import { CreateChannel, FocusInput } from "../overlay/command-palette/commands"
-import * as Shell from "../shell/model"
 import { ada, hazelOrg, rootScene, signedIn } from "../test/root-fixtures"
 import * as CommandMenu from "../ui/command-menu"
 import { PortalCommandMenu } from "../ui/command-menu-view"
@@ -59,7 +58,7 @@ describe("nav rail", () => {
 })
 
 describe("mobile", () => {
-	const mobile = Message.GotShellMessage({ message: Shell.Message.ChangedViewport({ isMobile: true }) })
+	const mobile = Message.ChangedViewport({ isMobile: true })
 
 	test("the bottom nav's Menu button opens the sidebar sheet", () => {
 		scene(
@@ -138,7 +137,10 @@ describe("command palette", () => {
 			sceneExpect(text("Channel created successfully")).toExist(),
 			Mount.resolve(Toast.MeasureToast, Toast.Message.MeasuredToast({ id: 1, height: 52 })),
 			// The toast's lifetime runs out (sonner's 4s), then it is removed after its exit animation.
-			Command.resolve(Toast.WaitForToastLifetime, Toast.Message.CompletedWaitForLifetime({ id: 1, version: 1 })),
+			Command.resolve(
+				Toast.WaitForToastLifetime,
+				Toast.Message.CompletedWaitForLifetime({ id: 1, version: 1 }),
+			),
 			Command.resolve(Toast.WaitForToastRemoval, Toast.Message.CompletedWaitForRemoval({ id: 1 })),
 			sceneExpect(text("Channel created successfully")).toBeAbsent(),
 			Mount.expectEnded(Toast.MeasureToast),

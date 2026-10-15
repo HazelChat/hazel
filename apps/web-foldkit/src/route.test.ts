@@ -156,7 +156,9 @@ describe("redirects", () => {
 	})
 
 	it("sends signed-out visitors on app routes to sign-in", () => {
-		expect(Option.map(authRedirect(parse("/"), "SignedOut", "/"), hrefOf)).toEqual(Option.some("/sign-in?redirect_url=%2F"))
+		expect(Option.map(authRedirect(parse("/"), "SignedOut", "/"), hrefOf)).toEqual(
+			Option.some("/sign-in?redirect_url=%2F"),
+		)
 		expect(authRedirect(parse("/hazel/chat"), "SignedIn", "/hazel/chat")).toEqual(Option.none())
 		expect(authRedirect(parse("/hazel/chat"), "Loading", "/hazel/chat")).toEqual(Option.none())
 		expect(authRedirect(parse("/join/hazel"), "SignedOut", "/join/hazel")).toEqual(Option.none())
@@ -199,7 +201,10 @@ describe("hrefOf", () => {
 		Root: [[AppRoute.Root(), "/"]],
 		SignIn: [
 			[AppRoute.SignIn({ redirectUrl: none }), "/sign-in"],
-			[AppRoute.SignIn({ redirectUrl: Option.some("/hazel/chat") }), "/sign-in?redirect_url=%2Fhazel%2Fchat"],
+			[
+				AppRoute.SignIn({ redirectUrl: Option.some("/hazel/chat") }),
+				"/sign-in?redirect_url=%2Fhazel%2Fchat",
+			],
 		],
 		SignUp: [[AppRoute.SignUp({ redirectUrl: none }), "/sign-up"]],
 		AuthRegister: [
@@ -215,9 +220,7 @@ describe("hrefOf", () => {
 		],
 		Join: [[AppRoute.Join({ slug: "hazel" }), "/join/hazel"]],
 		Invite: [[AppRoute.Invite({ token: "abc_DEF-123" }), "/invite/abc_DEF-123"]],
-		AuthDesktop: [
-			[AppRoute.AuthDesktop({ attempt: Option.some("a1") }), "/auth/desktop?attempt=a1"],
-		],
+		AuthDesktop: [[AppRoute.AuthDesktop({ attempt: Option.some("a1") }), "/auth/desktop?attempt=a1"]],
 		Onboarding: [
 			[AppRoute.Onboarding({ orgId: Option.none(), step: none }), "/onboarding"],
 			[

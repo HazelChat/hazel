@@ -10,7 +10,11 @@ import { ThemePreference } from "../theme"
 /** Facts a page (or the shell) reports to the root, which owns navigation and the overlays. */
 export const PageOutMessage = defineMessageUnion({
 	/** `toast` shows with the navigation (legacy `onSuccess: toast + navigate` in one handler). */
-	RequestedNavigation: { route: AppRoute, replace: Schema.Boolean, toast: Schema.optionalKey(ToastRequest) },
+	RequestedNavigation: {
+		route: AppRoute,
+		replace: Schema.Boolean,
+		toast: Schema.optionalKey(ToastRequest),
+	},
 	RequestedToast: { toast: ToastRequest },
 	RequestedModal: { modal: ModalRequest },
 	RequestedCommandPalette: { page: CommandPalettePage },

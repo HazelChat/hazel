@@ -19,7 +19,15 @@ import { closed, completed, ModalOutMessage } from "../out-message"
 import { ToastRequest } from "../toasts"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalViewInputs } from "./contract"
-import { Frame, Message as FrameMessage, frameView, initFrame, isCloseRequest, modalDescription, modalTitle } from "./frame"
+import {
+	Frame,
+	Message as FrameMessage,
+	frameView,
+	initFrame,
+	isCloseRequest,
+	modalDescription,
+	modalTitle,
+} from "./frame"
 import { failureToast, successToast } from "../../data/actions"
 
 /** `components/modals/create-channel-modal.tsx` (legacy `useModal("new-channel")`). */
@@ -61,7 +69,9 @@ const CreateChannel = Command.define("CreateChannel", {
 	execute: (args) =>
 		createChannelAction({ ...args, icon: null, parentChannelId: null }).pipe(
 			Effect.map((result) => Message.SucceededCreateChannel({ channelId: result.data.channelId })),
-			Effect.catchCause((cause) => Effect.succeed(Message.FailedCreateChannel({ toast: failureToast(cause, "friendly") }))),
+			Effect.catchCause((cause) =>
+				Effect.succeed(Message.FailedCreateChannel({ toast: failureToast(cause, "friendly") })),
+			),
 		),
 })
 
@@ -78,14 +88,22 @@ type Return = ModalReturn<Model, Message>
 const submitted = (model: Model, shared: Shared): Return => {
 	const nameError = validateName(model.name)
 	if (nameError !== null) return { model: modifyFields(model, { nameError: () => nameError }) }
-	if (model.isSubmitting || shared.currentUser === null || shared.organization === null || shared.orgSlug === null)
+	if (
+		model.isSubmitting ||
+		shared.currentUser === null ||
+		shared.organization === null ||
+		shared.orgSlug === null
+	)
 		return { model }
 	return {
 		model: modifyFields(model, { isSubmitting: () => true }),
 		commands: [
 			CreateChannel({
 				name: model.name,
-				type: Option.getOrElse(model.channelType.selectedKey, () => "public") === "private" ? "private" : "public",
+				type:
+					Option.getOrElse(model.channelType.selectedKey, () => "public") === "private"
+						? "private"
+						: "public",
 				organizationId: shared.organization.id,
 				currentUserId: shared.currentUser.id,
 				addAllMembers: model.addAllMembers,
@@ -96,18 +114,23 @@ const submitted = (model: Model, shared: Shared): Return => {
 
 const update = (model: Model, message: Message, shared: Shared): Return =>
 	Message.match<Return>(message, {
-		GotFrameMessage: ({ message }) => (isCloseRequest(message) ? { model, outMessage: closed } : { model }),
+		GotFrameMessage: ({ message }) =>
+			isCloseRequest(message) ? { model, outMessage: closed } : { model },
 		GotChannelTypeMessage: ({ message }) => {
 			const result = Select.update(model.channelType, message)
 			return {
 				model: modifyFields(model, { channelType: () => result.model }),
-				commands: Command.mapMessages(result.commands, (child) => Message.GotChannelTypeMessage({ message: child })),
+				commands: Command.mapMessages(result.commands, (child) =>
+					Message.GotChannelTypeMessage({ message: child }),
+				),
 			}
 		},
 		ChangedName: ({ value }) => ({
 			model: modifyFields(model, { name: () => value, nameError: () => validateName(value) }),
 		}),
-		ToggledAddAllMembers: ({ isSelected }) => ({ model: modifyFields(model, { addAllMembers: () => isSelected }) }),
+		ToggledAddAllMembers: ({ isSelected }) => ({
+			model: modifyFields(model, { addAllMembers: () => isSelected }),
+		}),
 		ClickedCancel: () => ({ model, outMessage: closed }),
 		SubmittedForm: () => submitted(model, shared),
 		SucceededCreateChannel: ({ channelId }) => ({
@@ -156,8 +179,13 @@ const view = Submodel.defineView<Model, Message, ModalViewInputs>((model, _input
 										field.input({
 											placeholder: "general",
 											attributes: [
-												h.Attribute("aria-invalid", model.nameError === null ? "false" : "true"),
-												...(model.nameError === null ? [] : [h.Attribute("data-invalid", "true")]),
+												h.Attribute(
+													"aria-invalid",
+													model.nameError === null ? "false" : "true",
+												),
+												...(model.nameError === null
+													? []
+													: [h.Attribute("data-invalid", "true")]),
 											],
 										}),
 									]),

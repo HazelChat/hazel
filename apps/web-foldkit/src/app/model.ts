@@ -61,7 +61,9 @@ export type OrgState = typeof OrgState.Type
 export const orgStateFor = (current: OrgState, route: AppRoute): OrgState => {
 	const slug = orgSlugOf(route)
 	if (slug === undefined) return OrgState.None()
-	return current._tag !== "None" && current.slug === slug ? current : OrgState.Loading({ slug, isStalled: false })
+	return current._tag !== "None" && current.slug === slug
+		? current
+		: OrgState.Loading({ slug, isStalled: false })
 }
 
 // MODEL
@@ -124,7 +126,9 @@ export const organizationOf = (model: Model): Organization | null =>
 
 export const memberOf = (model: Model): Member | null =>
 	Option.getOrNull(
-		Option.flatMap(loadedOrgOf(model), (org) => Option.flatMapNullishOr(AsyncData.getData(org.member), (m) => m)),
+		Option.flatMap(loadedOrgOf(model), (org) =>
+			Option.flatMapNullishOr(AsyncData.getData(org.member), (m) => m),
+		),
 	)
 
 export const sharedOf = (model: Model): Shared => ({

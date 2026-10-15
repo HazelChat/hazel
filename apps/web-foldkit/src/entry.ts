@@ -2,12 +2,14 @@ import "@fontsource/inter/400.css"
 import "@fontsource/inter/400-italic.css"
 import "./styles.css"
 
+import { Layer } from "effect"
 import { Runtime } from "foldkit"
 import { setSessionBearerProvider } from "~/lib/session-bearer"
 import { initTauri } from "~/lib/tauri"
 import { isDesktop } from "./platform/desktop"
 import { desktopSessionBearer } from "./platform/desktop-auth"
 import { Flags, flags, init, Message, Model, subscriptions, update, view } from "./main"
+import { NotificationSinks } from "./app/notification-sinks"
 import { ResourcesLive } from "./rpc"
 
 const container = document.getElementById("app")!
@@ -21,7 +23,8 @@ const startApplication = () =>
 			update,
 			view,
 			subscriptions,
-			resources: ResourcesLive,
+			// The sinks own audio and native notifications, so they are built here, in the browser only.
+			resources: Layer.merge(ResourcesLive, NotificationSinks.layer),
 			container,
 			routing: {
 				onUrlRequest: (request) => Message.ClickedLink({ request }),

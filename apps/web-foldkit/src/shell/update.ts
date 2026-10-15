@@ -66,7 +66,8 @@ const withMenuEntries = (model: Model, context: Context): Model => {
 	// The menus only render inside the org shell, which waits for `user.me`.
 	if (orgSlug === null) return model
 	return modifyFields(model, {
-		userMenuEntries: (entries) => (currentUserId === null ? entries : userMenuEntries(orgSlug, currentUserId)),
+		userMenuEntries: (entries) =>
+			currentUserId === null ? entries : userMenuEntries(orgSlug, currentUserId),
 		orgSwitcherEntries: () =>
 			orgSwitcherEntries({
 				orgSlug,
@@ -81,7 +82,8 @@ const withMenuEntries = (model: Model, context: Context): Model => {
 				// Mobile shows `SwitchServerMenu` alone: a single-selection list with the current org checked.
 				{
 					selectionMode: () => (isMobile ? "Single" : "None"),
-					selectedKeys: () => (isMobile && context.organizationId !== null ? [context.organizationId] : []),
+					selectedKeys: () =>
+						isMobile && context.organizationId !== null ? [context.organizationId] : [],
 				},
 			),
 	})
@@ -91,7 +93,8 @@ const requested =
 	(outMessage: PageOutMessage): Step =>
 	(model) => ({ model, outMessage })
 
-const navigateTo = (route: AppRoute): Step => requested(PageOutMessage.RequestedNavigation({ route, replace: false }))
+const navigateTo = (route: AppRoute): Step =>
+	requested(PageOutMessage.RequestedNavigation({ route, replace: false }))
 
 const unchanged: Step = (model) => ({ model })
 
@@ -143,7 +146,8 @@ const switchedOrganization =
 		Option.match(
 			Option.fromNullishOr(
 				model.userOrganizations.find(
-					(organization) => organization.id === organizationId && organization.id !== context.organizationId,
+					(organization) =>
+						organization.id === organizationId && organization.id !== context.organizationId,
 				),
 			),
 			{
@@ -170,7 +174,9 @@ const foldOrgSwitcherOutMessage = (context: Context) =>
 		ActivatedLink: ({ key }) =>
 			Option.match(
 				Option.flatMap(decodeSwitcherKey(key), (switcherKey) =>
-					context.orgSlug === null ? Option.none() : switcherLinkRoute(switcherKey, context.orgSlug),
+					context.orgSlug === null
+						? Option.none()
+						: switcherLinkRoute(switcherKey, context.orgSlug),
 				),
 				{ onNone: () => unchanged, onSome: navigateTo },
 			),
@@ -236,10 +242,9 @@ export const update = (model: Model, message: Message, context: Context): ShellR
 
 /** The root learned a new route, organization, user, role or viewport. */
 export const informContext = (model: Model, context: Context): Model => {
-	// `setContext` only drops the previous organization's data: no Commands, no OutMessage.
-	const sidebar = ChannelsSidebar.setContext(model.channelsSidebar, {
+	const channelsSidebar = ChannelsSidebar.setContext(model.channelsSidebar, {
 		organizationId: context.organizationId,
 		currentUserId: context.currentUserId,
 	})
-	return withMenuEntries(modifyFields(model, { channelsSidebar: () => sidebar.model }), context)
+	return withMenuEntries(modifyFields(model, { channelsSidebar: () => channelsSidebar }), context)
 }

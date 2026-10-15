@@ -29,7 +29,11 @@ export const dotsMenuTrigger = <M>(h: HtmlBuilder<M>, label: string): Html =>
 			intent: "plain",
 			size: "sq-xs",
 			className: "size-5 text-muted-fg",
-			attributes: [h.Attribute("data-slot", "menu-trigger"), h.AriaLabel(label), ...menuTriggerAttributes(h)],
+			attributes: [
+				h.Attribute("data-slot", "menu-trigger"),
+				h.AriaLabel(label),
+				...menuTriggerAttributes(h),
+			],
 		},
 		[IconDots(h, { className: "size-4" })],
 	)

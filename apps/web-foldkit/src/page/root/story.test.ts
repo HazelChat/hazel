@@ -12,7 +12,8 @@ import { Message } from "./model"
 const membership = { organizationId, slug: "hazel" }
 const signedIn = storyUpdate(update, makeShared())
 const notOnboarded = storyUpdate(update, makeShared({ currentUser: { ...currentUser, isOnboarded: false } }))
-const go = (href: string) => expectOutMessage(PageOutMessage.RequestedNavigation({ route: routeOfPath(href), replace: true }))
+const go = (href: string) =>
+	expectOutMessage(PageOutMessage.RequestedNavigation({ route: routeOfPath(href), replace: true }))
 
 describe("root redirect", () => {
 	test("reads the remembered page first", () => {
