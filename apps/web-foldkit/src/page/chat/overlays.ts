@@ -366,8 +366,8 @@ export const update = (model: Model, message: Message): OverlaysReturn =>
 			const hoveredTrigger = nextTrigger(
 				model.hoveredTrigger,
 				tooltipMessage,
-				"HoveredTrigger",
-				"UnhoveredTrigger",
+				"EnteredTrigger",
+				"LeftTrigger",
 			)
 			const focusedTrigger = nextTrigger(
 				model.focusedTrigger,

@@ -5,7 +5,6 @@ import * as Draft from "../composer/draft"
 import { DragState, DropEvent } from "../composer/drop"
 import * as MessageList from "../mount/message-list"
 import * as Overlays from "../page/chat/overlays"
-import * as Tooltip from "../ui/tooltip"
 import * as Menu from "../ui/menu"
 import { Message, type Model } from "../page/chat/channel/model"
 import {
@@ -63,18 +62,8 @@ export const mountedChannel = (hovered: MessageId | null = null): Step =>
 		],
 	)
 
-/** Three quick reactions, Add reaction, Copy and Reply, plus Edit and Delete on one's own message. */
-const toolbarTooltips = (isOwnMessage: boolean) => (isOwnMessage ? 8 : 6)
-
-/** The hover toolbar's Mounts: its placement, one tooltip trigger per button and the More menu trigger. */
-const tooltipTrigger = (): readonly [{ readonly name: string }, Tooltip.Message] => [
-	{ name: "TrackTooltipTrigger" },
-	Tooltip.Message.CompletedTrackTrigger(),
-]
-
-export const mountedToolbar = (isOwnMessage: boolean): Step =>
-	Scene.Mount.resolveAll(
-		[{ name: "PlaceMessageToolbar" }, overlays(Overlays.Message.EnteredToolbar())],
-		...Array.from({ length: toolbarTooltips(isOwnMessage) }, tooltipTrigger),
-		[{ name: "FocusTriggerOnPress" }, Menu.Message.CompletedFocusTriggerOnPress()],
-	)
+/** The hover toolbar's Mounts: its placement and the More menu trigger (tooltip triggers have none). */
+export const mountedToolbar: Step = Scene.Mount.resolveAll(
+	[{ name: "PlaceMessageToolbar" }, overlays(Overlays.Message.EnteredToolbar())],
+	[{ name: "FocusTriggerOnPress" }, Menu.Message.CompletedFocusTriggerOnPress()],
+)

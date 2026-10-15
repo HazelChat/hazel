@@ -1,8 +1,8 @@
 import { MessageId } from "@hazel/schema"
-import { Schema } from "effect"
+import { Duration, Schema } from "effect"
 import { Command, type Update } from "foldkit"
 import { type ChildAttribute, childAttributes, type Html, type HtmlBuilder } from "foldkit/html"
-import type { Placement } from "../ui/aria/position"
+import type { Placement } from "../ui/aria/placement"
 import * as Tooltip from "../ui/tooltip"
 
 /**
@@ -22,9 +22,14 @@ export const Message = Schema.Struct({
 })
 export type Message = typeof Message.Type
 
-/** Messages that move the host to a new trigger; the rest only apply to the current one. */
+/**
+ * Messages that move the host to a new trigger; the rest only apply to the current one. A press
+ * moves it too, so the focus that follows a mouse press finds the press and keeps the tooltip shut.
+ */
 const isActivating = (message: Tooltip.Message) =>
-	message._tag === "HoveredTrigger" || message._tag === "FocusedTrigger"
+	message._tag === "EnteredTrigger" ||
+	message._tag === "FocusedTrigger" ||
+	message._tag === "PressedPointerOnTrigger"
 
 export const update = <Wrapped>(
 	model: Model,
@@ -35,7 +40,7 @@ export const update = <Wrapped>(
 		model !== null && model.id === key
 			? model
 			: isActivating(message)
-				? Tooltip.initWithDelay(key, delayMs)
+				? Tooltip.init(key, delayMs)
 				: null
 	if (current === null) return { model }
 	const result = Tooltip.update(current, message)
@@ -54,8 +59,8 @@ export const update = <Wrapped>(
 const closedModels = new Map<string, Tooltip.Model>()
 const closedModel = (key: string, delayMs: number) => {
 	let model = closedModels.get(key)
-	if (model === undefined || model.delayMs !== delayMs)
-		closedModels.set(key, (model = Tooltip.initWithDelay(key, delayMs)))
+	if (model === undefined || Duration.toMillis(model.showDelay) !== delayMs)
+		closedModels.set(key, (model = Tooltip.init(key, delayMs)))
 	return model
 }
 

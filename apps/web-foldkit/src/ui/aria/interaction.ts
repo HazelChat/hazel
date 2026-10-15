@@ -245,32 +245,6 @@ export const subscriptions = Subscription.make<Model, Message>()(() => ({
 	),
 }))
 
-// GLOBAL MODALITY
-
-/**
- * React Aria's module-level modality (useFocusVisible's `currentModality`), for code that reads it
- * synchronously at event time, such as Mounts. Views read the Submodel's `modality` instead.
- */
-let globalModality: Modality | null = null
-let isGlobalModalityTracked = false
-
-export const trackGlobalModality = () => {
-	if (isGlobalModalityTracked) return
-	isGlobalModalityTracked = true
-	const toKeyboard = (event: KeyboardEvent) => {
-		if (isModalityKey(event) && !event.altKey) globalModality = "keyboard"
-	}
-	const toPointer = () => {
-		globalModality = "pointer"
-	}
-	document.addEventListener("keydown", toKeyboard, true)
-	document.addEventListener("keyup", toKeyboard, true)
-	document.addEventListener("pointerdown", toPointer, true)
-	document.addEventListener("pointerup", toPointer, true)
-}
-
-export const currentGlobalModality = (): Modality | null => globalModality
-
 // VIEW
 
 /** Every attribute here is valid on any element, textarea included (no innerHTML). */

@@ -1,30 +1,27 @@
 // @vitest-environment jsdom
+import { MessageId } from "@hazel/schema"
+import { Duration } from "effect"
 import { Command, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
-import {
-	init,
-	initWithDelay,
-	Message,
-	update,
-	WaitForTooltipHideDelay,
-	WaitForTooltipShowDelay,
-} from "./tooltip"
+import * as TooltipHost from "../chat/tooltip-host"
+import { toAnchorPlacement } from "./aria/placement"
+import { init, Message, update, WaitBeforeShowing } from "./tooltip"
 
-/** React Aria TooltipTrigger: a 1500ms show delay on hover, immediate on keyboard focus, 500ms hide delay. */
+/** The kit Tooltip with the app's 1500ms default show delay; focus not from a mouse press shows it at once. */
 
 const closed = init("rename")
-const hoveredOpen = { ...closed, isOpen: true, isHovered: true, version: 1 }
-const hover = message(Message.HoveredTrigger({ isPointerModality: true }))
+const enter = message(Message.EnteredTrigger())
+const showAfterDelay = Command.resolve(WaitBeforeShowing, Message.CompletedWaitBeforeShowing({ version: 1 }))
 
 describe("tooltip story", () => {
 	test("hovering the trigger waits the default 1500ms before showing the tooltip", () => {
 		story(
 			update,
 			given(closed),
-			hover,
-			Command.expectExact(WaitForTooltipShowDelay({ version: 1, delayMs: 1500 })),
+			enter,
+			Command.expectExact(WaitBeforeShowing({ delay: Duration.millis(1500), version: 1 })),
 			model((next) => expect(next.isOpen).toBe(false)),
-			Command.resolve(WaitForTooltipShowDelay, Message.CompletedWaitForShowDelay({ version: 1 })),
+			showAfterDelay,
 			model((next) => expect(next.isOpen).toBe(true)),
 		)
 	})
@@ -32,11 +29,33 @@ describe("tooltip story", () => {
 	test("a trigger with its own delay waits that long instead", () => {
 		story(
 			update,
-			given(initWithDelay("rename", 300)),
-			hover,
-			Command.expectExact(WaitForTooltipShowDelay({ version: 1, delayMs: 300 })),
-			Command.resolve(WaitForTooltipShowDelay, Message.CompletedWaitForShowDelay({ version: 1 })),
+			given(init("rename", 300)),
+			enter,
+			Command.expectExact(WaitBeforeShowing({ delay: Duration.millis(300), version: 1 })),
+			showAfterDelay,
 			model((next) => expect(next.isOpen).toBe(true)),
+		)
+	})
+
+	test("leaving the trigger before the delay ends cancels the pending show", () => {
+		story(
+			update,
+			given(update(closed, Message.EnteredTrigger()).model),
+			message(Message.LeftTrigger()),
+			message(Message.CompletedWaitBeforeShowing({ version: 1 })),
+			model((next) => expect(next.isOpen).toBe(false)),
+		)
+	})
+
+	test("leaving an open tooltip hides it at once", () => {
+		story(
+			update,
+			given(closed),
+			enter,
+			showAfterDelay,
+			message(Message.LeftTrigger()),
+			Command.expectNone(),
+			model((next) => expect(next.isOpen).toBe(false)),
 		)
 	})
 
@@ -44,120 +63,86 @@ describe("tooltip story", () => {
 		story(
 			update,
 			given(closed),
-			message(Message.FocusedTrigger({ isFocusVisible: true })),
+			message(Message.FocusedTrigger()),
 			Command.expectNone(),
-			model((next) => {
-				expect(next.isOpen).toBe(true)
-				expect(next.isFocused).toBe(true)
-			}),
-		)
-	})
-
-	test("focus that is not focus-visible (a pointer press) does not show the tooltip", () => {
-		story(
-			update,
-			given(closed),
-			message(Message.FocusedTrigger({ isFocusVisible: false })),
-			Command.expectNone(),
-			model((next) => expect(next).toEqual(closed)),
-		)
-	})
-
-	test("hovering without pointer modality never shows the tooltip once the delay ends", () => {
-		story(
-			update,
-			given(closed),
-			message(Message.HoveredTrigger({ isPointerModality: false })),
-			Command.resolve(WaitForTooltipShowDelay, Message.CompletedWaitForShowDelay({ version: 1 })),
-			model((next) => expect(next.isOpen).toBe(false)),
-		)
-	})
-
-	test("leaving the trigger before the delay ends cancels the pending show", () => {
-		story(
-			update,
-			given({ ...closed, isHovered: true, version: 1 }),
-			message(Message.UnhoveredTrigger()),
-			Command.expectNone(),
-			model((next) => expect(next.version).toBe(2)),
-			message(Message.CompletedWaitForShowDelay({ version: 1 })),
-			model((next) => expect(next.isOpen).toBe(false)),
-		)
-	})
-
-	test("leaving an open tooltip waits the 500ms hide delay before closing", () => {
-		story(
-			update,
-			given(hoveredOpen),
-			message(Message.UnhoveredTrigger()),
-			Command.expectExact(WaitForTooltipHideDelay({ version: 2 })),
 			model((next) => expect(next.isOpen).toBe(true)),
-			Command.resolve(WaitForTooltipHideDelay, Message.CompletedWaitForHideDelay({ version: 2 })),
+		)
+	})
+
+	test("the focus a mouse press gives the trigger does not show the tooltip", () => {
+		story(
+			update,
+			given(closed),
+			message(Message.PressedPointerOnTrigger({ pointerType: "mouse" })),
+			message(Message.FocusedTrigger()),
 			model((next) => expect(next.isOpen).toBe(false)),
 		)
 	})
 
-	test("re-entering during the hide delay keeps the warm tooltip open with no new delay", () => {
+	test("blurring the trigger hides the tooltip without a delay", () => {
 		story(
 			update,
-			given({ ...hoveredOpen, isHovered: false, version: 2 }),
-			hover,
+			given(closed),
+			message(Message.FocusedTrigger()),
+			message(Message.BlurredTrigger()),
 			Command.expectNone(),
-			model((next) => expect(next).toMatchObject({ isOpen: true, version: 3 })),
-			message(Message.CompletedWaitForHideDelay({ version: 2 })),
+			model((next) => expect(next.isOpen).toBe(false)),
+		)
+	})
+
+	test("Escape hides the tooltip and keeps it shut until the pointer leaves", () => {
+		story(
+			update,
+			given(closed),
+			enter,
+			showAfterDelay,
+			message(Message.PressedEscape()),
+			model((next) => expect(next.isOpen).toBe(false)),
+			enter,
+			Command.expectNone(),
+			message(Message.LeftTrigger()),
+			enter,
+			Command.expectExact(WaitBeforeShowing({ delay: Duration.millis(1500), version: 4 })),
+			Command.resolve(WaitBeforeShowing, Message.CompletedWaitBeforeShowing({ version: 4 })),
 			model((next) => expect(next.isOpen).toBe(true)),
 		)
 	})
 })
 
-describe("tooltip story: dismissal", () => {
-	test("blurring the trigger hides the tooltip immediately", () => {
-		story(
-			update,
-			given({ ...closed, isOpen: true, isFocused: true, version: 1 }),
-			message(Message.BlurredTrigger()),
-			Command.expectNone(),
-			model((next) => expect(next).toMatchObject({ isOpen: false, isFocused: false })),
-		)
+describe("tooltip host", () => {
+	const messageId = MessageId.make("00000000-0000-4000-8000-000000000001")
+	const hostMessage = (key: string, inner: Message): TooltipHost.Message => ({
+		key,
+		messageId,
+		delayMs: 300,
+		message: inner,
+	})
+	const run = (model: TooltipHost.Model, key: string, inner: Message) =>
+		TooltipHost.update(model, hostMessage(key, inner), (wrapped) => wrapped).model
+
+	test("entering a trigger moves the host to it with the trigger's delay", () => {
+		const next = run(null, "a", Message.EnteredTrigger())
+		expect(next?.id).toBe("a")
+		expect(next === null ? null : Duration.toMillis(next.showDelay)).toBe(300)
 	})
 
-	test("pressing the trigger hides the tooltip immediately even while hovered", () => {
-		story(
-			update,
-			given(hoveredOpen),
-			message(Message.PressedTrigger()),
-			Command.expectNone(),
-			model((next) => expect(next).toMatchObject({ isOpen: false, isHovered: false })),
-		)
+	test("a message for another trigger that does not activate it leaves the host alone", () => {
+		const open = run(null, "a", Message.FocusedTrigger())
+		expect(run(open, "b", Message.LeftTrigger())).toBe(open)
 	})
 
-	test("Escape hides the tooltip", () => {
-		story(
-			update,
-			given(hoveredOpen),
-			message(Message.PressedEscape()),
-			Command.expectNone(),
-			model((next) => expect(next.isOpen).toBe(false)),
-		)
+	test("a mouse press moves the host, so the focus that follows keeps the tooltip shut", () => {
+		const pressed = run(null, "a", Message.PressedPointerOnTrigger({ pointerType: "mouse" }))
+		expect(run(pressed, "a", Message.FocusedTrigger())?.isOpen).toBe(false)
 	})
+})
 
-	test("leaving the trigger closes the tooltip even if it still has keyboard focus", () => {
-		story(
-			update,
-			given({ ...hoveredOpen, isFocused: true }),
-			message(Message.UnhoveredTrigger()),
-			Command.resolve(WaitForTooltipHideDelay, Message.CompletedWaitForHideDelay({ version: 2 })),
-			model((next) => expect(next).toMatchObject({ isOpen: false, isFocused: false })),
-		)
-	})
-
-	test("mount completions leave the tooltip as it was", () => {
-		story(
-			update,
-			given(hoveredOpen),
-			message(Message.CompletedTrackTrigger()),
-			message(Message.CompletedPortalTooltip()),
-			model((next) => expect(next).toEqual(hoveredOpen)),
-		)
+describe("toAnchorPlacement", () => {
+	test("maps React Aria placements to Floating UI ones, reading logical sides left to right", () => {
+		expect(toAnchorPlacement("top")).toBe("top")
+		expect(toAnchorPlacement("bottom start")).toBe("bottom-start")
+		expect(toAnchorPlacement("top right")).toBe("top-end")
+		expect(toAnchorPlacement("end top")).toBe("right-start")
+		expect(toAnchorPlacement("start bottom")).toBe("left-end")
 	})
 })

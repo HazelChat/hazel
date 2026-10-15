@@ -1,8 +1,8 @@
-import { Duration, Effect, Queue, Schema, Stream } from "effect"
-import { Command, Mount, Submodel, type Update } from "foldkit"
-import { type ChildAttribute, childAttributes, type Html, type HtmlBuilder } from "foldkit/html"
-import { defineMessageUnion } from "foldkit/message"
-import { modifyFields } from "foldkit/struct"
+import { anchorSetup, AnchorConfig } from "@foldkit/ui/anchor"
+import * as FoldkitTooltip from "@foldkit/ui/tooltip"
+import { Duration, Effect, Schema } from "effect"
+import { Mount, Submodel } from "foldkit"
+import { type ChildAttribute, type Html, type HtmlBuilder } from "foldkit/html"
 import { twJoin } from "tailwind-merge"
 import {
 	tooltipArrowBase,
@@ -10,233 +10,51 @@ import {
 	tooltipArrowInverse,
 	tooltipStyles,
 } from "~/components/ui/tooltip.styles"
-import { currentGlobalModality, trackGlobalModality } from "./aria/interaction"
-import { portalOverlay, positionOverlay } from "./aria/overlay"
-import { Placement } from "./aria/placement"
+import { type Placement, toAnchorPlacement } from "./aria/placement"
 
-/** Port of `components/ui/tooltip.tsx` (React Aria TooltipTrigger + Tooltip). */
+/**
+ * The `@foldkit/ui` Tooltip, styled. Hover shows it after the show delay, keyboard focus at once,
+ * and leaving, blurring or Escape on the trigger hides it; the handlers live in the trigger bundle.
+ * The panel is positioned by Anchor with an arrow, so it renders its own panel attributes.
+ */
 
 // MODEL
 
+/** React Aria TooltipTrigger's default `delay`. */
 const DEFAULT_SHOW_DELAY_MS = 1500
 
-export const Model = Schema.Struct({
-	id: Schema.String,
-	isOpen: Schema.Boolean,
-	isHovered: Schema.Boolean,
-	isFocused: Schema.Boolean,
-	/** Bumped on every show or hide request, so a stale delay never acts. */
-	version: Schema.Number,
-	/** TooltipTrigger `delay` (React Aria default 1500ms). */
-	delayMs: Schema.Number,
-})
-export type Model = typeof Model.Type
+export const { Model, Message, OutMessage, update, triggerId, WaitBeforeShowing } = FoldkitTooltip
+export type Model = FoldkitTooltip.Model
+export type Message = FoldkitTooltip.Message
+export type OutMessage = FoldkitTooltip.OutMessage
 
-export const init = (id: string): Model => initWithDelay(id, DEFAULT_SHOW_DELAY_MS)
+export const init = (id: string, showDelayMs: number = DEFAULT_SHOW_DELAY_MS): Model =>
+	FoldkitTooltip.init({ id, showDelay: Duration.millis(showDelayMs) })
 
-/** A trigger with its own `delay`. */
-export const initWithDelay = (id: string, delayMs: number): Model => ({
-	id,
-	isOpen: false,
-	isHovered: false,
-	isFocused: false,
-	version: 0,
-	delayMs,
-})
-
-// MESSAGE
-
-export const Message = defineMessageUnion({
-	HoveredTrigger: { isPointerModality: Schema.Boolean },
-	UnhoveredTrigger: {},
-	FocusedTrigger: { isFocusVisible: Schema.Boolean },
-	BlurredTrigger: {},
-	PressedTrigger: {},
-	PressedEscape: {},
-	CompletedWaitForShowDelay: { version: Schema.Number },
-	CompletedWaitForHideDelay: { version: Schema.Number },
-	CompletedTrackTrigger: {},
-	CompletedPortalTooltip: {},
-})
-export type Message = typeof Message.Type
-
-export const triggerId = (id: string) => `${id}-trigger`
-export const tooltipId = (id: string) => `${id}-tooltip`
-
-// COMMAND
-
-/** useTooltipTriggerState defaults. */
-const HIDE_DELAY = Duration.millis(500)
-
-export const WaitForTooltipShowDelay = Command.define("WaitForTooltipShowDelay", {
-	args: { version: Schema.Number, delayMs: Schema.Number },
-	messages: [Message.CompletedWaitForShowDelay],
-	execute: ({ version, delayMs }) =>
-		Effect.sleep(Duration.millis(delayMs)).pipe(
-			Effect.as(Message.CompletedWaitForShowDelay({ version })),
-		),
-})
-
-export const WaitForTooltipHideDelay = Command.define("WaitForTooltipHideDelay", {
-	args: { version: Schema.Number },
-	messages: [Message.CompletedWaitForHideDelay],
-	execute: ({ version }) =>
-		Effect.sleep(HIDE_DELAY).pipe(Effect.as(Message.CompletedWaitForHideDelay({ version }))),
-})
-
-// UPDATE
-
-type UpdateReturn = Update.Return<Model, Message>
-
-const requestShow = (model: Model, isFocus: boolean): UpdateReturn => {
-	const version = model.version + 1
-	const next = modifyFields(model, { version: () => version })
-	if (model.isOpen || isFocus) return { model: modifyFields(next, { isOpen: () => true }) }
-	return { model: next, commands: [WaitForTooltipShowDelay({ version, delayMs: model.delayMs })] }
-}
-
-const requestHide = (model: Model, isImmediate: boolean): UpdateReturn => {
-	if (model.isHovered || model.isFocused) return { model }
-	const version = model.version + 1
-	const next = modifyFields(model, { version: () => version })
-	if (isImmediate || !model.isOpen) return { model: modifyFields(next, { isOpen: () => false }) }
-	return { model: next, commands: [WaitForTooltipHideDelay({ version })] }
-}
-
-const released = (model: Model): Model =>
-	modifyFields(model, { isHovered: () => false, isFocused: () => false })
-
-export const update = (model: Model, message: Message): UpdateReturn =>
-	Message.match<UpdateReturn>(message, {
-		HoveredTrigger: ({ isPointerModality }) =>
-			requestShow(modifyFields(model, { isHovered: () => isPointerModality }), false),
-		UnhoveredTrigger: () => requestHide(released(model), false),
-		FocusedTrigger: ({ isFocusVisible }) =>
-			isFocusVisible ? requestShow(modifyFields(model, { isFocused: () => true }), true) : { model },
-		BlurredTrigger: () => requestHide(released(model), true),
-		PressedTrigger: () => requestHide(released(model), true),
-		PressedEscape: () => ({ model: modifyFields(model, { isOpen: () => false }) }),
-		CompletedWaitForShowDelay: ({ version }) =>
-			version === model.version && (model.isHovered || model.isFocused)
-				? { model: modifyFields(model, { isOpen: () => true }) }
-				: { model },
-		CompletedWaitForHideDelay: ({ version }) =>
-			version === model.version ? { model: modifyFields(model, { isOpen: () => false }) } : { model },
-		CompletedTrackTrigger: () => ({ model }),
-		CompletedPortalTooltip: () => ({ model }),
-	})
+/** The panel id the trigger bundle's `aria-describedby` names. */
+export const tooltipId = (id: string) => `${id}-panel`
+const arrowId = (id: string) => `${id}-arrow`
 
 // MOUNT
 
-type TrackTriggerMessage = Exclude<
-	Message,
-	{
-		_tag:
-			| "CompletedWaitForShowDelay"
-			| "CompletedWaitForHideDelay"
-			| "CompletedPortalTooltip"
-			| "PressedEscape"
-	}
->
-
-export const TrackTrigger = Mount.defineStream("TrackTooltipTrigger", {
-	messages: [
-		Message.CompletedTrackTrigger,
-		Message.HoveredTrigger,
-		Message.UnhoveredTrigger,
-		Message.FocusedTrigger,
-		Message.BlurredTrigger,
-		Message.PressedTrigger,
-	],
-	execute: ({ element }) =>
-		Stream.callback<TrackTriggerMessage>((queue) =>
-			Effect.acquireRelease(
-				Effect.sync(() => {
-					trackGlobalModality()
-					const emit = (message: TrackTriggerMessage) => Queue.offerUnsafe(queue, message)
-					const listeners: ReadonlyArray<readonly [string, (event: Event) => void]> = [
-						[
-							"pointerenter",
-							(event) => {
-								if (event instanceof PointerEvent && event.pointerType !== "touch")
-									emit(
-										Message.HoveredTrigger({
-											isPointerModality: currentGlobalModality() === "pointer",
-										}),
-									)
-							},
-						],
-						[
-							"pointerleave",
-							(event) => {
-								if (event instanceof PointerEvent && event.pointerType !== "touch")
-									emit(Message.UnhoveredTrigger())
-							},
-						],
-						[
-							"focus",
-							() =>
-								emit(
-									Message.FocusedTrigger({
-										isFocusVisible: currentGlobalModality() !== "pointer",
-									}),
-								),
-						],
-						["blur", () => emit(Message.BlurredTrigger())],
-						["pointerdown", () => emit(Message.PressedTrigger())],
-						["keydown", () => emit(Message.PressedTrigger())],
-					]
-					for (const [type, listener] of listeners) element.addEventListener(type, listener)
-					emit(Message.CompletedTrackTrigger())
-					return () => {
-						for (const [type, listener] of listeners) element.removeEventListener(type, listener)
-					}
-				}),
-				(release) => Effect.sync(release),
-			).pipe(Effect.flatMap(() => Effect.never)),
-		),
-})
-
-type PortalTooltipMessage = Extract<Message, { _tag: "CompletedPortalTooltip" | "PressedEscape" }>
-
-export const PortalTooltip = Mount.defineStream("PortalTooltip", {
-	args: { id: Schema.String, placement: Placement, offset: Schema.Number },
-	messages: [Message.CompletedPortalTooltip, Message.PressedEscape],
-	execute: ({ element, id, placement, offset }) =>
-		Stream.callback<PortalTooltipMessage>((queue) =>
-			Effect.acquireRelease(
-				Effect.sync(() => {
-					const releasePortal = portalOverlay(element, { isModal: false })
-					const tooltip = element.firstElementChild
-					const releasePosition =
-						tooltip instanceof HTMLElement
-							? positionOverlay(tooltip, {
-									triggerId: triggerId(id),
-									placement,
-									offset,
-									arrowSelector: ":scope > .group",
-								})
-							: () => undefined
-					const onKeyDown = (event: KeyboardEvent) => {
-						if (event.key === "Escape") Queue.offerUnsafe(queue, Message.PressedEscape())
-					}
-					document.addEventListener("keydown", onKeyDown, true)
-					Queue.offerUnsafe(queue, Message.CompletedPortalTooltip())
-					return () => {
-						document.removeEventListener("keydown", onKeyDown, true)
-						releasePosition()
-						releasePortal()
-					}
-				}),
-				(release) => Effect.sync(release),
-			).pipe(Effect.flatMap(() => Effect.never)),
-		),
+/** The kit's `AnchorTooltip` plus the arrow, which Anchor offsets through `--arrow-x`/`--arrow-y`. */
+export const AnchorTooltipPanel = Mount.define("AnchorTooltipPanel", {
+	args: { buttonId: Schema.String, anchor: AnchorConfig, arrowId: Schema.String },
+	messages: [Message.CompletedAnchorTooltip],
+	execute: ({ element, buttonId, anchor, arrowId }) =>
+		Effect.gen(function* () {
+			yield* Effect.acquireRelease(
+				Effect.sync(() => anchorSetup(element, { buttonId, anchor, arrowId, interceptTab: false })),
+				(cleanup) => Effect.sync(cleanup),
+			)
+			return Message.CompletedAnchorTooltip()
+		}),
 })
 
 // VIEW
 
 export type ViewInputs = Readonly<{
-	/** Renders the trigger (TooltipTrigger child). Spread `attributes` on it and put `overlay` last. */
+	/** Renders the trigger. Spread `attributes` on it and put `overlay` last. */
 	toTrigger: (attributes: ReadonlyArray<ChildAttribute>, overlay: Html) => Html
 	content: ReadonlyArray<Html | string>
 	placement?: Placement
@@ -246,83 +64,76 @@ export type ViewInputs = Readonly<{
 	className?: string
 }>
 
+const TOOLTIP_OFFSET = 10
+const VIEWPORT_PADDING = 8
+
 export const view = Submodel.defineView<Model, Message, ViewInputs>((model, viewInputs, h) => {
-	const triggerAttributes = childAttributes([
-		h.Id(triggerId(model.id)),
-		h.OnMount(TrackTrigger()),
-		...(model.isOpen ? [h.Attribute("aria-describedby", tooltipId(model.id))] : []),
-	])
-	// The keyed slot stays in the trigger while the overlay inside it is portaled to <body>, so a
-	// sibling overlay opening in the same patch (the emoji picker) inserts before a node that is there.
-	return viewInputs.toTrigger(
-		triggerAttributes,
-		model.isOpen
-			? h.keyed("div")(
-					`tooltip-slot-${model.id}`,
-					[h.Style({ display: "contents" })],
-					[tooltipOverlay(model, viewInputs, h)],
-				)
-			: h.empty,
+	const anchor: AnchorConfig = {
+		placement: toAnchorPlacement(viewInputs.placement ?? "top"),
+		gap: viewInputs.offset ?? TOOLTIP_OFFSET,
+		padding: VIEWPORT_PADDING,
+	}
+	return FoldkitTooltip.view(
+		model,
+		{
+			anchor,
+			// The keyed slot stays in the trigger while the panel inside it is portaled to <body>, so a
+			// sibling overlay opening in the same patch (the emoji picker) inserts before a node that is there.
+			toView: ({ trigger, isVisible }) =>
+				viewInputs.toTrigger(
+					trigger,
+					isVisible
+						? h.keyed("div")(
+								`tooltip-slot-${model.id}`,
+								[h.Style({ display: "contents" })],
+								[panel(model.id, anchor, viewInputs, h)],
+							)
+						: h.empty,
+				),
+		},
+		h,
 	)
 })
 
-const TOOLTIP_OFFSET = 10
+const sideOf = (anchor: AnchorConfig) => {
+	const placement = anchor.placement ?? "top"
+	return placement.startsWith("top")
+		? "top"
+		: placement.startsWith("bottom")
+			? "bottom"
+			: placement.startsWith("left")
+				? "left"
+				: "right"
+}
 
-const tooltipOverlay = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder<Message>): Html => {
-	const inverse = viewInputs.inverse
-	const arrow = viewInputs.arrow ?? true
+const panel = (id: string, anchor: AnchorConfig, viewInputs: ViewInputs, h: HtmlBuilder<Message>): Html => {
+	const inverse = viewInputs.inverse ?? false
 	return h.div(
 		[
-			h.Attribute("data-overlay-container", "true"),
-			h.OnMount(
-				PortalTooltip({
-					id: model.id,
-					placement: viewInputs.placement ?? "top",
-					offset: viewInputs.offset ?? TOOLTIP_OFFSET,
-				}),
-			),
+			h.Id(tooltipId(id)),
+			h.Role("tooltip"),
+			h.Style({ position: "absolute", margin: "0", visibility: "hidden", pointerEvents: "none" }),
+			h.DataAttribute("open", ""),
+			h.Class(tooltipStyles({ inverse, side: sideOf(anchor), className: viewInputs.className })),
+			h.OnMount(AnchorTooltipPanel({ buttonId: triggerId(id), anchor, arrowId: arrowId(id) })),
 		],
 		[
-			h.div(
-				[
-					h.Class(
-						tooltipStyles({
-							isEntering: false,
-							isExiting: false,
-							inverse,
-							className: viewInputs.className,
-						}),
-					),
-					h.Id(tooltipId(model.id)),
-					h.Role("tooltip"),
-				],
-				[
-					...(arrow
-						? [
-								h.div(
-									[h.Class("group")],
-									[
-										h.svg(
-											[
-												h.Attribute("width", "12"),
-												h.Attribute("height", "12"),
-												h.Attribute("viewBox", "0 0 12 12"),
-												h.Class(
-													twJoin(
-														tooltipArrowBase,
-														inverse ? tooltipArrowInverse : tooltipArrowDefault,
-													),
-												),
-											],
-											[h.path([h.Attribute("d", "M0 0 L6 6 L12 0")])],
-										),
-									],
-								),
-							]
-						: []),
-					...viewInputs.content,
-				],
-			),
+			...((viewInputs.arrow ?? true)
+				? [
+						h.svg(
+							[
+								h.Id(arrowId(id)),
+								h.Attribute("width", "12"),
+								h.Attribute("height", "12"),
+								h.Attribute("viewBox", "0 0 12 12"),
+								h.AriaHidden(true),
+								h.Class(twJoin(tooltipArrowBase, inverse ? tooltipArrowInverse : tooltipArrowDefault)),
+							],
+							[h.path([h.Attribute("d", "M0 0 L6 6 L12 0")])],
+						),
+					]
+				: []),
+			...viewInputs.content,
 		],
 	)
 }
