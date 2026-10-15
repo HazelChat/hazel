@@ -59,7 +59,7 @@ const linkMenuMounted = Scene.Mount.resolve(FocusTriggerOnPress, Menu.Message.Co
 /** The add link modal is a controlled modal: its Mount result arrives already wrapped. */
 const addLinkModalMounted = Scene.Mount.resolve(
 	{ name: "PortalModal" },
-	Message.GotAddLinkModalMessage({ message: Modal.Message.CompletedPortalModal() }),
+	Message.GotAddLinkModalMessage({ message: Modal.Message.SucceededAcquireResources() }),
 )
 
 describe("connection states", () => {
@@ -117,7 +117,7 @@ describe("disconnect", () => {
 				}),
 			),
 			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 		)
 	})
 
@@ -138,7 +138,7 @@ describe("disconnect", () => {
 				}),
 			),
 			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 			Scene.expect(Scene.role("button", { name: "Disconnect" })).toBeEnabled(),
 		)
 	})
@@ -147,7 +147,7 @@ describe("disconnect", () => {
 describe("remove a channel link", () => {
 	const confirming = step(
 		{ ...withLink, deleteTarget: { id: linkId, name: "general" } },
-		Message.GotDeleteLinkModalMessage({ message: Modal.Message.ClickedTrigger() }),
+		Message.GotDeleteLinkModalMessage({ message: Modal.Message.RequestedOpen() }),
 	)
 
 	test("confirming removes the link, toasts and reloads the links", () => {
@@ -164,7 +164,7 @@ describe("remove a channel link", () => {
 				PageOutMessage.RequestedToast({ toast: successToast("Channel link removed") }),
 			),
 			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 			Scene.expect(Scene.text("Loading channel links...")).toExist(),
 			Scene.Mount.expectEnded(FocusTriggerOnPress),
 			Scene.Command.resolve(
@@ -230,7 +230,7 @@ describe("link a channel", () => {
 			),
 			Scene.expectOutMessage(PageOutMessage.RequestedToast({ toast: successToast("Channel linked") })),
 			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 			Scene.Command.resolve(
 				ListChannelLinks,
 				Message.SucceededListChannelLinks({ version: 2, links: [link] }),

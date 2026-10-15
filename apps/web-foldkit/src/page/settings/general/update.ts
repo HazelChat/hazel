@@ -202,6 +202,7 @@ const deleteModalFold = {
 			confirmationText: (text) => (deleteModal.isOpen ? text : ""),
 		}),
 	toParentMessage: (message: Modal.Message) => Message.GotDeleteModalMessage({ message }),
+	foldOutMessage: Modal.ignoreOutMessage,
 }
 const foldDeleteModal = Update.foldChild({ update: Modal.update, ...deleteModalFold })
 const openDeleteModal = Update.foldChildStep({ update: Modal.open, ...deleteModalFold })

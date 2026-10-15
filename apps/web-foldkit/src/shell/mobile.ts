@@ -3,7 +3,7 @@ import { twMerge } from "tailwind-merge"
 import { IconBell, IconDashboard, IconGear, IconMenu, IconMsgs } from "../icons"
 import { AppRoute, hrefOf } from "../route"
 import { button } from "../ui/button"
-import type * as Modal from "../ui/modal"
+import * as Modal from "../ui/modal"
 import * as Sheet from "../ui/sheet"
 import { isActiveFuzzy, type ShellContext } from "./context"
 
@@ -113,6 +113,10 @@ export const mobileMenuButton = <Message>(
 export const mobileSidebarPlaceholder = <Message>(h: HtmlBuilder<Message>): Html =>
 	h.span([h.Attribute("aria-hidden", "true"), h.Class("sr-only"), h.Attribute("data-intent", "default")])
 
+/** The sheet's Model, derived from the shell's `isSidebarOpen`: open for as long as the flag is set. */
+export const mobileSidebarModel = (isOpen: boolean): Modal.Model =>
+	isOpen ? Modal.initOpen(MOBILE_SIDEBAR_ID) : Modal.init(MOBILE_SIDEBAR_ID)
+
 /** `<Sidebar>` on mobile: a controlled left `SheetContent` labelled "Sidebar", without a close button. */
 export const mobileSidebarSheet = <Message>(
 	h: HtmlBuilder<Message>,
@@ -124,19 +128,15 @@ export const mobileSidebarSheet = <Message>(
 ): Html =>
 	h.submodel({
 		slotId: MOBILE_SIDEBAR_ID,
-		model: { id: MOBILE_SIDEBAR_ID, isOpen: options.isOpen },
+		model: mobileSidebarModel(options.isOpen),
 		view: Sheet.view,
 		viewInputs: {
-			// Controlled from the header and bottom nav, so the overlay renders without a trigger.
-			toTrigger: (_attributes, overlay) => overlay,
 			toContent: () => options.children,
 			side: "left",
 			closeButton: false,
 			ariaLabel: "Sidebar",
-			restoresFocusToPrevious: true,
-			overlayAttributes: { "data-slot": "sidebar", "data-intent": "default" },
-			className:
-				"w-(--sidebar-width) data-entering:blur-in data-exiting:blur-out [--sidebar-width:18rem] has-data-[slot=calendar]:[--sidebar-width:23rem]",
+			panelAttributes: { "data-slot": "sidebar", "data-intent": "default" },
+			className: "w-(--sidebar-width) [--sidebar-width:18rem] has-data-[slot=calendar]:[--sidebar-width:23rem]",
 		},
 		toParentMessage: options.toMessage,
 	})

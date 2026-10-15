@@ -70,6 +70,7 @@ const confirmModal = {
 				!modal.isOpen && confirm._tag === "Confirming" ? { _tag: "Closed" as const } : confirm,
 		}),
 	toParentMessage: (message: Modal.Message) => Message.GotConfirmModalMessage({ message }),
+	foldOutMessage: Modal.ignoreOutMessage,
 }
 const foldConfirmModal = Update.foldChild({ update: Modal.update, ...confirmModal })
 const openConfirmModal = Update.foldChildStep({ update: Modal.open, ...confirmModal })

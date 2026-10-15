@@ -249,7 +249,7 @@ describe("row removal", () => {
 			),
 			Scene.expectOutMessage(PageOutMessage.RequestedToast({ toast: successToast("Webhook deleted") })),
 			Scene.expect(confirmDialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 			Scene.Mount.expectEnded(FocusTriggerOnPress),
 			Scene.Command.resolve(ListWebhooks, Message.SucceededListWebhooks({ version: 2, webhooks: [] })),
 			Scene.expect(Scene.text("No webhooks yet")).toExist(),

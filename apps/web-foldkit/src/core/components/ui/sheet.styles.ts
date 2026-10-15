@@ -17,23 +17,18 @@ const generateCompoundVariants = (sides: Array<Sides>) => {
 	}))
 }
 
+/** The panel slides in from its side and the backdrop fades, both from `@starting-style` (200ms). */
 export const sheetContentStyles = tv({
 	base: [
 		"fixed z-50 grid gap-4 border-muted-fg/20 bg-overlay text-overlay-fg shadow-lg dark:border-border",
-		"transform-gpu transition ease-in-out will-change-transform",
+		"transform-gpu transition-[opacity,translate] duration-200 ease-out starting:opacity-0",
 	],
 	variants: {
-		isEntering: {
-			true: "fade-in animate-in duration-500",
-		},
-		isExiting: {
-			true: "fade-in animate-out duration-300",
-		},
 		side: {
-			top: "data-entering:slide-in-from-top data-exiting:slide-out-to-top inset-x-0 top-0 rounded-b-2xl border-b",
-			bottom: "data-entering:slide-in-from-bottom data-exiting:slide-out-to-bottom inset-x-0 bottom-0 rounded-t-2xl border-t",
-			left: "data-entering:slide-in-from-left data-exiting:slide-out-to-left-80 inset-y-0 left-0 h-auto w-3/4 overflow-y-auto border-r sm:max-w-80",
-			right: "data-entering:slide-in-from-right data-exiting:slide-out-to-right-80 inset-y-0 right-0 h-auto w-3/4 overflow-y-auto border-l sm:max-w-80",
+			top: "inset-x-0 top-0 rounded-b-2xl border-b starting:-translate-y-full",
+			bottom: "inset-x-0 bottom-0 rounded-t-2xl border-t starting:translate-y-full",
+			left: "inset-y-0 left-0 h-auto w-3/4 overflow-y-auto border-r starting:-translate-x-full sm:max-w-80",
+			right: "inset-y-0 right-0 h-auto w-3/4 overflow-y-auto border-l starting:translate-x-full sm:max-w-80",
 		},
 		isFloat: {
 			false: "border-fg/20 dark:border-border",
@@ -43,12 +38,7 @@ export const sheetContentStyles = tv({
 	compoundVariants: generateCompoundVariants(["top", "bottom", "left", "right"]),
 })
 
-export const sheetOverlayClassName = (isEntering: boolean, isExiting: boolean, isBlurred: boolean) =>
-	twJoin(
-		"fixed inset-0 z-50 h-(--visual-viewport-height,100vh) w-screen overflow-hidden bg-overlay-backdrop",
-		isEntering && "fade-in animate-in duration-500",
-		isExiting && "fade-out animate-out duration-300",
-		isBlurred && "backdrop-blur-sm backdrop-filter",
-	)
+export const sheetBackdropClassName =
+	"fixed inset-0 h-dvh w-screen overflow-hidden bg-overlay-backdrop transition-opacity duration-200 ease-out starting:opacity-0"
 
 export const sheetCloseIconClassName = "top-2.5 right-2.5"

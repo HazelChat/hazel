@@ -1,89 +1,60 @@
 // @vitest-environment jsdom
-import { Command, given, message, model, story } from "foldkit/story"
+import { Command, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
-import { close, closed, init, Message, open, opened, update } from "./modal"
+import {
+	CloseDialog,
+	close,
+	init,
+	initOpen,
+	isCloseRequest,
+	isReady,
+	Message,
+	OutMessage,
+	open,
+	ShowDialog,
+	update,
+} from "./modal"
 
-/** React Aria DialogTrigger + Modal: the trigger opens, close, Escape and outside presses dismiss. */
-
-const closedModal = init("rename")
-const openModal = { ...closedModal, isOpen: true }
+/** Modal on @foldkit/ui Dialog: opening shows the native dialog, closing closes it, both announced. */
 
 describe("modal story", () => {
-	test("a new modal starts closed", () => {
-		story(
-			update,
-			given(closedModal),
-			model((next) => expect(next).toEqual({ id: "rename", isOpen: false })),
-		)
+	test("a new modal starts closed; initOpen is the open Model", () => {
+		expect(init("rename").isOpen).toBe(false)
+		expect(initOpen("rename").isOpen).toBe(true)
 	})
 
-	test("pressing the trigger opens the modal and runs no Commands", () => {
+	test("a request to open shows the dialog and emits Opened", () => {
 		story(
 			update,
-			given(closedModal),
-			message(Message.ClickedTrigger()),
-			Command.expectNone(),
+			given(init("rename")),
+			message(Message.RequestedOpen()),
+			expectOutMessage(OutMessage.Opened()),
+			Command.resolve(ShowDialog, Message.SucceededShowDialog()),
 			model((next) => expect(next.isOpen).toBe(true)),
 		)
 	})
 
-	test("pressing the trigger again keeps an open modal open", () => {
+	test("a request to close closes the dialog and emits Closed", () => {
 		story(
 			update,
-			given(openModal),
-			message(Message.ClickedTrigger()),
-			model((next) => expect(next.isOpen).toBe(true)),
-		)
-	})
-
-	test("the close button closes the modal", () => {
-		story(
-			update,
-			given(openModal),
-			message(Message.ClickedClose()),
+			given(initOpen("rename")),
+			message(Message.RequestedClose()),
+			expectOutMessage(OutMessage.Closed()),
+			Command.resolve(CloseDialog, Message.CompletedCloseDialog()),
 			model((next) => expect(next.isOpen).toBe(false)),
 		)
 	})
 
-	test("Escape closes the modal", () => {
-		story(
-			update,
-			given(openModal),
-			message(Message.PressedEscape()),
-			model((next) => expect(next.isOpen).toBe(false)),
-		)
+	test("open and close from the parent match the Messages", () => {
+		expect(open(init("rename")).model.isOpen).toBe(true)
+		expect(close(initOpen("rename")).model.isOpen).toBe(false)
+		expect(close(initOpen("rename")).outMessage).toEqual(OutMessage.Closed())
 	})
 
-	test("a press outside the modal closes it", () => {
-		story(
-			update,
-			given(openModal),
-			message(Message.PressedOutside()),
-			Command.expectNone(),
-			model((next) => expect(next.isOpen).toBe(false)),
-		)
-	})
-
-	test("the portal finishing its mount leaves the modal as it was", () => {
-		story(
-			update,
-			given(openModal),
-			message(Message.CompletedPortalModal()),
-			model((next) => expect(next).toEqual(openModal)),
-		)
-	})
-
-	test("a parent can open and close the modal without a Message", () => {
-		expect(open(closedModal).model.isOpen).toBe(true)
-		expect(close(openModal).model.isOpen).toBe(false)
-		expect(open(closedModal).commands).toBeUndefined()
-	})
-})
-
-describe("modal parent helpers", () => {
-	test("opened and closed return the Model that open and close carry, without Commands to drop", () => {
-		expect(opened(closedModal)).toEqual(open(closedModal).model)
-		expect(open(closedModal).commands ?? []).toEqual([])
-		expect(closed(opened(closedModal))).toEqual(close(opened(closedModal)).model)
+	test("isCloseRequest and isReady name the Messages parents react to", () => {
+		expect(isCloseRequest(Message.RequestedClose())).toBe(true)
+		expect(isCloseRequest(Message.SucceededAcquireResources())).toBe(false)
+		expect(isReady(Message.SucceededAcquireResources())).toBe(true)
+		expect(isReady(Message.RequestedClose())).toBe(false)
 	})
 })

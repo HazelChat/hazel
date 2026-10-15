@@ -127,6 +127,7 @@ const addModal = {
 					isGuildSearchFocused: () => false,
 				}),
 	toParentMessage: (message: Modal.Message) => Message.GotAddModalMessage({ message }),
+	foldOutMessage: Modal.ignoreOutMessage,
 }
 const foldAddModalChild = Update.foldChild({ update: Modal.update, ...addModal })
 const openAddModal = Update.foldChildStep({ update: Modal.open, ...addModal })
@@ -136,7 +137,7 @@ const closeAddModal = Update.foldChildStep({ update: Modal.close, ...addModal })
 const foldAddModal = (model: Model, message: Modal.Message): Return => {
 	const result = foldAddModalChild(model, message)
 	const focus =
-		result.model.addModal.isOpen && message._tag === "CompletedPortalModal" && hasGuildSearch(model)
+		result.model.addModal.isOpen && Modal.isReady(message) && hasGuildSearch(model)
 			? [FocusGuildSearch()]
 			: []
 	return { model: result.model, commands: [...(result.commands ?? []), ...focus] }
@@ -198,6 +199,7 @@ const deleteModal = {
 			deleteTarget: (target) => (modal.isOpen ? target : null),
 		}),
 	toParentMessage: (message: Modal.Message) => Message.GotDeleteModalMessage({ message }),
+	foldOutMessage: Modal.ignoreOutMessage,
 }
 const foldDeleteModal = Update.foldChild({ update: Modal.update, ...deleteModal })
 const openDeleteModal = Update.foldChildStep({ update: Modal.open, ...deleteModal })

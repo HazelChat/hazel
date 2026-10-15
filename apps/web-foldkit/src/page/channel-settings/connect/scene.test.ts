@@ -75,7 +75,7 @@ describe("share channel", () => {
 			Scene.Command.resolve(ShareModal.CreateInvite, ShareModal.Message.SucceededCreateInvite()),
 			Scene.expectOutMessage(PageOutMessage.RequestedToast({ toast: successToast("Invite sent") })),
 			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 			Scene.Command.resolve(
 				ListOutgoingInvites,
 				Message.SucceededListOutgoingInvites({ organizationId, invites: [pendingInvite] }),
@@ -105,7 +105,7 @@ describe("share channel", () => {
 			Scene.expect(Scene.text("No public workspaces found")).toExist(),
 			Scene.click(Scene.within(dialog, Scene.role("button", { name: "Cancel" }))),
 			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 		)
 	})
 })

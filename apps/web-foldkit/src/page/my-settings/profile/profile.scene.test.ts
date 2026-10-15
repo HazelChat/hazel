@@ -90,7 +90,7 @@ const dialog = Scene.role("dialog")
 const cropModalMounted = Scene.Mount.resolve(
 	// Name-only matcher: the Mount is wrapped by mapMessage, so its typed result is the parent Message.
 	{ name: "PortalModal" },
-	Message.GotCropModalMessage({ message: Modal.Message.CompletedPortalModal() }),
+	Message.GotCropModalMessage({ message: Modal.Message.SucceededAcquireResources() }),
 )
 const toastOf = (intent: "success" | "error", title: string, description: string | null = null) =>
 	PageOutMessage.RequestedToast({ toast: { intent, title, description } })
@@ -172,7 +172,7 @@ describe("avatar crop dialog scene", () => {
 			Scene.expect(Scene.within(dialog, Scene.role("button", { name: "Saving..." }))).toBeDisabled(),
 			Scene.Command.resolve(CropAvatarImage, Message.CompletedCropImage({ blob: new Blob(["webp"]) })),
 			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 			Scene.expect(Scene.text("Uploading...")).toExist(),
 			Scene.expect(Scene.role("button", { name: "Remove photo" })).toBeDisabled(),
 			Scene.Command.resolveAll(
@@ -195,7 +195,7 @@ describe("avatar crop dialog scene", () => {
 			...openCrop,
 			Scene.click(Scene.within(dialog, Scene.role("button", { name: "Cancel" }))),
 			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 			Scene.Command.expectExact(RevokeCropImage({ src: "blob:me" })),
 			Scene.Command.resolve(RevokeCropImage, Message.CompletedRevokeCropImage()),
 		)

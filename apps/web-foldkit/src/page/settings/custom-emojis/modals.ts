@@ -40,7 +40,6 @@ export const deleteEmojiModal = (h: HtmlBuilder<Message>, model: Model): Html =>
 		model: model.deleteModal,
 		view: Modal.view,
 		viewInputs: {
-			toTrigger: (_attributes, overlay) => overlay,
 			toContent: (closeAttributes) => [
 				innerDialog(h, id, [
 					dialogHeader(h, {}, [
@@ -86,7 +85,6 @@ export const restoreEmojiModal = (h: HtmlBuilder<Message>, model: Model): Html =
 		model: model.restoreModal,
 		view: Modal.view,
 		viewInputs: {
-			toTrigger: (_attributes, overlay) => overlay,
 			toContent: (closeAttributes) => [
 				innerDialog(h, id, [
 					dialogHeader(h, {}, [

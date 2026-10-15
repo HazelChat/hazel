@@ -119,7 +119,7 @@ describe("delete workspace", () => {
 			Scene.expect(confirmDelete).toBeEnabled(),
 			Scene.click(Scene.within(dialog, Scene.role("button", { name: "Cancel" }))),
 			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 		)
 	})
 
@@ -142,7 +142,7 @@ describe("delete workspace", () => {
 				}),
 			),
 			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 		)
 	})
 

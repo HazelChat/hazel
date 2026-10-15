@@ -63,7 +63,7 @@ export const pageScene = <Model, Message>(
 })
 
 /** Acknowledges the overlay Mount every open `ui/modal` dialog renders. */
-export const portalModalMounted = Scene.Mount.resolve(Modal.PortalModal, Modal.Message.CompletedPortalModal())
+export const portalModalMounted = Scene.Mount.resolve(Modal.AcquireResources, Modal.Message.SucceededAcquireResources())
 
 /** A server failure toast, as a Command's `failureToast` would build it. */
 export const failureToastFixture: ToastRequest = {

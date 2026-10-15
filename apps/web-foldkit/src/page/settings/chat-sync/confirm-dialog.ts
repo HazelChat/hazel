@@ -31,8 +31,6 @@ export const confirmDialog = <Message>(
 		model: options.modal,
 		view: Modal.view,
 		viewInputs: {
-			// Controlled `isOpen` with no DialogTrigger.
-			toTrigger: (_attributes, overlay) => overlay,
 			size: "md",
 			toContent: (closeAttributes) => [
 				dialog(h, { id: `${options.slotId}-inner`, role: "dialog", labelledBy: titleId }, [

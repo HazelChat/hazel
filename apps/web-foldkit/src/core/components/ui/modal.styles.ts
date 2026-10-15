@@ -16,29 +16,32 @@ export const modalSizes = {
 
 export type ModalSize = keyof typeof modalSizes
 
-export const modalOverlayClassName = (size: ModalSize, isBlurred: boolean) =>
+/**
+ * Overlay motion: panels and backdrops fade (and scale or slide) in from `@starting-style` when they
+ * render, in 200ms. `prefers-reduced-motion` collapses every transition in `styles.css`.
+ */
+export const modalBackdropClassName =
+	"fixed inset-0 bg-overlay-backdrop transition-opacity duration-200 ease-out starting:opacity-0"
+
+/** Centers the panel (bottom-anchored on small screens); clicks outside the panel reach the backdrop. */
+export const modalLayoutClassName = (size: ModalSize) =>
 	twJoin(
-		"fixed inset-0 z-50 h-(--visual-viewport-height,100vh) bg-overlay-backdrop",
-		"grid grid-rows-[1fr_auto] justify-items-center sm:grid-rows-[1fr_auto_3fr]",
+		"pointer-events-none fixed inset-0 grid h-dvh grid-rows-[1fr_auto] justify-items-center sm:grid-rows-[1fr_auto_3fr]",
 		size === "fullscreen" ? "md:p-3" : "md:p-4",
-		"data-entering:fade-in data-entering:animate-in data-entering:duration-300 data-entering:ease-out",
-		"data-exiting:fade-out data-exiting:animate-out data-exiting:ease-in",
-		isBlurred && "backdrop-blur-[1px]",
 	)
 
-/** The `cx` arguments of the modal panel, before the caller's `className`. */
+/** The `twMerge` arguments of the modal panel, before the caller's `className`. */
 export const modalContentBase = (size: ModalSize) =>
 	[
-		"row-start-2 w-full text-left align-middle",
+		"pointer-events-auto row-start-2 flex w-full flex-col text-left align-middle",
 		"[--visual-viewport-vertical-padding:16px]",
 		size === "fullscreen"
 			? "sm:rounded-md sm:[--visual-viewport-vertical-padding:16px]"
 			: "sm:rounded-xl sm:[--visual-viewport-vertical-padding:32px]",
+		"max-h-[calc(100dvh-var(--visual-viewport-vertical-padding))]",
 		"relative overflow-hidden bg-overlay text-overlay-fg",
 		"rounded-t-2xl shadow-lg ring ring-fg/5 dark:ring-border",
 		modalSizes[size],
-		// Ensure scale animation originates from center for proper visual effect
-		"origin-center",
-		"data-entering:slide-in-from-bottom sm:data-entering:zoom-in-95 sm:data-entering:slide-in-from-bottom-0 data-entering:animate-in data-entering:duration-300 data-entering:ease-out",
-		"data-exiting:slide-out-to-bottom sm:data-exiting:zoom-out-95 sm:data-exiting:slide-out-to-bottom-0 data-exiting:animate-out data-exiting:ease-in",
+		"origin-center transition-[opacity,translate,scale] duration-200 ease-out",
+		"starting:translate-y-4 starting:opacity-0 sm:starting:translate-y-0 sm:starting:scale-95",
 	] as const

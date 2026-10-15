@@ -9,7 +9,7 @@ import * as Menu from "../ui/menu"
 import * as Modal from "../ui/modal"
 import * as ChannelsSidebar from "./channels-sidebar"
 import { ORG_SWITCHER_ID, orgSwitcherEntries, USER_MENU_ID, userMenuEntries } from "./menus"
-import { MOBILE_SIDEBAR_ID } from "./mobile"
+import { mobileSidebarModel } from "./mobile"
 import * as Notifications from "./notifications"
 import { Message, type Model } from "./model"
 
@@ -213,7 +213,7 @@ export const update = (model: Model, message: Message, context: Context): ShellU
 		ToggledSidebar: ({ isOpen }) => ({ model: modifyFields(model, { isSidebarOpen: () => isOpen }) }),
 		ChangedViewport: ({ isMobile }) => ({ model: modifyFields(model, { isMobile: () => isMobile }) }),
 		GotMobileSidebarMessage: ({ message }) => {
-			const sheet = Modal.update({ id: MOBILE_SIDEBAR_ID, isOpen: model.isSidebarOpen }, message)
+			const sheet = Modal.update(mobileSidebarModel(model.isSidebarOpen), message)
 			return {
 				model: modifyFields(model, { isSidebarOpen: () => sheet.model.isOpen }),
 				commands: Command.mapMessages(sheet.commands ?? [], (child) =>

@@ -10,7 +10,7 @@ export const dialogDescriptionBase =
 	"text-pretty text-base/6 text-muted-fg group-data-disabled:opacity-50 sm:text-sm/6"
 
 export const dialogBodyBase = [
-	"isolate flex max-h-[calc(var(--visual-viewport-height)-var(--visual-viewport-vertical-padding)-var(--dialog-header-height,0px)-var(--dialog-footer-height,0px))] flex-1 flex-col overflow-auto px-(--gutter) py-1",
+	"isolate flex min-h-0 flex-1 flex-col overflow-auto px-(--gutter) py-1",
 	"**:data-[slot=dialog-footer]:px-0 **:data-[slot=dialog-footer]:pt-0",
 ] as const
 

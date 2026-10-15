@@ -20,25 +20,11 @@ type FrameMessage = KitModal.Message
 
 export const initFrame = (id: string): Frame => ({ id })
 
-/** The frame's Dismiss, close icon, Escape or outside press. */
-export const isCloseRequest = (message: FrameMessage): boolean =>
-	KitModal.Message.match<boolean>(message, {
-		ClickedTrigger: () => false,
-		ClickedClose: () => true,
-		PressedEscape: () => true,
-		PressedOutside: () => true,
-		CompletedPortalModal: () => false,
-	})
+/** The frame's close icon, a close button, Escape or a press on the backdrop. */
+export const isCloseRequest = KitModal.isCloseRequest
 
-/** The frame has portaled and moved focus into its dialog: the moment for a field's `autoFocus`. */
-export const isPortalReady = (message: FrameMessage): boolean =>
-	KitModal.Message.match<boolean>(message, {
-		ClickedTrigger: () => false,
-		ClickedClose: () => false,
-		PressedEscape: () => false,
-		PressedOutside: () => false,
-		CompletedPortalModal: () => true,
-	})
+/** The frame's dialog rendered and moved focus in: the moment for a field's `autoFocus`. */
+export const isPortalReady = KitModal.isReady
 
 export interface FrameOptions {
 	readonly size?: ModalSize
@@ -57,9 +43,9 @@ export const frameView = <Message>(
 ): Html =>
 	h.submodel({
 		slotId: frame.id,
-		model: KitModal.opened(KitModal.init(frame.id)),
+		model: KitModal.initOpen(frame.id),
 		view: KitModal.view,
-		viewInputs: { toTrigger: (_attributes, overlay) => overlay, toContent, ...options },
+		viewInputs: { toContent, ...options },
 		toParentMessage,
 	})
 

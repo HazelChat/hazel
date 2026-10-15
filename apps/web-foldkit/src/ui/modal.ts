@@ -1,226 +1,181 @@
-import { Effect, Option, Queue, Schema, Stream } from "effect"
-import { Mount, Submodel, type Update } from "foldkit"
-import { type ChildAttribute, childAttributes, type Html, type HtmlBuilder } from "foldkit/html"
-import { defineMessageUnion } from "foldkit/message"
-import { modifyFields } from "foldkit/struct"
+import { Dialog } from "@foldkit/ui"
+import { Submodel } from "foldkit"
+import type { ChildAttribute, Html, HtmlBuilder } from "foldkit/html"
 import { twMerge } from "tailwind-merge"
-import { type ModalSize, modalContentBase, modalOverlayClassName } from "~/components/ui/modal.styles"
 import {
-	containFocus,
-	dismissButton,
-	observeDialogParts,
-	portalOverlay,
-	restoreFocusTo,
-	restoreFocusToPrevious,
-	trackViewportHeight,
-	watchInteractOutside,
-} from "./aria/overlay"
-import { dialog, dialogCloseIcon } from "./dialog"
+	type ModalSize,
+	modalBackdropClassName,
+	modalContentBase,
+	modalLayoutClassName,
+} from "~/components/ui/modal.styles"
+import { dialogCloseIcon, dialogSection } from "./dialog"
 
-/** Port of `components/ui/modal.tsx` (React Aria DialogTrigger + ModalOverlay + Modal + Dialog). */
+/**
+ * A modal dialog on @foldkit/ui Dialog: a native `<dialog>` that isolates the page, locks scroll,
+ * traps focus, closes on Escape and returns focus when it closes. The panel fades and scales in
+ * through `@starting-style`, so modals that exist only while open (the app's modal host) animate too.
+ * Sheet shares this Model, Message and update; only its panel differs.
+ */
 
 // MODEL
 
-export const Model = Schema.Struct({ id: Schema.String, isOpen: Schema.Boolean })
-export type Model = typeof Model.Type
+export const Model = Dialog.Model
+export type Model = Dialog.Model
 
-export const init = (id: string): Model => ({ id, isOpen: false })
+export type InitConfig = Readonly<{
+	/** A selector for the element focused on open, in place of the first focusable one. */
+	focusSelector?: string
+}>
+
+export const init = (id: string, config: InitConfig = {}): Model => Dialog.init({ id, ...config })
+
+/**
+ * The open Model of a modal whose parent keeps no Model (a modal open for as long as it renders, or
+ * one derived from a parent's flag). Its Mount takes the dialog resources; removal releases them.
+ */
+export const initOpen = (id: string): Model => ({ ...init(id), isOpen: true })
 
 // MESSAGE
 
-export const Message = defineMessageUnion({
-	ClickedTrigger: {},
-	ClickedClose: {},
-	PressedEscape: {},
-	PressedOutside: {},
-	CompletedPortalModal: {},
-})
-export type Message = typeof Message.Type
+export const Message = Dialog.Message
+export type Message = Dialog.Message
 
-export const triggerId = (id: string) => `${id}-trigger`
-export const dialogId = (id: string) => `${id}-dialog`
-export const titleId = (id: string) => `${id}-title`
+export const OutMessage = Dialog.OutMessage
+export type OutMessage = Dialog.OutMessage
+
+/** The Mount on the `<dialog>` that acquires its resources once it renders open. */
+export const AcquireResources = Dialog.AcquireResources
+export const ShowDialog = Dialog.ShowDialog
+export const CloseDialog = Dialog.CloseDialog
+
+export const titleId = (id: string): string => Dialog.titleId(init(id))
+export const dialogId = (id: string): string => `${id}-content`
+
+/** The modal asked to close: its close button, close icon, Escape or a press on the backdrop. */
+export const isCloseRequest = (message: Message): boolean => Message.guards.RequestedClose(message)
+
+/** The dialog rendered open and moved focus in: the moment for a field's autofocus. */
+export const isReady = (message: Message): boolean =>
+	Message.guards.SucceededAcquireResources(message)
 
 // UPDATE
 
-/** The open Model, for parents that set `isOpen` without folding Commands (prefer it to `open(m).model`). */
-export const opened = (model: Model): Model => modifyFields(model, { isOpen: () => true })
-/** The closed Model; `close(m).model` callers should use this, since `.model` drops Commands. */
-export const closed = (model: Model): Model => modifyFields(model, { isOpen: () => false })
+export const update = Dialog.update
+/** Opens the modal from the parent; fold it with `Update.foldChildStep`. */
+export const open = Dialog.open
+/** Closes the modal from the parent; fold it with `Update.foldChildStep`. */
+export const close = Dialog.close
 
-export const update = (model: Model, message: Message): Update.Return<Model, Message> =>
-	Message.match<Update.Return<Model, Message>>(message, {
-		ClickedTrigger: () => ({ model: opened(model) }),
-		ClickedClose: () => ({ model: closed(model) }),
-		PressedEscape: () => ({ model: closed(model) }),
-		PressedOutside: () => ({ model: closed(model) }),
-		CompletedPortalModal: () => ({ model }),
-	})
-
-/** Opens the modal from the parent (controlled `isOpen`). */
-export const open = (model: Model): Update.Return<Model, Message> => ({ model: opened(model) })
-/** Closes the modal from the parent. */
-export const close = (model: Model): Update.Return<Model, Message> => ({ model: closed(model) })
-
-// MOUNT
-
-type PortalModalMessage = Extract<Message, { _tag: "CompletedPortalModal" | "PressedOutside" }>
-
-/** The Overlay + ModalOverlay + FocusScope behavior shared by Modal and Sheet. */
-export const PortalModal = Mount.defineStream("PortalModal", {
-	/** `restoresToPrevious`: a controlled overlay with no trigger returns focus to what had it before. */
-	/** `autoFocusId`: an `autoFocus` element, focused on mount in place of the dialog (useDialog skips it then). */
-	args: {
-		id: Schema.String,
-		isDismissable: Schema.Boolean,
-		restoresToPrevious: Schema.Boolean,
-		autoFocusId: Schema.NullOr(Schema.String),
-	},
-	messages: [Message.CompletedPortalModal, Message.PressedOutside],
-	execute: ({ element, id, isDismissable, restoresToPrevious, autoFocusId }) =>
-		Stream.callback<PortalModalMessage>((queue) =>
-			Effect.acquireRelease(
-				Effect.sync(() => {
-					const restoreFocus = restoresToPrevious
-						? restoreFocusToPrevious(element)
-						: restoreFocusTo(triggerId(id), element)
-					const releasePortal = portalOverlay(element, { isModal: true, inertAfterPaint: true })
-					const overlay = element.querySelector<HTMLElement>("[data-modal-overlay]")
-					const releaseViewport = overlay ? trackViewportHeight(overlay) : () => undefined
-					const releaseParts = observeDialogParts(element)
-					const autoFocus = autoFocusId === null ? null : document.getElementById(autoFocusId)
-					const initialFocus = autoFocus ?? document.getElementById(dialogId(id))
-					initialFocus?.focus({ preventScroll: true })
-					const releaseFocus = containFocus(element)
-					const releaseOutside = isDismissable
-						? watchInteractOutside(`[data-modal-content="${CSS.escape(id)}"]`, () =>
-								Queue.offerUnsafe(queue, Message.PressedOutside()),
-							)
-						: () => undefined
-					Queue.offerUnsafe(queue, Message.CompletedPortalModal())
-					return () => {
-						releaseOutside()
-						releaseFocus()
-						releaseParts()
-						releaseViewport()
-						releasePortal()
-						restoreFocus()
-					}
-				}),
-				(release) => Effect.sync(release),
-			).pipe(Effect.flatMap(() => Effect.never)),
-		),
-})
+/** A `foldOutMessage` for a parent that reads `isOpen` rather than reacting to Opened or Closed. */
+export const ignoreOutMessage =
+	(_outMessage: OutMessage) =>
+	<ParentModel>(model: ParentModel) => ({ model })
 
 // VIEW
 
-export type ViewInputs = Readonly<{
-	/** Renders the trigger (DialogTrigger child). Spread `attributes` on it and put `overlay` last. */
-	toTrigger: (attributes: ReadonlyArray<ChildAttribute>, overlay: Html) => Html
+export type Role = "dialog" | "alertdialog"
+
+/** What Modal and Sheet share: the role, dismissal and the content. */
+export type DialogInputs = Readonly<{
 	/** Dialog content; spread `closeAttributes` on ModalClose buttons. */
 	toContent: (closeAttributes: ReadonlyArray<ChildAttribute>) => ReadonlyArray<Html>
-	size?: ModalSize
-	role?: "dialog" | "alertdialog"
+	role?: Role
+	/** Defaults to true for a dialog and false for an alertdialog. */
 	isDismissable?: boolean
 	isBlurred?: boolean
 	closeButton?: boolean
 	className?: string
-	/** The id of the content's `autoFocus` element. */
-	autoFocusId?: string
-	/** A controlled Modal opened from an element outside DialogTrigger: FocusScope restores focus to it. */
-	restoresFocusToPrevious?: boolean
+	/** `aria-label` on the dialog; without it the dialog is labelled by its title (`titleId`). */
+	ariaLabel?: string
 }>
 
-export const view = Submodel.defineView<Model, Message, ViewInputs>((model, viewInputs, h) => {
-	const triggerAttributes = childAttributes([
-		...(model.isOpen ? [h.Attribute("aria-controls", dialogId(model.id))] : []),
-		h.Attribute("aria-expanded", model.isOpen ? "true" : "false"),
-		...(model.isOpen ? [h.Attribute("data-pressed", "true")] : []),
-		h.Id(triggerId(model.id)),
-		h.OnClick(Message.ClickedTrigger()),
-	])
-	return viewInputs.toTrigger(
-		triggerAttributes,
-		model.isOpen ? modalOverlay(model, viewInputs, h, (message) => message) : h.empty,
-	)
+export type ViewInputs = DialogInputs & Readonly<{ size?: ModalSize }>
+
+type Parts = Readonly<{
+	backdropClassName: string
+	layoutClassName: string | null
+	panelClassName: string
+	closeIconClassName?: string
+	panelAttributes?: ReadonlyArray<ChildAttribute>
+}>
+
+/** The `<dialog>` Modal and Sheet render: a backdrop, then the panel above it (not inside it). */
+export const dialogView = <M>(
+	h: HtmlBuilder<M>,
+	model: Model,
+	inputs: DialogInputs,
+	parts: Parts,
+	toParentMessage: (message: Message) => M,
+): Html =>
+	h.submodel({
+		slotId: model.id,
+		model,
+		view: Dialog.view,
+		viewInputs: {
+			toView: (render: Dialog.RenderInfo) => {
+				const role = inputs.role ?? "dialog"
+				const isDismissable = inputs.isDismissable ?? role !== "alertdialog"
+				const panel = h.div(
+					[
+						...render.panel,
+						h.Class(twMerge(parts.panelClassName, inputs.className)),
+						h.DataAttribute("slot", "modal-content"),
+						...(parts.panelAttributes ?? []),
+					],
+					[
+						dialogSection(h, { id: dialogId(model.id) }, [
+							...inputs.toContent(render.closeButton),
+							...((inputs.closeButton ?? true) && isDismissable
+								? [dialogCloseIcon(h, render.closeButton, parts.closeIconClassName)]
+								: []),
+						]),
+					],
+				)
+				// Rendered only while visible, so every open inserts a fresh `<dialog>` whose Mount takes
+				// the dialog resources, and every close removes it and releases them, whether or not the
+				// parent keeps the Model.
+				if (!render.isVisible) return h.empty
+				return h.dialog(
+					[
+						...render.dialog,
+						...(role === "alertdialog" ? [h.Role("alertdialog")] : []),
+						...(inputs.ariaLabel === undefined ? [] : [h.AriaLabel(inputs.ariaLabel)]),
+						h.Class("m-0 overflow-visible bg-transparent p-0"),
+					],
+					[
+						h.div([
+							...(isDismissable ? render.backdrop : []),
+							h.Class(
+								twMerge(parts.backdropClassName, (inputs.isBlurred ?? false) && "backdrop-blur-[1px]"),
+							),
+							h.DataAttribute("slot", "modal-overlay"),
+						]),
+						parts.layoutClassName === null ? panel : h.div([h.Class(parts.layoutClassName)], [panel]),
+					],
+				)
+			},
+		},
+		toParentMessage,
+	})
+
+const modalParts = (size: ModalSize): Parts => ({
+	backdropClassName: modalBackdropClassName,
+	layoutClassName: modalLayoutClassName(size),
+	panelClassName: twMerge(...modalContentBase(size)),
 })
 
-/**
- * A controlled Modal (`<Modal isOpen>` with no DialogTrigger) rendered in the parent's view, so the
- * content can carry the parent's Messages; the Modal's own Messages go through `toParentMessage`.
- */
+/** The modal as a Submodel view: `h.submodel({ model, view: Modal.view, viewInputs, toParentMessage })`. */
+export const view = Submodel.defineView<Model, Message, ViewInputs>((model, viewInputs, h) =>
+	dialogView(h, model, viewInputs, modalParts(viewInputs.size ?? "lg"), (message) => message),
+)
+
+/** The modal rendered straight from the parent's view, its Messages wrapped by `toParentMessage`. */
 export const controlledModal = <ParentMessage>(
 	h: HtmlBuilder<ParentMessage>,
-	options: Omit<ViewInputs, "toTrigger"> & {
-		readonly model: Model
-		readonly toParentMessage: (message: Message) => ParentMessage
-	},
-): Html => (options.model.isOpen ? modalOverlay(options.model, options, h, options.toParentMessage) : h.empty)
-
-const modalOverlay = <ParentMessage>(
-	model: Model,
-	viewInputs: Omit<ViewInputs, "toTrigger">,
-	h: HtmlBuilder<ParentMessage>,
-	send: (message: Message) => ParentMessage,
-): Html => {
-	const size = viewInputs.size ?? "lg"
-	const role = viewInputs.role ?? "dialog"
-	const isDismissable = viewInputs.isDismissable ?? role !== "alertdialog"
-	const closeAttributes = childAttributes([h.OnClick(send(Message.ClickedClose()))])
-	return h.div(
-		[
-			h.Attribute("style", "display: contents;"),
-			h.OnMount(
-				Mount.mapMessage(
-					PortalModal({
-						id: model.id,
-						isDismissable,
-						restoresToPrevious: viewInputs.restoresFocusToPrevious ?? false,
-						autoFocusId: viewInputs.autoFocusId ?? null,
-					}),
-					send,
-				),
-			),
-			h.OnKeyDownPreventDefault((key) =>
-				key === "Escape" ? Option.some(send(Message.PressedEscape())) : Option.none(),
-			),
-		],
-		[
-			h.span([
-				h.Attribute("data-focus-scope-start", "true"),
-				h.Attribute("hidden", ""),
-				h.Attribute("inert", ""),
-			]),
-			h.div(
-				[
-					h.Class(modalOverlayClassName(size, viewInputs.isBlurred ?? false)),
-					h.Attribute("data-modal-overlay", ""),
-					h.Attribute("data-slot", "modal-overlay"),
-				],
-				[
-					h.div(
-						[
-							h.Class(twMerge(twMerge(...modalContentBase(size)), viewInputs.className)),
-							h.Attribute("data-modal-content", model.id),
-							h.Attribute("data-slot", "modal-content"),
-						],
-						[
-							...(isDismissable ? [dismissButton(h, send(Message.ClickedClose()))] : []),
-							dialog(h, { id: dialogId(model.id), role, labelledBy: titleId(model.id) }, [
-								...viewInputs.toContent(closeAttributes),
-								...((viewInputs.closeButton ?? true) && isDismissable
-									? [dialogCloseIcon(h, closeAttributes)]
-									: []),
-							]),
-						],
-					),
-				],
-			),
-			h.span([
-				h.Attribute("data-focus-scope-end", "true"),
-				h.Attribute("hidden", ""),
-				h.Attribute("inert", ""),
-			]),
-		],
-	)
-}
+	options: ViewInputs &
+		Readonly<{
+			model: Model
+			toParentMessage: (message: Message) => ParentMessage
+		}>,
+): Html =>
+	dialogView(h, options.model, options, modalParts(options.size ?? "lg"), options.toParentMessage)

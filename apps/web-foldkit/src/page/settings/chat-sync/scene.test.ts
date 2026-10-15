@@ -41,7 +41,7 @@ const addTriggerMounted = Scene.Mount.resolve(
 )
 const addModalMounted = Scene.Mount.resolve(
 	{ name: "PortalModal" },
-	Message.GotAddModalMessage({ message: Modal.Message.CompletedPortalModal() }),
+	Message.GotAddModalMessage({ message: Modal.Message.SucceededAcquireResources() }),
 )
 
 describe("list states", () => {
@@ -108,7 +108,7 @@ describe("delete a connection", () => {
 				PageOutMessage.RequestedToast({ toast: successToast("Connection deleted") }),
 			),
 			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 			Scene.expect(Scene.text("Loading connections...")).toExist(),
 			Scene.Mount.expectEnded(FocusTriggerOnPress),
 			Scene.Command.resolve(
@@ -156,7 +156,7 @@ describe("delete a connection", () => {
 			Scene.click(Scene.within(dialog, Scene.role("button", { name: "Cancel" }))),
 			Scene.Command.expectNone(),
 			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 		)
 	})
 })
@@ -191,7 +191,7 @@ describe("connect a Discord server", () => {
 				PageOutMessage.RequestedToast({ toast: successToast("Discord connection created") }),
 			),
 			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 			Scene.Mount.expectEnded(FocusTriggerOnPress),
 			Scene.Command.resolve(
 				ListConnections,

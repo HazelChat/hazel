@@ -205,6 +205,7 @@ const modalFold = (
 			...(modal.isOpen ? {} : { [target]: null }),
 		}),
 		toParentMessage,
+		foldOutMessage: Modal.ignoreOutMessage,
 	}
 }
 const deleteModal = modalFold("deleteModal", (message) => Message.GotDeleteModalMessage({ message }))

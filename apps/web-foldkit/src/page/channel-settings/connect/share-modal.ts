@@ -134,11 +134,9 @@ export const CreateInvite = Command.define("CreateInvite", {
 export type Return = Update.ReturnWithOutMessage<Model, Message, PageOutMessage, HazelRpc>
 export type Context = Readonly<{ channelId: ChannelId; organizationId: OrganizationId | null }>
 
-/** `resetState()` plus closing; `onOpenChange(false)` resets as well. */
-const closed = (model: Model): Model => ({ ...init(), modal: Modal.close(model.modal).model })
-
+/** The modal renders open, and its dialog Mount takes the focus trap, isolation and scroll lock. */
 export const open = (model: Model): Model =>
-	modifyFields(model, { modal: (modal) => Modal.open(modal).model })
+	modifyFields(model, { modal: (modal) => Modal.initOpen(modal.id) })
 
 export const update = (model: Model, message: Message, context: Context): Return =>
 	Message.match<Return>(message, {
@@ -187,7 +185,7 @@ export const update = (model: Model, message: Message, context: Context): Return
 		ToggledAllowGuestMemberAdds: ({ isSelected }) => ({
 			model: modifyFields(model, { allowGuestMemberAdds: () => isSelected }),
 		}),
-		ClickedCancel: () => ({ model: closed(model) }),
+		ClickedCancel: () => ({ model: init() }),
 		ClickedSendInvite: () => {
 			const selected = model.selectedWorkspace
 			if (selected === null || !selected.slug || model.isSubmitting) return { model }
@@ -204,7 +202,7 @@ export const update = (model: Model, message: Message, context: Context): Return
 			}
 		},
 		SucceededCreateInvite: () => ({
-			model: closed(model),
+			model: init(),
 			outMessage: PageOutMessage.RequestedToast({ toast: successToast("Invite sent") }),
 		}),
 		FailedCreateInvite: ({ toast }) => ({
@@ -215,7 +213,7 @@ export const update = (model: Model, message: Message, context: Context): Return
 			const next = Modal.update(model.modal, modalMessage)
 			const nextModel = next.model.isOpen
 				? modifyFields(model, { modal: () => next.model })
-				: closed(model)
+				: init()
 			return {
 				model: nextModel,
 				commands: Command.mapMessages(next.commands ?? [], (child) =>

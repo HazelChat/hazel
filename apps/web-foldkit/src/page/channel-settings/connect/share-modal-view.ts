@@ -86,7 +86,6 @@ const body = (h: HtmlBuilder<Message>, model: Model, channelName: string): Html 
 		model: model.modal,
 		view: Modal.view,
 		viewInputs: {
-			toTrigger: (_attributes, overlay) => overlay,
 			size: "lg",
 			toContent: () => [
 				dialogHeader(h, {}, [

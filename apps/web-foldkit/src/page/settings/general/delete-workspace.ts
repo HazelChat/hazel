@@ -19,8 +19,6 @@ export const deleteWorkspaceModal = (h: HtmlBuilder<Message>, model: Model, orga
 		model: model.deleteModal,
 		view: Modal.view,
 		viewInputs: {
-			// Controlled: no trigger, only the overlay while open.
-			toTrigger: (_attributes, overlay) => overlay,
 			toContent: () => [
 				dialogHeader(h, {}, [
 					h.div(

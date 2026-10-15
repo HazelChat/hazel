@@ -274,6 +274,4 @@ export const addLinkModal = (h: HtmlBuilder<Message>, model: Model): Html =>
 		toParentMessage: toAddLinkModalMessage,
 		toContent: (closeAttributes) => content(h, model, closeAttributes),
 		size: "lg",
-		autoFocusId: CHANNEL_SEARCH_ID,
-		restoresFocusToPrevious: true,
 	})

@@ -348,7 +348,7 @@ describe("restore a deleted emoji", () => {
 		story(
 			owner,
 			given({ ...drafted, restoreTarget, restoreModal: Modal.open(drafted.restoreModal).model }),
-			message(Message.GotRestoreModalMessage({ message: Modal.Message.ClickedClose() })),
+			message(Message.GotRestoreModalMessage({ message: Modal.Message.RequestedClose() })),
 			model((current) => expect(current.restoreTarget).toBeNull()),
 			message(Message.ClickedConfirmRestore()),
 			Command.expectNone(),

@@ -235,7 +235,7 @@ describe("row removal", () => {
 		const pending = run(confirming, Message.ClickedConfirmRemove()).model
 		const escaped = run(
 			pending,
-			Message.GotConfirmModalMessage({ message: Modal.Message.PressedEscape() }),
+			Message.GotConfirmModalMessage({ message: Modal.Message.RequestedClose() }),
 		).model
 		const settled = run(
 			escaped,

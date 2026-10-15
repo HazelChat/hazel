@@ -152,7 +152,7 @@ describe("mobile sidebar sheet", () => {
 			given(ready),
 			message(Message.ToggledSidebar({ isOpen: true })),
 			model((m) => expect(m.isSidebarOpen).toBe(true)),
-			message(Message.GotMobileSidebarMessage({ message: Modal.Message.PressedEscape() })),
+			message(Message.GotMobileSidebarMessage({ message: Modal.Message.RequestedClose() })),
 			model((m) => expect(m.isSidebarOpen).toBe(false)),
 		)
 	})

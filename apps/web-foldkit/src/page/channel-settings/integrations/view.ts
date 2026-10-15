@@ -43,7 +43,6 @@ const confirmModal = (h: HtmlBuilder<Message>, model: Model): Html => {
 		model: model.confirmModal,
 		view: Modal.view,
 		viewInputs: {
-			toTrigger: (_attributes, overlay) => overlay,
 			role: "alertdialog",
 			size: "xs",
 			toContent: (closeAttributes) => [

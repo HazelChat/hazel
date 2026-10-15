@@ -22,6 +22,7 @@ import {
 } from "./command"
 import {
 	ADD_LINK_MODAL_ID,
+	CHANNEL_SEARCH_ID,
 	type ChannelLink,
 	linkMenuId,
 	Message,
@@ -58,7 +59,7 @@ export const init = (route: RouteOf<"SettingsChatSyncConnection">, shared: Share
 			updatingLinkIds: [],
 			channelNames: {},
 			linkMenus: [],
-			addLinkModal: Modal.init(ADD_LINK_MODAL_ID),
+			addLinkModal: Modal.init(ADD_LINK_MODAL_ID, { focusSelector: `#${CHANNEL_SEARCH_ID}` }),
 			discordChannels: { _tag: "Loading" },
 			hazelChannels: [],
 			selectedChannel: null,
@@ -131,6 +132,7 @@ const deleteLinkModal = {
 			deleteTarget: (target) => (modal.isOpen ? target : null),
 		}),
 	toParentMessage: (message: Modal.Message) => Message.GotDeleteLinkModalMessage({ message }),
+	foldOutMessage: Modal.ignoreOutMessage,
 }
 const foldDeleteLinkModal = Update.foldChild({ update: Modal.update, ...deleteLinkModal })
 const openDeleteLinkModal = Update.foldChildStep({ update: Modal.open, ...deleteLinkModal })
@@ -140,6 +142,7 @@ const disconnectModal = {
 	read: (model: Model) => Option.some(model.disconnectModal),
 	write: (model: Model, modal: Modal.Model): Model => modifyFields(model, { disconnectModal: () => modal }),
 	toParentMessage: (message: Modal.Message) => Message.GotDisconnectModalMessage({ message }),
+	foldOutMessage: Modal.ignoreOutMessage,
 }
 const foldDisconnectModal = Update.foldChild({ update: Modal.update, ...disconnectModal })
 const openDisconnectModal = Update.foldChildStep({ update: Modal.open, ...disconnectModal })
@@ -206,6 +209,7 @@ const addLinkModal = {
 					focusedSearch: () => null,
 				}),
 	toParentMessage: (message: Modal.Message) => Message.GotAddLinkModalMessage({ message }),
+	foldOutMessage: Modal.ignoreOutMessage,
 }
 /** `onOpenChange={(open) => !open && handleClose()}`; the portal Mount focuses the channel search (`autoFocus`). */
 const foldAddLinkModal = Update.foldChild({ update: Modal.update, ...addLinkModal })
