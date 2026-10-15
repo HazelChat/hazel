@@ -6,7 +6,7 @@ import {
 	OrganizationRepo,
 } from "@hazel/backend-core"
 import { Database, type PG, type schema } from "@hazel/db"
-import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
+import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
 import {
 	Invitation,
 	InvitationAccepted,

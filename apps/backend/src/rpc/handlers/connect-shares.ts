@@ -38,8 +38,8 @@ import { ChannelAccessSyncService } from "../../services/channel-access-sync"
 import { ConnectConversationService } from "../../services/connect-conversation-service"
 import { OrgResolver } from "../../services/org-resolver"
 
-const isUniqueViolation = (error: any, constraintName: string) =>
-	error?.type === "unique_violation" && error?.constraint === constraintName
+const isUniqueViolation = (error: Database.DatabaseError, constraintName: string) =>
+	error.type === "unique_violation" && error.constraint === constraintName
 
 export const resolveGuestOrganizationForInviteCreate = ({
 	providedOrgId,
@@ -134,32 +134,32 @@ export const assertGuestMemberAddsAllowed = (
 			)
 		: Effect.void
 
-export const remapGuestMountInsertConflict = ({
+export const remapGuestMountInsertConflict = <E, R>({
 	error,
 	guestOrganizationId,
 	findExistingMount,
 }: {
-	error: any
+	error: Database.DatabaseError
 	guestOrganizationId: OrganizationId
-	findExistingMount: () => Effect.Effect<Option.Option<{ channelId: ChannelId }>, any, any>
-}) => {
+	findExistingMount: () => Effect.Effect<Option.Option<{ channelId: ChannelId }>, E, R>
+}): Effect.Effect<never, Database.DatabaseError | ConnectChannelAlreadySharedError | E, R> => {
 	if (!isUniqueViolation(error, "connect_conv_channels_conversation_org_unique")) {
 		return Effect.fail(error)
 	}
 
 	return findExistingMount().pipe(
-		Effect.flatMap(
-			Option.match({
-				onNone: () => Effect.fail(error),
-				onSome: (existingMount) =>
-					Effect.fail(
+		Effect.flatMap((existingMount) =>
+			Effect.fail(
+				Option.match(existingMount, {
+					onNone: (): Database.DatabaseError | ConnectChannelAlreadySharedError => error,
+					onSome: (mount) =>
 						new ConnectChannelAlreadySharedError({
-							channelId: existingMount.channelId,
+							channelId: mount.channelId,
 							organizationId: guestOrganizationId,
 							message: "This workspace is already connected to the conversation",
 						}),
-					),
-			}),
+				}),
+			),
 		),
 	)
 }

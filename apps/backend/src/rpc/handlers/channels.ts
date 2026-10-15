@@ -14,7 +14,7 @@ import {
 	withRemapDbErrors,
 	WorkflowServiceUnavailableError,
 } from "@hazel/domain"
-import { type MessageId, OrganizationId } from "@hazel/schema"
+import { OrganizationId } from "@hazel/schema"
 import { ChannelNotFoundError, ChannelResponse, ChannelRpcs, MessageNotFoundError } from "@hazel/domain/rpc"
 import { Config, Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"

@@ -10,80 +10,38 @@ import {
 	OrganizationSlugAlreadyExistsError,
 	PublicInviteDisabledError,
 } from "@hazel/domain/rpc"
-import { Effect, Option, Predicate } from "effect"
+import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { OrganizationPolicy } from "../../policies/organization-policy"
 import { ChannelAccessSyncService } from "../../services/channel-access-sync"
 
 const UNKNOWN_ORGANIZATION_ID = "00000000-0000-4000-8000-000000000000" as OrganizationId
 
-/**
- * Custom error handler for organization database operations that provides
- * specific error handling for duplicate slug violations
- */
-const handleOrganizationDbErrors = <R, E extends { _tag: string }, A>(
-	entityType: string,
-	action: "update" | "create",
-) => {
-	return (
-		effect: Effect.Effect<R, E, A>,
-	): Effect.Effect<
-		R,
-		| Exclude<E, { _tag: "DatabaseError" | "SchemaError" }>
-		| InternalServerError
-		| OrganizationSlugAlreadyExistsError,
-		A
-	> => {
-		return effect.pipe(
-			Effect.catchIf(
-				(e): e is Extract<E, { _tag: "DatabaseError" }> => Predicate.isTagged(e, "DatabaseError"),
-				(err): Effect.Effect<never, InternalServerError | OrganizationSlugAlreadyExistsError> => {
-					const dbErr = err as unknown as Database.DatabaseError
-					// Check if it's a unique violation on the slug column
-					if (
-						dbErr.type === "unique_violation" &&
-						dbErr.constraint === "organizations_slug_unique"
-					) {
-						// Extract slug from error detail if possible
-						const slugMatch = dbErr.detail?.match(/Key \(slug\)=\(([^)]+)\)/)
-						const slug = slugMatch?.[1] || "unknown"
-						return Effect.fail(
-							new OrganizationSlugAlreadyExistsError({
-								message: `Organization slug '${slug}' is already taken`,
-								slug,
-							}),
-						)
-					}
-					// For other database errors, return a generic internal server error
-					return Effect.fail(
-						new InternalServerError({
-							message: `Error ${action}ing ${entityType}`,
-							detail: `There was a database error when ${action}ing the ${entityType}`,
-							cause: err,
-						}),
-					)
-				},
-			),
-			Effect.catchIf(
-				(e): e is Extract<E, { _tag: "SchemaError" }> => Predicate.isTagged(e, "SchemaError"),
-				(err) =>
-					Effect.fail(
-						new InternalServerError({
-							message: `Error ${action}ing ${entityType}`,
-							detail: `There was an error in parsing when ${action}ing the ${entityType}`,
-							cause: err,
-						}),
-					),
-			),
-		) as Effect.Effect<
-			R,
-			| Exclude<E, { _tag: "DatabaseError" | "SchemaError" }>
-			| InternalServerError
-			| OrganizationSlugAlreadyExistsError,
-			A
-		>
-	}
+/** A unique violation on the slug: someone else has it. */
+const isSlugTaken = (error: unknown): error is Database.DatabaseError =>
+	error instanceof Database.DatabaseError &&
+	error.type === "unique_violation" &&
+	error.constraint === "organizations_slug_unique"
+
+const slugTaken = (error: Database.DatabaseError) => {
+	const slug = error.detail?.match(/Key \(slug\)=\(([^)]+)\)/)?.[1] ?? "unknown"
+	return new OrganizationSlugAlreadyExistsError({
+		message: `Organization slug '${slug}' is already taken`,
+		slug,
+	})
 }
+
+/**
+ * `withRemapDbErrors` for organization writes, except that a duplicate slug becomes
+ * `OrganizationSlugAlreadyExistsError`.
+ */
+const handleOrganizationDbErrors =
+	(entityType: string, action: "update" | "create") =>
+	<A, E, R>(effect: Effect.Effect<A, E, R>) =>
+		effect.pipe(
+			Effect.mapError((error) => (isSlugTaken(error) ? slugTaken(error) : error)),
+			withRemapDbErrors(entityType, action),
+		)
 
 /**
  * Organization RPC Handlers

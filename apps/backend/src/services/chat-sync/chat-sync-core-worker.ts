@@ -379,6 +379,12 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 		)
 
 		const decodeProvider = Schema.decodeUnknownSync(IntegrationConnection.IntegrationProvider)
+		const decodeOutboundIdentitySettings = Schema.decodeUnknownOption(
+			ChatSyncChannelLink.OutboundIdentitySettings,
+		)
+		const decodeDiscordWebhookConfig = Schema.decodeUnknownOption(
+			ChatSyncChannelLink.DiscordWebhookOutboundIdentityConfig,
+		)
 
 		type WebhookPermissionStatus = "unknown" | "allowed" | "denied"
 
@@ -423,11 +429,6 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 			...(params.reason ? { reason: params.reason } : {}),
 		})
 
-		const isDiscordApiError = (error: unknown): error is Discord.DiscordApiError =>
-			typeof error === "object" &&
-			error !== null &&
-			(error as { _tag?: unknown })._tag === "DiscordApiError"
-
 		const isWebhookStrategyEnabled = (
 			outboundIdentity: ChatSyncChannelLink.OutboundIdentitySettings,
 		): boolean => outboundIdentity.enabled && outboundIdentity.strategy === "webhook"
@@ -455,11 +456,7 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 			if (raw === undefined) {
 				return defaultOutboundIdentitySettings()
 			}
-			try {
-				return Schema.decodeUnknownSync(ChatSyncChannelLink.OutboundIdentitySettings)(raw)
-			} catch {
-				return defaultOutboundIdentitySettings()
-			}
+			return Option.getOrElse(decodeOutboundIdentitySettings(raw), defaultOutboundIdentitySettings)
 		}
 
 		const getDiscordWebhookConfig = (
@@ -478,15 +475,7 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 				return Option.none()
 			}
 
-			try {
-				return Option.some(
-					Schema.decodeUnknownSync(ChatSyncChannelLink.DiscordWebhookOutboundIdentityConfig)(
-						providerConfig,
-					),
-				)
-			} catch {
-				return Option.none()
-			}
+			return decodeDiscordWebhookConfig(providerConfig)
 		}
 
 		const shouldIgnoreWebhookOrigin = (
@@ -604,9 +593,11 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 					)
 					return Option.some(nextConfig)
 				}).pipe(
-					Effect.catch((error) =>
+					// Discord refusing or failing the webhook leaves the bot identity in place; database
+					// failures propagate so the delivery is retried.
+					Effect.catchTag("DiscordApiError", (error) =>
 						Effect.gen(function* () {
-							if (isDiscordApiError(error) && error.status === 403) {
+							if (error.status === 403) {
 								const fallbackOutboundIdentity: ChatSyncChannelLink.OutboundIdentitySettings =
 									{
 										enabled: outboundIdentity.enabled,
@@ -623,23 +614,21 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 									}),
 								)
 							} else {
-								const reason =
-									typeof error === "object" && error !== null && "message" in error
-										? String((error as { message?: unknown }).message)
-										: undefined
-
 								yield* persistWebhookIdentity(
 									params.link,
 									outboundIdentity,
-									makeWebhookPermissionState({ status: "unknown", reason }),
+									makeWebhookPermissionState({ status: "unknown", reason: error.message }),
 								)
 							}
 
-							yield* Effect.logWarning("Failed to provision Discord webhook identity", {
-								provider: params.provider,
-								externalChannelId: params.link.externalChannelId,
-								error: String(error),
-							})
+							yield* Effect.logWarning(
+								"Failed to provision Discord webhook identity",
+								Cause.fail(error),
+								{
+									provider: params.provider,
+									externalChannelId: params.link.externalChannelId,
+								},
+							)
 							return Option.none()
 						}),
 					),
@@ -710,13 +699,11 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 
 					return Option.some(outboundMessageId as ExternalMessageId)
 				}).pipe(
-					Effect.catch((error) =>
-						Effect.gen(function* () {
-							yield* Effect.logWarning("Discord webhook send failed; falling back to bot API", {
-								error: String(error),
-							})
-							return Option.none()
-						}),
+					Effect.catchTag("DiscordApiError", (error) =>
+						Effect.logWarning(
+							"Discord webhook send failed; falling back to bot API",
+							Cause.fail(error),
+						).pipe(Effect.as(Option.none<ExternalMessageId>())),
 					),
 				)
 			},
@@ -755,16 +742,11 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 
 					return true
 				}).pipe(
-					Effect.catch((error) =>
-						Effect.gen(function* () {
-							yield* Effect.logWarning(
-								"Discord webhook update failed; falling back to bot API",
-								{
-									error: String(error),
-								},
-							)
-							return false
-						}),
+					Effect.catchTag("DiscordApiError", (error) =>
+						Effect.logWarning(
+							"Discord webhook update failed; falling back to bot API",
+							Cause.fail(error),
+						).pipe(Effect.as(false)),
 					),
 				)
 			},
@@ -801,16 +783,11 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 
 					return true
 				}).pipe(
-					Effect.catch((error) =>
-						Effect.gen(function* () {
-							yield* Effect.logWarning(
-								"Discord webhook delete failed; falling back to bot API",
-								{
-									error: String(error),
-								},
-							)
-							return false
-						}),
+					Effect.catchTag("DiscordApiError", (error) =>
+						Effect.logWarning(
+							"Discord webhook delete failed; falling back to bot API",
+							Cause.fail(error),
+						).pipe(Effect.as(false)),
 					),
 				)
 			},

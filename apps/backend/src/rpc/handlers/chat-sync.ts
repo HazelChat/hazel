@@ -5,7 +5,7 @@ import {
 } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { ExternalChannelId } from "@hazel/schema"
-import { CurrentUser, InternalServerError } from "@hazel/domain"
+import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
 import {
 	ChatSyncChannelLinkExistsError,
 	ChatSyncChannelLinkListResponse,
@@ -114,40 +114,14 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							})
 						}),
 					)
-					.pipe(
-						Effect.catchTag("SchemaError", (error) =>
-							Effect.fail(
-								new InternalServerError({
-									message: "Invalid sync connection data",
-									cause: error,
-								}),
-							),
-						),
-						Effect.catchTag("DatabaseError", (error) =>
-							Effect.fail(
-								new InternalServerError({
-									message: "Database error while creating sync connection",
-									cause: error,
-								}),
-							),
-						),
-					),
+					.pipe(withRemapDbErrors("ChatSyncConnection", "create")),
 
 			"chatSync.connection.list": ({ organizationId }) =>
 				Effect.gen(function* () {
 					yield* integrationConnectionPolicy.canSelect(organizationId)
 					const data = yield* connectionRepo.findByOrganization(organizationId)
 					return new ChatSyncConnectionListResponse({ data })
-				}).pipe(
-					Effect.catchTag("DatabaseError", (error) =>
-						Effect.fail(
-							new InternalServerError({
-								message: "Database error while listing sync connections",
-								cause: error,
-							}),
-						),
-					),
-				),
+				}).pipe(withRemapDbErrors("ChatSyncConnection", "select")),
 
 			"chatSync.connection.delete": ({ syncConnectionId }) =>
 				db
@@ -174,16 +148,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							return { transactionId: txid }
 						}),
 					)
-					.pipe(
-						Effect.catchTag("DatabaseError", (error) =>
-							Effect.fail(
-								new InternalServerError({
-									message: "Database error while deleting sync connection",
-									cause: error,
-								}),
-							),
-						),
-					),
+					.pipe(withRemapDbErrors("ChatSyncConnection", "delete")),
 
 			"chatSync.channelLink.create": (payload) =>
 				db
@@ -251,24 +216,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							})
 						}),
 					)
-					.pipe(
-						Effect.catchTag("SchemaError", (error) =>
-							Effect.fail(
-								new InternalServerError({
-									message: "Invalid channel link data",
-									cause: error,
-								}),
-							),
-						),
-						Effect.catchTag("DatabaseError", (error) =>
-							Effect.fail(
-								new InternalServerError({
-									message: "Database error while creating channel link",
-									cause: error,
-								}),
-							),
-						),
-					),
+					.pipe(withRemapDbErrors("ChatSyncChannelLink", "create")),
 
 			"chatSync.channelLink.list": ({ syncConnectionId }) =>
 				Effect.gen(function* () {
@@ -285,16 +233,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 
 					const data = yield* channelLinkRepo.findBySyncConnection(syncConnectionId)
 					return new ChatSyncChannelLinkListResponse({ data })
-				}).pipe(
-					Effect.catchTag("DatabaseError", (error) =>
-						Effect.fail(
-							new InternalServerError({
-								message: "Database error while listing channel links",
-								cause: error,
-							}),
-						),
-					),
-				),
+				}).pipe(withRemapDbErrors("ChatSyncChannelLink", "select")),
 
 			"chatSync.channelLink.delete": ({ syncChannelLinkId }) =>
 				db
@@ -328,16 +267,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							return { transactionId: txid }
 						}),
 					)
-					.pipe(
-						Effect.catchTag("DatabaseError", (error) =>
-							Effect.fail(
-								new InternalServerError({
-									message: "Database error while deleting channel link",
-									cause: error,
-								}),
-							),
-						),
-					),
+					.pipe(withRemapDbErrors("ChatSyncChannelLink", "delete")),
 			"chatSync.channelLink.update": ({ syncChannelLinkId, direction, isActive }) =>
 				db
 					.transaction(
@@ -388,16 +318,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							})
 						}),
 					)
-					.pipe(
-						Effect.catchTag("DatabaseError", (error) =>
-							Effect.fail(
-								new InternalServerError({
-									message: "Database error while updating channel link",
-									cause: error,
-								}),
-							),
-						),
-					),
+					.pipe(withRemapDbErrors("ChatSyncChannelLink", "update")),
 		}
 	}),
 )

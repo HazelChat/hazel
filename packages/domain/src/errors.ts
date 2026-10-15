@@ -124,6 +124,20 @@ export class InvalidChannelRequestError extends Schema.TaggedError<InvalidChanne
 	{ httpApiStatus: 400 },
 ) {}
 
+/**
+ * The operation acts on the caller's active organization, and the session has none
+ * (`CurrentUser.organizationId` is unset).
+ */
+export class ActiveOrganizationRequiredError extends Schema.TaggedError<ActiveOrganizationRequiredError>(
+	"ActiveOrganizationRequiredError",
+)(
+	"ActiveOrganizationRequiredError",
+	{
+		message: Schema.String,
+	},
+	{ httpApiStatus: 400 },
+) {}
+
 export class DmChannelAlreadyExistsError extends Schema.TaggedError<DmChannelAlreadyExistsError>(
 	"DmChannelAlreadyExistsError",
 )(

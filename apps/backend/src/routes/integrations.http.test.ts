@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest"
 import { CraftApiError, CraftNotFoundError, CraftRateLimitError } from "@hazel/integrations/craft"
-import { Effect, Result } from "effect"
+import { Effect, Option, Result } from "effect"
 import {
 	mapCraftConnectApiKeyError,
 	parseOAuthStateParam,
@@ -26,22 +26,24 @@ describe("integration connect API key helpers", () => {
 		}
 
 		it("parses raw JSON state", () => {
-			const parsed = parseOAuthStateParam(JSON.stringify(baseState))
+			const parsed = Option.getOrThrow(parseOAuthStateParam(JSON.stringify(baseState)))
 			expect(parsed.organizationId).toBe(baseState.organizationId)
 			expect(parsed.userId).toBe(baseState.userId)
 			expect(parsed.level).toBe(baseState.level)
 		})
 
 		it("parses URL-encoded JSON state", () => {
-			const parsed = parseOAuthStateParam(encodeURIComponent(JSON.stringify(baseState)))
+			const parsed = Option.getOrThrow(
+				parseOAuthStateParam(encodeURIComponent(JSON.stringify(baseState))),
+			)
 			expect(parsed.organizationId).toBe(baseState.organizationId)
 			expect(parsed.userId).toBe(baseState.userId)
 			expect(parsed.level).toBe(baseState.level)
 		})
 
 		it("parses double URL-encoded JSON state (legacy)", () => {
-			const parsed = parseOAuthStateParam(
-				encodeURIComponent(encodeURIComponent(JSON.stringify(baseState))),
+			const parsed = Option.getOrThrow(
+				parseOAuthStateParam(encodeURIComponent(encodeURIComponent(JSON.stringify(baseState)))),
 			)
 			expect(parsed.organizationId).toBe(baseState.organizationId)
 			expect(parsed.userId).toBe(baseState.userId)
@@ -49,13 +51,15 @@ describe("integration connect API key helpers", () => {
 		})
 
 		it("defaults level to organization when missing", () => {
-			const parsed = parseOAuthStateParam(
-				JSON.stringify({
-					organizationId: baseState.organizationId,
-					userId: baseState.userId,
-					returnTo: baseState.returnTo,
-					environment: baseState.environment,
-				}),
+			const parsed = Option.getOrThrow(
+				parseOAuthStateParam(
+					JSON.stringify({
+						organizationId: baseState.organizationId,
+						userId: baseState.userId,
+						returnTo: baseState.returnTo,
+						environment: baseState.environment,
+					}),
+				),
 			)
 			expect(parsed.level).toBe("organization")
 		})
@@ -101,18 +105,18 @@ describe("integration connect API key helpers", () => {
 			expect(mapped._tag).toBe("InvalidApiKeyError")
 		})
 
-		it("maps Craft rate limits to InternalServerError", () => {
+		it("maps Craft rate limits to IntegrationUnavailableError", () => {
 			const mapped = mapCraftConnectApiKeyError(
 				new CraftRateLimitError({ message: "too many requests", retryAfter: 60 }),
 			)
-			expect(mapped._tag).toBe("InternalServerError")
+			expect(mapped._tag).toBe("IntegrationUnavailableError")
 		})
 
-		it("maps Craft 5xx failures to InternalServerError", () => {
+		it("maps Craft 5xx failures to IntegrationUnavailableError", () => {
 			const mapped = mapCraftConnectApiKeyError(
 				new CraftApiError({ message: "server error", status: 503 }),
 			)
-			expect(mapped._tag).toBe("InternalServerError")
+			expect(mapped._tag).toBe("IntegrationUnavailableError")
 		})
 
 		it("maps Craft 4xx failures to InvalidApiKeyError", () => {
@@ -122,9 +126,9 @@ describe("integration connect API key helpers", () => {
 			expect(mapped._tag).toBe("InvalidApiKeyError")
 		})
 
-		it("maps Craft failures without status to InternalServerError", () => {
+		it("maps Craft failures without status to IntegrationUnavailableError", () => {
 			const mapped = mapCraftConnectApiKeyError(new CraftApiError({ message: "network error" }))
-			expect(mapped._tag).toBe("InternalServerError")
+			expect(mapped._tag).toBe("IntegrationUnavailableError")
 		})
 	})
 })
