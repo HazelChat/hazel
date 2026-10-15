@@ -1,6 +1,8 @@
+import type { OperationHttpError } from "@yielded/auth/OperationHttp"
 import * as PasskeyBrowser from "@yielded/auth-simplewebauthn/Browser"
-import { Effect, Redacted, Schema } from "effect"
+import { type Context, Effect, Match, Redacted, Schema } from "effect"
 import { load } from "foldkit/navigation"
+import { CommonReason } from "~/lib/error-messages"
 import { HazelAuthClient, type Provider } from "./client"
 import { rememberReturnTo, takeReturnTo } from "./return-to"
 
@@ -9,25 +11,108 @@ import { rememberReturnTo, takeReturnTo } from "./return-to"
  * registration (both end with a session cookie, then a full load so the app starts signed in).
  */
 
-/** A flow that did not finish. `message` is `null` when the user cancelled it themselves. */
+/**
+ * Why a flow did not finish, beyond the shared reasons. `Cancelled` is the visitor closing the
+ * passkey prompt themselves, so it shows nothing.
+ */
+export const AuthFailure = Schema.Union([
+	Schema.Literals([
+		"Cancelled",
+		"PasskeyUnsupported",
+		"Rejected",
+		"Expired",
+		"Denied",
+		"AccountConflict",
+		"AccountCreated",
+	]),
+	CommonReason,
+])
+export type AuthFailure = typeof AuthFailure.Type
+
 export class AuthFlowError extends Schema.TaggedError<AuthFlowError>()("AuthFlowError", {
-	message: Schema.NullOr(Schema.String),
+	reason: AuthFailure,
 }) {}
 
-/** User-facing text for a failed auth call, by the failure's tag. */
-export const describeFailure = (tag: string): string | null => {
-	if (tag === "PasskeyBrowserNotCompleted" || tag === "PasskeyBrowserBusy") return null
-	if (tag === "PasskeyBrowserUnsupported" || tag === "PasskeyBrowserUnavailable")
-		return "This browser can't use passkeys. Continue with GitHub or Google instead."
-	if (tag === "OperationHttpError") return "Couldn't reach Hazel. Check your connection and try again."
-	if (tag.endsWith("Rejected") || tag.endsWith("ActionRequired"))
-		return "That sign-in expired or was already used. Please start again."
-	if (tag.endsWith("Unavailable")) return "Sign-in is unavailable right now. Please try again in a moment."
-	return "Something went wrong signing you in. Please try again."
-}
+type AuthApi = Context.Service.Shape<typeof HazelAuthClient>["auth"]
 
-const failed = (error: { readonly _tag: string }) =>
-	new AuthFlowError({ message: describeFailure(error._tag) })
+/** Everything the auth client and the browser's passkey prompt can fail with. */
+type AuthError =
+	| Effect.Error<ReturnType<AuthApi["signIn"]>>
+	| Effect.Error<ReturnType<AuthApi["passkeySignIn"]>>
+	| Effect.Error<ReturnType<AuthApi["completePasskeySignIn"]>>
+	| Effect.Error<ReturnType<AuthApi["register"]>>
+	| PasskeyBrowser.PasskeyBrowserFailure
+
+/** The transport's own reasons: offline and timeouts are worth another try, the rest is a bug. */
+export const operationHttpReason = (error: OperationHttpError): CommonReason =>
+	error.reason === "network"
+		? "Offline"
+		: error.reason === "timeout"
+			? "Timeout"
+			: error.reason === "unavailable"
+				? "Unavailable"
+				: "Unexpected"
+
+const cancelled = (): AuthFailure => "Cancelled"
+const rejected = (): AuthFailure => "Rejected"
+const expired = (): AuthFailure => "Expired"
+const unavailable = (): AuthFailure => "Unavailable"
+const unexpected = (): AuthFailure => "Unexpected"
+
+/** The failures every auth operation shares: the transport, the session and the server's hooks. */
+export const operationReasons = {
+	OperationHttpError: operationHttpReason,
+	PendingAuthenticationInvalid: expired,
+	StaleAuthentication: expired,
+	SessionInvalid: expired,
+	SessionStepUpInvalid: expired,
+	AuthenticationRequired: expired,
+	AssuranceRequired: expired,
+	HookDenied: (): AuthFailure => "Denied",
+	SessionUnavailable: unavailable,
+	SessionSignOutUnavailable: unavailable,
+	SessionCapabilityUnsupported: unavailable,
+	InvalidOperationInput: unexpected,
+	OperationForbidden: unexpected,
+	OperationPrivateOutputUnsupported: unexpected,
+	SessionConflict: unexpected,
+	SessionRenewalTooEarly: unexpected,
+} as const
+
+/** Exhaustive: a new error in the client's contract must be classified here. */
+export const authFailureOf = (error: AuthError): AuthFailure =>
+	Match.valueTags(error, {
+		...operationReasons,
+		PasskeyBrowserNotCompleted: cancelled,
+		PasskeyBrowserBusy: cancelled,
+		PasskeyBrowserUnsupported: (): AuthFailure => "PasskeyUnsupported",
+		PasskeyBrowserUnavailable: (): AuthFailure => "PasskeyUnsupported",
+		// The browser refused the server's options: nothing the visitor can change.
+		PasskeyBrowserInputRejected: unexpected,
+		PasskeyRejected: rejected,
+		OAuthRejected: rejected,
+		PasskeyActionRequired: expired,
+		IdentityConflict: (): AuthFailure => "AccountConflict",
+		PasskeyUnavailable: unavailable,
+		PasskeyMethodUnsupported: unavailable,
+		OAuthUnavailable: unavailable,
+		OAuthMethodUnsupported: unavailable,
+	})
+
+const failed = (error: AuthError) => new AuthFlowError({ reason: authFailureOf(error) })
+
+/** A finished call that issued no session: the flow cannot carry on from here. */
+type Outcome = { readonly _tag: "Authenticated" | "PendingAuthentication" | "RegistrationAccepted" }
+
+const requireSession = (outcome: Outcome): Effect.Effect<void, AuthFlowError> =>
+	Match.value(outcome._tag).pipe(
+		Match.when("Authenticated", () => Effect.void),
+		// A second factor Hazel does not ask for: the pending sign-in can't be finished here.
+		Match.when("PendingAuthentication", () => Effect.fail(new AuthFlowError({ reason: "Expired" }))),
+		// The account exists but this call did not sign it in.
+		Match.when("RegistrationAccepted", () => Effect.fail(new AuthFlowError({ reason: "AccountCreated" }))),
+		Match.exhaustive,
+	)
 
 const newId = Effect.sync(() => crypto.randomUUID())
 
@@ -53,25 +138,22 @@ export const startOAuthSignIn = (provider: Provider, returnTo: string | null) =>
 export const signInWithPasskey = (returnTo: string | null) =>
 	Effect.gen(function* () {
 		const client = yield* HazelAuthClient
-		const browser = yield* PasskeyBrowser.make()
-		const started = yield* client.auth.passkeySignIn({
-			flowId: yield* newId,
-			commandId: yield* newId,
-			profileId: "default",
-		})
-		const response = yield* browser.authenticate({ started, mediation: "required" })
-		const result = yield* client.auth.completePasskeySignIn({
-			flowId: response.flowId,
-			response: Redacted.value(response.response),
-		})
-		if (result._tag !== "Authenticated") return yield* new AuthFlowError({ message: describeFailure("") })
+		const result = yield* Effect.gen(function* () {
+			const browser = yield* PasskeyBrowser.make()
+			const started = yield* client.auth.passkeySignIn({
+				flowId: yield* newId,
+				commandId: yield* newId,
+				profileId: "default",
+			})
+			const response = yield* browser.authenticate({ started, mediation: "required" })
+			return yield* client.auth.completePasskeySignIn({
+				flowId: response.flowId,
+				response: Redacted.value(response.response),
+			})
+		}).pipe(Effect.mapError(failed))
+		yield* requireSession(result)
 		yield* enterApp(returnTo)
-	}).pipe(
-		Effect.catchIf(
-			(error) => error._tag !== "AuthFlowError",
-			(error) => Effect.fail(failed(error)),
-		),
-	)
+	})
 
 export interface RegistrationInput {
 	readonly flowId: string
@@ -84,17 +166,14 @@ export interface RegistrationInput {
 export const register = (input: RegistrationInput) =>
 	Effect.gen(function* () {
 		const client = yield* HazelAuthClient
-		const result = yield* client.auth.register({
-			flowId: input.flowId,
-			reference: input.reference,
-			commandId: yield* newId,
-			registration: { firstName: input.firstName.trim(), lastName: input.lastName.trim() },
-		})
-		if (result._tag !== "Authenticated") return yield* new AuthFlowError({ message: describeFailure("") })
+		const result = yield* client.auth
+			.register({
+				flowId: input.flowId,
+				reference: input.reference,
+				commandId: yield* newId,
+				registration: { firstName: input.firstName.trim(), lastName: input.lastName.trim() },
+			})
+			.pipe(Effect.mapError(failed))
+		yield* requireSession(result)
 		yield* enterApp(null)
-	}).pipe(
-		Effect.catchIf(
-			(error) => error._tag !== "AuthFlowError",
-			(error) => Effect.fail(failed(error)),
-		),
-	)
+	})
