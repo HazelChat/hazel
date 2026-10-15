@@ -1,4 +1,4 @@
-import { detectLanguage } from "~/components/chat/slate-editor/detect-language"
+import { detectLanguage } from "./detect-language"
 import { joinBackward, joinForward } from "prosemirror-commands"
 import { redo, undo } from "prosemirror-history"
 import type { Node as ProseMirrorNode } from "prosemirror-model"
