@@ -17,6 +17,7 @@ import { PageOutMessage } from "../../out-message"
 import {
 	ActionMessage,
 	type CopiedContent,
+	type MessageActionFailure,
 	CopyText,
 	CreateThread,
 	DownloadImage,
@@ -162,8 +163,13 @@ export const updateDraft = (
 export const forwardComposerData = (model: Model, message: Composer.Message): PageReturn =>
 	updateDraft(model, "channel", Draft.Message.GotComposerMessage({ message }), null)
 
-export const toComposerPresence = (presence: ReadonlyArray<{ readonly userId: UserId; readonly status: string }>) =>
-	presence.map((row) => ({ userId: row.userId, status: isPresenceStatus(row.status) ? row.status : ("offline" as const) }))
+export const toComposerPresence = (
+	presence: ReadonlyArray<{ readonly userId: UserId; readonly status: string }>,
+) =>
+	presence.map((row) => ({
+		userId: row.userId,
+		status: isPresenceStatus(row.status) ? row.status : ("offline" as const),
+	}))
 
 const isPresenceStatus = Schema.is(Composer.PresenceStatus)
 
@@ -363,15 +369,39 @@ export const handleOverlaysOut = (model: Model, out: Overlays.OutMessage): PageR
 		RequestedMessageAction: ({ messageId, action }) => messageAction(model, messageId, action),
 	})
 
+/** A reaction or pin on a message that is gone. */
+const messageNotFoundToast = (reason: MessageActionFailure): ToastRequest =>
+	errorToastOf(
+		failureMessage(reason, {
+			MessageNotFound: {
+				title: "Message not found",
+				description: "This message may have been deleted.",
+			},
+		}),
+	)
+
 const withToast = (model: Model, request: ToastRequest | null): PageReturn =>
 	request === null ? { model } : { model, outMessage: toast(request) }
 
 export const handleActionMessage = (model: Model, message: ActionMessage): PageReturn =>
 	ActionMessage.match<PageReturn>(message, {
-		CompletedToggleReaction: ({ toast: request }) => withToast(model, request),
-		CompletedPinMessage: ({ toast: request }) => withToast(model, request),
-		CompletedUnpinMessage: ({ toast: request }) => withToast(model, request),
-		CompletedDeleteMessage: ({ toast: request }) => withToast(model, request),
+		SucceededToggleReaction: () => ({ model }),
+		FailedToggleReaction: ({ reason }) => withToast(model, messageNotFoundToast(reason)),
+		SucceededPinMessage: () => withToast(model, successToast("Message pinned")),
+		FailedPinMessage: ({ reason }) => withToast(model, messageNotFoundToast(reason)),
+		SucceededUnpinMessage: () => withToast(model, successToast("Message unpinned")),
+		FailedUnpinMessage: ({ reason }) =>
+			withToast(
+				model,
+				errorToastOf(
+					failureMessage(reason, {
+						PinNotFound: {
+							title: "Pin not found",
+							description: "This message may have already been unpinned.",
+						},
+					}),
+				),
+			),
 		// The panel opens at once on the optimistic id; the composer waits for the RPC.
 		CompletedGenerateThreadChannelId: ({ messageId, threadChannelId }) => {
 			if (model.currentUserId === null || model.channel === null) return { model }

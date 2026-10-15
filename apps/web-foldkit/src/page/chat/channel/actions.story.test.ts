@@ -52,7 +52,44 @@ describe("reactions", () => {
 			Command.expectExact(
 				ToggleReaction({ messageId: graceMessageId, channelId, emoji: "👍", userId: ada }),
 			),
-			Command.resolve(ToggleReaction, ActionMessage.CompletedToggleReaction({ toast: null })),
+			Command.resolve(ToggleReaction, ActionMessage.SucceededToggleReaction()),
+		)
+	})
+})
+
+describe("action results", () => {
+	const action = (inner: ActionMessage) => Message.GotActionMessage({ message: inner })
+
+	test("pin results toast; a failure names the reason, never server text", () => {
+		story(
+			updateWithShared,
+			given(loadedModel()),
+			message(action(ActionMessage.SucceededPinMessage())),
+			expectOutMessage(
+				PageOutMessage.RequestedToast({
+					toast: { intent: "success", title: "Message pinned", description: null },
+				}),
+			),
+			message(action(ActionMessage.FailedUnpinMessage({ reason: "PinNotFound" }))),
+			expectOutMessage(
+				PageOutMessage.RequestedToast({
+					toast: {
+						intent: "error",
+						title: "Pin not found",
+						description: "This message may have already been unpinned.",
+					},
+				}),
+			),
+			message(action(ActionMessage.FailedToggleReaction({ reason: "RateLimited" }))),
+			expectOutMessage(
+				PageOutMessage.RequestedToast({
+					toast: {
+						intent: "error",
+						title: "Rate limit exceeded",
+						description: "Please wait before trying again.",
+					},
+				}),
+			),
 		)
 	})
 })

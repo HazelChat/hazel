@@ -86,7 +86,7 @@ describe("hover toolbar", () => {
 			Scene.Command.expectExact(
 				ToggleReaction({ messageId: graceMessageId, channelId, emoji: "👍", userId: ada }),
 			),
-			Scene.Command.resolve(ToggleReaction, ActionMessage.CompletedToggleReaction({ toast: null })),
+			Scene.Command.resolve(ToggleReaction, ActionMessage.SucceededToggleReaction()),
 		)
 	})
 
@@ -180,17 +180,36 @@ describe("threads", () => {
 			Scene.expect(Scene.text("Creating thread...")).toBeAbsent(),
 			Scene.Mount.resolveAll(
 				[
-					MountEditor({ editorId: threadEditorId, placeholder: "Reply in thread...", initialMarkdown: "" }),
-					threadDraft(Draft.Message.GotComposerMessage({ message: Composer.Message.UpdatedDraft({ markdown: "", isEmpty: true }) })),
+					MountEditor({
+						editorId: threadEditorId,
+						placeholder: "Reply in thread...",
+						initialMarkdown: "",
+					}),
+					threadDraft(
+						Draft.Message.GotComposerMessage({
+							message: Composer.Message.UpdatedDraft({ markdown: "", isEmpty: true }),
+						}),
+					),
 				],
 				[
 					{ name: "TrackFileDrop" },
-					threadDraft(Draft.Message.ReceivedDropEvent({ event: DropEvent.ChangedDragState({ drag: DragState.Idle() }) })),
+					threadDraft(
+						Draft.Message.ReceivedDropEvent({
+							event: DropEvent.ChangedDragState({ drag: DragState.Idle() }),
+						}),
+					),
 				],
 			),
 			Scene.click(Scene.role("button", { name: "Close thread" })),
 			Scene.expect(Scene.role("heading", { name: "Thread" })).toBeAbsent(),
-			Scene.Mount.expectEnded(MountEditor({ editorId: threadEditorId, placeholder: "Reply in thread...", initialMarkdown: "" }), TrackFileDrop),
+			Scene.Mount.expectEnded(
+				MountEditor({
+					editorId: threadEditorId,
+					placeholder: "Reply in thread...",
+					initialMarkdown: "",
+				}),
+				TrackFileDrop,
+			),
 		)
 	})
 })
@@ -286,15 +305,34 @@ describe("composer emoji picker", () => {
 			Scene.Command.expectExact(Picker.LoadEmojiData()),
 			Scene.Command.resolve(Picker.LoadEmojiData, Picker.Message.SucceededLoadEmojiData({ data })),
 			Scene.Mount.resolveAll(
-				[{ name: "PortalPickerPopover" }, emojiDialog(EmojiDialog.Message.ReceivedPopoverEvent({ event: PopoverEvent.CompletedPortalPickerPopover() }))],
-				[{ name: "MeasurePicker" }, emojiDialog(EmojiDialog.Message.GotPickerMessage({ message: measured }))],
-				[{ name: "TrackPickerFocusOut" }, emojiDialog(EmojiDialog.Message.GotPickerMessage({ message: Picker.Message.BlurredPicker() }))],
+				[
+					{ name: "PortalPickerPopover" },
+					emojiDialog(
+						EmojiDialog.Message.ReceivedPopoverEvent({
+							event: PopoverEvent.CompletedPortalPickerPopover(),
+						}),
+					),
+				],
+				[
+					{ name: "MeasurePicker" },
+					emojiDialog(EmojiDialog.Message.GotPickerMessage({ message: measured })),
+				],
+				[
+					{ name: "TrackPickerFocusOut" },
+					emojiDialog(
+						EmojiDialog.Message.GotPickerMessage({ message: Picker.Message.BlurredPicker() }),
+					),
+				],
 			),
 			Scene.expect(Scene.role("dialog", { name: "Emoji picker" })).toExist(),
 			Scene.expect(Scene.role("gridcell", { name: "party popper" })).toExist(),
 			// The popover around the dialog owns the Escape key (React Aria's Popover).
 			Scene.keydown(Scene.selector(`#${popoverId(`${editorId}-emoji-picker`)}`), "Escape"),
-			Scene.Mount.expectEnded({ name: "PortalPickerPopover" }, { name: "MeasurePicker" }, { name: "TrackPickerFocusOut" }),
+			Scene.Mount.expectEnded(
+				{ name: "PortalPickerPopover" },
+				{ name: "MeasurePicker" },
+				{ name: "TrackPickerFocusOut" },
+			),
 			Scene.expect(Scene.role("dialog", { name: "Emoji picker" })).toBeAbsent(),
 			Scene.Command.expectNone(),
 		)

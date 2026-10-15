@@ -4,22 +4,19 @@ import { Command } from "foldkit"
 import { defineMessageUnion } from "foldkit/message"
 import {
 	createThreadAction,
-	deleteMessageAction,
 	joinChannelAction,
 	pinMessageAction,
 	toggleReactionAction,
 	unpinMessageAction,
 } from "~/db/actions"
 import { CommonReason } from "~/lib/error-messages"
-import { ToastRequest } from "../../overlay/toasts"
 import { HazelRpc } from "../../rpc"
-import { catchCommon, toastOfExit } from "../../data/actions"
-import { notRetryable, rateLimited } from "./action-effects"
+import { catchCommon } from "../../data/actions"
 
 /**
  * The message actions of `ChatProvider` and `useMessageActions`: each Command runs the same
- * optimistic action (`db/actions.ts`) with the same variables. Reactions, pins and deletes still
- * report a toast (`toastOfExit`); the thread, clipboard and join Commands report a typed reason.
+ * optimistic action (`db/actions.ts`) with the same variables and reports a typed reason on failure
+ * (`docs/foldkit-decisions/s6-errors.md`); `write.ts` turns it into copy.
  */
 
 // MODEL
@@ -59,13 +56,23 @@ export type CopiedContent = typeof CopiedContent.Type
 export const JoinChannelFailure = Schema.Union([Schema.Literals(["NotFound"]), CommonReason])
 export type JoinChannelFailure = typeof JoinChannelFailure.Type
 
+/** What can go wrong reacting to or pinning a message, beyond the shared reasons. */
+export const MessageActionFailure = Schema.Union([Schema.Literals(["MessageNotFound"]), CommonReason])
+export type MessageActionFailure = typeof MessageActionFailure.Type
+
+/** What can go wrong unpinning, beyond the shared reasons. */
+export const UnpinMessageFailure = Schema.Union([Schema.Literals(["PinNotFound"]), CommonReason])
+export type UnpinMessageFailure = typeof UnpinMessageFailure.Type
+
 // MESSAGE
 
 export const ActionMessage = defineMessageUnion({
-	CompletedToggleReaction: { toast: Schema.NullOr(ToastRequest) },
-	CompletedPinMessage: { toast: Schema.NullOr(ToastRequest) },
-	CompletedUnpinMessage: { toast: Schema.NullOr(ToastRequest) },
-	CompletedDeleteMessage: { toast: Schema.NullOr(ToastRequest) },
+	SucceededToggleReaction: {},
+	FailedToggleReaction: { reason: MessageActionFailure },
+	SucceededPinMessage: {},
+	FailedPinMessage: { reason: MessageActionFailure },
+	SucceededUnpinMessage: {},
+	FailedUnpinMessage: { reason: UnpinMessageFailure },
 	CompletedGenerateThreadChannelId: { messageId: MessageId, threadChannelId: ChannelId },
 	SucceededCreateThread: { threadChannelId: ChannelId },
 	FailedCreateThread: { threadChannelId: ChannelId, reason: CreateThreadFailure },
@@ -82,58 +89,49 @@ export type ActionMessage = typeof ActionMessage.Type
 /** `ActionMessage` under the Submodel name, so a parent's Got wrapper imports it as `Message`. */
 export { ActionMessage as Message }
 
-const messageNotFound = notRetryable("Message not found", "This message may have been deleted.")
-
 // COMMAND
 
 /** `addReaction`: `toggleReactionAction` inserts or deletes the reaction, then `messageReaction.toggle`. */
 export const ToggleReaction = Command.define("ToggleReaction", {
 	args: { messageId: MessageId, channelId: ChannelId, emoji: Schema.String, userId: UserId },
-	messages: [ActionMessage.CompletedToggleReaction],
+	messages: [ActionMessage.SucceededToggleReaction, ActionMessage.FailedToggleReaction],
 	execute: (args) =>
-		toastOfExit(toggleReactionAction(args), "exitToast", {
-			handlers: { MessageNotFoundError: messageNotFound },
-		}).pipe(Effect.map((toast) => ActionMessage.CompletedToggleReaction({ toast }))),
+		toggleReactionAction(args).pipe(
+			Effect.as(ActionMessage.SucceededToggleReaction()),
+			Effect.catchTags({
+				MessageNotFoundError: () =>
+					Effect.succeed(ActionMessage.FailedToggleReaction({ reason: "MessageNotFound" })),
+			}),
+			catchCommon((reason) => ActionMessage.FailedToggleReaction({ reason })),
+		),
 })
 
 export const PinMessage = Command.define("PinMessage", {
 	args: { messageId: MessageId, channelId: ChannelId, userId: UserId },
-	messages: [ActionMessage.CompletedPinMessage],
+	messages: [ActionMessage.SucceededPinMessage, ActionMessage.FailedPinMessage],
 	execute: (args) =>
-		toastOfExit(pinMessageAction(args), "exitToast", {
-			success: "Message pinned",
-			handlers: { MessageNotFoundError: messageNotFound },
-		}).pipe(Effect.map((toast) => ActionMessage.CompletedPinMessage({ toast }))),
+		pinMessageAction(args).pipe(
+			Effect.as(ActionMessage.SucceededPinMessage()),
+			Effect.catchTags({
+				MessageNotFoundError: () =>
+					Effect.succeed(ActionMessage.FailedPinMessage({ reason: "MessageNotFound" })),
+			}),
+			catchCommon((reason) => ActionMessage.FailedPinMessage({ reason })),
+		),
 })
 
 export const UnpinMessage = Command.define("UnpinMessage", {
 	args: { pinnedMessageId: PinnedMessageId },
-	messages: [ActionMessage.CompletedUnpinMessage],
+	messages: [ActionMessage.SucceededUnpinMessage, ActionMessage.FailedUnpinMessage],
 	execute: (args) =>
-		toastOfExit(unpinMessageAction(args), "exitToast", {
-			success: "Message unpinned",
-			handlers: {
-				PinnedMessageNotFoundError: notRetryable(
-					"Pin not found",
-					"This message may have already been unpinned.",
-				),
-			},
-		}).pipe(Effect.map((toast) => ActionMessage.CompletedUnpinMessage({ toast }))),
-})
-
-export const DeleteMessage = Command.define("DeleteMessage", {
-	args: { messageId: MessageId },
-	messages: [ActionMessage.CompletedDeleteMessage],
-	execute: (args) =>
-		toastOfExit(deleteMessageAction(args), "exitToast", {
-			handlers: {
-				RateLimitExceededError: rateLimited("trying again"),
-				MessageNotFoundError: notRetryable(
-					"Message not found",
-					"This message may have already been deleted.",
-				),
-			},
-		}).pipe(Effect.map((toast) => ActionMessage.CompletedDeleteMessage({ toast }))),
+		unpinMessageAction(args).pipe(
+			Effect.as(ActionMessage.SucceededUnpinMessage()),
+			Effect.catchTags({
+				PinnedMessageNotFoundError: () =>
+					Effect.succeed(ActionMessage.FailedUnpinMessage({ reason: "PinNotFound" })),
+			}),
+			catchCommon((reason) => ActionMessage.FailedUnpinMessage({ reason })),
+		),
 })
 
 /** `createThread` generates the thread id up front so the panel opens before the RPC answers. */
