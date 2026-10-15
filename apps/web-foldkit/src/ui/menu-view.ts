@@ -65,42 +65,43 @@ const PortalMenu = Mount.defineStream("PortalMenu", {
 	messages: [Message.CompletedPortalMenu, Message.PressedOutside],
 	execute: ({ element, id, placement, offset, crossOffset, isTriggerWidthSet, initialFocusId }) =>
 		Stream.callback<PortalMenuMessage>((queue) =>
-			Effect.acquireRelease(
-				Effect.sync(() => {
-					const release = openModalPopover(element, {
-						triggerId: triggerId(id),
-						placement,
-						offset,
-						crossOffset,
-						isTriggerWidthSet,
-						initialFocusId,
-						insideSelector: popoverSelector(id),
-						onInteractOutside: () => Queue.offerUnsafe(queue, Message.PressedOutside()),
-					})
-					// useMenuItem focuses an item in onHoverStart, synchronously, so the click that follows
-					// lands on a focused item and never focuses it with the mouse (Chrome keeps :focus-visible).
-					const onPointerOver = (event: Event) => {
-						if (!(event instanceof PointerEvent) || event.pointerType === "touch") return
-						const item =
-							event.target instanceof Element
-								? event.target.closest('[role^="menuitem"]')
-								: null
-						if (
-							item instanceof HTMLElement &&
-							item.getAttribute("aria-disabled") !== "true" &&
-							document.activeElement !== item
-						)
-							item.focus({ preventScroll: true })
-					}
-					element.addEventListener("pointerover", onPointerOver)
-					Queue.offerUnsafe(queue, Message.CompletedPortalMenu())
-					return () => {
-						element.removeEventListener("pointerover", onPointerOver)
-						release()
-					}
-				}),
-				(release) => Effect.sync(release),
-			).pipe(Effect.flatMap(() => Effect.never)),
+			openModalPopover(element, {
+				triggerId: triggerId(id),
+				placement,
+				offset,
+				crossOffset,
+				isTriggerWidthSet,
+				initialFocusId,
+				insideSelector: popoverSelector(id),
+				onInteractOutside: () => Queue.offerUnsafe(queue, Message.PressedOutside()),
+			}).pipe(
+				Effect.andThen(
+					Effect.acquireRelease(
+						Effect.sync(() => {
+							// useMenuItem focuses an item in onHoverStart, synchronously, so the click that follows
+							// lands on a focused item and never focuses it with the mouse (Chrome keeps :focus-visible).
+							const onPointerOver = (event: Event) => {
+								if (!(event instanceof PointerEvent) || event.pointerType === "touch") return
+								const item =
+									event.target instanceof Element
+										? event.target.closest('[role^="menuitem"]')
+										: null
+								if (
+									item instanceof HTMLElement &&
+									item.getAttribute("aria-disabled") !== "true" &&
+									document.activeElement !== item
+								)
+									item.focus({ preventScroll: true })
+							}
+							element.addEventListener("pointerover", onPointerOver)
+							Queue.offerUnsafe(queue, Message.CompletedPortalMenu())
+							return () => element.removeEventListener("pointerover", onPointerOver)
+						}),
+						(release) => Effect.sync(release),
+					),
+				),
+				Effect.andThen(Effect.never),
+			),
 		),
 })
 
@@ -385,7 +386,10 @@ const submenuPopover = (
 	triggerKey: string,
 	focusedKey: Option.Option<string>,
 ): Html => {
-	const trigger = Array.findFirst(rootItems(viewInputs.entries), (candidate) => candidate.key === triggerKey)
+	const trigger = Array.findFirst(
+		rootItems(viewInputs.entries),
+		(candidate) => candidate.key === triggerKey,
+	)
 	const leaves = Option.match(trigger, { onNone: () => [], onSome: (found) => found.submenu })
 	return h.div(
 		[

@@ -1,8 +1,7 @@
 import type { Placement as AnchorPlacement } from "@foldkit/ui/anchor"
 import { Schema } from "effect"
-import type { Placement as PositionPlacement } from "./position"
 
-/** React Aria's `Placement` as a Schema, so Mount args and Models carry it without a cast. */
+/** The overlay placements (React Aria's names) as a Schema, so Mount args and Models carry them. */
 const placements = [
 	"bottom",
 	"bottom left",
@@ -26,7 +25,7 @@ const placements = [
 	"end",
 	"end top",
 	"end bottom",
-] as const satisfies ReadonlyArray<PositionPlacement>
+] as const
 
 export const Placement = Schema.Literals(placements)
 export type Placement = typeof Placement.Type

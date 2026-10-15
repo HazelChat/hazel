@@ -119,7 +119,7 @@ const ImageViewerPortal = Mount.defineStream("ImageViewerPortal", {
 		Stream.callback<Intent>((queue) =>
 			Effect.acquireRelease(
 				Effect.sync(() => {
-					const releasePortal = portalOverlay(element, { isModal: false })
+					const releasePortal = portalOverlay(element)
 					const onKeyDown = (event: KeyboardEvent) => {
 						if (event.key === "Escape") Queue.offerUnsafe(queue, Intent.PressedClose())
 					}

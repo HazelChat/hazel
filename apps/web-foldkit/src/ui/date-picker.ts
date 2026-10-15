@@ -2,7 +2,13 @@ import { Effect, Option, Queue, Schema, Stream } from "effect"
 import { Command, Mount, Subscription, type Update } from "foldkit"
 import { defineMessageUnion } from "foldkit/message"
 import { modifyFields } from "foldkit/struct"
-import { portalOverlay, positionOverlay, restoreFocusTo, watchInteractOutside } from "./aria/overlay"
+import {
+	isolateOverlay,
+	portalOverlay,
+	positionOverlay,
+	restoreFocusTo,
+	watchInteractOutside,
+} from "./aria/overlay"
 import * as Calendar from "./calendar"
 import * as D from "./calendar-date"
 import * as Segments from "./date-segments"
@@ -82,35 +88,46 @@ export const PortalPicker = Mount.defineStream("PortalDatePicker", {
 	messages: [Message.CompletedPortalPicker, Message.PressedOutside],
 	execute: ({ element, id }) =>
 		Stream.callback<PortalMessage>((queue) =>
-			Effect.acquireRelease(
-				Effect.sync(() => {
-					const restoreFocus = restoreFocusTo(triggerId(id), element)
-					const releasePortal = portalOverlay(element, { isModal: true })
-					const popover = element.querySelector<HTMLElement>("[data-popover]")
-					const releasePosition = popover
-						? positionOverlay(popover, {
-								triggerId: groupId(id),
-								placement: "bottom",
-								offset: 8,
-								isTriggerWidthSet: true,
-							})
-						: () => undefined
-					element
-						.querySelector<HTMLElement>('[role=grid] [role=button][tabindex="0"]')
-						?.focus({ preventScroll: true })
-					const releaseOutside = watchInteractOutside(`#${CSS.escape(popoverId(id))}`, () =>
-						Queue.offerUnsafe(queue, Message.PressedOutside()),
-					)
-					Queue.offerUnsafe(queue, Message.CompletedPortalPicker())
-					return () => {
-						releaseOutside()
-						releasePosition()
-						releasePortal()
-						restoreFocus()
-					}
-				}),
-				(release) => Effect.sync(release),
-			).pipe(Effect.flatMap(() => Effect.never)),
+			Effect.gen(function* () {
+				const restoreFocus = restoreFocusTo(triggerId(id), element)
+				yield* Effect.acquireRelease(
+					Effect.sync(() => portalOverlay(element)),
+					(releasePortal) =>
+						Effect.sync(() => {
+							releasePortal()
+							restoreFocus()
+						}),
+				)
+				yield* isolateOverlay(element, popoverId(id))
+				yield* Effect.acquireRelease(
+					Effect.sync(() => {
+						const popover = element.querySelector<HTMLElement>("[data-popover]")
+						const releasePosition = popover
+							? positionOverlay(popover, {
+									triggerId: groupId(id),
+									placement: "bottom",
+									offset: 8,
+									isTriggerWidthSet: true,
+								})
+							: () => undefined
+						element
+							.querySelector<HTMLElement>('[role=grid] [role=button][tabindex="0"]')
+							?.focus({ preventScroll: true })
+						const releaseOutside = watchInteractOutside(
+							element,
+							`#${CSS.escape(popoverId(id))}`,
+							() => Queue.offerUnsafe(queue, Message.PressedOutside()),
+						)
+						Queue.offerUnsafe(queue, Message.CompletedPortalPicker())
+						return () => {
+							releaseOutside()
+							releasePosition()
+						}
+					}),
+					(release) => Effect.sync(release),
+				)
+				return yield* Effect.never
+			}),
 		),
 })
 

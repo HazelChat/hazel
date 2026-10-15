@@ -1,3 +1,4 @@
+import { Anchor } from "@foldkit/ui"
 import { MessageId } from "@hazel/schema"
 import { Effect, Option, Queue, Schema, Stream } from "effect"
 import { Mount } from "foldkit"
@@ -5,7 +6,6 @@ import { defineMessageUnion } from "foldkit/message"
 import type { ChildAttribute, Html, HtmlBuilder } from "foldkit/html"
 import { IconCopy, IconEdit, IconEmojiAdd, IconReply, IconTrash } from "../../icons"
 import { LIST_PORTAL_ATTRIBUTE } from "../image-viewer"
-import { calculatePosition } from "../../ui/aria/position"
 import { button } from "../../ui/button"
 import { separator } from "../../ui/separator"
 import * as TooltipHost from "../tooltip-host"
@@ -16,32 +16,6 @@ import * as TooltipHost from "../tooltip-host"
 export const TOP_EMOJIS = ["👍", "❤️", "😂", "🔥", "👀", "🎉"] as const
 
 const POSITION_PADDING = 12
-
-/** `useOverlayPosition({ placement: "top end", offset: -6, shouldFlip: true })`, with `zIndex: 50`. */
-const placeToolbar = (overlay: HTMLElement, target: HTMLElement) => {
-	overlay.style.position = "absolute"
-	overlay.style.zIndex = "50"
-	for (const side of ["top", "bottom", "left", "right"]) overlay.style.removeProperty(side)
-	overlay.style.top = "0px"
-	overlay.style.maxHeight = `${window.visualViewport?.height ?? window.innerHeight}px`
-	const result = calculatePosition({
-		placement: "top right",
-		overlayNode: overlay,
-		targetNode: target,
-		scrollNode: overlay,
-		padding: POSITION_PADDING,
-		shouldFlip: true,
-		boundaryElement: document.body,
-		offset: -6,
-		crossOffset: 0,
-		maxHeight: undefined,
-		arrowSize: 0,
-		arrowBoundaryOffset: 0,
-	})
-	for (const side of ["top", "bottom", "left", "right"]) overlay.style.removeProperty(side)
-	overlay.style.maxHeight = `${result.maxHeight}px`
-	for (const [key, value] of Object.entries(result.position)) overlay.style.setProperty(key, `${value}px`)
-}
 
 export const ToolbarEvent = defineMessageUnion({ EnteredToolbar: {}, LeftToolbar: {} })
 export type ToolbarEvent = typeof ToolbarEvent.Type
@@ -61,24 +35,30 @@ export const PlaceMessageToolbar = Mount.defineStream("PlaceMessageToolbar", {
 				Effect.sync(() => {
 					if (!(element instanceof HTMLElement)) return () => undefined
 					element.style.position = "absolute"
-					element.style.top = "0px"
+					element.style.zIndex = "50"
 					document.body.appendChild(element)
-					const targetOf = () =>
-						document.getElementById(`message-${element.getAttribute(TOOLBAR_TARGET_ATTRIBUTE)}`)
-					// Observer callbacks run after the frame's layout and before its paint (a newly observed
-					// element always reports once), so placement never forces a layout of the patched list.
-					const observer = new ResizeObserver(() => {
-						const target = targetOf()
-						if (target !== null) placeToolbar(element, target)
-					})
-					const observeTarget = () => {
-						observer.disconnect()
-						observer.observe(element)
-						const target = targetOf()
-						if (target !== null) observer.observe(target)
+					// `useOverlayPosition({ placement: "top end", offset: -6 })`: anchored to the hovered
+					// message, re-anchored whenever the view retargets the toolbar.
+					let releaseAnchor = () => undefined as void
+					const anchor = () => {
+						releaseAnchor()
+						const messageId = element.getAttribute(TOOLBAR_TARGET_ATTRIBUTE)
+						releaseAnchor =
+							messageId !== null && document.getElementById(`message-${messageId}`) !== null
+								? Anchor.anchorSetup(element, {
+										buttonId: `message-${messageId}`,
+										anchor: {
+											placement: "top-end",
+											gap: -6,
+											padding: POSITION_PADDING,
+											portal: false,
+										},
+										interceptTab: false,
+									})
+								: () => undefined
 					}
-					observeTarget()
-					const attributeObserver = new MutationObserver(observeTarget)
+					anchor()
+					const attributeObserver = new MutationObserver(anchor)
 					attributeObserver.observe(element, {
 						attributes: true,
 						attributeFilter: [TOOLBAR_TARGET_ATTRIBUTE],
@@ -89,7 +69,7 @@ export const PlaceMessageToolbar = Mount.defineStream("PlaceMessageToolbar", {
 					element.addEventListener("mouseleave", onLeave)
 					return () => {
 						attributeObserver.disconnect()
-						observer.disconnect()
+						releaseAnchor()
 						element.removeEventListener("mouseenter", onEnter)
 						element.removeEventListener("mouseleave", onLeave)
 						element.remove()
@@ -239,25 +219,33 @@ const action = <M>(
 		hoveredKey: inputs.hoveredKey,
 		toMessage: inputs.toTooltipMessage,
 		content: [options.label],
+		// The tooltip and the emoji picker render beside the button, never inside it.
 		toTrigger: (attributes, overlay) =>
-			button(
-				h,
-				{
-					size: "sq-sm",
-					intent: "plain",
-					className: options.className,
-					...(options.onPress === undefined ? {} : { onPress: options.onPress }),
-					attributes: [
-						...attributes,
-						...(options.extra ?? []),
-						h.Attribute("aria-label", options.label),
-						h.Attribute("data-react-aria-pressable", "true"),
-						...(inputs.focusedKey === `${inputs.messageId}:toolbar:${options.key}`
-							? [h.Attribute("data-focused", "true")]
-							: []),
-					],
-				},
-				[options.content, overlay, options.overlay ?? h.empty],
+			h.div(
+				[h.Class("contents")],
+				[
+					button(
+						h,
+						{
+							size: "sq-sm",
+							intent: "plain",
+							className: options.className,
+							...(options.onPress === undefined ? {} : { onPress: options.onPress }),
+							attributes: [
+								...attributes,
+								...(options.extra ?? []),
+								h.Attribute("aria-label", options.label),
+								h.Attribute("data-react-aria-pressable", "true"),
+								...(inputs.focusedKey === `${inputs.messageId}:toolbar:${options.key}`
+									? [h.Attribute("data-focused", "true")]
+									: []),
+							],
+						},
+						[options.content],
+					),
+					overlay,
+					options.overlay ?? h.empty,
+				],
 			),
 	})
 

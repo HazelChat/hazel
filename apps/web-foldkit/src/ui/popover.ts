@@ -85,7 +85,10 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 			},
 			focusSelector: `#${contentId(model.id)}`,
 			toView: (render: Popover.RenderInfo) => {
-				const closeAttributes = childAttributes([h.Type("button"), h.OnClick(Message.RequestedClose())])
+				const closeAttributes = childAttributes([
+					h.Type("button"),
+					h.OnClick(Message.RequestedClose()),
+				])
 				return h.div(
 					[h.Class("contents")],
 					[
@@ -96,7 +99,13 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 									h.div(
 										[
 											...render.panel,
-											h.Class(twMerge(...popoverContentBase, viewInputs.className)),
+											h.Class(
+												twMerge(
+													...popoverContentBase,
+													"min-w-(--button-width)",
+													viewInputs.className,
+												),
+											),
 											h.Role("dialog"),
 											h.AriaLabelledBy(triggerId(model.id)),
 										],

@@ -1,208 +1,81 @@
+import { Anchor } from "@foldkit/ui"
+import { Effect, type Scope } from "effect"
+import * as Dom from "foldkit/dom"
 import type { Html, HtmlBuilder } from "foldkit/html"
-import { calculatePosition, type Placement } from "./position"
+import { type Placement, toAnchorPlacement } from "./placement"
 
 /**
- * Imperative overlay plumbing shared by the overlay primitives (menu, select, popover, tooltip,
- * dialog, sheet). Each helper mirrors one React Aria hook and returns its cleanup, so a
- * primitive's Mount can pair setup and release with `Effect.acquireRelease`.
+ * Overlay plumbing the menu, select, combo box, date picker, command menu and picker popovers share.
+ * Each helper returns its cleanup (or is a scoped Effect), so a primitive's Mount pairs setup and
+ * release. Positioning, portals, scroll locks and inert isolation come from Foldkit, which keeps
+ * their reference counts; the helpers here hold no state of their own.
  */
 
-// POSITIONING (useOverlayPosition)
+// POSITIONING
 
 export interface PositionConfig {
 	readonly triggerId: string
 	readonly placement: Placement
+	/** The gap along the main axis. */
 	readonly offset: number
 	readonly crossOffset?: number
-	readonly shouldFlip?: boolean
-	/** `--trigger-width`, set by MenuTrigger and Select from the trigger's `offsetWidth`. */
+	/** `--trigger-width`, set by MenuTrigger and Select from the trigger's width. */
 	readonly isTriggerWidthSet?: boolean
-	/** The arrow wrapper (OverlayArrow), positioned along the cross axis. */
-	readonly arrowSelector?: string
-	/** Defaults to 12, React Aria's `containerPadding`. */
-	readonly containerPadding?: number
 }
 
-/** The overlay positions in LTR, so logical `start`/`end` resolve to `left`/`right`. */
-const logicalPlacements: Partial<Record<Placement, Placement>> = {
-	start: "left",
-	"start top": "left top",
-	"start bottom": "left bottom",
-	end: "right",
-	"end top": "right top",
-	"end bottom": "right bottom",
-	"top start": "top left",
-	"top end": "top right",
-	"bottom start": "bottom left",
-	"bottom end": "bottom right",
-}
-const physicalPlacement = (placement: Placement): Placement => logicalPlacements[placement] ?? placement
-
-const CONTAINER_PADDING = 12
+const VIEWPORT_PADDING = 12
 const OVERLAY_Z_INDEX = "100000"
 
-/** Positions `overlay` against the trigger exactly as React Aria's `useOverlayPosition` does. */
+/**
+ * Anchors `overlay` to the trigger with Floating UI: it flips and shifts inside the viewport, caps
+ * its height to the space left, and publishes `--button-width` and `data-placement`.
+ */
 export const positionOverlay = (overlay: HTMLElement, config: PositionConfig): (() => void) => {
-	const trigger = document.getElementById(config.triggerId)
-	if (trigger === null) return () => undefined
-	const arrow = config.arrowSelector ? overlay.querySelector<HTMLElement>(config.arrowSelector) : null
-
 	overlay.style.position = "absolute"
 	overlay.style.zIndex = OVERLAY_Z_INDEX
-	if (config.isTriggerWidthSet) overlay.style.setProperty("--trigger-width", `${trigger.offsetWidth}px`)
+	const trigger = document.getElementById(config.triggerId)
+	if (config.isTriggerWidthSet && trigger !== null)
+		overlay.style.setProperty("--trigger-width", `${trigger.offsetWidth}px`)
+	return Anchor.anchorSetup(overlay, {
+		buttonId: config.triggerId,
+		anchor: {
+			placement: toAnchorPlacement(config.placement),
+			gap: config.offset,
+			offset: config.crossOffset ?? 0,
+			padding: VIEWPORT_PADDING,
+			portal: false,
+		},
+		interceptTab: false,
+	})
+}
 
-	const update = () => {
-		overlay.style.top = "0px"
-		overlay.style.bottom = ""
-		overlay.style.maxHeight = `${window.visualViewport?.height ?? window.innerHeight}px`
-		const result = calculatePosition({
-			placement: physicalPlacement(config.placement),
-			overlayNode: overlay,
-			targetNode: trigger,
-			scrollNode: overlay,
-			padding: config.containerPadding ?? CONTAINER_PADDING,
-			shouldFlip: config.shouldFlip ?? true,
-			boundaryElement: document.body,
-			offset: config.offset,
-			crossOffset: config.crossOffset ?? 0,
-			maxHeight: undefined,
-			arrowSize: arrow ? arrow.offsetWidth : 0,
-			arrowBoundaryOffset: 0,
-		})
-		overlay.style.top = ""
-		overlay.style.bottom = ""
-		overlay.style.left = ""
-		overlay.style.right = ""
-		for (const [key, value] of Object.entries(result.position))
-			overlay.style.setProperty(key, `${value}px`)
-		overlay.style.maxHeight = result.maxHeight != null ? `${result.maxHeight}px` : ""
-		overlay.style.setProperty(
-			"--trigger-anchor-point",
-			`${result.triggerAnchorPoint.x}px ${result.triggerAnchorPoint.y}px`,
+// PORTAL AND ISOLATION
+
+/**
+ * Moves `element` out of its ancestors' clipping: to Foldkit's portal root, or into the `<dialog>`
+ * it renders in, so an overlay opened from a modal stays above the modal and interactive.
+ */
+export const portalOverlay = (element: Element): (() => void) => Anchor.portalToContainingRoot(element)
+
+const OVERLAY_ROOT_ATTRIBUTE = "data-overlay-root"
+
+/**
+ * A modal overlay: page scroll locks and everything outside `root` turns inert (after the next
+ * commit, so the overlay paints first). `key` names the overlay; `root` is marked with it, so
+ * outside presses can tell the topmost modal overlay.
+ */
+export const isolateOverlay = (root: Element, key: string): Effect.Effect<void, never, Scope.Scope> =>
+	Effect.gen(function* () {
+		yield* Effect.acquireRelease(
+			Effect.sync(() => root.setAttribute(OVERLAY_ROOT_ATTRIBUTE, key)),
+			() => Effect.sync(() => root.removeAttribute(OVERLAY_ROOT_ATTRIBUTE)),
 		)
-		overlay.setAttribute("data-placement", result.placement)
-		if (arrow) {
-			arrow.setAttribute("data-placement", result.placement)
-			arrow.style.position = "absolute"
-			arrow.style.transform =
-				result.placement === "top" || result.placement === "bottom"
-					? "translateX(-50%)"
-					: "translateY(-50%)"
-			for (const side of ["top", "bottom", "left", "right"]) arrow.style.removeProperty(side)
-			arrow.style.setProperty(result.placement, "100%")
-			if (result.arrowOffsetLeft != null) arrow.style.left = `${result.arrowOffsetLeft}px`
-			if (result.arrowOffsetTop != null) arrow.style.top = `${result.arrowOffsetTop}px`
-		}
-	}
-
-	update()
-	const observer = new ResizeObserver(update)
-	observer.observe(overlay)
-	observer.observe(trigger)
-	window.addEventListener("resize", update, false)
-	return () => {
-		observer.disconnect()
-		window.removeEventListener("resize", update, false)
-	}
-}
-
-// PORTAL AND MODALITY (Overlay, ariaHideOutside, usePreventScroll)
-
-/**
- * Moves `element` to the end of `<body>` like React Aria's portal. A modal overlay also makes the
- * other body children inert and locks page scroll; non-modal ones (submenus, tooltips) only move.
- */
-export const portalOverlay = (
-	element: Element,
-	options: { readonly isModal: boolean; readonly inertAfterPaint?: boolean },
-): (() => void) => {
-	document.body.appendChild(element)
-	const releaseInert = options.isModal
-		? hideOutside(element, options.inertAfterPaint ?? false)
-		: () => undefined
-	const releaseScroll = options.isModal ? preventScroll() : () => undefined
-	const releaseStack = options.isModal ? pushOverlay() : () => undefined
-	return () => {
-		releaseStack()
-		releaseInert()
-		releaseScroll()
-		element.remove()
-	}
-}
-
-/** React Aria's `visibleOverlays`: only the topmost modal overlay reacts to outside presses. */
-const overlayStack: Array<symbol> = []
-
-const pushOverlay = (): (() => void) & { readonly isTopmost: () => boolean } => {
-	const token = Symbol("overlay")
-	overlayStack.push(token)
-	const release = () => {
-		const index = overlayStack.lastIndexOf(token)
-		if (index !== -1) overlayStack.splice(index, 1)
-	}
-	return Object.assign(release, { isTopmost: () => overlayStack[overlayStack.length - 1] === token })
-}
-
-const inertCounts = new WeakMap<Element, number>()
-
-/** React Aria keeps its live announcer and top-layer nodes reachable while an overlay hides the rest. */
-const staysVisible = (element: Element) =>
-	element.tagName === "SCRIPT" ||
-	element.hasAttribute("data-live-announcer") ||
-	element.hasAttribute("data-react-aria-top-layer")
-
-/**
- * `inert` restyles the whole app (about 2,200 elements, 8 to 10ms). With `afterPaint` it lands in
- * the next frame, so the overlay paints in the frame that inserted it. Only for overlays whose own
- * hit-testable underlay takes the pointer at once; otherwise the hover leave would be missed.
- */
-const hideOutside = (visible: Element, afterPaint: boolean): (() => void) => {
-	const hidden = [...document.body.children].filter(
-		(child) => child !== visible && !child.contains(visible) && !staysVisible(child),
-	)
-	let isApplied = false
-	const apply = () => {
-		isApplied = true
-		for (const element of hidden) {
-			const count = inertCounts.get(element) ?? 0
-			if (count === 0) element.setAttribute("inert", "")
-			inertCounts.set(element, count + 1)
-		}
-	}
-	const frame = afterPaint ? requestAnimationFrame(apply) : null
-	if (frame === null) apply()
-	return () => {
-		if (frame !== null) cancelAnimationFrame(frame)
-		if (!isApplied) return
-		for (const element of hidden) {
-			const count = (inertCounts.get(element) ?? 1) - 1
-			inertCounts.set(element, count)
-			if (count === 0) element.removeAttribute("inert")
-		}
-	}
-}
-
-let scrollLocks = 0
-let restoreScroll = () => undefined as void
-
-const preventScroll = (): (() => void) => {
-	if (scrollLocks++ === 0) {
-		const root = document.documentElement
-		const scrollbarWidth = window.innerWidth - root.clientWidth
-		const previousOverflow = root.style.overflow
-		const previousPadding = root.style.paddingRight
-		if (scrollbarWidth > 0) root.style.paddingRight = `${scrollbarWidth}px`
-		root.style.overflow = "hidden"
-		restoreScroll = () => {
-			root.style.overflow = previousOverflow
-			root.style.paddingRight = previousPadding
-			if (root.getAttribute("style") === "") root.removeAttribute("style")
-		}
-	}
-	return () => {
-		if (--scrollLocks === 0) restoreScroll()
-	}
-}
+		yield* Effect.acquireRelease(Dom.lockScroll, () => Dom.unlockScroll)
+		yield* Effect.acquireRelease(
+			Dom.inertOthers(key, [`[${OVERLAY_ROOT_ATTRIBUTE}="${CSS.escape(key)}"]`]),
+			() => Dom.restoreInert(key),
+		)
+	})
 
 /**
  * ariaHideOutside as useComboBox uses it: every element outside `visible` gets aria-hidden, so
@@ -212,7 +85,7 @@ export const ariaHideOutside = (visible: ReadonlyArray<Element>): (() => void) =
 	const hidden: Array<Element> = []
 	const walk = (parent: Element) => {
 		for (const child of parent.children) {
-			if (staysVisible(child) || visible.includes(child)) continue
+			if (visible.includes(child)) continue
 			if (visible.some((element) => child.contains(element))) walk(child)
 			else if (child.getAttribute("aria-hidden") !== "true") {
 				child.setAttribute("aria-hidden", "true")
@@ -228,17 +101,27 @@ export const ariaHideOutside = (visible: ReadonlyArray<Element>): (() => void) =
 
 // DISMISS (useInteractOutside)
 
+/** The overlay opened last is the one an outside press dismisses. */
+const isTopmost = (root: Element) => {
+	const roots = document.querySelectorAll(`[${OVERLAY_ROOT_ATTRIBUTE}]`)
+	return roots.length === 0 || roots[roots.length - 1] === root
+}
+
 /**
  * Calls `onInteractOutside` on a pointer press that starts and ends outside every element matching
- * `insideSelector`, like React Aria. The pointerdown is prevented, so the press moves no focus.
+ * `insideSelector`, while `root` is the topmost modal overlay. The pointerdown is prevented, so the
+ * press moves no focus.
  */
-export const watchInteractOutside = (insideSelector: string, onInteractOutside: () => void): (() => void) => {
+export const watchInteractOutside = (
+	root: Element,
+	insideSelector: string,
+	onInteractOutside: () => void,
+): (() => void) => {
 	let isPressStartedOutside = false
-	const entry = pushOverlay()
 	const isOutside = (event: Event) =>
 		event.target instanceof Element ? event.target.closest(insideSelector) === null : true
 	const onPointerDown = (event: PointerEvent) => {
-		isPressStartedOutside = event.button === 0 && entry.isTopmost() && isOutside(event)
+		isPressStartedOutside = event.button === 0 && isTopmost(root) && isOutside(event)
 		if (isPressStartedOutside) event.preventDefault()
 	}
 	const onPointerUp = (event: PointerEvent) => {
@@ -248,13 +131,12 @@ export const watchInteractOutside = (insideSelector: string, onInteractOutside: 
 	document.addEventListener("pointerdown", onPointerDown, true)
 	document.addEventListener("pointerup", onPointerUp, true)
 	return () => {
-		entry()
 		document.removeEventListener("pointerdown", onPointerDown, true)
 		document.removeEventListener("pointerup", onPointerUp, true)
 	}
 }
 
-// FOCUS (FocusScope restoreFocus)
+// FOCUS (FocusScope restoreFocus and contain)
 
 /** Focuses the trigger again when an overlay that holds focus goes away (FocusScope `restoreFocus`). */
 export const restoreFocusTo =
@@ -265,8 +147,18 @@ export const restoreFocusTo =
 		document.getElementById(triggerId)?.focus({ preventScroll: true })
 	}
 
+/** FocusScope `restoreFocus` for overlays opened without a trigger: back to whatever had focus. */
+export const restoreFocusToPrevious = (overlay: Element): (() => void) => {
+	const previous = document.activeElement
+	return () => {
+		const active = document.activeElement
+		if (active !== null && active !== document.body && !overlay.contains(active)) return
+		if (previous instanceof HTMLElement) previous.focus({ preventScroll: true })
+	}
+}
+
 /** FocusScope `contain`: Tab and Shift+Tab cycle through the tabbable elements inside `root`. */
-export const containFocus = (root: HTMLElement | Element): (() => void) => {
+export const containFocus = (root: Element): (() => void) => {
 	const selector =
 		"a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]"
 	const onKeyDown = (event: Event) => {
@@ -328,50 +220,12 @@ export const containFocus = (root: HTMLElement | Element): (() => void) => {
 	}
 }
 
-// MODAL OVERLAY (useViewportSize, DialogHeader/DialogFooter resize observers)
-
-/** ModalOverlay's `--visual-viewport-height` and `--page-height`. */
-export const trackViewportHeight = (overlay: HTMLElement): (() => void) => {
-	const update = () => {
-		const scrolling = document.scrollingElement ?? document.documentElement
-		const pageHeight = scrolling.scrollHeight - (scrolling.getBoundingClientRect().height % 1)
-		overlay.style.setProperty(
-			"--visual-viewport-height",
-			`${window.visualViewport?.height ?? window.innerHeight}px`,
-		)
-		overlay.style.setProperty("--page-height", `${pageHeight}px`)
-	}
-	update()
-	window.visualViewport?.addEventListener("resize", update)
-	return () => window.visualViewport?.removeEventListener("resize", update)
-}
-
-/** DialogHeader and DialogFooter publish their heights on the dialog, which DialogBody's max height uses. */
-export const observeDialogParts = (root: Element): (() => void) => {
-	const parts = [
-		["dialog-header", "--dialog-header-height"],
-		["dialog-footer", "--dialog-footer-height"],
-	] as const
-	const observers = parts.flatMap(([slot, property]) => {
-		const part = root.querySelector<HTMLElement>(`[data-slot="${slot}"]`)
-		if (part === null) return []
-		const observer = new ResizeObserver(() =>
-			part.parentElement?.style.setProperty(property, `${part.clientHeight}px`),
-		)
-		observer.observe(part)
-		return [observer]
-	})
-	return () => {
-		for (const observer of observers) observer.disconnect()
-	}
-}
-
 // MODAL POPOVER (Popover with an underlay, as MenuTrigger, Select and DialogTrigger render it)
 
 /**
- * Everything a modal popover does on mount: portal `root` to the body with the rest inert and
- * scroll locked, position its `[data-popover]` panel, move focus in, dismiss on outside press,
- * and give focus back to the trigger on release.
+ * Everything a modal popover does while mounted: portal `root`, isolate the page, anchor its
+ * `[data-popover]` panel, move focus in, dismiss on an outside press, and give focus back to the
+ * trigger on release.
  */
 export const openModalPopover = (
 	root: Element,
@@ -380,52 +234,51 @@ export const openModalPopover = (
 			initialFocusId: string
 			insideSelector: string
 			onInteractOutside: () => void
-			inertAfterPaint?: boolean
 		}>,
-): (() => void) => {
-	const restoreFocus = restoreFocusTo(config.triggerId, root)
-	const releasePortal = portalOverlay(root, {
-		isModal: true,
-		inertAfterPaint: config.inertAfterPaint ?? false,
+): Effect.Effect<void, never, Scope.Scope> =>
+	Effect.gen(function* () {
+		yield* Effect.acquireRelease(
+			Effect.sync(() => {
+				const restoreFocus = restoreFocusTo(config.triggerId, root)
+				const releasePortal = portalOverlay(root)
+				return () => {
+					releasePortal()
+					restoreFocus()
+				}
+			}),
+			(release) => Effect.sync(release),
+		)
+		yield* isolateOverlay(root, config.insideSelector)
+		yield* Effect.acquireRelease(
+			Effect.sync(() => {
+				const popover = root.querySelector<HTMLElement>("[data-popover]")
+				const releasePosition = popover ? positionOverlay(popover, config) : () => undefined
+				document.getElementById(config.initialFocusId)?.focus({ preventScroll: true })
+				const releaseOutside = watchInteractOutside(
+					root,
+					config.insideSelector,
+					config.onInteractOutside,
+				)
+				return () => {
+					releaseOutside()
+					releasePosition()
+				}
+			}),
+			(release) => Effect.sync(release),
+		)
 	})
-	const popover = root.querySelector<HTMLElement>("[data-popover]")
-	const releasePosition = popover ? positionOverlay(popover, config) : () => undefined
-	document.getElementById(config.initialFocusId)?.focus({ preventScroll: true })
-	const releaseOutside = watchInteractOutside(config.insideSelector, config.onInteractOutside)
-	return () => {
-		releaseOutside()
-		releasePosition()
-		releasePortal()
-		restoreFocus()
-	}
-}
-
-/** FocusScope `restoreFocus` for overlays opened without a trigger: back to whatever had focus. */
-export const restoreFocusToPrevious = (overlay: Element): (() => void) => {
-	const previous = document.activeElement
-	return () => {
-		const active = document.activeElement
-		if (active !== null && active !== document.body && !overlay.contains(active)) return
-		if (previous instanceof HTMLElement) previous.focus({ preventScroll: true })
-	}
-}
 
 // MARKUP
 
 /** React Aria's visually hidden `DismissButton`, rendered at both ends of a modal popover. */
 export const dismissButton = <Message>(h: HtmlBuilder<Message>, onDismiss: Message): Html =>
 	h.div(
-		[
-			h.Attribute(
-				"style",
-				"border: 0px; clip: rect(0px, 0px, 0px, 0px); clip-path: inset(50%); height: 1px; margin: -1px; overflow: hidden; padding: 0px; position: absolute; width: 1px; white-space: nowrap;",
-			),
-		],
+		[h.Class("sr-only")],
 		[
 			h.button([
 				h.Attribute("aria-label", "Dismiss"),
 				h.Attribute("tabindex", "-1"),
-				h.Attribute("style", "width: 1px; height: 1px;"),
+				h.Type("button"),
 				h.OnClick(onDismiss),
 			]),
 		],
@@ -437,4 +290,4 @@ export const focusScopeSentinel = <Message>(h: HtmlBuilder<Message>, edge: "star
 
 /** The fixed underlay a modal popover renders behind itself. */
 export const popoverUnderlay = <Message>(h: HtmlBuilder<Message>): Html =>
-	h.div([h.Attribute("data-testid", "underlay"), h.Attribute("style", "position: fixed; inset: 0px;")])
+	h.div([h.Attribute("data-testid", "underlay"), h.Class("fixed inset-0")])

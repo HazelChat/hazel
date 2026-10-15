@@ -14,10 +14,9 @@ export type CommandMenuSize = keyof typeof commandMenuSizes
 
 export const commandMenuOverlayClassName = (isBlurred: boolean) =>
 	twJoin(
-		"fixed inset-0 z-50 h-(--visual-viewport-height,100vh) w-screen overflow-hidden bg-overlay-backdrop",
+		"fixed inset-0 z-50 h-dvh w-screen overflow-hidden bg-overlay-backdrop",
 		"grid grid-rows-[1fr_auto] justify-items-center text-center sm:grid-rows-[1fr_auto_3fr]",
-		"data-entering:fade-in data-entering:animate-in data-entering:duration-300 data-entering:ease-out",
-		"data-exiting:fade-out data-exiting:animate-out data-exiting:ease-in",
+		"transition-opacity duration-200 ease-out starting:opacity-0",
 		isBlurred && "backdrop-blur-sm backdrop-filter",
 	)
 
@@ -25,11 +24,12 @@ export const commandMenuOverlayClassName = (isBlurred: boolean) =>
 export const commandMenuModalBase = (size: CommandMenuSize) =>
 	[
 		"row-start-2 bg-overlay text-left text-overlay-fg shadow-lg outline-none ring ring-muted-fg/15 md:row-start-1 dark:ring-border",
-		"max-h-[calc(var(--visual-viewport-height)*0.8)] w-full sm:fixed sm:top-[10%] sm:left-1/2 sm:-translate-x-1/2",
+		"max-h-[80dvh] w-full sm:fixed sm:top-[10%] sm:left-1/2 sm:-translate-x-1/2",
 		"rounded-t-2xl md:rounded-xl",
 		commandMenuSizes[size],
-		"data-entering:slide-in-from-bottom sm:data-entering:zoom-in-95 sm:data-entering:slide-in-from-bottom-0 data-entering:animate-in data-entering:duration-300 data-entering:ease-out",
-		"data-exiting:slide-out-to-bottom sm:data-exiting:zoom-out-95 sm:data-exiting:slide-out-to-bottom-0 data-exiting:animate-out data-exiting:ease-in",
+		// Fades and rises (scales on wider screens) in from `@starting-style`, in 200ms.
+		"transition-[opacity,translate,scale] duration-200 ease-out",
+		"starting:translate-y-4 starting:opacity-0 sm:starting:translate-y-0 sm:starting:scale-95",
 	] as const
 
 export const commandMenuDialogClassName = "flex max-h-[inherit] flex-col overflow-hidden outline-hidden"

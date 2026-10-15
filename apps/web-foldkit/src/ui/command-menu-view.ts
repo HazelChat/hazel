@@ -33,7 +33,7 @@ import {
 	focusScopeSentinel,
 	portalOverlay,
 	restoreFocusToPrevious,
-	trackViewportHeight,
+	isolateOverlay,
 	watchInteractOutside,
 } from "./aria/overlay"
 import {
@@ -57,32 +57,40 @@ export const PortalCommandMenu = Mount.defineStream("PortalCommandMenu", {
 	messages: [Message.CompletedPortalCommandMenu, Message.PressedOutside],
 	execute: ({ element, id, isDismissable }) =>
 		Stream.callback<PortalCommandMenuMessage>((queue) =>
-			Effect.acquireRelease(
-				Effect.sync(() => {
-					const restoreFocus = restoreFocusToPrevious(element)
-					const releasePortal = portalOverlay(element, { isModal: true, inertAfterPaint: true })
-					const overlay = element.querySelector<HTMLElement>("[data-modal-overlay]")
-					const releaseViewport = overlay ? trackViewportHeight(overlay) : () => undefined
-					;(document.getElementById(searchId(id)) ?? document.getElementById(dialogId(id)))?.focus({
-						preventScroll: true,
-					})
-					const releaseFocus = containFocus(element)
-					const releaseOutside = isDismissable
-						? watchInteractOutside(`[data-modal-content="${CSS.escape(id)}"]`, () =>
-								Queue.offerUnsafe(queue, Message.PressedOutside()),
-							)
-						: () => undefined
-					Queue.offerUnsafe(queue, Message.CompletedPortalCommandMenu())
-					return () => {
-						releaseOutside()
-						releaseFocus()
-						releaseViewport()
-						releasePortal()
-						restoreFocus()
-					}
-				}),
-				(release) => Effect.sync(release),
-			).pipe(Effect.flatMap(() => Effect.never)),
+			Effect.gen(function* () {
+				const restoreFocus = restoreFocusToPrevious(element)
+				yield* Effect.acquireRelease(
+					Effect.sync(() => portalOverlay(element)),
+					(releasePortal) =>
+						Effect.sync(() => {
+							releasePortal()
+							restoreFocus()
+						}),
+				)
+				yield* isolateOverlay(element, `command-menu-${id}`)
+				yield* Effect.acquireRelease(
+					Effect.sync(() => {
+						;(
+							document.getElementById(searchId(id)) ?? document.getElementById(dialogId(id))
+						)?.focus({
+							preventScroll: true,
+						})
+						const releaseFocus = containFocus(element)
+						const releaseOutside = isDismissable
+							? watchInteractOutside(element, `[data-modal-content="${CSS.escape(id)}"]`, () =>
+									Queue.offerUnsafe(queue, Message.PressedOutside()),
+								)
+							: () => undefined
+						Queue.offerUnsafe(queue, Message.CompletedPortalCommandMenu())
+						return () => {
+							releaseOutside()
+							releaseFocus()
+						}
+					}),
+					(release) => Effect.sync(release),
+				)
+				return yield* Effect.never
+			}),
 		),
 })
 

@@ -53,7 +53,7 @@ const PortalComboBox = Mount.defineStream("PortalComboBox", {
 		Stream.callback<PortalComboBoxMessage>((queue) =>
 			Effect.acquireRelease(
 				Effect.sync(() => {
-					const releasePortal = portalOverlay(element, { isModal: false })
+					const releasePortal = portalOverlay(element)
 					const popover = element.querySelector<HTMLElement>("[data-popover]")
 					const input = document.getElementById(inputId(id))
 					const releasePosition = popover

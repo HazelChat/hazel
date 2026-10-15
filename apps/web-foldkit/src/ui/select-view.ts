@@ -42,32 +42,29 @@ const PortalSelect = Mount.defineStream("PortalSelect", {
 	messages: [Message.CompletedPortalSelect, Message.PressedOutside],
 	execute: ({ element, id, initialFocusId }) =>
 		Stream.callback<PortalSelectMessage>((queue) =>
-			Effect.acquireRelease(
-				Effect.sync(() => {
-					const release = openModalPopover(element, {
-						triggerId: triggerId(id),
-						placement: "bottom",
-						offset: SELECT_OFFSET,
-						isTriggerWidthSet: true,
-						initialFocusId,
-						insideSelector: `[data-select-popover="${CSS.escape(id)}"]`,
-						onInteractOutside: () => Queue.offerUnsafe(queue, Message.PressedOutside()),
-					})
-					// usePress on an option prevents the mousedown, so the click moves no focus and
-					// the option keeps the `:focus-visible` its hover focus inherited.
-					const onMouseDown = (event: Event) => {
-						if (event.target instanceof Element && event.target.closest('[role="option"]'))
-							event.preventDefault()
-					}
-					element.addEventListener("mousedown", onMouseDown)
-					Queue.offerUnsafe(queue, Message.CompletedPortalSelect())
-					return () => {
-						element.removeEventListener("mousedown", onMouseDown)
-						release()
-					}
-				}),
-				(release) => Effect.sync(release),
-			).pipe(Effect.flatMap(() => Effect.never)),
+			Effect.gen(function* () {
+				yield* openModalPopover(element, {
+					triggerId: triggerId(id),
+					placement: "bottom",
+					offset: SELECT_OFFSET,
+					isTriggerWidthSet: true,
+					initialFocusId,
+					insideSelector: `[data-select-popover="${CSS.escape(id)}"]`,
+					onInteractOutside: () => Queue.offerUnsafe(queue, Message.PressedOutside()),
+				})
+				// usePress on an option prevents the mousedown, so the click moves no focus and
+				// the option keeps the `:focus-visible` its hover focus inherited.
+				const onMouseDown = (event: Event) => {
+					if (event.target instanceof Element && event.target.closest('[role="option"]'))
+						event.preventDefault()
+				}
+				yield* Effect.acquireRelease(
+					Effect.sync(() => element.addEventListener("mousedown", onMouseDown)),
+					() => Effect.sync(() => element.removeEventListener("mousedown", onMouseDown)),
+				)
+				Queue.offerUnsafe(queue, Message.CompletedPortalSelect())
+				return yield* Effect.never
+			}),
 		),
 })
 

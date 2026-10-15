@@ -32,22 +32,18 @@ const PortalPickerPopover = Mount.defineStream("PortalPickerPopover", {
 	messages: [PopoverEvent.CompletedPortalPickerPopover, PopoverEvent.PressedOutside],
 	execute: ({ element, id }) =>
 		Stream.callback<PortalEvent>((queue) =>
-			Effect.acquireRelease(
-				Effect.sync(() => {
-					const release = openModalPopover(element, {
-						triggerId: triggerId(id),
-						placement: "bottom",
-						offset: 8,
-						initialFocusId: dialogId(id),
-						insideSelector: `#${CSS.escape(popoverId(id))}`,
-						onInteractOutside: () => Queue.offerUnsafe(queue, PopoverEvent.PressedOutside()),
-						inertAfterPaint: true,
-					})
-					Queue.offerUnsafe(queue, PopoverEvent.CompletedPortalPickerPopover())
-					return release
-				}),
-				(release) => Effect.sync(release),
-			).pipe(Effect.flatMap(() => Effect.never)),
+			Effect.gen(function* () {
+				yield* openModalPopover(element, {
+					triggerId: triggerId(id),
+					placement: "bottom",
+					offset: 8,
+					initialFocusId: dialogId(id),
+					insideSelector: `#${CSS.escape(popoverId(id))}`,
+					onInteractOutside: () => Queue.offerUnsafe(queue, PopoverEvent.PressedOutside()),
+				})
+				Queue.offerUnsafe(queue, PopoverEvent.CompletedPortalPickerPopover())
+				return yield* Effect.never
+			}),
 		),
 })
 
