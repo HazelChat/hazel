@@ -3,91 +3,93 @@ import { Effect, Schema } from "effect"
 import { Command, Submodel } from "foldkit"
 import { defineMessageUnion } from "foldkit/message"
 import { deleteChannelAction } from "~/db/actions"
-import type { Shared } from "../../page/contract"
-import { AppRoute, hrefOf } from "../../route"
+import { CommonReason, failureMessage } from "~/lib/error-messages"
+import { catchCommon, errorToastOf, successToast } from "../../data/actions"
+import { AppRoute } from "../../route"
 import { button } from "../../ui/button"
 import { dialogFooter, dialogHeader } from "../../ui/dialog"
 import { description } from "../../ui/field"
 import { closed, completed, ModalOutMessage } from "../out-message"
-import { ToastRequest } from "../toasts"
 import * as Requests from "./requests"
-import { defineModal, type ModalReturn, type ModalViewInputs } from "./contract"
-import { Frame, Message as FrameMessage, frameView, initFrame, isFrameClosed, modalTitle } from "./frame"
-import { failureToast, runAtomFn, successToast } from "../../data/actions"
+import { defineModal, type ModalContext, type ModalReturn, type ModalViewInputs } from "./contract"
+import { Frame, Message as FrameMessage, frameView, initFrame, isCloseRequest, modalTitle } from "./frame"
 
 /** `components/modals/delete-channel-modal.tsx`; confirming runs `deleteChannelAction`. */
 
 const Model = Schema.Struct({ channelId: ChannelId, channelName: Schema.String, frame: Frame })
 type Model = typeof Model.Type
 
-const Message = defineMessageUnion({
+/** What can go wrong deleting a channel, beyond the shared reasons. */
+export const DeleteChannelFailure = Schema.Union([Schema.Literals(["NotFound"]), CommonReason])
+export type DeleteChannelFailure = typeof DeleteChannelFailure.Type
+
+export const Message = defineMessageUnion({
 	GotFrameMessage: { message: FrameMessage },
 	ClickedCancel: {},
 	ClickedDelete: {},
-	SucceededDeleteChannel: { isOnDeletedChannel: Schema.Boolean },
-	FailedDeleteChannel: { toast: ToastRequest },
+	SucceededDeleteChannel: {},
+	FailedDeleteChannel: { reason: DeleteChannelFailure },
 })
 type Message = typeof Message.Type
 
-/** Legacy fuzzy `matchRoute` on `/$orgSlug/chat/$id` or `/$orgSlug/channels/$channelId/settings`. */
-const isUnder = (pathname: string, base: string) =>
-	pathname === base || pathname === `${base}/` || pathname.startsWith(`${base}/`)
-
-const DeleteChannel = Command.define("DeleteChannel", {
-	args: { channelId: ChannelId, orgSlug: Schema.NullOr(Schema.String) },
+export const DeleteChannel = Command.define("DeleteChannel", {
+	args: { channelId: ChannelId },
 	messages: [Message.SucceededDeleteChannel, Message.FailedDeleteChannel],
-	execute: ({ channelId, orgSlug }) =>
-		runAtomFn(deleteChannelAction, { channelId }).pipe(
-			Effect.andThen(() =>
-				Effect.sync(() => {
-					const pathname = window.location.pathname
-					return Message.SucceededDeleteChannel({
-						isOnDeletedChannel:
-							orgSlug !== null &&
-							(isUnder(pathname, hrefOf(AppRoute.ChatChannel({ orgSlug, channelId }))) ||
-								isUnder(pathname, hrefOf(AppRoute.ChannelSettings({ orgSlug, channelId })))),
-					})
-				}),
-			),
-			Effect.catchCause((cause) =>
-				Effect.succeed(
-					Message.FailedDeleteChannel({
-						toast: failureToast(cause, "friendly", {
-							ChannelNotFoundError: {
-								title: "Channel not found",
-								description: "This channel may have already been deleted.",
-								isRetryable: false,
-							},
-						}),
-					}),
-				),
-			),
+	execute: ({ channelId }) =>
+		deleteChannelAction({ channelId }).pipe(
+			Effect.as(Message.SucceededDeleteChannel()),
+			Effect.catchTags({
+				ChannelNotFoundError: () =>
+					Effect.succeed(Message.FailedDeleteChannel({ reason: "NotFound" })),
+			}),
+			catchCommon((reason) => Message.FailedDeleteChannel({ reason })),
 		),
 })
 
+/** Legacy fuzzy `matchRoute` on `/$orgSlug/chat/$id` or `/$orgSlug/channels/$channelId/settings`. */
+const isChannelRoute = AppRoute.isAnyOf([
+	"ChatChannel",
+	"ChatFiles",
+	"ChatFilesMedia",
+	"ChannelSettings",
+	"ChannelSettingsOverview",
+	"ChannelSettingsIntegrations",
+	"ChannelSettingsConnect",
+])
+
+const isOnChannel = (route: AppRoute, channelId: ChannelId) =>
+	isChannelRoute(route) && route.channelId === channelId
+
 type Return = ModalReturn<Model, Message>
 
-const update = (model: Model, message: Message, shared: Shared): Return =>
+const update = (model: Model, message: Message, context: ModalContext): Return =>
 	Message.match<Return>(message, {
 		GotFrameMessage: ({ message }) =>
-			isFrameClosed(model.frame, message) ? { model, outMessage: closed } : { model },
+			isCloseRequest(message) ? { model, outMessage: closed } : { model },
 		ClickedCancel: () => ({ model, outMessage: closed }),
-		ClickedDelete: () => ({
-			model,
-			commands: [DeleteChannel({ channelId: model.channelId, orgSlug: shared.orgSlug })],
-		}),
-		SucceededDeleteChannel: ({ isOnDeletedChannel }) => ({
+		ClickedDelete: () => ({ model, commands: [DeleteChannel({ channelId: model.channelId })] }),
+		// Leave the deleted channel's pages for the chat index (the route is read when the result lands).
+		SucceededDeleteChannel: () => ({
 			model,
 			outMessage: completed({
-				...(isOnDeletedChannel && shared.orgSlug !== null
-					? { href: hrefOf(AppRoute.ChatIndex({ orgSlug: shared.orgSlug })) }
+				...(context.orgSlug !== null && isOnChannel(context.route, model.channelId)
+					? { route: AppRoute.ChatIndex({ orgSlug: context.orgSlug }) }
 					: {}),
 				toast: successToast("Channel deleted successfully"),
 			}),
 		}),
-		FailedDeleteChannel: ({ toast }) => ({
+		FailedDeleteChannel: ({ reason }) => ({
 			model,
-			outMessage: ModalOutMessage.RequestedToast({ toast }),
+			outMessage: ModalOutMessage.RequestedToast({
+				toast: errorToastOf(
+					failureMessage(reason, {
+						NotFound: {
+							title: "Channel not found",
+							description: "This channel may have already been deleted.",
+						},
+					}),
+				),
+			}),
 		}),
 	})
 

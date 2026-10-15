@@ -106,14 +106,6 @@
 			}
 		},
 		{
-			// ui/aria ports React Aria's document-wide state (global input modality, scroll locks, the live
-			// announcer) as module state on purpose; see docs/foldkit-decisions/s5-primitives.md.
-			"files": ["apps/web-foldkit/src/ui/aria/**"],
-			"rules": {
-				"foldkit/no-module-level-mutable-state": "off"
-			}
-		},
-		{
 			// Framework-free modules carried over from the React app: imperative singletons and
 			// helpers, not Foldkit programs, so the Foldkit architecture rules do not apply.
 			"files": ["apps/web-foldkit/src/core/**"],

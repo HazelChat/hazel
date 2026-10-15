@@ -8,6 +8,7 @@ import { AppRoute, hrefOf } from "../../route"
 import { avatar } from "../../ui/avatar"
 import { buttonClassName } from "../../ui/button"
 import { inputGroup } from "../../ui/input"
+import { loader } from "../../ui/loader"
 import {
 	sectionHeaderGroup,
 	sectionHeaderHeading,
@@ -18,7 +19,7 @@ import { sectionLabelRoot } from "../../ui/section-label"
 import { textField } from "../../ui/text-field"
 import type { PageViewInputs } from "../contract"
 import type { Message } from "./message"
-import type { Model, ProfileUser } from "./model"
+import { type Model, ProfileLookup, type ProfileUser } from "./model"
 
 /** Port of `routes/_app/$orgSlug/profile/$userId.tsx`. */
 
@@ -27,6 +28,9 @@ const notFound = (h: HtmlBuilder<Message>) =>
 		[h.Class("flex flex-col items-center justify-center gap-4 p-8")],
 		[h.p([h.Class("text-muted-fg")], ["User not found"])],
 	)
+
+const loading = (h: HtmlBuilder<Message>) =>
+	h.div([h.Class("flex items-center justify-center p-8")], [loader(h, { className: "size-8" })])
 
 const profile = (
 	h: HtmlBuilder<Message>,
@@ -137,11 +141,14 @@ const profile = (
 }
 
 export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, { shared }, h) =>
-	model.user === null
-		? notFound(h)
-		: profile(h, model.user, {
+	ProfileLookup.match(model.user, {
+		Loading: () => loading(h),
+		NotFound: () => notFound(h),
+		Found: ({ user }) =>
+			profile(h, user, {
 				isOwnProfile: shared.currentUser?.id === model.userId,
 				orgSlug: shared.orgSlug,
 				nowMs: shared.nowMs,
 			}),
+	}),
 )

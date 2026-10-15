@@ -1,5 +1,6 @@
 import { modifyFields } from "foldkit/struct"
-import { successToast } from "../../data/actions"
+import { failureMessage } from "~/lib/error-messages"
+import { errorToastOf, successToast } from "../../data/actions"
 import { AppRoute, hrefOf, type RouteOf } from "../../route"
 import type { PageReturn } from "../contract"
 import { PageOutMessage } from "../out-message"
@@ -17,9 +18,20 @@ export const init = (route: RouteOf<"Join">): Return => ({
 export const update = (model: Model, message: Message): Return =>
 	Message.match<Return>(message, {
 		SucceededFetchOrganization: ({ organization }) => ({
-			model: modifyFields(model, { lookup: () => Lookup.Loaded({ organization }) }),
+			model: modifyFields(model, {
+				lookup: () => (organization === null ? Lookup.NotFound() : Lookup.Found({ organization })),
+			}),
 		}),
-		FailedFetchOrganization: () => ({ model: modifyFields(model, { lookup: () => Lookup.Failed() }) }),
+		FailedFetchOrganization: ({ reason }) => ({
+			model: modifyFields(model, { lookup: () => Lookup.Failed({ reason }) }),
+		}),
+		ClickedRetryLookup: () =>
+			model.lookup._tag !== "Failed"
+				? { model }
+				: {
+						model: modifyFields(model, { lookup: () => Lookup.Loading() }),
+						commands: [FetchPublicOrganization({ slug: model.slug })],
+					},
 		ClickedSignIn: () => ({
 			model,
 			commands: [RedirectToSignIn({ returnTo: hrefOf(AppRoute.Join({ slug: model.slug })) })],
@@ -34,14 +46,31 @@ export const update = (model: Model, message: Message): Return =>
 		SucceededJoinWorkspace: () => ({
 			model: modifyFields(model, { isJoining: () => false }),
 			outMessage: PageOutMessage.RequestedNavigation({
-				href: hrefOf(AppRoute.OrgHome({ orgSlug: model.slug })),
+				route: AppRoute.OrgHome({ orgSlug: model.slug }),
 				replace: false,
 				toast: successToast("Successfully joined workspace!"),
 			}),
 		}),
-		FailedJoinWorkspace: ({ toast }) => ({
+		FailedJoinWorkspace: ({ reason }) => ({
 			model: modifyFields(model, { isJoining: () => false }),
-			outMessage: PageOutMessage.RequestedToast({ toast }),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToastOf(
+					failureMessage(reason, {
+						NotFound: {
+							title: "Organization not found",
+							description: "This organization may have been deleted.",
+						},
+						PublicInvitesDisabled: {
+							title: "Public invites disabled",
+							description: "This organization has disabled public invites.",
+						},
+						AlreadyMember: {
+							title: "Already a member",
+							description: "You're already a member of this workspace.",
+						},
+					}),
+				),
+			}),
 		}),
 		CompletedRedirectToSignIn: () => ({ model }),
 		CompletedEnterAnimation: () => ({ model }),

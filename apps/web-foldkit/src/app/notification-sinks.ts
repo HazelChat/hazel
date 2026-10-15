@@ -1,30 +1,40 @@
 import { ChannelId, MessageId, type NotificationId, type UserId } from "@hazel/schema"
-import { Effect, Option, Schema, Stream } from "effect"
-import { createIsMutedGetter } from "~/atoms/notification-sound-atoms"
-import { channelCollection, messageCollection, notificationCollection, userCollection } from "~/db/collections"
+import { Clock, Context, Effect, Layer, Option, Schema, Stream } from "effect"
+import {
+	channelCollection,
+	messageCollection,
+	notificationCollection,
+	userCollection,
+} from "~/db/collections"
 import { notificationSoundManager } from "~/lib/notification-sound-manager"
 import {
-	inAppNotificationSink,
 	NativeNotificationSink,
 	type NotificationEvent,
 	notificationOrchestrator,
 	SoundNotificationSink,
 } from "~/lib/notifications"
-import type { SoundSettings } from "../notification-sound"
+import { isSoundMuted, type SoundSettings } from "../notification-sound"
 
 /**
- * The legacy `NotificationSoundProvider` (org layout) at the root: the singletons it wires (sound
- * manager, orchestrator, sound and native sinks) and the recent notifications it feeds them.
+ * The legacy `NotificationSoundProvider` (org layout) at the root: the sinks it wires into the
+ * orchestrator, and the recent notifications it feeds them.
  */
 
-const soundSink = new SoundNotificationSink({ notificationSoundManager })
-const nativeSink = new NativeNotificationSink()
+/** The sound and native sinks, made once for the app and handed to the orchestrator while wired. */
+export class NotificationSinks extends Context.Service<NotificationSinks>()("NotificationSinks", {
+	make: Effect.sync(() => ({
+		soundSink: new SoundNotificationSink({ notificationSoundManager }),
+		nativeSink: new NativeNotificationSink(),
+	})),
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}
 
 export interface SinkContext {
 	readonly userId: UserId
 	readonly settings: SoundSettings
 	readonly currentChannelId: ChannelId | null
-	/** `sessionStartTimeAtom`: notifications from before this load never play. */
+	/** Notifications from before this load never play. */
 	readonly sessionStartMs: number
 }
 
@@ -37,42 +47,45 @@ export const wireNotificationSinks = ({
 	settings,
 	currentChannelId,
 	sessionStartMs,
-}: SinkContext): Stream.Stream<never> =>
-	Stream.callback<never>(() =>
+}: SinkContext): Stream.Stream<never, never, NotificationSinks> =>
+	Stream.callback<never, never, NotificationSinks>(() =>
 		Effect.acquireRelease(
-			Effect.sync(() => {
-				const sessionStartTime = new Date(sessionStartMs)
-				const cleanupPriming = notificationSoundManager.initPriming()
-				notificationSoundManager.setDependencies({
-					getConfig: () => ({
-						soundFile: settings.soundFile,
-						volume: settings.volume,
-						cooldownMs: settings.cooldownMs,
-					}),
-				})
-				notificationOrchestrator.setDependencies({
-					getContext: () => {
-						const userSettings = userCollection.state.get(userId)?.settings
-						return {
-							currentChannelId,
-							sessionStartTime,
-							isMuted: createIsMutedGetter(
-								settings,
-								userSettings?.doNotDisturb ?? false,
-								userSettings?.quietHoursStart ?? "22:00",
-								userSettings?.quietHoursEnd ?? "08:00",
-							)(),
-							isWindowFocused: document.hasFocus(),
-							visibilityState: document.visibilityState,
-							now: Date.now(),
-						}
-					},
-					inAppSink: inAppNotificationSink,
-					soundSink,
-					nativeSink,
-				})
-				return cleanupPriming
-			}),
+			NotificationSinks.use(({ soundSink, nativeSink }) =>
+				Effect.sync(() => {
+					const sessionStartTime = new Date(sessionStartMs)
+					const cleanupPriming = notificationSoundManager.initPriming()
+					notificationSoundManager.setDependencies({
+						getConfig: () => ({
+							soundFile: settings.soundFile,
+							volume: settings.volume,
+							cooldownMs: settings.cooldownMs,
+						}),
+					})
+					notificationOrchestrator.setDependencies({
+						getContext: () => {
+							const userSettings = userCollection.state.get(userId)?.settings
+							const now = Date.now()
+							return {
+								currentChannelId,
+								sessionStartTime,
+								isMuted: isSoundMuted({
+									settings,
+									doNotDisturb: userSettings?.doNotDisturb ?? false,
+									quietHoursStart: userSettings?.quietHoursStart ?? "22:00",
+									quietHoursEnd: userSettings?.quietHoursEnd ?? "08:00",
+									nowMs: now,
+								}),
+								isWindowFocused: document.hasFocus(),
+								visibilityState: document.visibilityState,
+								now,
+							}
+						},
+						soundSink,
+						nativeSink,
+					})
+					return cleanupPriming
+				}),
+			),
 			(cleanupPriming) => Effect.sync(cleanupPriming),
 		).pipe(Effect.flatMap(() => Effect.never)),
 	)
@@ -82,22 +95,26 @@ const decodeChannelId = Schema.decodeUnknownOption(ChannelId)
 
 /** The provider's `recentNotifications` effect: oldest first, with the rows the sinks describe. */
 export const deliverNotifications = (ids: ReadonlyArray<NotificationId>) =>
-	Effect.sync(() => {
-		const events = ids.flatMap((id): ReadonlyArray<NotificationEvent> => {
-			const notification = notificationCollection.state.get(id)
-			if (notification === undefined) return []
-			const message = Option.getOrUndefined(
-				Option.flatMapNullishOr(decodeMessageId(notification.resourceId), (id) =>
-					messageCollection.state.get(id),
-				),
-			)
-			const author = message?.authorId ? userCollection.state.get(message.authorId) : undefined
-			const channel = Option.getOrUndefined(
-				Option.flatMapNullishOr(decodeChannelId(notification.targetedResourceId), (id) =>
-					channelCollection.state.get(id),
-				),
-			)
-			return [{ id: notification.id, notification, message, author, channel, receivedAt: Date.now() }]
-		})
-		notificationOrchestrator.enqueue([...events].reverse())
-	})
+	Effect.flatMap(Clock.currentTimeMillis, (receivedAtMs) =>
+		Effect.sync(() => {
+			const events = ids.flatMap((id): ReadonlyArray<NotificationEvent> => {
+				const notification = notificationCollection.state.get(id)
+				if (notification === undefined) return []
+				const message = Option.getOrUndefined(
+					Option.flatMapNullishOr(decodeMessageId(notification.resourceId), (id) =>
+						messageCollection.state.get(id),
+					),
+				)
+				const author = message?.authorId ? userCollection.state.get(message.authorId) : undefined
+				const channel = Option.getOrUndefined(
+					Option.flatMapNullishOr(decodeChannelId(notification.targetedResourceId), (id) =>
+						channelCollection.state.get(id),
+					),
+				)
+				return [
+					{ id: notification.id, notification, message, author, channel, receivedAt: receivedAtMs },
+				]
+			})
+			notificationOrchestrator.enqueue([...events].reverse())
+		}),
+	)

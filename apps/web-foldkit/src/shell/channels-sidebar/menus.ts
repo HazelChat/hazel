@@ -1,5 +1,5 @@
 import type { ChannelSectionId } from "@hazel/schema"
-import { Array, Option } from "effect"
+import { Array, Option, Schema } from "effect"
 import type { ChildAttribute, Html, HtmlBuilder } from "foldkit/html"
 import {
 	IconCirclePlus,
@@ -17,7 +17,7 @@ import {
 import { button } from "../../ui/button"
 import * as Menu from "../../ui/menu"
 import { menuLabel, view as menuView } from "../../ui/menu-view"
-import type { SectionAction } from "./model"
+import { SectionAction } from "./model"
 import type { ChannelEntry, Section } from "./rows"
 
 /** The channel row "dots" menu (`ChannelItem`) and the section "+" menu (`SectionGroup`). */
@@ -29,14 +29,28 @@ const DEFAULT_SECTION_KEY = "section:default"
 const sectionKeyOf = (sectionId: string | null) =>
 	sectionId === null ? DEFAULT_SECTION_KEY : `section:${sectionId}`
 
+// KEYS
+
+/** The row menu's fixed items; "Move to section" leaves are keyed per section (`sectionIdOfKey`). */
+export const RowMenuKey = Schema.Literals(["mute", "favorite", "settings", "delete", "leave"])
+export type RowMenuKey = typeof RowMenuKey.Type
+export const decodeRowMenuKey = Schema.decodeUnknownOption(RowMenuKey)
+
+/** The section menu's items: its actions plus "Delete section". */
+export const SectionMenuKey = Schema.Union([SectionAction, Schema.Literal("delete-section")])
+export type SectionMenuKey = typeof SectionMenuKey.Type
+export const decodeSectionMenuKey = Schema.decodeUnknownOption(SectionMenuKey)
+
+const rowItem = (key: RowMenuKey, options?: Parameters<typeof Menu.item>[1]) => Menu.item(key, options)
+
 // ENTRIES
 
 export const rowMenuEntries = (
 	sections: ReadonlyArray<Section>,
 	canDelete: boolean,
 ): ReadonlyArray<Menu.Entry> => [
-	Menu.item("mute"),
-	Menu.item("favorite"),
+	rowItem("mute"),
+	rowItem("favorite"),
 	...(sections.length > 0
 		? [
 				Menu.item("move", {
@@ -50,10 +64,10 @@ export const rowMenuEntries = (
 			]
 		: []),
 	Menu.separator,
-	Menu.item("settings"),
-	...(canDelete ? [Menu.item("delete", { intent: "Danger" })] : []),
+	rowItem("settings"),
+	...(canDelete ? [rowItem("delete", { intent: "Danger" })] : []),
 	Menu.separator,
-	Menu.item("leave", { intent: "Danger" }),
+	rowItem("leave", { intent: "Danger" }),
 ]
 
 /** The move target a submenu key names: `null` for the default section. */
@@ -73,16 +87,17 @@ export const sectionMenuEntries = (
 	actions: ReadonlyArray<SectionAction>,
 	isEditable: boolean,
 ): ReadonlyArray<Menu.Entry> => [
-	...actions.map((action) => Menu.item(action)),
-	...(isEditable ? [Menu.separator, Menu.item("delete-section", { intent: "Danger" })] : []),
+	...actions.map((action) => Menu.item(action satisfies SectionMenuKey)),
+	...(isEditable
+		? [Menu.separator, Menu.item("delete-section" satisfies SectionMenuKey, { intent: "Danger" })]
+		: []),
 ]
 
-export const closedMenu = (id: string, entries: ReadonlyArray<Menu.Entry>, placement?: "right top") =>
-	Menu.init({ id, entries, ...(placement ? { placement } : {}) })
+export const closedMenu = (id: string, placement?: "right top") =>
+	Menu.init({ id, ...(placement ? { placement } : {}) })
 
 /** A channel row's dots menu while it is closed. */
-export const closedRowMenu = (channelId: string, sections: ReadonlyArray<Section>, canDelete: boolean) =>
-	closedMenu(rowMenuId(channelId), rowMenuEntries(sections, canDelete), "right top")
+export const closedRowMenu = (channelId: string) => closedMenu(rowMenuId(channelId), "right top")
 
 // VIEW
 
@@ -122,6 +137,7 @@ export const rowMenuView = <M>(
 		menu: Menu.Model
 		entry: ChannelEntry
 		sections: ReadonlyArray<Section>
+		canDelete: boolean
 		toMessage: (message: Menu.Message) => M
 	}>,
 ): Html =>
@@ -130,6 +146,7 @@ export const rowMenuView = <M>(
 		model: options.menu,
 		view: menuView,
 		viewInputs: {
+			entries: rowMenuEntries(options.sections, options.canDelete),
 			toTrigger: (attributes: ReadonlyArray<ChildAttribute>, overlay: Html) =>
 				button(
 					h,
@@ -137,7 +154,16 @@ export const rowMenuView = <M>(
 						intent: "plain",
 						size: "sq-xs",
 						className: "size-5 text-muted-fg",
-						attributes: [h.Attribute("data-slot", "menu-trigger"), ...attributes],
+						attributes: [
+							h.Attribute("data-slot", "menu-trigger"),
+							h.AriaLabel(
+								options.entry.channel.type === "single" ||
+									options.entry.channel.type === "direct"
+									? "Conversation options"
+									: "Channel options",
+							),
+							...attributes,
+						],
 					},
 					[IconDots(h, { className: "size-4" }), overlay],
 				),
@@ -148,6 +174,14 @@ export const rowMenuView = <M>(
 		},
 		toParentMessage: options.toMessage,
 	})
+
+/** The accessible name of a section's single-action "+" button (the same words as its menu item). */
+export const sectionActionLabel = (action: SectionAction): string =>
+	action === "create-channel"
+		? "Create new channel"
+		: action === "join-channel"
+			? "Join existing channel"
+			: "Start a conversation"
 
 const sectionMenuContent =
 	<M>(h: HtmlBuilder<M>, id: string) =>
@@ -163,18 +197,29 @@ const sectionMenuContent =
 /** `SectionGroup`'s "+" `<Menu>` (several actions or a deletable section). */
 export const sectionMenuView = <M>(
 	h: HtmlBuilder<M>,
-	options: Readonly<{ menu: Menu.Model; toMessage: (message: Menu.Message) => M }>,
+	options: Readonly<{
+		menu: Menu.Model
+		entries: ReadonlyArray<Menu.Entry>
+		toMessage: (message: Menu.Message) => M
+	}>,
 ): Html =>
 	h.submodel({
 		slotId: options.menu.id,
 		model: options.menu,
 		view: menuView,
 		viewInputs: {
+			entries: options.entries,
 			toTrigger: (attributes: ReadonlyArray<ChildAttribute>, overlay: Html) =>
-				button(h, { intent: "plain", isCircle: true, size: "sq-xs", attributes: [...attributes] }, [
-					IconPlus(h),
-					overlay,
-				]),
+				button(
+					h,
+					{
+						intent: "plain",
+						isCircle: true,
+						size: "sq-xs",
+						attributes: [h.AriaLabel("Section actions"), ...attributes],
+					},
+					[IconPlus(h), overlay],
+				),
 			content: sectionMenuContent(h, options.menu.id),
 		},
 		toParentMessage: options.toMessage,

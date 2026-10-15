@@ -24,7 +24,6 @@ export class OrganizationMemberRepo extends Context.Service<OrganizationMemberRe
 			)
 			const db = yield* Database.Database
 
-			// Extended methods used by Clerk sync
 			const findByOrgAndUser = (organizationId: OrganizationId, userId: UserId) =>
 				db.first(
 					PG.from(schema.organizationMembersTable)

@@ -10,7 +10,6 @@ import { Schema as S } from "effect"
 import * as CurrentUser from "../current-user"
 import { UnauthorizedError } from "../errors"
 import {
-	ClerkUserFetchError,
 	InvalidBearerTokenError,
 	InvalidJwtPayloadError,
 	SessionAuthenticationError,
@@ -23,8 +22,8 @@ import {
 /**
  * Authentication middleware that provides CurrentUser context to RPC handlers.
  *
- * Verifies a Clerk bearer JWT from the `Authorization` header and populates
- * the `CurrentUser` Effect context for the handler.
+ * Resolves the Hazel session (cookie or bearer credential) or a bot token and
+ * populates the `CurrentUser` Effect context for the handler.
  */
 const AuthFailure = S.Union([
 	UnauthorizedError,
@@ -35,7 +34,6 @@ const AuthFailure = S.Union([
 	SessionRefreshError,
 	SessionExpiredError,
 	InvalidBearerTokenError,
-	ClerkUserFetchError,
 ])
 
 export class AuthMiddleware extends RpcMiddleware.Service<

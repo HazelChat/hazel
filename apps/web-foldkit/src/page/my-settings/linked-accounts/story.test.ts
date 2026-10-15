@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { routeOfPath } from "../../../route"
 import { Option } from "effect"
 import { Command, expectNoOutMessage, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
@@ -6,7 +7,7 @@ import { currentUser, makeShared, organizationId, storyUpdate } from "../../../t
 import { PageOutMessage } from "../../out-message"
 import { DisconnectDiscord, StartDiscordLink } from "./command"
 import { Message } from "./message"
-import type { Model } from "./model"
+import { Link, type Model } from "./model"
 import { init, update } from "./update"
 
 /** Update-loop tests for the Discord link and unlink actions and the callback URL cleanup. */
@@ -20,9 +21,12 @@ const route = {
 	errorCode: Option.none(),
 }
 const initial = () => init(route).model
-const linked = () => ({ ...initial(), connection: { status: "active", externalAccountName: "ada#1815" } })
-const toast = (intent: "success" | "error", title: string) =>
-	PageOutMessage.RequestedToast({ toast: { intent, title, description: null } })
+const linked = () => ({
+	...initial(),
+	connection: { status: "active" as const, externalAccountName: "ada#1815" },
+})
+const toast = (intent: "success" | "error", title: string, description: string | null = null) =>
+	PageOutMessage.RequestedToast({ toast: { intent, title, description } })
 
 describe("link discord", () => {
 	test("linking starts the OAuth redirect for the user's organization", () => {
@@ -31,10 +35,10 @@ describe("link discord", () => {
 			given(initial()),
 			message(Message.ClickedLinkDiscord()),
 			Command.expectExact(StartDiscordLink({ orgId: organizationId })),
-			model((current) => expect(current.isConnecting).toBe(true)),
+			model((current) => expect(current.link).toEqual(Link.Linking())),
 			Command.resolve(StartDiscordLink, Message.SucceededGetDiscordOAuthUrl()),
 			expectNoOutMessage(),
-			model((current) => expect(current.isConnecting).toBe(true)),
+			model((current) => expect(current.link).toEqual(Link.Linking())),
 		)
 	})
 
@@ -43,9 +47,18 @@ describe("link discord", () => {
 			storyUpdate(update, shared),
 			given(initial()),
 			message(Message.ClickedLinkDiscord()),
-			Command.resolve(StartDiscordLink, Message.FailedGetDiscordOAuthUrl()),
-			expectOutMessage(toast("error", "Failed to start Discord linking flow")),
-			model((current) => expect(current.isConnecting).toBe(false)),
+			Command.resolve(
+				StartDiscordLink,
+				Message.FailedGetDiscordOAuthUrl({ reason: "UnsupportedProvider" }),
+			),
+			expectOutMessage(
+				toast(
+					"error",
+					"Failed to start Discord linking flow",
+					"Discord linking is not supported right now.",
+				),
+			),
+			model((current) => expect(current.link).toEqual(Link.Idle())),
 		)
 	})
 
@@ -63,7 +76,7 @@ describe("link discord", () => {
 	test("a second link click while redirecting is ignored", () => {
 		story<Model, Message, PageOutMessage>(
 			storyUpdate(update, shared),
-			given({ ...initial(), isConnecting: true }),
+			given({ ...initial(), link: Link.Linking() }),
 			message(Message.ClickedLinkDiscord()),
 			Command.expectNone(),
 		)
@@ -77,10 +90,10 @@ describe("unlink discord", () => {
 			given(linked()),
 			message(Message.ClickedUnlinkDiscord()),
 			Command.expectExact(DisconnectDiscord({ orgId: organizationId })),
-			model((current) => expect(current.isDisconnecting).toBe(true)),
+			model((current) => expect(current.link).toEqual(Link.Unlinking())),
 			Command.resolve(DisconnectDiscord, Message.SucceededDisconnectDiscord()),
 			expectOutMessage(toast("success", "Discord account unlinked")),
-			model((current) => expect(current.isDisconnecting).toBe(false)),
+			model((current) => expect(current.link).toEqual(Link.Idle())),
 		)
 	})
 
@@ -89,10 +102,16 @@ describe("unlink discord", () => {
 			storyUpdate(update, shared),
 			given(linked()),
 			message(Message.ClickedUnlinkDiscord()),
-			Command.resolve(DisconnectDiscord, Message.FailedDisconnectDiscord()),
-			expectOutMessage(toast("error", "Failed to unlink Discord account")),
+			Command.resolve(DisconnectDiscord, Message.FailedDisconnectDiscord({ reason: "Timeout" })),
+			expectOutMessage(
+				toast(
+					"error",
+					"Failed to unlink Discord account",
+					"The server is taking too long to respond. Please try again.",
+				),
+			),
 			model((current) => {
-				expect(current.isDisconnecting).toBe(false)
+				expect(current.link).toEqual(Link.Idle())
 				expect(current.connection?.status).toBe("active")
 			}),
 		)
@@ -102,7 +121,7 @@ describe("unlink discord", () => {
 	test("a second unlink click while one is pending is ignored", () => {
 		story<Model, Message, PageOutMessage>(
 			storyUpdate(update, shared),
-			given({ ...linked(), isDisconnecting: true }),
+			given({ ...linked(), link: Link.Unlinking() }),
 			message(Message.ClickedUnlinkDiscord()),
 			Command.expectNone(),
 		)
@@ -119,7 +138,7 @@ describe("link callback", () => {
 		expect(callback.commands).toBeUndefined()
 		expect(callback.outMessage).toEqual(
 			PageOutMessage.RequestedNavigation({
-				href: "/hazel/my-settings/linked-accounts",
+				route: routeOfPath("/hazel/my-settings/linked-accounts"),
 				replace: true,
 				toast: { intent: "success", title: "Discord account linked", description: null },
 			}),
@@ -133,7 +152,11 @@ describe("link callback", () => {
 			provider: Option.some("discord"),
 		})
 		expect(callback.outMessage).toMatchObject({
-			toast: { intent: "error", title: "Failed to link Discord account", description: "Please try again." },
+			toast: {
+				intent: "error",
+				title: "Failed to link Discord account",
+				description: "Please try again.",
+			},
 		})
 	})
 })

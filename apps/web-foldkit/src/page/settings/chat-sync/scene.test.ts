@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
+import { routeOfPath } from "../../../route"
 import * as Scene from "foldkit/scene"
 import { describe, test } from "vitest"
-import { errorToast, successToast } from "../../../data/actions"
+import { successToast } from "../../../data/actions"
 import * as Menu from "../../../ui/menu"
 import { FocusTriggerOnPress } from "../../../ui/menu-view"
 import * as Modal from "../../../ui/modal"
@@ -9,6 +10,7 @@ import { makeShared, organizationId, pageScene, portalModalMounted } from "../..
 import { connection, guild, otherGuild, syncConnectionId } from "../../../test/pages-integrations-fixtures"
 import { PageOutMessage } from "../../out-message"
 import { CreateConnection, FocusGuildSearch } from "./add-connection"
+import { DiscordGuilds } from "./discord"
 import { Message, type Model } from "./model"
 import { DeleteConnection, init, ListConnections, ListDiscordGuilds, update } from "./update"
 import { view } from "./view"
@@ -34,14 +36,15 @@ const dialog = Scene.role("dialog")
 const confirmDelete = Scene.within(dialog, Scene.role("button", { name: "Delete Connection" }))
 const connect = Scene.within(dialog, Scene.role("button", { name: "Connect" }))
 const search = Scene.placeholder("Search servers...")
+const tryAgain = Scene.role("button", { name: "Try again" })
 /** The add menu trigger focuses itself on press; the add modal is a controlled (non-submodel) modal. */
 const addTriggerMounted = Scene.Mount.resolve(
 	FocusTriggerOnPress,
 	Menu.Message.CompletedFocusTriggerOnPress(),
 )
 const addModalMounted = Scene.Mount.resolve(
-	{ name: "PortalModal" },
-	Message.GotAddModalMessage({ message: Modal.Message.CompletedPortalModal() }),
+	{ name: "AcquireResources" },
+	Modal.Message.SucceededAcquireResources(),
 )
 
 describe("list states", () => {
@@ -54,12 +57,38 @@ describe("list states", () => {
 		)
 	})
 
-	test("a failed list explains the failure", () => {
+	test("a failed list explains why, not 'no connections', and Try again reloads it", () => {
 		Scene.scene(
 			config,
-			Scene.given(step(initial, Message.FailedListConnections({ organizationId }))),
+			Scene.given(step(initial, Message.FailedListConnections({ organizationId, reason: "Offline" }))),
 			Scene.expect(Scene.text("Failed to load connections")).toExist(),
-			Scene.expect(Scene.text("Loading connections...")).toBeAbsent(),
+			Scene.expect(Scene.text("Check your internet connection and try again.")).toExist(),
+			Scene.expect(Scene.text("No sync connections yet")).toBeAbsent(),
+			Scene.click(tryAgain),
+			Scene.Command.expectExact(ListConnections({ organizationId })),
+			Scene.expect(Scene.text("Loading connections...")).toExist(),
+			Scene.Command.resolve(
+				ListConnections,
+				Message.SucceededListConnections({ organizationId, connections: [connection] }),
+			),
+			Scene.Command.resolve(
+				ListDiscordGuilds,
+				Message.SucceededListDiscordGuilds({ organizationId, version: 1, guilds: [guild] }),
+			),
+			addTriggerMounted,
+			Scene.expect(Scene.text("Hazel Community")).toExist(),
+		)
+	})
+
+	test("a failure a retry won't fix offers no Try again", () => {
+		Scene.scene(
+			config,
+			Scene.given(
+				step(initial, Message.FailedListConnections({ organizationId, reason: "SignedOut" })),
+			),
+			Scene.expect(Scene.text("Failed to load connections")).toExist(),
+			Scene.expect(Scene.text("Please sign in again to continue.")).toExist(),
+			Scene.expect(tryAgain).toBeAbsent(),
 		)
 	})
 
@@ -83,7 +112,7 @@ describe("list states", () => {
 			Scene.click(Scene.text("Hazel Community")),
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedNavigation({
-					href: `/hazel/settings/chat-sync/${syncConnectionId}`,
+					route: routeOfPath(`/hazel/settings/chat-sync/${syncConnectionId}`),
 					replace: false,
 				}),
 			),
@@ -92,7 +121,7 @@ describe("list states", () => {
 })
 
 describe("delete a connection", () => {
-	test("confirming deletes, toasts, closes the dialog and reloads the list", () => {
+	test("confirming deletes, toasts, closes the dialog and refreshes the shown list", () => {
 		Scene.scene(
 			config,
 			Scene.given(loaded),
@@ -108,24 +137,20 @@ describe("delete a connection", () => {
 				PageOutMessage.RequestedToast({ toast: successToast("Connection deleted") }),
 			),
 			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
-			Scene.expect(Scene.text("Loading connections...")).toExist(),
-			Scene.Mount.expectEnded(FocusTriggerOnPress),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
+			// The list stays while it refreshes.
+			Scene.expect(Scene.text("Loading connections...")).toBeAbsent(),
+			Scene.expect(Scene.text("Hazel Community")).toExist(),
 			Scene.Command.resolve(
 				ListConnections,
 				Message.SucceededListConnections({ organizationId, connections: [] }),
 			),
-			Scene.Command.resolve(
-				ListDiscordGuilds,
-				Message.FailedListDiscordGuilds({ organizationId, version: 2 }),
-			),
 			Scene.expect(Scene.text("No sync connections yet")).toExist(),
-			addTriggerMounted,
 			addTriggerMounted,
 		)
 	})
 
-	test("a failed delete toasts the error and re-enables the confirm button", () => {
+	test("a failed delete toasts the reason and re-enables the confirm button", () => {
 		Scene.scene(
 			config,
 			Scene.given(loaded),
@@ -133,13 +158,14 @@ describe("delete a connection", () => {
 			Scene.click(deleteTrigger),
 			portalModalMounted,
 			Scene.click(confirmDelete),
-			Scene.Command.resolve(
-				DeleteConnection,
-				Message.FailedDeleteConnection({ toast: errorToast("Connection not found") }),
-			),
+			Scene.Command.resolve(DeleteConnection, Message.FailedDeleteConnection({ reason: "NotFound" })),
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Connection not found", description: null },
+					toast: {
+						intent: "error",
+						title: "Connection not found",
+						description: "This connection may have already been deleted.",
+					},
 				}),
 			),
 			Scene.expect(confirmDelete).toBeEnabled(),
@@ -156,7 +182,7 @@ describe("delete a connection", () => {
 			Scene.click(Scene.within(dialog, Scene.role("button", { name: "Cancel" }))),
 			Scene.Command.expectNone(),
 			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 		)
 	})
 })
@@ -191,17 +217,11 @@ describe("connect a Discord server", () => {
 				PageOutMessage.RequestedToast({ toast: successToast("Discord connection created") }),
 			),
 			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
-			Scene.Mount.expectEnded(FocusTriggerOnPress),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 			Scene.Command.resolve(
 				ListConnections,
 				Message.SucceededListConnections({ organizationId, connections: [connection] }),
 			),
-			Scene.Command.resolve(
-				ListDiscordGuilds,
-				Message.SucceededListDiscordGuilds({ organizationId, version: 2, guilds: [guild] }),
-			),
-			addTriggerMounted,
 			Scene.expect(Scene.text("Hazel Community")).toExist(),
 		)
 	})
@@ -215,11 +235,15 @@ describe("connect a Discord server", () => {
 			Scene.click(connect),
 			Scene.Command.resolve(
 				CreateConnection,
-				Message.FailedCreateConnection({ toast: errorToast("Connection already exists") }),
+				Message.FailedCreateConnection({ reason: "AlreadyExists" }),
 			),
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Connection already exists", description: null },
+					toast: {
+						intent: "error",
+						title: "Connection already exists",
+						description: "A connection to this Discord server already exists in your workspace.",
+					},
 				}),
 			),
 			Scene.expect(Scene.within(dialog, Scene.text("Design Systems Guild"))).toExist(),
@@ -230,17 +254,43 @@ describe("connect a Discord server", () => {
 	test("without Discord authorized, the modal links to the Discord integration", () => {
 		Scene.scene(
 			config,
-			Scene.given({ ...withAddModalOpen, discordGuilds: { _tag: "Failed" } }),
+			Scene.given({
+				...withAddModalOpen,
+				discordGuilds: DiscordGuilds.Failure({ error: "NotConnected" }),
+			}),
 			addTriggerMounted,
 			addModalMounted,
 			Scene.expect(connect).toBeDisabled(),
+			Scene.expect(Scene.within(dialog, tryAgain)).toBeAbsent(),
 			Scene.click(Scene.role("button", { name: "Open Discord Integration" })),
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedNavigation({
-					href: "/hazel/settings/integrations/discord",
+					route: routeOfPath("/hazel/settings/integrations/discord"),
 					replace: false,
 				}),
 			),
+		)
+	})
+
+	test("guilds that failed to load say why, and Try again queries them again", () => {
+		Scene.scene(
+			config,
+			Scene.given({ ...withAddModalOpen, discordGuilds: DiscordGuilds.Failure({ error: "Offline" }) }),
+			addTriggerMounted,
+			addModalMounted,
+			Scene.expect(Scene.within(dialog, Scene.text("Connection lost"))).toExist(),
+			Scene.expect(Scene.text("Open Discord Integration")).toBeAbsent(),
+			Scene.click(Scene.within(dialog, tryAgain)),
+			Scene.Command.expectExact(ListDiscordGuilds({ organizationId, version: 2 })),
+			Scene.expect(Scene.within(dialog, Scene.text("Loading Discord guilds..."))).toExist(),
+			Scene.Command.resolve(
+				ListDiscordGuilds,
+				Message.SucceededListDiscordGuilds({ organizationId, version: 2, guilds: [guild] }),
+			),
+			Scene.Command.resolve(FocusGuildSearch, Message.CompletedFocusGuildSearch()),
+			Scene.expect(
+				Scene.within(dialog, Scene.role("button", { name: /Design Systems Guild/ })),
+			).toExist(),
 		)
 	})
 })

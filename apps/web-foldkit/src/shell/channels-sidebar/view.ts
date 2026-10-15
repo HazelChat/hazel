@@ -5,7 +5,7 @@ import { IconMagnifier3, IconUsers } from "../../icons"
 import { AppRoute, hrefOf } from "../../route"
 import { sidebarItem, sidebarLink } from "../../ui/sidebar"
 import type * as Menu from "../../ui/menu"
-import { canOn } from "./menu-update"
+import { canOn, openRowMenu } from "./menu-update"
 import { closedRowMenu, rowMenuView } from "./menus"
 import { Message, type Model } from "./model"
 import { createChannelHint } from "./create-channel-hint"
@@ -17,7 +17,6 @@ import {
 	dmDisplayName,
 	dmItem,
 	dmPartners,
-	isChannelLinkActive,
 	type ItemContext,
 	label,
 } from "./items"
@@ -35,7 +34,8 @@ import { sectionGroupHeader, strong, treeRow, treeSection } from "./tree"
 const MAX_DISCOVERABLE = 5
 
 interface SectionsContext<M> extends ItemContext {
-	readonly activeChannelId: string | undefined
+	/** The "Members" link (the org home) is the current page. */
+	readonly isMembersActive: boolean
 	readonly onActiveMount: Attribute<M>
 	readonly onBrowseChannels: Attribute<M>
 	/** The row menus' inputs; each row builds its own menu inside its memo. */
@@ -96,7 +96,8 @@ const channelRowView = <M>(
 			partners,
 			{ orgSlug, isActive: isLinkActive },
 			rowMenuView(h, {
-				menu: openMenu ?? closedRowMenu(entry.channel.id, sections, canDelete),
+				menu: openMenu ?? closedRowMenu(entry.channel.id),
+				canDelete,
 				entry,
 				sections,
 				toMessage: (message) =>
@@ -106,9 +107,6 @@ const channelRowView = <M>(
 			}),
 		),
 	})
-
-const openRowMenu = (openMenu: Model["openMenu"], channelId: string): Menu.Model | null =>
-	openMenu !== null && openMenu.target === `channel:${channelId}` ? openMenu.menu : null
 
 /** Favorites render `ChannelItem` without `partnerOrgs`, so they never show the shared-org badge. */
 const channelRow = <M>(
@@ -125,7 +123,7 @@ const channelRow = <M>(
 			entry,
 			context.unreadByChannel.get(id) ?? entry.member.notificationCount,
 			showsPartners ? (context.partnersByChannel.get(id) ?? NO_PARTNERS) : NO_PARTNERS,
-			isChannelLinkActive(context.pathname, context.orgSlug, id),
+			id === context.activeChannelId,
 			context.orgSlug,
 			place.treeId,
 			place.position,
@@ -190,7 +188,7 @@ const dmRow = <M>(
 			// Only a single DM's status dot reads the clock.
 			only === undefined ? 0 : context.nowMs,
 			context.currentUserId,
-			isChannelLinkActive(context.pathname, context.orgSlug, channel.id),
+			channel.id === context.activeChannelId,
 			context.orgSlug,
 			place.treeId,
 			place.position,
@@ -261,7 +259,7 @@ const gotoSection = <M>(h: HtmlBuilder<M>, context: SectionsContext<M>): Html =>
 							h,
 							{
 								href: membersHref,
-								isActive: context.pathname === membersHref,
+								isActive: context.isMembersActive,
 								activeClassName: CHANNEL_ACTIVE,
 							},
 							[IconUsers(h), label(h, ["Members"])],
@@ -387,8 +385,8 @@ const partnersOf = (model: Model) => {
 export const sectionGroupContent = <M>(
 	h: HtmlBuilder<M>,
 	model: Model,
-	itemContext: Omit<ItemContext, "presenceByUser" | "nowMs" | "currentUserId"> & {
-		readonly activeChannelId: string | undefined
+	itemContext: Omit<ItemContext, "presenceByUser" | "currentUserId"> & {
+		readonly route: AppRoute
 		readonly onActiveMount: Attribute<M>
 		readonly onBrowseChannels: Attribute<M>
 		readonly onDismissCreateChannelHint: Attribute<M>
@@ -398,8 +396,8 @@ export const sectionGroupContent = <M>(
 ): Html[] => {
 	const context: SectionsContext<M> = {
 		...itemContext,
+		isMembersActive: itemContext.route._tag === "OrgHome",
 		currentUserId: model.currentUserId,
-		nowMs: model.nowMs,
 		presenceByUser: new Map(model.presence.map((presence) => [presence.userId, presence])),
 		unreadByChannel: new Map(model.unreadCounts.map((unread) => [unread.channelId, unread.count])),
 		partnersByChannel: partnersOf(model),

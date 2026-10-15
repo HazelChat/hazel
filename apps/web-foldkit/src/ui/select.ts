@@ -5,8 +5,9 @@ import { defineMessageUnion } from "foldkit/message"
 import { modifyFields } from "foldkit/struct"
 
 /**
- * Port of `components/ui/select.tsx` (React Aria Select + ListBox in a Popover) with string items,
- * as the legacy SelectItem renders them. The view lives in `select-view.ts`.
+ * A select (trigger plus a listbox in a popover) over string items. The parent owns the items: it
+ * passes them to the view, which attaches them to the Messages that navigate, so the Model holds only
+ * the selection and the popup. The view lives in `select-view.ts`.
  */
 
 // MODEL
@@ -30,7 +31,6 @@ type Open = Extract<typeof Popup.Type, { _tag: "Open" }>
 
 export const Model = Schema.Struct({
 	id: Schema.String,
-	items: Schema.Array(Item),
 	selectedKey: Schema.Option(Schema.String),
 	isDisabled: Schema.Boolean,
 	isTriggerFocused: Schema.Boolean,
@@ -42,12 +42,10 @@ export const item = (key: string, label: string, isDisabled = false): Item => ({
 
 export const init = (config: {
 	readonly id: string
-	readonly items: ReadonlyArray<Item>
 	readonly selectedKey?: string
 	readonly isDisabled?: boolean
 }): Model => ({
 	id: config.id,
-	items: config.items,
 	selectedKey: Option.fromNullishOr(config.selectedKey),
 	isDisabled: config.isDisabled ?? false,
 	isTriggerFocused: false,
@@ -58,13 +56,13 @@ export const init = (config: {
 
 export const Message = defineMessageUnion({
 	PressedTrigger: { pointerType: Schema.String },
-	PressedTriggerKey: { key: Schema.String },
+	PressedTriggerKey: { key: Schema.String, items: Schema.Array(Item) },
 	FocusedTrigger: {},
 	BlurredTrigger: {},
-	PressedListKey: { key: Schema.String, isModified: Schema.Boolean },
-	HoveredOption: { key: Schema.String },
+	PressedListKey: { key: Schema.String, isModified: Schema.Boolean, items: Schema.Array(Item) },
+	HoveredOption: { key: Schema.String, items: Schema.Array(Item) },
 	UnhoveredOption: { key: Schema.String },
-	ClickedOption: { key: Schema.String },
+	ClickedOption: { key: Schema.String, items: Schema.Array(Item) },
 	PressedOutside: {},
 	ClickedDismiss: {},
 	CompletedFocusElement: {},
@@ -89,15 +87,19 @@ export const optionLabelId = (id: string, key: string) => `${id}-option-label-${
 
 // COLLECTION
 
-const enabledKeys = (model: Model): ReadonlyArray<string> =>
+const enabledKeys = (items: ReadonlyArray<Item>): ReadonlyArray<string> =>
 	Array.map(
-		Array.filter(model.items, (candidate) => !candidate.isDisabled),
+		Array.filter(items, (candidate) => !candidate.isDisabled),
 		(candidate) => candidate.key,
 	)
 
 /** ListKeyboardDelegate without wrapping (ListBox's `shouldFocusWrap` is false). */
-const stepKey = (model: Model, from: Option.Option<string>, direction: 1 | -1): Option.Option<string> => {
-	const keys = enabledKeys(model)
+const stepKey = (
+	items: ReadonlyArray<Item>,
+	from: Option.Option<string>,
+	direction: 1 | -1,
+): Option.Option<string> => {
+	const keys = enabledKeys(items)
 	return Option.match(
 		Option.flatMap(from, (key) => Array.findFirstIndex(keys, (candidate) => candidate === key)),
 		{
@@ -108,19 +110,23 @@ const stepKey = (model: Model, from: Option.Option<string>, direction: 1 | -1): 
 	)
 }
 
-const searchKey = (model: Model, search: string, from: Option.Option<string>): Option.Option<string> => {
+const searchKey = (
+	items: ReadonlyArray<Item>,
+	search: string,
+	from: Option.Option<string>,
+): Option.Option<string> => {
 	const matches = (candidate: Item) =>
 		!candidate.isDisabled &&
 		candidate.label.slice(0, search.length).toLowerCase() === search.toLowerCase()
 	const start = Option.getOrElse(
 		Option.flatMap(from, (key) =>
-			Array.findFirstIndex(model.items, (candidate) => candidate.key === key),
+			Array.findFirstIndex(items, (candidate) => candidate.key === key),
 		),
 		() => 0,
 	)
 	return Option.map(
-		Option.orElse(Array.findFirst(Array.drop(model.items, start), matches), () =>
-			Array.findFirst(model.items, matches),
+		Option.orElse(Array.findFirst(Array.drop(items, start), matches), () =>
+			Array.findFirst(items, matches),
 		),
 		(found) => found.key,
 	)
@@ -161,12 +167,17 @@ const withOpen = (model: Model, open: Open, isFocusMoved: boolean): UpdateReturn
 }
 
 /** The portal Mount moves the initial focus, since the trigger's tree is inert until it runs. */
-const opened = (model: Model, strategy: "None" | "First" | "Last", modality: Modality): UpdateReturn => {
+const opened = (
+	model: Model,
+	items: ReadonlyArray<Item>,
+	strategy: "None" | "First" | "Last",
+	modality: Modality,
+): UpdateReturn => {
 	if (model.isDisabled) return { model }
 	const strategyKey =
 		strategy === "None"
 			? Option.none<string>()
-			: stepKey(model, Option.none(), strategy === "First" ? 1 : -1)
+			: stepKey(items, Option.none(), strategy === "First" ? 1 : -1)
 	const focusedKey = Option.orElse(model.selectedKey, () => strategyKey)
 	return withOpen(
 		model,
@@ -182,20 +193,20 @@ const selected = (model: Model, key: string): UpdateReturn => ({
 	outMessage: OutMessage.ChangedSelection({ key }),
 })
 
-const pressedTriggerKey = (model: Model, key: string): UpdateReturn =>
+const pressedTriggerKey = (model: Model, items: ReadonlyArray<Item>, key: string): UpdateReturn =>
 	Match.value(key).pipe(
 		Match.when(
 			(pressed) => pressed === "Enter" || pressed === " " || pressed === "ArrowDown",
-			() => opened(model, "First", "Keyboard"),
+			() => opened(model, items, "First", "Keyboard"),
 		),
-		Match.when("ArrowUp", () => opened(model, "Last", "Keyboard")),
+		Match.when("ArrowUp", () => opened(model, items, "Last", "Keyboard")),
 		Match.when(
 			(pressed) => pressed === "ArrowLeft" || pressed === "ArrowRight",
 			(pressed) =>
 				// stepKey stays on the last key at an end; that is no change, so nothing is reported.
 				Option.match(
 					Option.filter(
-						stepKey(model, model.selectedKey, pressed === "ArrowRight" ? 1 : -1),
+						stepKey(items, model.selectedKey, pressed === "ArrowRight" ? 1 : -1),
 						(next) => !Option.contains(model.selectedKey, next),
 					),
 					{
@@ -210,14 +221,20 @@ const pressedTriggerKey = (model: Model, key: string): UpdateReturn =>
 		Match.orElse(() => ({ model })),
 	)
 
-const pressedListKey = (model: Model, open: Open, key: string, isModified: boolean): UpdateReturn => {
+const pressedListKey = (
+	model: Model,
+	items: ReadonlyArray<Item>,
+	open: Open,
+	key: string,
+	isModified: boolean,
+): UpdateReturn => {
 	const keyboard: Open = { ...open, modality: "Keyboard" }
 	const focused = (next: Option.Option<string>) => withOpen(model, { ...keyboard, focusedKey: next }, true)
 	return Match.value(key).pipe(
-		Match.when("ArrowDown", () => focused(stepKey(model, open.focusedKey, 1))),
-		Match.when("ArrowUp", () => focused(stepKey(model, open.focusedKey, -1))),
-		Match.when("Home", () => focused(stepKey(model, Option.none(), 1))),
-		Match.when("End", () => focused(stepKey(model, Option.none(), -1))),
+		Match.when("ArrowDown", () => focused(stepKey(items, open.focusedKey, 1))),
+		Match.when("ArrowUp", () => focused(stepKey(items, open.focusedKey, -1))),
+		Match.when("Home", () => focused(stepKey(items, Option.none(), 1))),
+		Match.when("End", () => focused(stepKey(items, Option.none(), -1))),
 		Match.when("Escape", () => ({ model: closed(model) })),
 		Match.when(
 			(pressed) => pressed === "Enter" || (pressed === " " && open.search === ""),
@@ -236,7 +253,7 @@ const pressedListKey = (model: Model, open: Open, key: string, isModified: boole
 					...keyboard,
 					search,
 					focusedKey: Option.orElse(
-						searchKey(model, search, open.focusedKey),
+						searchKey(items, search, open.focusedKey),
 						() => open.focusedKey,
 					),
 				},
@@ -257,18 +274,18 @@ export const update = (model: Model, message: Message): UpdateReturn => {
 	return Message.match<UpdateReturn>(message, {
 		PressedTrigger: ({ pointerType }) =>
 			model.popup._tag === "Closed" && pointerType !== "touch"
-				? opened(model, "None", "Pointer")
+				? opened(model, [], "None", "Pointer")
 				: { model },
-		PressedTriggerKey: ({ key }) =>
-			model.popup._tag === "Closed" ? pressedTriggerKey(model, key) : { model },
+		PressedTriggerKey: ({ key, items }) =>
+			model.popup._tag === "Closed" ? pressedTriggerKey(model, items, key) : { model },
 		FocusedTrigger: () => ({ model: modifyFields(model, { isTriggerFocused: () => true }) }),
 		BlurredTrigger: () => ({ model: modifyFields(model, { isTriggerFocused: () => false }) }),
-		PressedListKey: ({ key, isModified }) =>
-			ifOpen((open) => pressedListKey(model, open, key, isModified)),
-		HoveredOption: ({ key }) =>
+		PressedListKey: ({ key, isModified, items }) =>
+			ifOpen((open) => pressedListKey(model, items, open, key, isModified)),
+		HoveredOption: ({ key, items }) =>
 			ifOpen((open) => {
 				const isEnabled = Array.some(
-					model.items,
+					items,
 					(candidate) => candidate.key === key && !candidate.isDisabled,
 				)
 				const pointer: Open = { ...open, modality: "Pointer", hoveredKey: Option.some(key) }
@@ -284,9 +301,9 @@ export const update = (model: Model, message: Message): UpdateReturn => {
 					false,
 				),
 			),
-		ClickedOption: ({ key }) =>
+		ClickedOption: ({ key, items }) =>
 			ifOpen(() =>
-				Array.some(model.items, (candidate) => candidate.key === key && !candidate.isDisabled)
+				Array.some(items, (candidate) => candidate.key === key && !candidate.isDisabled)
 					? selected(model, key)
 					: { model },
 			),

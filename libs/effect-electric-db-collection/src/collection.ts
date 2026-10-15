@@ -6,7 +6,7 @@ import type { ElectricCollectionUtils, Txid } from "@tanstack/electric-db-collec
 import { electricCollectionOptions } from "@tanstack/electric-db-collection"
 import { createCollection as tanstackCreateCollection } from "@tanstack/db"
 import { Effect, type ManagedRuntime, Schema } from "effect"
-import { AwaitTxIdError, InvalidTxIdError, MaxRetriesExceededError, TxIdTimeoutError } from "./errors"
+import { AwaitTxIdError, InvalidTxIdError, TxIdTimeoutError } from "./errors"
 import { convertDeleteHandler, convertInsertHandler, convertUpdateHandler } from "./handlers"
 import type { BackoffConfig, EffectElectricCollectionConfig } from "./types"
 
@@ -411,7 +411,7 @@ export function createEffectCollection<A extends Row<unknown>, TRuntime>(
 		"schema"
 	> & {
 		schema: Schema.Schema<A>
-		runtime: ManagedRuntime.ManagedRuntime<TRuntime, unknown>
+		runtime?: ManagedRuntime.ManagedRuntime<TRuntime, unknown>
 	},
 ): EffectCollection<A> {
 	// Convert Effect Schema to StandardSchemaV1 internally.

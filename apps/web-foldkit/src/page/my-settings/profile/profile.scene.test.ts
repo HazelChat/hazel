@@ -78,7 +78,8 @@ describe("profile form scene", () => {
 			comboBoxFocusMounted,
 			comboBoxTypedValueMounted,
 			Scene.type("#profile-last-name-input", ""),
-			Scene.expect(Scene.text("lastName must be non-empty")).toExist(),
+			Scene.expect(Scene.text("Last name is required")).toExist(),
+			Scene.expect(Scene.label("Last name")).toHaveAttr("aria-invalid", "true"),
 			Scene.expect(save).toBeDisabled(),
 		)
 	})
@@ -89,8 +90,8 @@ const dialog = Scene.role("dialog")
 /** The crop dialog is a `controlledModal`, so its Mount result arrives already lifted into the page Message. */
 const cropModalMounted = Scene.Mount.resolve(
 	// Name-only matcher: the Mount is wrapped by mapMessage, so its typed result is the parent Message.
-	{ name: "PortalModal" },
-	Message.GotCropModalMessage({ message: Modal.Message.CompletedPortalModal() }),
+	{ name: "AcquireResources" },
+	Modal.Message.SucceededAcquireResources(),
 )
 const toastOf = (intent: "success" | "error", title: string, description: string | null = null) =>
 	PageOutMessage.RequestedToast({ toast: { intent, title, description } })
@@ -106,9 +107,16 @@ describe("profile save scene", () => {
 			Scene.click(save),
 			Scene.Command.expectExact(SaveProfile),
 			Scene.expect(Scene.role("button", { name: "Saving..." })).toBeDisabled(),
-			Scene.Command.resolve(SaveProfile, Message.CompletedSaveProfile({ isSaved: true })),
+			Scene.Command.resolve(
+				SaveProfile,
+				Message.SucceededSaveProfile({
+					values: { firstName: "Augusta Ada", lastName: "Lovelace", timezone: null },
+				}),
+			),
 			Scene.expectOutMessage(toastOf("success", "Profile updated successfully")),
 			Scene.expect(firstName).toHaveValue("Augusta Ada"),
+			// Saved: the form is clean again.
+			Scene.expect(save).toBeDisabled(),
 		)
 	})
 
@@ -120,8 +128,14 @@ describe("profile save scene", () => {
 			comboBoxTypedValueMounted,
 			Scene.type(firstName, "Augusta Ada"),
 			Scene.click(save),
-			Scene.Command.resolve(SaveProfile, Message.CompletedSaveProfile({ isSaved: false })),
-			Scene.expectOutMessage(toastOf("error", "Failed to update profile")),
+			Scene.Command.resolve(SaveProfile, Message.FailedSaveProfile({ reason: "Timeout" })),
+			Scene.expectOutMessage(
+				toastOf(
+					"error",
+					"Failed to update profile",
+					"The server is taking too long to respond. Please try again.",
+				),
+			),
 			Scene.expect(save).toBeEnabled(),
 			Scene.expect(firstName).toHaveValue("Augusta Ada"),
 		)
@@ -139,8 +153,8 @@ describe("avatar scene", () => {
 			comboBoxTypedValueMounted,
 			Scene.click(reset),
 			Scene.expect(Scene.role("button", { name: "Removing..." })).toBeDisabled(),
-			Scene.Command.resolve(ResetAvatar, Message.CompletedResetAvatar({ isReset: false })),
-			Scene.expectOutMessage(toastOf("error", "Failed to remove profile picture")),
+			Scene.Command.resolve(ResetAvatar, Message.FailedResetAvatar({ reason: "Unexpected" })),
+			Scene.expectOutMessage(toastOf("error", "Failed to remove profile picture", "Please try again.")),
 			Scene.expect(reset).toBeEnabled(),
 		)
 	})
@@ -170,14 +184,14 @@ describe("avatar crop dialog scene", () => {
 			...openCrop,
 			Scene.click(saveCrop),
 			Scene.expect(Scene.within(dialog, Scene.role("button", { name: "Saving..." }))).toBeDisabled(),
-			Scene.Command.resolve(CropAvatarImage, Message.CompletedCropImage({ blob: new Blob(["webp"]) })),
+			Scene.Command.resolve(CropAvatarImage, Message.SucceededCropImage({ blob: new Blob(["webp"]) })),
 			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 			Scene.expect(Scene.text("Uploading...")).toExist(),
 			Scene.expect(Scene.role("button", { name: "Remove photo" })).toBeDisabled(),
 			Scene.Command.resolveAll(
 				[RevokeCropImage, Message.CompletedRevokeCropImage()],
-				[UploadAvatar, Message.CompletedUploadAvatar({ isUploaded: true })],
+				[UploadAvatar, Message.SucceededUploadAvatar()],
 			),
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedCurrentUserRefresh({
@@ -188,6 +202,46 @@ describe("avatar crop dialog scene", () => {
 		)
 	})
 
+	test("an upload rejected as too large shows that, then re-enables the avatar", () => {
+		Scene.scene(
+			config,
+			Scene.given(init(undefined, shared).model),
+			...openCrop,
+			Scene.click(saveCrop),
+			Scene.Command.resolve(CropAvatarImage, Message.SucceededCropImage({ blob: new Blob(["webp"]) })),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
+			Scene.Command.resolveAll(
+				[RevokeCropImage, Message.CompletedRevokeCropImage()],
+				[UploadAvatar, Message.FailedUploadAvatar({ reason: "TooLarge" })],
+			),
+			Scene.expectOutMessage(toastOf("error", "File too large", "File size must be less than 5MB")),
+			Scene.expect(Scene.text("Uploading...")).toBeAbsent(),
+			Scene.expect(Scene.role("button", { name: "Remove photo" })).toBeEnabled(),
+		)
+	})
+
+	test("an unconfigured upload says so instead of a generic failure", () => {
+		Scene.scene(
+			config,
+			Scene.given(init(undefined, shared).model),
+			...openCrop,
+			Scene.click(saveCrop),
+			Scene.Command.resolve(CropAvatarImage, Message.SucceededCropImage({ blob: new Blob(["webp"]) })),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
+			Scene.Command.resolveAll(
+				[RevokeCropImage, Message.CompletedRevokeCropImage()],
+				[UploadAvatar, Message.FailedUploadAvatar({ reason: "NotConfigured" })],
+			),
+			Scene.expectOutMessage(
+				toastOf(
+					"error",
+					"Configuration error",
+					"Image upload is not configured. Please contact support.",
+				),
+			),
+		)
+	})
+
 	test("Cancel closes the dialog and frees the image", () => {
 		Scene.scene(
 			config,
@@ -195,7 +249,7 @@ describe("avatar crop dialog scene", () => {
 			...openCrop,
 			Scene.click(Scene.within(dialog, Scene.role("button", { name: "Cancel" }))),
 			Scene.expect(dialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 			Scene.Command.expectExact(RevokeCropImage({ src: "blob:me" })),
 			Scene.Command.resolve(RevokeCropImage, Message.CompletedRevokeCropImage()),
 		)

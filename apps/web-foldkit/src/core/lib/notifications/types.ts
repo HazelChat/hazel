@@ -13,7 +13,7 @@ export type NotificationDeliveryReason =
 	| "api_unavailable"
 	| "error"
 
-export type NotificationSinkName = "in-app" | "sound" | "native"
+export type NotificationSinkName = "sound" | "native"
 
 export type NotificationSinkStatus = "sent" | "suppressed" | "failed"
 

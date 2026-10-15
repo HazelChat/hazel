@@ -3,7 +3,7 @@ import { Schema } from "effect"
 import { Command, given, message, model, story } from "foldkit/story"
 import { describe, expect, test, vi } from "vitest"
 import * as MessageList from "../../../mount/message-list"
-import { init, Message, type Model, REMEMBERED_CHANNELS, switchChannel, update } from "./page"
+import { init, Message, type Model, REMEMBERED_CHANNELS, setTab, switchChannel, update } from "./page"
 import type { ChatMessage } from "../rows"
 
 /** Update-loop tests for the channel page's list: prepend anchoring, following the end, paging. */
@@ -42,6 +42,10 @@ const chatMessage = (n: number): ChatMessage => ({
 const page = (from: number, to: number) =>
 	Array.from({ length: to - from + 1 }, (_, index) => chatMessage(to - index))
 
+/** The messages query's result as a change set: these messages, in this order. */
+const loaded = (messages: ReadonlyArray<ChatMessage>) =>
+	Message.ChangedMessages({ order: messages.map((message) => message.id), upserts: messages })
+
 const ROW = 72
 const HEADER = 40
 const ESTIMATE = 80
@@ -71,11 +75,11 @@ const offsetOf = (current: Model, key: string) => {
 
 /** A channel with messages 70..99 loaded, measured, and scrolled 10px into message 80. */
 const readingHistory = (): Model => {
-	let current = init(channelId, ada)
+	let current = init(channelId, "hazel", ada)
 	const run = (next: Message) => {
 		current = update(current, next).model
 	}
-	run(Message.UpdatedMessages({ messages: page(70, 99) }))
+	run(loaded(page(70, 99)))
 	run(listMessage(MessageList.Message.ResizedViewport({ viewportHeight: VIEWPORT })))
 	run(completed(current.list.scrollVersion, current.list.scrollTop))
 	run(measureAll(current))
@@ -92,8 +96,8 @@ describe("channel page list", () => {
 	test("starts at the end and follows it while the rows get measured", () => {
 		story(
 			update,
-			given(init(channelId, ada)),
-			message(Message.UpdatedMessages({ messages: page(70, 99) })),
+			given(init(channelId, "hazel", ada)),
+			message(loaded(page(70, 99))),
 			Command.expectNone(),
 			message(listMessage(MessageList.Message.ResizedViewport({ viewportHeight: VIEWPORT }))),
 			model((current) => {
@@ -116,7 +120,7 @@ describe("channel page list", () => {
 		story(
 			update,
 			given(before),
-			message(Message.UpdatedMessages({ messages: page(40, 99) })),
+			message(loaded(page(40, 99))),
 			model((current) => {
 				// 30 unmeasured rows land above the anchor at the estimated height.
 				expect(current.list.scrollTop).toBe(before.list.scrollTop + 30 * ESTIMATE)
@@ -128,7 +132,7 @@ describe("channel page list", () => {
 				applied(before.list.scrollVersion + 1, before.list.scrollTop + 30 * ESTIMATE),
 			),
 			// The new rows get measured at 72px: the anchor still does not move on screen.
-			message(measureAll(update(before, Message.UpdatedMessages({ messages: page(40, 99) })).model)),
+			message(measureAll(update(before, loaded(page(40, 99))).model)),
 			model((current) => {
 				expect(current.list.scrollTop).toBe(before.list.scrollTop + 30 * ROW)
 				expect(offsetOf(current, anchorKey) - current.list.scrollTop).toBe(viewportTopBefore)
@@ -152,16 +156,16 @@ describe("channel page list", () => {
 		story(
 			update,
 			given(atTop),
-			message(Message.UpdatedMessages({ messages: page(40, 99) })),
+			message(loaded(page(40, 99))),
 			model((current) => expect(current.list.scrollTop).toBe(30 * ESTIMATE)),
 			Command.resolve(MessageList.ApplyScroll, applied(atTop.list.scrollVersion + 1, 30 * ESTIMATE)),
 		)
 	})
 
 	test("renders LegendList's window: the viewport plus its draw distance, recalculated only past it", () => {
-		let before = init(channelId, ada)
+		let before = init(channelId, "hazel", ada)
 		for (const next of [
-			Message.UpdatedMessages({ messages: page(0, 199) }),
+			loaded(page(0, 199)),
 			listMessage(MessageList.Message.ResizedViewport({ viewportHeight: VIEWPORT })),
 		])
 			before = update(before, next).model
@@ -185,7 +189,7 @@ describe("channel page list", () => {
 	// Story requires Commands to resolve before the next Message, so this race is driven by hand.
 	test("ignores scroll events that describe the DOM before a pending scroll was applied", () => {
 		const before = readingHistory()
-		const prepended = update(before, Message.UpdatedMessages({ messages: page(40, 99) }))
+		const prepended = update(before, loaded(page(40, 99)))
 		expect(prepended.commands?.map((command) => command.name)).toEqual(["ApplyScroll"])
 		const stale = update(prepended.model, listMessage(MessageList.Message.ScrolledList({ scrollTop: 3 })))
 		expect(stale.model).toBe(prepended.model)
@@ -201,9 +205,9 @@ describe("channel page list", () => {
 	})
 
 	test("sticks to the bottom when a new message arrives at the end", () => {
-		let atEnd = init(channelId, ada)
+		let atEnd = init(channelId, "hazel", ada)
 		for (const next of [
-			Message.UpdatedMessages({ messages: page(70, 99) }),
+			loaded(page(70, 99)),
 			listMessage(MessageList.Message.ResizedViewport({ viewportHeight: VIEWPORT })),
 		])
 			atEnd = update(atEnd, next).model
@@ -215,7 +219,7 @@ describe("channel page list", () => {
 		story(
 			update,
 			given(atEnd),
-			message(Message.UpdatedMessages({ messages: page(70, 100) })),
+			message(loaded(page(70, 100))),
 			model((current) => {
 				expect(current.list.anchor._tag).toBe("End")
 				expect(current.list.scrollTop).toBe(endBefore + ESTIMATE)
@@ -232,7 +236,7 @@ describe("channel page list", () => {
 		story(
 			update,
 			given(before),
-			message(Message.UpdatedMessages({ messages: page(70, 100) })),
+			message(loaded(page(70, 100))),
 			Command.expectNone(),
 			model((current) => {
 				expect(current.list.scrollTop).toBe(before.list.scrollTop)
@@ -255,12 +259,70 @@ describe("channel page list", () => {
 	})
 })
 
+/** Messages 70..99 loaded and measured, following the end. */
+const followingEnd = (): Model => {
+	let atEnd = init(channelId, "hazel", ada)
+	for (const next of [
+		loaded(page(70, 99)),
+		listMessage(MessageList.Message.ResizedViewport({ viewportHeight: VIEWPORT })),
+	])
+		atEnd = update(atEnd, next).model
+	atEnd = update(atEnd, measureAll(atEnd)).model
+	return update(atEnd, completed(atEnd.list.scrollVersion, atEnd.list.scrollTop)).model
+}
+
+describe("while the Files tab hides the list", () => {
+	test("a new message's scroll finds no list: nothing moves and no older page is requested", () => {
+		const onFiles = setTab(followingEnd(), "files")
+		story(
+			update,
+			given(onFiles),
+			message(loaded(page(70, 100))),
+			model((current) => expect(MessageList.isScrollPending(current.list)).toBe(true)),
+			Command.resolve(
+				MessageList.ApplyScroll,
+				MessageList.Message.SkippedApplyScroll({ version: onFiles.list.scrollVersion + 1 }),
+			),
+			model((current) => {
+				expect(MessageList.isScrollPending(current.list)).toBe(false)
+				expect(current.list.anchor._tag).toBe("End")
+				expect(current.limit).toBe(onFiles.limit)
+				expect(current.offset).toBe(0)
+			}),
+		)
+	})
+
+	test("never pages, even when the list reports being near the oldest message", () => {
+		const onFiles = setTab(followingEnd(), "files")
+		const result = update(onFiles, listMessage(MessageList.Message.ScrolledList({ scrollTop: 0 })))
+		expect(result.model.limit).toBe(onFiles.limit)
+	})
+
+	test("coming back scrolls the new list element to where the reader was", () => {
+		const onFiles = setTab(followingEnd(), "files")
+		const arrived = update(onFiles, loaded(page(70, 100))).model
+		const skipped = update(
+			arrived,
+			listMessage(MessageList.Message.SkippedApplyScroll({ version: arrived.list.scrollVersion })),
+		).model
+		const back = setTab(skipped, "messages")
+		const mounted = update(
+			back,
+			listMessage(MessageList.Message.MountedList({ scrollTop: 0, viewportHeight: VIEWPORT })),
+		)
+		expect(mounted.model.list.anchor._tag).toBe("End")
+		expect(mounted.model.list.scrollTop).toBe(MessageList.maxScrollTop(mounted.model.list))
+		expect(mounted.commands?.map((command) => command.name)).toEqual(["ApplyScroll"])
+		expect(mounted.model.limit).toBe(onFiles.limit)
+	})
+})
+
 describe("switching channels", () => {
 	const otherChannelId = Schema.decodeSync(ChannelId)(uuid(9))
 
 	test("starts the next channel fresh, with the viewport and this channel's heights handed on", () => {
 		const reading = readingHistory()
-		const next = switchChannel(reading, otherChannelId, { tab: "messages", orgSlug: "hazel" })
+		const next = switchChannel(reading, otherChannelId, { tab: "messages" })
 		expect(next.channelId).toBe(otherChannelId)
 		expect(next.messages).toEqual([])
 		expect(next.hasLoadedMessages).toBe(false)
@@ -273,13 +335,13 @@ describe("switching channels", () => {
 
 	test("lays a revisited channel out at the heights it measured", () => {
 		const reading = readingHistory()
-		const away = switchChannel(reading, otherChannelId, { tab: "messages", orgSlug: "hazel" })
-		const back = switchChannel(away, channelId, { tab: "messages", orgSlug: "hazel" })
+		const away = switchChannel(reading, otherChannelId, { tab: "messages" })
+		const back = switchChannel(away, channelId, { tab: "messages" })
 		expect(back.list.measuredHeights).toEqual(reading.list.measuredHeights)
 		expect(Object.keys(back.heightsByChannel)).toEqual([otherChannelId])
-		const loaded = update(back, Message.UpdatedMessages({ messages: page(70, 99) })).model
+		const revisited = update(back, loaded(page(70, 99))).model
 		// Measured rows, not estimates: the first frame already ends where the last visit did.
-		expect(MessageList.layoutOf(loaded.list).totalHeight).toBe(
+		expect(MessageList.layoutOf(revisited.list).totalHeight).toBe(
 			MessageList.layoutOf(reading.list).totalHeight,
 		)
 	})
@@ -287,10 +349,7 @@ describe("switching channels", () => {
 	test("remembers a bounded number of channels", () => {
 		const visited = Array.from({ length: REMEMBERED_CHANNELS + 5 }, (_, index) =>
 			Schema.decodeSync(ChannelId)(uuid(100 + index)),
-		).reduce(
-			(current, id) => switchChannel(current, id, { tab: "messages", orgSlug: "hazel" }),
-			readingHistory(),
-		)
+		).reduce((current, id) => switchChannel(current, id, { tab: "messages" }), readingHistory())
 		expect(Object.keys(visited.heightsByChannel)).toHaveLength(REMEMBERED_CHANNELS)
 	})
 })

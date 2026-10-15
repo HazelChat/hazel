@@ -1,12 +1,13 @@
 import { ChannelId, OrganizationId } from "@hazel/schema"
-import { Duration, Effect, Exit, Schema } from "effect"
+import { Duration, Effect, Schema } from "effect"
 import { Command, type Update } from "foldkit"
+import * as AsyncData from "foldkit/asyncData"
 import { defineMessageUnion } from "foldkit/message"
 import { modifyFields } from "foldkit/struct"
-import { ToastRequest } from "../../../overlay/toasts"
+import { CommonReason, failureMessage } from "~/lib/error-messages"
+import { catchCommon, errorToastOf, successToast } from "../../../data/actions"
 import { HazelRpc } from "../../../rpc"
 import * as Modal from "../../../ui/modal"
-import { failureToast, successToast } from "../../../data/actions"
 import { PageOutMessage } from "../../out-message"
 
 /** Port of `components/connect/share-channel-modal.tsx`. */
@@ -21,12 +22,21 @@ export const Workspace = Schema.Struct({
 })
 export type Workspace = typeof Workspace.Type
 
+/** The workspace search: `Idle` below two characters or once a workspace is picked. */
+export const SearchResults = AsyncData.Schema(Schema.Array(Workspace), CommonReason)
+
+/** What can go wrong sending the invite, beyond the shared reasons. */
+export const CreateInviteFailure = Schema.Union([
+	Schema.Literals(["WorkspaceNotFound", "AlreadyShared", "ChannelNotFound"]),
+	CommonReason,
+])
+export type CreateInviteFailure = typeof CreateInviteFailure.Type
+
 export const Model = Schema.Struct({
 	modal: Modal.Model,
 	searchQuery: Schema.String,
-	searchResults: Schema.Array(Workspace),
-	isSearching: Schema.Boolean,
-	/** Bumped on every keystroke; only the latest debounced search counts (`clearTimeout`). */
+	searchResults: SearchResults.schema,
+	/** Bumped on every keystroke and retry; only the latest search counts (`clearTimeout`). */
 	searchVersion: Schema.Number,
 	selectedWorkspace: Schema.NullOr(Workspace),
 	allowGuestMemberAdds: Schema.Boolean,
@@ -37,8 +47,7 @@ export type Model = typeof Model.Type
 export const init = (): Model => ({
 	modal: Modal.init("share-channel"),
 	searchQuery: "",
-	searchResults: [],
-	isSearching: false,
+	searchResults: SearchResults.Idle(),
 	searchVersion: 0,
 	selectedWorkspace: null,
 	allowGuestMemberAdds: false,
@@ -51,14 +60,15 @@ export const Message = defineMessageUnion({
 	ChangedWorkspaceQuery: { value: Schema.String },
 	ElapsedSearchDelay: { version: Schema.Number, query: Schema.String },
 	SucceededSearchWorkspaces: { version: Schema.Number, results: Schema.Array(Workspace) },
-	FailedSearchWorkspaces: { version: Schema.Number },
+	FailedSearchWorkspaces: { version: Schema.Number, reason: CommonReason },
+	ClickedRetrySearch: {},
 	ClickedWorkspace: { workspace: Workspace },
 	ClickedClearWorkspace: {},
 	ToggledAllowGuestMemberAdds: { isSelected: Schema.Boolean },
 	ClickedCancel: {},
 	ClickedSendInvite: {},
 	SucceededCreateInvite: {},
-	FailedCreateInvite: { toast: ToastRequest },
+	FailedCreateInvite: { reason: CreateInviteFailure },
 	GotModalMessage: { message: Modal.Message },
 })
 export type Message = typeof Message.Type
@@ -76,17 +86,20 @@ export const SearchWorkspaces = Command.define("SearchWorkspaces", {
 	args: { version: Schema.Number, query: Schema.String, organizationId: OrganizationId },
 	messages: [Message.SucceededSearchWorkspaces, Message.FailedSearchWorkspaces],
 	execute: ({ version, query, organizationId }) =>
-		Effect.gen(function* () {
-			const client = yield* HazelRpc
-			const response = yield* client("connectShare.workspace.search", { query, organizationId })
-			const results = response.data.map((result) => ({
-				id: result.id,
-				name: result.name,
-				slug: result.slug,
-				logoUrl: result.logoUrl,
-			}))
-			return Message.SucceededSearchWorkspaces({ version, results })
-		}).pipe(Effect.catch(() => Effect.succeed(Message.FailedSearchWorkspaces({ version })))),
+		HazelRpc.use((rpc) => rpc("connectShare.workspace.search", { query, organizationId })).pipe(
+			Effect.map((response) =>
+				Message.SucceededSearchWorkspaces({
+					version,
+					results: response.data.map((result) => ({
+						id: result.id,
+						name: result.name,
+						slug: result.slug,
+						logoUrl: result.logoUrl,
+					})),
+				}),
+			),
+			catchCommon((reason) => Message.FailedSearchWorkspaces({ version, reason })),
+		),
 })
 
 export const CreateInvite = Command.define("CreateInvite", {
@@ -98,35 +111,25 @@ export const CreateInvite = Command.define("CreateInvite", {
 	},
 	messages: [Message.SucceededCreateInvite, Message.FailedCreateInvite],
 	execute: ({ channelId, guestOrganizationId, slug, allowGuestMemberAdds }) =>
-		Effect.gen(function* () {
-			const client = yield* HazelRpc
-			const exit = yield* Effect.exit(
-				client("connectShare.invite.create", {
-					channelId,
-					guestOrganizationId,
-					target: { kind: "slug", value: slug },
-					allowGuestMemberAdds,
-				}),
-			)
-			return Exit.match(exit, {
-				onSuccess: () => Message.SucceededCreateInvite(),
-				onFailure: (cause) => {
-					const toast = failureToast(cause, "exitToast", {
-						ConnectWorkspaceNotFoundError: {
-							title: "Workspace not found",
-							description: "No workspace matches that name or slug.",
-							isRetryable: false,
-						},
-						ConnectChannelAlreadySharedError: {
-							title: "Already shared",
-							description: "This channel is already shared with that organization.",
-							isRetryable: false,
-						},
-					})
-					return Message.FailedCreateInvite({ toast })
-				},
-			})
-		}),
+		HazelRpc.use((rpc) =>
+			rpc("connectShare.invite.create", {
+				channelId,
+				guestOrganizationId,
+				target: { kind: "slug", value: slug },
+				allowGuestMemberAdds,
+			}),
+		).pipe(
+			Effect.as(Message.SucceededCreateInvite()),
+			Effect.catchTags({
+				ConnectWorkspaceNotFoundError: () =>
+					Effect.succeed(Message.FailedCreateInvite({ reason: "WorkspaceNotFound" })),
+				ConnectChannelAlreadySharedError: () =>
+					Effect.succeed(Message.FailedCreateInvite({ reason: "AlreadyShared" })),
+				ChannelNotFoundError: () =>
+					Effect.succeed(Message.FailedCreateInvite({ reason: "ChannelNotFound" })),
+			}),
+			catchCommon((reason) => Message.FailedCreateInvite({ reason })),
+		),
 })
 
 // UPDATE
@@ -134,11 +137,21 @@ export const CreateInvite = Command.define("CreateInvite", {
 export type Return = Update.ReturnWithOutMessage<Model, Message, PageOutMessage, HazelRpc>
 export type Context = Readonly<{ channelId: ChannelId; organizationId: OrganizationId | null }>
 
-/** `resetState()` plus closing; `onOpenChange(false)` resets as well. */
-const closed = (model: Model): Model => ({ ...init(), modal: Modal.close(model.modal).model })
-
+/** The modal renders open, and its dialog Mount takes the focus trap, isolation and scroll lock. */
 export const open = (model: Model): Model =>
-	modifyFields(model, { modal: (modal) => Modal.open(modal).model })
+	modifyFields(model, { modal: (modal) => Modal.initOpen(modal.id) })
+
+/** Starts a search for the current query now, superseding any search in flight. */
+const search = (model: Model, query: string, organizationId: OrganizationId): Return => {
+	const version = model.searchVersion + 1
+	return {
+		model: modifyFields(model, {
+			searchVersion: () => version,
+			searchResults: () => SearchResults.Loading(),
+		}),
+		commands: [SearchWorkspaces({ version, query, organizationId })],
+	}
+}
 
 export const update = (model: Model, message: Message, context: Context): Return =>
 	Message.match<Return>(message, {
@@ -150,9 +163,9 @@ export const update = (model: Model, message: Message, context: Context): Return
 				searchVersion: () => version,
 			})
 			if (value.length < 2)
-				return { model: modifyFields(base, { searchResults: () => [], isSearching: () => false }) }
+				return { model: modifyFields(base, { searchResults: () => SearchResults.Idle() }) }
 			return {
-				model: modifyFields(base, { isSearching: () => true }),
+				model: modifyFields(base, { searchResults: () => SearchResults.Loading() }),
 				commands: [WaitForSearchDelay({ version, query: value })],
 			}
 		},
@@ -168,18 +181,30 @@ export const update = (model: Model, message: Message, context: Context): Return
 		SucceededSearchWorkspaces: ({ version, results }) =>
 			version !== model.searchVersion
 				? { model }
-				: { model: modifyFields(model, { searchResults: () => results, isSearching: () => false }) },
-		FailedSearchWorkspaces: ({ version }) =>
+				: {
+						model: modifyFields(model, {
+							searchResults: () => SearchResults.Success({ data: results }),
+						}),
+					},
+		FailedSearchWorkspaces: ({ version, reason }) =>
 			version !== model.searchVersion
 				? { model }
-				: { model: modifyFields(model, { searchResults: () => [], isSearching: () => false }) },
+				: {
+						model: modifyFields(model, {
+							searchResults: () => SearchResults.Failure({ error: reason }),
+						}),
+					},
+		ClickedRetrySearch: () =>
+			AsyncData.isFailure(model.searchResults) && context.organizationId !== null
+				? search(model, model.searchQuery, context.organizationId)
+				: { model },
 		ClickedWorkspace: ({ workspace }) =>
 			workspace.slug
 				? {
 						model: modifyFields(model, {
 							selectedWorkspace: () => workspace,
 							searchQuery: () => "",
-							searchResults: () => [],
+							searchResults: () => SearchResults.Idle(),
 						}),
 					}
 				: { model },
@@ -187,7 +212,7 @@ export const update = (model: Model, message: Message, context: Context): Return
 		ToggledAllowGuestMemberAdds: ({ isSelected }) => ({
 			model: modifyFields(model, { allowGuestMemberAdds: () => isSelected }),
 		}),
-		ClickedCancel: () => ({ model: closed(model) }),
+		ClickedCancel: () => ({ model: init() }),
 		ClickedSendInvite: () => {
 			const selected = model.selectedWorkspace
 			if (selected === null || !selected.slug || model.isSubmitting) return { model }
@@ -204,18 +229,35 @@ export const update = (model: Model, message: Message, context: Context): Return
 			}
 		},
 		SucceededCreateInvite: () => ({
-			model: closed(model),
+			model: init(),
 			outMessage: PageOutMessage.RequestedToast({ toast: successToast("Invite sent") }),
 		}),
-		FailedCreateInvite: ({ toast }) => ({
+		FailedCreateInvite: ({ reason }) => ({
 			model: modifyFields(model, { isSubmitting: () => false }),
-			outMessage: PageOutMessage.RequestedToast({ toast }),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToastOf(
+					failureMessage(reason, {
+						WorkspaceNotFound: {
+							title: "Workspace not found",
+							description: "No workspace matches that name or slug.",
+						},
+						AlreadyShared: {
+							title: "Already shared",
+							description: "This channel is already shared with that organization.",
+						},
+						ChannelNotFound: {
+							title: "Channel not found",
+							description: "This channel may have been deleted.",
+						},
+					}),
+				),
+			}),
 		}),
 		GotModalMessage: ({ message: modalMessage }) => {
 			const next = Modal.update(model.modal, modalMessage)
 			const nextModel = next.model.isOpen
 				? modifyFields(model, { modal: () => next.model })
-				: closed(model)
+				: init()
 			return {
 				model: nextModel,
 				commands: Command.mapMessages(next.commands ?? [], (child) =>

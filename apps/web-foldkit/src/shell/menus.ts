@@ -1,4 +1,5 @@
 import type { UserId } from "@hazel/schema"
+import { Match, Option, Schema } from "effect"
 import type { Html, HtmlBuilder } from "foldkit/html"
 import { twJoin } from "tailwind-merge"
 import {
@@ -22,7 +23,7 @@ import * as Menu from "../ui/menu"
 import { menuLabel, menuTriggerClassName, view as menuView } from "../ui/menu-view"
 import { sidebarFooter, sidebarHeader, sidebarLabel } from "../ui/sidebar"
 import type { ShellContext } from "./context"
-import type { UserStatus } from "./model"
+import type { SwitcherOrg, UserStatus } from "./model"
 import { sidebarHeaderHeightClass } from "../platform/desktop"
 
 /** The user menu (`sidebar/user-menu.tsx`) and the org switcher (`channels-sidebar.tsx` header). */
@@ -30,36 +31,86 @@ import { sidebarHeaderHeightClass } from "../platform/desktop"
 export const USER_MENU_ID = "user-menu"
 export const ORG_SWITCHER_ID = "org-switcher"
 
-export interface SwitcherOrg {
-	readonly id: string
-	readonly name: string
-	readonly slug: string | null
-	readonly logoUrl: string | null
-}
+/** The user menu's items; `status`, `feedback` and `logout` act, the others are links. */
+export const UserMenuKey = Schema.Literals([
+	"header",
+	"profile",
+	"status",
+	"my-settings",
+	"feedback",
+	"logout",
+])
+export type UserMenuKey = typeof UserMenuKey.Type
+
+/** The org switcher's fixed items; each organization's item is keyed by its id. */
+export const SwitcherKey = Schema.Literals([
+	"switch-server",
+	"create-server",
+	"invite-people",
+	"manage-members",
+	"create-channel",
+	"create-category",
+	"server-settings",
+	"custom-emojis",
+	"integrations",
+])
+export type SwitcherKey = typeof SwitcherKey.Type
+
+export const decodeUserMenuKey = Schema.decodeUnknownOption(UserMenuKey)
+export const decodeSwitcherKey = Schema.decodeUnknownOption(SwitcherKey)
+
+/** Where a user menu link item goes. */
+export const userMenuLinkRoute = (
+	key: UserMenuKey,
+	orgSlug: string,
+	userId: UserId,
+): Option.Option<AppRoute> =>
+	Match.value(key).pipe(
+		Match.when("profile", () => Option.some(AppRoute.Profile({ orgSlug, userId }))),
+		Match.when("my-settings", () => Option.some(AppRoute.MySettingsAppearance({ orgSlug }))),
+		Match.orElse(() => Option.none()),
+	)
+
+/** Where an org switcher link item goes. */
+export const switcherLinkRoute = (key: SwitcherKey, orgSlug: string): Option.Option<AppRoute> =>
+	Match.value(key).pipe(
+		Match.when("manage-members", () => Option.some(AppRoute.TeamSettings({ orgSlug }))),
+		Match.when("server-settings", () => Option.some(AppRoute.SettingsGeneral({ orgSlug }))),
+		Match.when("custom-emojis", () => Option.some(AppRoute.SettingsCustomEmojis({ orgSlug }))),
+		Match.when("integrations", () => Option.some(AppRoute.SettingsIntegrations({ orgSlug }))),
+		Match.orElse(() => Option.none()),
+	)
+
+const hrefOption = (route: Option.Option<AppRoute>) =>
+	Option.match(route, { onNone: () => ({}), onSome: (found) => ({ href: hrefOf(found) }) })
+
+type ItemOptions = Parameters<typeof Menu.item>[1]
+const userItem = (key: UserMenuKey, orgSlug: string, userId: UserId, options?: ItemOptions) =>
+	Menu.item(key, { ...options, ...hrefOption(userMenuLinkRoute(key, orgSlug, userId)) })
+const switcherItem = (key: SwitcherKey, orgSlug: string, options?: ItemOptions) =>
+	Menu.item(key, { ...options, ...hrefOption(switcherLinkRoute(key, orgSlug)) })
 
 // ENTRIES
 
 export const userMenuEntries = (orgSlug: string, userId: UserId): ReadonlyArray<Menu.Entry> => [
-	Menu.section(undefined, [], { header: { key: "header", hasSeparator: true } }),
-	Menu.item("profile", { href: hrefOf(AppRoute.Profile({ orgSlug, userId })) }),
-	Menu.item("status"),
-	Menu.item("my-settings", { href: hrefOf(AppRoute.MySettingsAppearance({ orgSlug })) }),
+	Menu.section(undefined, [], { header: { key: "header" satisfies UserMenuKey, hasSeparator: true } }),
+	userItem("profile", orgSlug, userId),
+	userItem("status", orgSlug, userId),
+	userItem("my-settings", orgSlug, userId),
 	Menu.separator,
-	Menu.item("feedback"),
+	userItem("feedback", orgSlug, userId),
 	Menu.separator,
-	Menu.item("logout"),
+	userItem("logout", orgSlug, userId),
 ]
 
 /** `SwitchServerMenu` at the root: the orgs section, a separator, then "Create server". */
 const switchServerEntries = (organizations: ReadonlyArray<SwitcherOrg>): ReadonlyArray<Menu.Entry> => [
 	Menu.section(
 		undefined,
-		organizations.map((organization) =>
-			Menu.item(`org:${organization.id}`, { textValue: organization.name }),
-		),
+		organizations.map((organization) => Menu.item(organization.id, { textValue: organization.name })),
 	),
 	Menu.separator,
-	Menu.item("create-server", { textValue: "Create server" }),
+	Menu.item("create-server" satisfies SwitcherKey, { textValue: "Create server" }),
 ]
 
 /** Chat routes get the full menu, settings and my-settings a shorter one; mobile only switches orgs. */
@@ -73,40 +124,38 @@ export const orgSwitcherEntries = (options: {
 	if (options.isMobile) return switchServerEntries(options.organizations)
 	const { orgSlug } = options
 	// NOTE: legacy renders the orgs as a single-selection section plus a separator; the kit submenu takes leaves.
-	const switchServer = Menu.item("switch-server", {
+	const switchServer = switcherItem("switch-server", orgSlug, {
 		submenu: [
 			...options.organizations.map((organization) =>
-				Menu.leaf(`org:${organization.id}`, { textValue: organization.name }),
+				Menu.leaf(organization.id, { textValue: organization.name }),
 			),
-			Menu.leaf("create-server", { textValue: "Create server" }),
+			Menu.leaf("create-server" satisfies SwitcherKey, { textValue: "Create server" }),
 		],
 	})
 	const people = Menu.section(undefined, [
-		Menu.item("invite-people"),
-		Menu.item("manage-members", { href: hrefOf(AppRoute.TeamSettings({ orgSlug })) }),
+		switcherItem("invite-people", orgSlug),
+		switcherItem("manage-members", orgSlug),
 	])
 	if (!options.isChat)
 		return [
 			people,
 			switchServer,
 			Menu.separator,
-			Menu.section(undefined, [
-				Menu.item("server-settings", { href: hrefOf(AppRoute.SettingsGeneral({ orgSlug })) }),
-			]),
+			Menu.section(undefined, [switcherItem("server-settings", orgSlug)]),
 		]
 	return [
 		people,
 		switchServer,
 		Menu.separator,
 		Menu.section(undefined, [
-			...(options.canCreateChannel ? [Menu.item("create-channel")] : []),
-			Menu.item("create-category"),
+			...(options.canCreateChannel ? [switcherItem("create-channel", orgSlug)] : []),
+			switcherItem("create-category", orgSlug),
 		]),
 		Menu.separator,
 		Menu.section(undefined, [
-			Menu.item("server-settings", { href: hrefOf(AppRoute.SettingsGeneral({ orgSlug })) }),
-			Menu.item("custom-emojis", { href: hrefOf(AppRoute.SettingsCustomEmojis({ orgSlug })) }),
-			Menu.item("integrations", { href: hrefOf(AppRoute.SettingsIntegrations({ orgSlug })) }),
+			switcherItem("server-settings", orgSlug),
+			switcherItem("custom-emojis", orgSlug),
+			switcherItem("integrations", orgSlug),
 		]),
 	]
 }
@@ -151,37 +200,43 @@ const userMenuContent =
 	(key: string): ReadonlyArray<Html> => {
 		const displayName = context.currentUser?.displayName ?? "User"
 		const item = (icon: Html, text: string) => [icon, label(h, USER_MENU_ID, key, text)]
-		if (key === "header")
-			return [
-				h.span([h.Class("block")], [displayName]),
-				...(context.currentUser?.email
-					? [
-							h.span(
-								[h.Class("block truncate font-normal text-muted-fg")],
-								[context.currentUser.email],
-							),
-						]
-					: []),
-			]
-		if (key === "profile") return item(IconProfiles2(h), "Profile")
-		if (key === "status")
-			return [
-				IconEmoji1(h),
-				menuLabel(h, USER_MENU_ID, key, [
-					"Set status",
-					...(status?.emoji ? [h.span([h.Class("ml-1")], [status.emoji])] : []),
-				]),
-			]
-		if (key === "my-settings") return item(IconGear(h), "My Settings")
-		if (key === "feedback") return item(IconSupport(h), "Feedback")
-		if (key === "logout") return item(IconLogout(h), "Log out")
-		return []
+		return Option.match(decodeUserMenuKey(key), {
+			onNone: (): ReadonlyArray<Html> => [],
+			onSome: (userKey) =>
+				Match.value(userKey).pipe(
+					Match.withReturnType<ReadonlyArray<Html>>(),
+					Match.when("header", () => [
+						h.span([h.Class("block")], [displayName]),
+						...(context.currentUser?.email
+							? [
+									h.span(
+										[h.Class("block truncate font-normal text-muted-fg")],
+										[context.currentUser.email],
+									),
+								]
+							: []),
+					]),
+					Match.when("profile", () => item(IconProfiles2(h), "Profile")),
+					Match.when("status", () => [
+						IconEmoji1(h),
+						menuLabel(h, USER_MENU_ID, key, [
+							"Set status",
+							...(status?.emoji ? [h.span([h.Class("ml-1")], [status.emoji])] : []),
+						]),
+					]),
+					Match.when("my-settings", () => item(IconGear(h), "My Settings")),
+					Match.when("feedback", () => item(IconSupport(h), "Feedback")),
+					Match.when("logout", () => item(IconLogout(h), "Log out")),
+					Match.exhaustive,
+				),
+		})
 	}
 
 /** `SidebarFooter` > `UserMenu`. */
 export const userMenuFooter = <M>(
 	h: HtmlBuilder<M>,
 	menu: Menu.Model,
+	entries: ReadonlyArray<Menu.Entry>,
 	context: ShellContext,
 	toMenuMessage: (message: Menu.Message) => M,
 	status: UserStatus | null,
@@ -195,6 +250,7 @@ export const userMenuFooter = <M>(
 			model: menu,
 			view: menuView,
 			viewInputs: {
+				entries,
 				toTrigger: (attributes, overlay) =>
 					h.button(
 						[
@@ -265,7 +321,7 @@ const switcherContent =
 	<M>(h: HtmlBuilder<M>, organizations: ReadonlyArray<SwitcherOrg>) =>
 	(key: string): ReadonlyArray<Html> => {
 		const item = (icon: Html, text: string) => [icon, label(h, ORG_SWITCHER_ID, key, text)]
-		const organization = organizations.find((candidate) => `org:${candidate.id}` === key)
+		const organization = organizations.find((candidate) => candidate.id === key)
 		if (organization)
 			return [
 				avatar(h, {
@@ -276,23 +332,33 @@ const switcherContent =
 				}),
 				sidebarLabel(h, [organization.name]),
 			]
-		if (key === "create-server")
-			return [IconPlus(h, { attributes: { "data-slot": "icon" } }), sidebarLabel(h, ["Create server"])]
-		if (key === "invite-people") return item(IconUsersPlus(h), "Invite people")
-		if (key === "manage-members") return item(IconUsers(h), "Manage members")
-		if (key === "switch-server") return item(IconServers(h), "Switch Server")
-		if (key === "create-channel") return item(IconCirclePlus(h), "Create channel")
-		if (key === "create-category") return item(IconFolderPlus(h), "Create category")
-		if (key === "server-settings") return item(IconGear(h), "Server settings")
-		if (key === "custom-emojis") return item(IconEmoji1(h), "Custom emojis")
-		if (key === "integrations") return item(IconIntegratio(h), "Integrations")
-		return []
+		return Option.match(decodeSwitcherKey(key), {
+			onNone: (): ReadonlyArray<Html> => [],
+			onSome: (switcherKey) =>
+				Match.value(switcherKey).pipe(
+					Match.withReturnType<ReadonlyArray<Html>>(),
+					Match.when("create-server", () => [
+						IconPlus(h, { attributes: { "data-slot": "icon" } }),
+						sidebarLabel(h, ["Create server"]),
+					]),
+					Match.when("invite-people", () => item(IconUsersPlus(h), "Invite people")),
+					Match.when("manage-members", () => item(IconUsers(h), "Manage members")),
+					Match.when("switch-server", () => item(IconServers(h), "Switch Server")),
+					Match.when("create-channel", () => item(IconCirclePlus(h), "Create channel")),
+					Match.when("create-category", () => item(IconFolderPlus(h), "Create category")),
+					Match.when("server-settings", () => item(IconGear(h), "Server settings")),
+					Match.when("custom-emojis", () => item(IconEmoji1(h), "Custom emojis")),
+					Match.when("integrations", () => item(IconIntegratio(h), "Integrations")),
+					Match.exhaustive,
+				),
+		})
 	}
 
 /** `SidebarHeader` > org switcher `Menu` (channels, settings and my-settings sidebars). */
 export const orgSwitcherHeader = <M>(
 	h: HtmlBuilder<M>,
 	menu: Menu.Model,
+	entries: ReadonlyArray<Menu.Entry>,
 	context: ShellContext,
 	organizations: ReadonlyArray<SwitcherOrg>,
 	toMenuMessage: (message: Menu.Message) => M,
@@ -303,6 +369,7 @@ export const orgSwitcherHeader = <M>(
 			model: menu,
 			view: menuView,
 			viewInputs: {
+				entries,
 				toTrigger: (attributes, overlay) =>
 					h.button(
 						[

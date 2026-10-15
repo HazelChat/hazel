@@ -142,7 +142,7 @@ export function isGiphyUrl(url: string): boolean {
 			hostname === "i.giphy.com" ||
 			(hostname.startsWith("media") && hostname.endsWith(".giphy.com")) ||
 			((hostname === "giphy.com" || hostname === "www.giphy.com") &&
-				(/^\/media\//.test(parsed.pathname) || /^\/gifs\//.test(parsed.pathname)))
+				(parsed.pathname.startsWith("/media/") || parsed.pathname.startsWith("/gifs/")))
 		)
 	} catch {
 		return false

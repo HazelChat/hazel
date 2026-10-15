@@ -22,9 +22,10 @@ describe("setup organization", () => {
 			Scene.Command.expectExact(CreateWorkspace.CreateWorkspace({ name: "Acme Corp!", slug: "acme-corp" })),
 			Scene.Command.resolve(
 				CreateWorkspace.CreateWorkspace,
-				CreateWorkspace.Message.FailedCreateWorkspace({ error: "That workspace URL is taken. Pick another." }),
+				CreateWorkspace.Message.FailedCreateWorkspace({ reason: "SlugTaken" }),
 			),
 			Scene.expect(Scene.role("alert")).toHaveText("That workspace URL is taken. Pick another."),
+			Scene.expect(create).toBeEnabled(),
 		)
 	})
 

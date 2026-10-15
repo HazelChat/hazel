@@ -10,7 +10,7 @@ import { textField } from "../../ui/text-field"
 import { closed, completed } from "../out-message"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalViewInputs } from "./contract"
-import { Frame, Message as FrameMessage, frameView, initFrame, isFrameClosed, modalDescription, modalTitle } from "./frame"
+import { Frame, Message as FrameMessage, frameView, initFrame, isCloseRequest, modalDescription, modalTitle } from "./frame"
 import { successToast } from "../../data/actions"
 
 /**
@@ -42,11 +42,17 @@ const validateMessage = (message: string) =>
 
 const ID = "feedback-modal"
 
+const CATEGORY_ITEMS = [
+	Select.item("bug", "Bug"),
+	Select.item("feature_request", "Feature Request"),
+	Select.item("question", "Question"),
+]
+
 type Return = ModalReturn<Model, Message>
 
 const update = (model: Model, message: Message): Return =>
 	Message.match<Return>(message, {
-		GotFrameMessage: ({ message }) => (isFrameClosed(model.frame, message) ? { model, outMessage: closed } : { model }),
+		GotFrameMessage: ({ message }) => (isCloseRequest(message) ? { model, outMessage: closed } : { model }),
 		GotCategoryMessage: ({ message }) => {
 			const result = Select.update(model.category, message)
 			// The form-level validator reruns on any field change.
@@ -92,7 +98,7 @@ const view = Submodel.defineView<Model, Message, ModalViewInputs>((model, _input
 									slotId: `${ID}-category-select`,
 									model: model.category,
 									view: selectView,
-									viewInputs: {},
+									viewInputs: { items: CATEGORY_ITEMS },
 									toParentMessage: toCategoryMessage,
 								}),
 							]),
@@ -137,15 +143,7 @@ export const modal = defineModal(
 		init: () => ({
 			model: {
 				frame: initFrame(ID),
-				category: Select.init({
-					id: `${ID}-category-select`,
-					items: [
-						Select.item("bug", "Bug"),
-						Select.item("feature_request", "Feature Request"),
-						Select.item("question", "Question"),
-					],
-					selectedKey: "bug",
-				}),
+				category: Select.init({ id: `${ID}-category-select`, selectedKey: "bug" }),
 				message: "",
 				messageError: null,
 			},

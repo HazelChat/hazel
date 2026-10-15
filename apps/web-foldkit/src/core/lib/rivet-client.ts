@@ -6,38 +6,5 @@ export { getAccessToken }
 
 const RIVET_URL = import.meta.env.VITE_RIVET_URL || "http://localhost:6420"
 
+/** The Rivet actor client; actor connections pass the Hazel access token as `params.token`. */
 export const rivetClient = createClient<Registry>(RIVET_URL)
-
-/**
- * Get or create a message actor with authentication.
- * The Hazel access token is passed as a connection parameter.
- */
-export async function getAuthenticatedMessageActor(
-	key: string[],
-	createWithInput?: { initialData?: Record<string, unknown> },
-) {
-	const token = await getAccessToken()
-	if (!token) {
-		throw new Error("Authentication required: No access token available")
-	}
-
-	return rivetClient.message.getOrCreate(key, {
-		params: { token },
-		...(createWithInput && { createWithInput }),
-	})
-}
-
-/**
- * Create a message actor handle with a provided token.
- * Use this when you already have the token available.
- */
-export function getMessageActorWithToken(
-	key: string[],
-	token: string,
-	createWithInput?: { initialData?: Record<string, unknown> },
-) {
-	return rivetClient.message.getOrCreate(key, {
-		params: { token },
-		...(createWithInput && { createWithInput }),
-	})
-}

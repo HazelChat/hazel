@@ -1,18 +1,25 @@
+import { isInvalid, isValid, validate } from "foldkit/fieldValidation"
 import { modifyFields } from "foldkit/struct"
-import { infoToast, successToast } from "../../../data/actions"
+import { failureMessage } from "~/lib/error-messages"
+import { errorToastOf, infoToast, successToast } from "../../../data/actions"
 import type { PageReturn } from "../../contract"
 import { PageOutMessage } from "../../out-message"
+import { webhookNameRules } from "../name-rules"
 import { ConnectProvider, CreateWebhook, RunProviderAction, WaitForConfirmReset } from "./command"
 import type { Message } from "./message"
-import { reload } from "./rows"
 import {
+	CardAction,
+	type ChannelRequestFailure,
+	channelRequestMessage,
+	emptyCreateForm,
 	type CreateForm,
 	INTEGRATION_CONFIG,
-	isNameValid,
+	itemsOf,
 	type Model,
 	type Provider,
 	type ProviderCard,
 } from "./model"
+import { reload } from "./rows"
 
 /** The IntegrationCard and CreateWebhookForm Messages, folded into the page's `Message.match`. */
 
@@ -22,29 +29,26 @@ type Handlers = { readonly [T in Message["_tag"]]: (message: Extract<Message, { 
 const withCard = (model: Model, provider: Provider, f: (card: ProviderCard) => ProviderCard): Model =>
 	modifyFields(model, { providers: (providers) => ({ ...providers, [provider]: f(providers[provider]) }) })
 
+const withAction = (model: Model, provider: Provider, action: CardAction): Model =>
+	withCard(model, provider, (card) => ({ ...card, action }))
+
 const withForm = (model: Model, f: (form: CreateForm) => CreateForm): Model =>
 	modifyFields(model, { createForm: f })
 
 /** The webhook the provider card manages (`webhooks.find((w) => w.name === "OpenStatus")`). */
 export const providerWebhook = (model: Model, provider: Provider) =>
-	model.webhooks.items.find((webhook) => webhook.name === INTEGRATION_CONFIG[provider].name) ?? null
+	itemsOf(model.webhooks).find((webhook) => webhook.name === INTEGRATION_CONFIG[provider].name) ?? null
 
 const refetchWebhooks = (model: Model) => reload(model, "webhook")
 
-const emptyForm: CreateForm = {
-	isExpanded: false,
-	name: "",
-	description: "",
-	avatarUrl: "",
-	isNameDirty: false,
-	isSubmitting: false,
-	created: null,
-	isTokenVisible: false,
-}
+const channelRequestToast = (reason: ChannelRequestFailure) => errorToastOf(channelRequestMessage(reason))
 
-/** TanStack Form `canSubmit` with the `1<string<101` name rule (validated once the field changed). */
-export const canCreate = (form: CreateForm) =>
-	!form.isSubmitting && !(form.isNameDirty && !isNameValid(form.name))
+/** TanStack Form `canSubmit`: not submitting, and the name has not failed its rules. */
+export const canCreate = (form: CreateForm) => !form.isSubmitting && !isInvalid(form.name)
+
+/** Toggle and Delete start from a resting card; an armed "Confirm?" is a resting card too. */
+const isResting = (card: ProviderCard) =>
+	card.action._tag === "Idle" || card.action._tag === "ConfirmingDelete"
 
 export const updateCards = (
 	model: Model,
@@ -70,35 +74,34 @@ export const updateCards = (
 	| "ClickedDismissToken"
 > => ({
 	ClickedConnectProvider: ({ provider }) =>
-		model.providers[provider].isCreating
-			? { model }
-			: {
-					model: withCard(model, provider, (card) => ({ ...card, isCreating: true })),
+		model.providers[provider].action._tag === "Idle"
+			? {
+					model: withAction(model, provider, CardAction.Connecting()),
 					commands: [ConnectProvider({ channelId: model.channelId, provider })],
-				},
-	SucceededConnectProvider: ({ provider, token }) => {
-		const next = withCard(model, provider, (card) => ({
-			...card,
-			isCreating: false,
-			createdToken: token,
-		}))
-		return {
-			...refetchWebhooks(next),
-			outMessage: PageOutMessage.RequestedToast({
-				toast: successToast(`${INTEGRATION_CONFIG[provider].name} connected`),
-			}),
-		}
-	},
-	FailedConnectProvider: ({ provider, toast }) => ({
-		model: withCard(model, provider, (card) => ({ ...card, isCreating: false })),
-		outMessage: PageOutMessage.RequestedToast({ toast }),
+				}
+			: { model },
+	SucceededConnectProvider: ({ provider, token }) => ({
+		...refetchWebhooks(
+			withCard(model, provider, (card) => ({
+				...card,
+				action: CardAction.Idle(),
+				createdToken: token,
+			})),
+		),
+		outMessage: PageOutMessage.RequestedToast({
+			toast: successToast(`${INTEGRATION_CONFIG[provider].name} connected`),
+		}),
+	}),
+	FailedConnectProvider: ({ provider, reason }) => ({
+		model: withAction(model, provider, CardAction.Idle()),
+		outMessage: PageOutMessage.RequestedToast({ toast: channelRequestToast(reason) }),
 	}),
 	ClickedToggleProvider: ({ provider }) => {
 		const webhook = providerWebhook(model, provider)
-		return webhook === null || model.providers[provider].isToggling
+		return webhook === null || !isResting(model.providers[provider])
 			? { model }
 			: {
-					model: withCard(model, provider, (card) => ({ ...card, isToggling: true })),
+					model: withAction(model, provider, CardAction.Toggling()),
 					commands: [
 						RunProviderAction({ provider, webhookId: webhook.id, isEnabled: !webhook.isEnabled }),
 					],
@@ -108,42 +111,46 @@ export const updateCards = (
 	ClickedDeleteProvider: ({ provider }) => {
 		const webhook = providerWebhook(model, provider)
 		const card = model.providers[provider]
-		if (webhook === null || card.isDeleting) return { model }
-		if (!card.confirmDelete) {
-			const version = card.confirmVersion + 1
+		if (webhook === null) return { model }
+		if (card.action._tag === "ConfirmingDelete")
 			return {
-				model: withCard(model, provider, (current) => ({
-					...current,
-					confirmDelete: true,
-					confirmVersion: version,
-				})),
-				commands: [WaitForConfirmReset({ provider, version })],
+				model: withAction(model, provider, CardAction.Deleting()),
+				commands: [RunProviderAction({ provider, webhookId: webhook.id, isEnabled: null })],
 			}
-		}
+		if (card.action._tag !== "Idle") return { model }
+		const version = card.confirmVersion + 1
 		return {
-			model: withCard(model, provider, (current) => ({ ...current, isDeleting: true })),
-			commands: [RunProviderAction({ provider, webhookId: webhook.id, isEnabled: null })],
+			model: withCard(model, provider, (current) => ({
+				...current,
+				action: CardAction.ConfirmingDelete(),
+				confirmVersion: version,
+			})),
+			commands: [WaitForConfirmReset({ provider, version })],
 		}
 	},
 	ElapsedConfirmDelay: ({ provider, version }) => ({
 		model: withCard(model, provider, (card) =>
-			card.confirmVersion === version ? { ...card, confirmDelete: false } : card,
+			card.action._tag === "ConfirmingDelete" && card.confirmVersion === version
+				? { ...card, action: CardAction.Idle() }
+				: card,
 		),
 	}),
-	SucceededProviderAction: ({ provider, successMessage, isDelete }) => {
-		const next = withCard(model, provider, (card) =>
-			isDelete ? { ...card, isDeleting: false, confirmDelete: false } : { ...card, isToggling: false },
-		)
-		return {
-			...refetchWebhooks(next),
-			outMessage: PageOutMessage.RequestedToast({ toast: successToast(successMessage) }),
-		}
-	},
-	FailedProviderAction: ({ provider, isDelete, toast }) => ({
-		model: withCard(model, provider, (card) =>
-			isDelete ? { ...card, isDeleting: false } : { ...card, isToggling: false },
-		),
-		outMessage: PageOutMessage.RequestedToast({ toast }),
+	SucceededProviderAction: ({ provider, successMessage }) => ({
+		...refetchWebhooks(withAction(model, provider, CardAction.Idle())),
+		outMessage: PageOutMessage.RequestedToast({ toast: successToast(successMessage) }),
+	}),
+	FailedProviderAction: ({ provider, reason }) => ({
+		model: withAction(model, provider, CardAction.Idle()),
+		outMessage: PageOutMessage.RequestedToast({
+			toast: errorToastOf(
+				failureMessage(reason, {
+					NotFound: {
+						title: "Webhook not found",
+						description: "This webhook may have been deleted.",
+					},
+				}),
+			),
+		}),
 	}),
 	ClickedProviderUrlInfo: () => ({
 		model,
@@ -157,47 +164,44 @@ export const updateCards = (
 	ClickedExpandCreateForm: () => ({ model: withForm(model, (form) => ({ ...form, isExpanded: true })) }),
 	ClickedCancelCreateForm: () => ({ model: withForm(model, (form) => ({ ...form, isExpanded: false })) }),
 	ChangedCreateField: ({ field, value }) => ({
-		model: withForm(model, (form) => ({
-			...form,
-			[field]: value,
-			isNameDirty: form.isNameDirty || field === "name",
-		})),
+		model: withForm(model, (form) =>
+			field === "name"
+				? { ...form, name: validate(webhookNameRules)(value) }
+				: { ...form, [field]: value },
+		),
 	}),
 	SubmittedCreateForm: () => {
 		const form = model.createForm
-		if (!canCreate(form) || !isNameValid(form.name)) return { model }
+		if (form.isSubmitting) return { model }
+		// Submitting an untouched name shows its rule's message instead of sending.
+		const name = validate(webhookNameRules)(form.name.value)
+		if (!isValid(webhookNameRules)(name))
+			return { model: withForm(model, (current) => ({ ...current, name })) }
 		return {
-			model: withForm(model, (current) => ({ ...current, isSubmitting: true })),
+			model: withForm(model, (current) => ({ ...current, name, isSubmitting: true })),
 			commands: [
 				CreateWebhook({
 					channelId: model.channelId,
-					name: form.name,
+					name: name.value,
 					description: form.description,
 					avatarUrl: form.avatarUrl,
 				}),
 			],
 		}
 	},
-	SucceededCreateWebhook: ({ token, webhookUrl }) => {
-		const next = withForm(model, (form) => ({
-			...form,
-			isSubmitting: false,
-			created: { token, webhookUrl },
-		}))
-		return {
-			...refetchWebhooks(next),
-			outMessage: PageOutMessage.RequestedToast({
-				toast: successToast("Webhook created successfully"),
-			}),
-		}
-	},
-	FailedCreateWebhook: ({ toast }) => ({
+	SucceededCreateWebhook: ({ token, webhookUrl }) => ({
+		...refetchWebhooks(
+			withForm(model, (form) => ({ ...form, isSubmitting: false, created: { token, webhookUrl } })),
+		),
+		outMessage: PageOutMessage.RequestedToast({ toast: successToast("Webhook created successfully") }),
+	}),
+	FailedCreateWebhook: ({ reason }) => ({
 		model: withForm(model, (form) => ({ ...form, isSubmitting: false })),
-		outMessage: PageOutMessage.RequestedToast({ toast }),
+		outMessage: PageOutMessage.RequestedToast({ toast: channelRequestToast(reason) }),
 	}),
 	ClickedToggleTokenVisible: () => ({
 		model: withForm(model, (form) => ({ ...form, isTokenVisible: !form.isTokenVisible })),
 	}),
 	// `setCreatedWebhook(null); setIsExpanded(false); form.reset()`
-	ClickedDismissToken: () => ({ model: withForm(model, () => emptyForm) }),
+	ClickedDismissToken: () => ({ model: withForm(model, () => emptyCreateForm) }),
 })

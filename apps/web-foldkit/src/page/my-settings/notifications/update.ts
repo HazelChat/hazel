@@ -2,22 +2,19 @@ import { User } from "@hazel/domain/models"
 import { Option, Schema } from "effect"
 import { Update } from "foldkit"
 import { modifyFields } from "foldkit/struct"
+import { failureMessage } from "~/lib/error-messages"
 import { errorToast } from "../../../data/actions"
 import * as Interaction from "../../../ui/aria/interaction"
 import * as Segments from "../../../ui/date-segments"
 import * as Slider from "../../../ui/slider"
-import type { PageReturn, Shared } from "../../contract"
+import type { PageReturn, PageSubscriptionInput, Shared } from "../../contract"
 import { PageOutMessage } from "../../out-message"
-import { embedInteraction } from "../shared"
-import {
-	ExpireNotificationStatus,
-	PlayTestSound,
-	SendTestNotification,
-	UpdateUserSettings,
-} from "./command"
+import { ExpireNotificationStatus, PlayTestSound, SendTestNotification, UpdateUserSettings } from "./command"
 import { Message } from "./message"
+import { updateUserFailureCopy } from "../user"
 import {
 	type Model,
+	type NotificationStatus,
 	type QuietHoursField,
 	settingsOf,
 	type SoundSettings,
@@ -25,8 +22,9 @@ import {
 
 type Return = PageReturn<Model, Message>
 
-export const interaction = embedInteraction<Model, Message>((message) =>
-	Message.GotInteractionMessage({ message }),
+export const interaction = Interaction.embed<Model, Message, PageSubscriptionInput<Model>>(
+	(message) => Message.GotInteractionMessage({ message }),
+	(input) => input.model,
 )
 
 export const toVolumeMessage = (message: Slider.Message) => Message.GotVolumeMessage({ message })
@@ -58,20 +56,11 @@ const syncQuietHours = (model: Model): Model => {
 	})
 }
 
-/** The slider follows the stored volume and is disabled with the sounds. */
-const syncVolume = (model: Model, sound: SoundSettings): Model =>
-	modifyFields(model, {
-		volume: (volume) =>
-			volume.values[0] === sound.volume && volume.isDisabled === !sound.enabled
-				? volume
-				: { ...volume, values: [sound.volume], isDisabled: !sound.enabled },
-	})
-
 /** `updateSettings(patch)`: the root stores it and informs the page (`sharedChanged`). */
 const withSound = (model: Model, shared: Shared, patch: Partial<SoundSettings>): Return => {
 	const settings = { ...shared.soundSettings, ...patch }
 	return {
-		model: syncVolume(model, settings),
+		model,
 		outMessage: PageOutMessage.RequestedSoundSettings({ settings }),
 	}
 }
@@ -114,6 +103,18 @@ const settleWrite = (
 	}
 }
 
+/** Shows the test notification's outcome; `ExpireNotificationStatus` clears it after 3 seconds. */
+const showNotificationStatus = (model: Model, status: NotificationStatus): Return => {
+	const version = model.notificationStatusVersion + 1
+	return {
+		model: modifyFields(model, {
+			notificationStatus: () => status,
+			notificationStatusVersion: () => version,
+		}),
+		commands: [ExpireNotificationStatus({ version })],
+	}
+}
+
 const decodeTimeString = Schema.decodeUnknownOption(User.TimeString)
 
 const foldQuietHours = (field: QuietHoursField) =>
@@ -127,63 +128,41 @@ const foldQuietHours = (field: QuietHoursField) =>
 		toParentMessage: toQuietHoursMessage(field),
 	})
 
-const foldVolume = Update.foldChild({
-	update: Slider.update,
-	read: (model: Model) => Option.some(model.volume),
-	write: (model: Model, volume: Slider.Model): Model => modifyFields(model, { volume: () => volume }),
-	toParentMessage: toVolumeMessage,
-})
+/** The volume lives in `Shared.soundSettings`; the Slider holds only the drag and reports changes. */
+const volumeChanged = (model: Model, shared: Shared, message: Slider.Message): Return => {
+	const result = Slider.update(model.volume, message)
+	const next = modifyFields(model, { volume: () => result.model })
+	const changed = result.outMessage
+	return changed === undefined || changed.value === shared.soundSettings.volume
+		? { model: next }
+		: withSound(next, shared, { volume: changed.value })
+}
 
-export const init = (_route: unknown, shared: Shared): Return => ({
-	model: syncVolume(
-		{
+export const init = (): Return => ({
+	model: {
 		settings: null,
 		optimisticSettings: null,
 		settingsWrite: "Idle",
-		volume: Slider.init({
-			id: "notification-volume",
-			values: [0.5],
-			minValue: 0,
-			maxValue: 1,
-			step: 0.1,
-		}),
+		volume: Slider.init({ id: "notification-volume", min: 0, max: 1, step: 0.1 }),
 		quietHoursStart: Segments.init({ id: "quiet-hours-start", kind: "time", value: DEFAULT_QUIET_START }),
 		quietHoursEnd: Segments.init({ id: "quiet-hours-end", kind: "time", value: DEFAULT_QUIET_END }),
 		notificationStatus: "idle",
 		notificationStatusVersion: 0,
 		interaction: Interaction.init(),
-		},
-		shared.soundSettings,
-	),
-})
-
-export const sharedChanged = (model: Model, shared: Shared): Return => ({
-	model: syncVolume(model, shared.soundSettings),
+	},
 })
 
 export const update = (model: Model, message: Message, shared: Shared): Return =>
 	Message.match<Return>(message, {
 		ToggledSounds: ({ isSelected }) => withSound(model, shared, { enabled: isSelected }),
 		SelectedSound: ({ soundFile }) => withSound(model, shared, { soundFile }),
-		GotVolumeMessage: ({ message: child }) => {
-			const result = foldVolume(model, child)
-			const volume = result.model.volume.values[0]
-			if (volume === undefined || volume === shared.soundSettings.volume) return result
-			return { ...withSound(result.model, shared, { volume }), commands: result.commands ?? [] }
-		},
+		GotVolumeMessage: ({ message: child }) => volumeChanged(model, shared, child),
 		ClickedTestSound: () => ({ model, commands: [PlayTestSound()] }),
 		CompletedTestSound: () => ({ model }),
 		ClickedTestNotification: () => ({ model, commands: [SendTestNotification()] }),
-		CompletedTestNotification: ({ isSent }) => {
-			const version = model.notificationStatusVersion + 1
-			return {
-				model: modifyFields(model, {
-					notificationStatus: () => (isSent ? "sent" : "unavailable"),
-					notificationStatusVersion: () => version,
-				}),
-				commands: [ExpireNotificationStatus({ version })],
-			}
-		},
+		SucceededSendTestNotification: () => showNotificationStatus(model, "sent"),
+		// Either way the note says native notifications are unavailable here.
+		FailedSendTestNotification: () => showNotificationStatus(model, "unavailable"),
 		ExpiredNotificationStatus: ({ version }) => ({
 			model:
 				version === model.notificationStatusVersion
@@ -207,7 +186,9 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 			const result = foldQuietHours(field)(model, child)
 			const before = field === "start" ? model.quietHoursStart : model.quietHoursEnd
 			const after = field === "start" ? result.model.quietHoursStart : result.model.quietHoursEnd
-			const time = Option.fromNullishOr(after.committed?.slice(0, 5)).pipe(Option.flatMap(decodeTimeString))
+			const time = Option.fromNullishOr(after.committed?.slice(0, 5)).pipe(
+				Option.flatMap(decodeTimeString),
+			)
 			if (Option.isNone(time) || after.committed === before.committed) return result
 			const patch = field === "start" ? { quietHoursStart: time.value } : { quietHoursEnd: time.value }
 			const written = withUserSettings(result.model, shared, patch)
@@ -219,9 +200,14 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 		// The server now holds the written snapshot, so it stands until the synced row echoes it.
 		SucceededUpdateUserSettings: () =>
 			settleWrite(model, shared, (current) => current.optimisticSettings ?? current.settings),
-		FailedUpdateUserSettings: () => ({
+		FailedUpdateUserSettings: ({ reason }) => ({
 			...settleWrite(model, shared, (current) => current.settings),
-			outMessage: PageOutMessage.RequestedToast({ toast: errorToast("Failed to update setting") }),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToast(
+					"Failed to update setting",
+					failureMessage(reason, updateUserFailureCopy).description ?? null,
+				),
+			}),
 		}),
 		GotInteractionMessage: ({ message: child }) => interaction.fold(model, child),
 	})

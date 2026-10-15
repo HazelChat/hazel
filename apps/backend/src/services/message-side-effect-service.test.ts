@@ -2,7 +2,7 @@ import { FetchHttpClient, HttpClient, HttpClientResponse } from "effect/http"
 import { randomUUID } from "node:crypto"
 import { Database, PG, schema } from "@hazel/db"
 import type { ChannelId, MessageId, MessageReactionId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Layer, Context } from "effect"
+import { Context, Effect, Layer, Result } from "effect"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { createChatSyncDbHarness, type ChatSyncDbHarness } from "../test/chat-sync-db-harness"
 import { configLayer, serviceShape } from "../test/effect-helpers"
@@ -32,6 +32,7 @@ type DiscordCall =
 
 type WorkerOptions = {
 	failCreate?: boolean
+	failUpdate?: boolean
 }
 
 const runServiceEffect = <A, E, R>(
@@ -62,10 +63,12 @@ const makeDiscordWorker = (calls: DiscordCall[], options: WorkerOptions = {}) =>
 						return { synced: 1, failed: 0 }
 					}),
 		syncHazelMessageUpdateToAllConnections: (messageId: string, dedupeKey?: string) =>
-			Effect.sync(() => {
-				calls.push({ method: "message_update", id: messageId, dedupeKey })
-				return { synced: 1, failed: 0 }
-			}),
+			options.failUpdate
+				? Effect.fail(new Error("discord update failed"))
+				: Effect.sync(() => {
+						calls.push({ method: "message_update", id: messageId, dedupeKey })
+						return { synced: 1, failed: 0 }
+					}),
 		syncHazelMessageDeleteToAllConnections: (messageId: string, dedupeKey?: string) =>
 			Effect.sync(() => {
 				calls.push({ method: "message_delete", id: messageId, dedupeKey })
@@ -290,10 +293,10 @@ describe("MessageSideEffectService", () => {
 		expect(requests[0]?.url).toContain("messagenotificationworkflow")
 	})
 
-	it("continues to workflows when Discord create sync fails", async () => {
+	it("still notifies when Discord create sync fails, then fails so the outbox retries", async () => {
 		const requests: Array<{ url: string }> = []
 
-		await runServiceEffect(
+		const result = await runServiceEffect(
 			harness,
 			makeDiscordWorker([], { failCreate: true }),
 			Effect.gen(function* () {
@@ -308,12 +311,26 @@ describe("MessageSideEffectService", () => {
 					},
 					"dedupe-3",
 				)
-			}),
+			}).pipe(Effect.result),
 			workflowClientLayer(requests),
 		)
 
 		expect(requests).toHaveLength(1)
 		expect(requests[0]?.url).toContain("messagenotificationworkflow")
+		expect(Result.isFailure(result)).toBe(true)
+	})
+
+	it("fails so the outbox retries when Discord update sync fails", async () => {
+		const result = await runServiceEffect(
+			harness,
+			makeDiscordWorker([], { failUpdate: true }),
+			Effect.gen(function* () {
+				const service = yield* MessageSideEffectService
+				yield* service.handleMessageUpdated({ messageId: NEW_THREAD_MESSAGE_ID }, "dedupe-4")
+			}).pipe(Effect.result),
+		)
+
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("routes message updates, deletes, and reactions to the correct Discord worker methods", async () => {

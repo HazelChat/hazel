@@ -31,11 +31,17 @@ export interface Shared {
 	readonly soundSettings: SoundSettings
 	/** The desktop app's update check and install (always `Idle` on the web). */
 	readonly desktopUpdate: Updates.Model
+	/** A root modal or the command palette is open (it holds the keyboard; the composer's global typing waits). */
+	readonly isOverlayOpen: boolean
 }
 
 /** `usePermission().can(action)` */
 export const can = (shared: Shared, action: RpcActionName): boolean =>
 	shared.member !== null && canPerform(RPC_SCOPE_MAP, shared.member.role, action)
+
+/** `useAuth().isLoading`: the session check is pending, or signed in while `user.me` is pending. */
+export const isSessionLoading = (shared: Shared): boolean =>
+	shared.auth === "Loading" || (shared.auth === "SignedIn" && shared.currentUser === null)
 
 export interface PageViewInputs {
 	readonly shared: Shared

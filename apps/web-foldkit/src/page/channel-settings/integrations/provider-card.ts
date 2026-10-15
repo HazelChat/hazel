@@ -39,6 +39,8 @@ export const providerCard = (
 	const webhook = providerWebhook(model, provider)
 	const logo = h.img([h.Src(PROVIDER_LOGOS[provider]), h.Alt(config.name), h.Class("size-10 rounded-lg")])
 	const isCopied = model.copiedIds.includes(`provider:${provider}`)
+	const isConnecting = card.action._tag === "Connecting"
+	const isConfirming = card.action._tag === "ConfirmingDelete"
 
 	// Just created: the token is shown once.
 	if (card.createdToken !== null && webhook !== null) {
@@ -115,6 +117,7 @@ export const providerCard = (
 											successMessage: "URL copied",
 											failureMessage: "Failed to copy",
 										}),
+										attributes: [h.AriaLabel("Copy URL")],
 									},
 									[copyIcon(h, isCopied)],
 								),
@@ -174,10 +177,10 @@ export const providerCard = (
 							{
 								intent: "primary",
 								size: "sm",
-								isDisabled: card.isCreating,
+								isDisabled: isConnecting,
 								onPress: Message.ClickedConnectProvider({ provider }),
 							},
-							[card.isCreating ? "Connecting..." : "Connect"],
+							[isConnecting ? "Connecting..." : "Connect"],
 						),
 					],
 				),
@@ -238,12 +241,12 @@ export const providerCard = (
 							button(
 								h,
 								{
-									intent: card.confirmDelete ? "danger" : "outline",
+									intent: isConfirming ? "danger" : "outline",
 									size: "sm",
-									isDisabled: card.isDeleting,
+									isDisabled: card.action._tag === "Deleting",
 									onPress: Message.ClickedDeleteProvider({ provider }),
 								},
-								[card.confirmDelete ? "Confirm?" : "Delete"],
+								[isConfirming ? "Confirm?" : "Delete"],
 							),
 						],
 					),
@@ -259,7 +262,12 @@ export const providerCard = (
 					),
 					button(
 						h,
-						{ intent: "outline", size: "sq-sm", onPress: Message.ClickedProviderUrlInfo() },
+						{
+							intent: "outline",
+							size: "sq-sm",
+							onPress: Message.ClickedProviderUrlInfo(),
+							attributes: [h.AriaLabel("URL info")],
+						},
 						[IconCopy(h, { className: "size-4" })],
 					),
 				],

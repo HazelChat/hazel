@@ -2,7 +2,7 @@ import { Context } from "effect"
 import type { ApiScope } from "./api-scope"
 
 /**
- * Context.Tag for declaring required API scopes on RPC and HTTP endpoints.
+ * Annotation key for declaring required API scopes on RPC and HTTP endpoints.
  *
  * Usage:
  * ```typescript

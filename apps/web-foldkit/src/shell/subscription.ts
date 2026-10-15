@@ -1,7 +1,7 @@
 import { ChannelId, NotificationId, OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import { and, eq, isNull } from "@tanstack/db"
 import { Option, Schema, Stream } from "effect"
-import { Dom, Subscription } from "foldkit"
+import { Subscription } from "foldkit"
 import {
 	channelCollection,
 	notificationCollection,
@@ -11,7 +11,7 @@ import {
 } from "~/db/collections"
 import { liveQueryStream } from "../data/live-query"
 import type { Shared } from "../page/contract"
-import { type AppRoute, orgSectionOf } from "../route"
+import { AppRoute, orgSectionOf } from "../route"
 import * as ChannelsSidebar from "./channels-sidebar"
 import * as Notifications from "./notifications"
 import { type ChannelSummary, Message, type Model } from "./model"
@@ -38,21 +38,16 @@ interface PresenceRow {
 	readonly statusExpiresAt?: Date | null
 }
 
-const settingsChannelId = (route: AppRoute) =>
-	route._tag === "ChannelSettingsOverview" ||
-	route._tag === "ChannelSettingsIntegrations" ||
-	route._tag === "ChannelSettingsConnect"
-		? route.channelId
-		: null
+/** The channel settings tabs, whose layout header shows the channel. */
+const isChannelSettingsTab = AppRoute.isAnyOf([
+	"ChannelSettingsOverview",
+	"ChannelSettingsIntegrations",
+	"ChannelSettingsConnect",
+])
+
+const settingsChannelId = (route: AppRoute) => (isChannelSettingsTab(route) ? route.channelId : null)
 
 const own = Subscription.make<Input, Message>()((entry) => ({
-	// `useMediaQuery("(max-width: 767px)")` in `SidebarProvider`.
-	shellViewport: Subscription.persistentEntry(
-		Dom.streamFromMediaQuery({
-			query: "(max-width: 767px)",
-			mapMatches: (isMobile) => Message.ChangedViewport({ isMobile }),
-		}),
-	),
 	// `SwitchServerMenu`: every organization the user belongs to, oldest membership first.
 	shellUserOrganizations: entry(
 		{ userId: Schema.NullOr(UserId) },

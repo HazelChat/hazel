@@ -1,12 +1,11 @@
-import "../document-stub"
+import "../../../test/document-stub"
 import { ChannelId } from "@hazel/schema"
 import { Schema } from "effect"
 import { Command, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
-import { errorToast } from "../../../data/actions"
 import { PageOutMessage } from "../../out-message"
 import { Message } from "./message"
-import { canSave } from "./model"
+import { canSave, isDirty, isSubmitting } from "./model"
 import { init, update, UpdateChannel } from "./update"
 
 const channelId = Schema.decodeSync(ChannelId)("00000000-0000-4000-8000-000000000001")
@@ -35,15 +34,16 @@ describe("channel settings overview", () => {
 			given(loaded),
 			message(Message.ClearedIcon()),
 			message(Message.SubmittedForm()),
-			model((current) => expect(current.form?.isSubmitting).toBe(true)),
-			Command.resolve(
-				UpdateChannel,
-				Message.FailedUpdateChannel({ toast: errorToast("Channel not found", "Gone.") }),
-			),
-			model((current) => expect(current.form?.isSubmitting).toBe(false)),
+			model((current) => expect(current.form !== null && isSubmitting(current.form)).toBe(true)),
+			Command.resolve(UpdateChannel, Message.FailedUpdateChannel({ reason: "NotFound" })),
+			model((current) => expect(current.form !== null && isSubmitting(current.form)).toBe(false)),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Channel not found", description: "Gone." },
+					toast: {
+						intent: "error",
+						title: "Channel not found",
+						description: "This channel may have been deleted.",
+					},
 				}),
 			),
 		)
@@ -55,7 +55,7 @@ describe("channel settings overview", () => {
 			edited,
 			Message.UpdatedChannel({ channel: { id: channelId, name: "general", icon: null } }),
 		).model
-		expect(next.form?.name).toBe("draft")
+		expect(next.form?.name.value).toBe("draft")
 	})
 })
 
@@ -67,18 +67,13 @@ describe("save failure", () => {
 			message(Message.ChangedName({ name: "general-renamed" })),
 			message(Message.SubmittedForm()),
 			Command.expectExact(UpdateChannel({ id: channelId, name: "general-renamed", icon: "🎉" })),
-			Command.resolve(
-				UpdateChannel,
-				Message.FailedUpdateChannel({
-					toast: errorToast("Channel not found", "This channel may have been deleted."),
-				}),
-			),
+			Command.resolve(UpdateChannel, Message.FailedUpdateChannel({ reason: "Offline" })),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
 					toast: {
 						intent: "error",
-						title: "Channel not found",
-						description: "This channel may have been deleted.",
+						title: "Connection lost",
+						description: "Check your internet connection and try again.",
 					},
 				}),
 			),
@@ -105,7 +100,7 @@ describe("validation and guards", () => {
 			message(Message.ChangedName({ name: "a" })),
 			message(Message.SubmittedForm()),
 			Command.expectNone(),
-			model((current) => expect(current.form?.isSubmitting).toBe(false)),
+			model((current) => expect(current.form !== null && isSubmitting(current.form)).toBe(false)),
 		)
 	})
 
@@ -126,7 +121,7 @@ describe("validation and guards", () => {
 			update,
 			given(noIcon),
 			message(Message.ClearedIcon()),
-			model((current) => expect(current.form?.isIconDirty).toBe(false)),
+			model((current) => expect(current.form !== null && isDirty(current.form)).toBe(false)),
 			message(Message.SubmittedForm()),
 			Command.expectNone(),
 		)
@@ -148,10 +143,46 @@ describe("save success and channel removal", () => {
 				}),
 			),
 			model((current) => {
-				expect(current.form?.isSubmitting).toBe(false)
-				expect(current.form?.isIconDirty).toBe(false)
+				expect(current.form !== null && isSubmitting(current.form)).toBe(false)
+				expect(current.form !== null && isDirty(current.form)).toBe(false)
 			}),
 		)
+	})
+
+	test("a successful rename becomes the saved name: Save is disabled until the next edit", () => {
+		story(
+			update,
+			given(loaded),
+			message(Message.ChangedName({ name: "general-renamed" })),
+			message(Message.SubmittedForm()),
+			Command.resolve(UpdateChannel, Message.SucceededUpdateChannel()),
+			model((current) => {
+				expect(current.form?.savedName).toBe("general-renamed")
+				expect(current.form !== null && canSave(current.form)).toBe(false)
+			}),
+			message(Message.ChangedName({ name: "general" })),
+			model((current) => expect(current.form !== null && canSave(current.form)).toBe(true)),
+		)
+	})
+
+	test("the saved values are the ones sent, not edits made while saving", () => {
+		const saving = update(
+			update(loaded, Message.ChangedName({ name: "sent" })).model,
+			Message.SubmittedForm(),
+		).model
+		const edited = update(saving, Message.ChangedName({ name: "typed-while-saving" })).model
+		const saved = update(edited, Message.SucceededUpdateChannel()).model.form
+		expect(saved?.savedName).toBe("sent")
+		expect(saved !== null && canSave(saved)).toBe(true)
+	})
+
+	test("an invalid name shows the rule's message", () => {
+		const form = update(loaded, Message.ChangedName({ name: "a" })).model.form
+		expect(form?.name).toEqual({
+			_tag: "Invalid",
+			value: "a",
+			errors: ["Channel name must be at least 2 characters"],
+		})
 	})
 
 	test("a deleted channel unmounts the form", () => {

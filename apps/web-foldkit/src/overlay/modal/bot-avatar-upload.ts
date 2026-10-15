@@ -25,7 +25,6 @@ export const botAvatarUpload = <Message>(h: HtmlBuilder<Message>, options: BotAv
 			h.div(
 				[
 					h.Class("rounded-xl focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"),
-					h.DataAttribute("rac", ""),
 				],
 				[
 					h.div(

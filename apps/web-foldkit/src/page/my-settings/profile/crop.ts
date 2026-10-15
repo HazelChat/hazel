@@ -8,6 +8,10 @@ import { clampCropRect } from "~/utils/image-crop"
 export const CropRect = Schema.Struct({ x: Schema.Number, y: Schema.Number, size: Schema.Number })
 export type CropRect = typeof CropRect.Type
 
+/** `CropError`'s reasons: the image would not load, or the canvas could not crop or encode it. */
+export const CropFailure = Schema.Literals(["LoadFailed", "NoCanvasContext", "EncodeFailed"])
+export type CropFailure = typeof CropFailure.Type
+
 export const DragMode = Schema.Literals(["move", "resize-nw", "resize-ne", "resize-sw", "resize-se"])
 export type DragMode = typeof DragMode.Type
 

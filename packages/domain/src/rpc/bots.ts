@@ -1,7 +1,7 @@
 import { Rpc, RpcGroup } from "effect/rpc"
 import { BotId } from "@hazel/schema"
 import { Schema } from "effect"
-import { InternalServerError, UnauthorizedError } from "../errors"
+import { ActiveOrganizationRequiredError, InternalServerError, UnauthorizedError } from "../errors"
 import { Bot, BotCommand } from "../models"
 import { RateLimitExceededError } from "../rate-limit-errors"
 import { TransactionId } from "@hazel/schema"
@@ -120,7 +120,12 @@ export class BotRpcs extends RpcGroup.make(
 			isPublic: Schema.optional(Schema.Boolean),
 		}),
 		success: BotCreatedResponse,
-		error: Schema.Union([UnauthorizedError, InternalServerError, RateLimitExceededError]),
+		error: Schema.Union([
+			ActiveOrganizationRequiredError,
+			UnauthorizedError,
+			InternalServerError,
+			RateLimitExceededError,
+		]),
 	})
 		.annotate(RequiredScopes, ["bots:write"])
 		.middleware(AuthMiddleware),
@@ -302,6 +307,7 @@ export class BotRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ botId: BotId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union([
+			ActiveOrganizationRequiredError,
 			BotNotFoundError,
 			BotAlreadyInstalledError,
 			UnauthorizedError,
@@ -326,6 +332,7 @@ export class BotRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ botId: BotId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union([
+			ActiveOrganizationRequiredError,
 			BotNotFoundError,
 			UnauthorizedError,
 			InternalServerError,
@@ -351,6 +358,7 @@ export class BotRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ botId: BotId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union([
+			ActiveOrganizationRequiredError,
 			BotNotFoundError,
 			BotAlreadyInstalledError,
 			UnauthorizedError,

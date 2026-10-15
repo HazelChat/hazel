@@ -1,4 +1,4 @@
-import { Effect, Predicate, Schema, SchemaIssue } from "effect"
+import { Effect, Predicate, Schema } from "effect"
 import { ChannelId, MessageId } from "@hazel/schema"
 
 export class UnauthorizedError extends Schema.TaggedError<UnauthorizedError>("UnauthorizedError")(
@@ -54,25 +54,88 @@ export class OAuthRedemptionPendingError extends Schema.TaggedError<OAuthRedempt
 	}
 }
 
+/**
+ * Keeps the underlying failure on an error for server-side logs and traces without making it
+ * part of the error's schema: `cause` is the native, non-enumerable `Error.cause`, so it is never
+ * encoded into RPC or HTTP responses.
+ */
+export const attachCause = (error: Error, cause: unknown) => {
+	if (cause === undefined) return
+	Object.defineProperty(error, "cause", {
+		value: cause,
+		enumerable: false,
+		writable: true,
+		configurable: true,
+	})
+}
+
+/**
+ * An unexpected server failure. Clients see only the stable `message` (and `detail`, which must
+ * be client-safe: never `String(error)` or driver text). Pass the underlying failure as `cause`:
+ * it stays on the server, where the error reporter logs it with the full `Cause`.
+ */
 export class InternalServerError extends Schema.TaggedError<InternalServerError>("InternalServerError")(
 	"InternalServerError",
 	{
 		message: Schema.String,
 		detail: Schema.optional(Schema.String),
-		cause: Schema.optional(Schema.Any),
 	},
 	{ httpApiStatus: 500 },
-) {}
+) {
+	static is(u: unknown): u is InternalServerError {
+		return Predicate.isTagged(u, "InternalServerError")
+	}
 
+	constructor(
+		props: { readonly message: string; readonly detail?: string | undefined; readonly cause?: unknown },
+		options?: Schema.MakeOptions,
+	) {
+		const { cause, ...fields } = props
+		super(fields, options)
+		attachCause(this, cause)
+	}
+}
+
+/** A workflow could not be started. `cause` stays server-side, as on `InternalServerError`. */
 export class WorkflowInitializationError extends Schema.TaggedError<WorkflowInitializationError>(
 	"WorkflowInitializationError",
 )(
 	"WorkflowInitializationError",
 	{
 		message: Schema.String,
-		cause: Schema.optional(Schema.Any),
 	},
 	{ httpApiStatus: 500 },
+) {
+	constructor(props: { readonly message: string; readonly cause?: unknown }, options?: Schema.MakeOptions) {
+		const { cause, ...fields } = props
+		super(fields, options)
+		attachCause(this, cause)
+	}
+}
+
+/** The request does not fit the channel or is malformed (e.g. naming a channel that is not a thread). */
+export class InvalidChannelRequestError extends Schema.TaggedError<InvalidChannelRequestError>(
+	"InvalidChannelRequestError",
+)(
+	"InvalidChannelRequestError",
+	{
+		message: Schema.String,
+	},
+	{ httpApiStatus: 400 },
+) {}
+
+/**
+ * The operation acts on the caller's active organization, and the session has none
+ * (`CurrentUser.organizationId` is unset).
+ */
+export class ActiveOrganizationRequiredError extends Schema.TaggedError<ActiveOrganizationRequiredError>(
+	"ActiveOrganizationRequiredError",
+)(
+	"ActiveOrganizationRequiredError",
+	{
+		message: Schema.String,
+	},
+	{ httpApiStatus: 400 },
 ) {}
 
 export class DmChannelAlreadyExistsError extends Schema.TaggedError<DmChannelAlreadyExistsError>(
@@ -120,38 +183,54 @@ export class WorkflowServiceUnavailableError extends Schema.TaggedError<Workflow
 	"WorkflowServiceUnavailableError",
 	{
 		message: Schema.String,
-		cause: Schema.optional(Schema.NullOr(Schema.String)),
 	},
 	{ httpApiStatus: 503 },
-) {}
+) {
+	static is(u: unknown): u is WorkflowServiceUnavailableError {
+		return Predicate.isTagged(u, "WorkflowServiceUnavailableError")
+	}
 
-export function withRemapDbErrors<R, E extends { _tag: string }, A>(
+	constructor(props: { readonly message: string; readonly cause?: unknown }, options?: Schema.MakeOptions) {
+		const { cause, ...fields } = props
+		super(fields, options)
+		attachCause(this, cause)
+	}
+}
+
+/**
+ * Turns the repository layer's `DatabaseError` / `SchemaError` into a client-safe
+ * `InternalServerError`, keeping the original failure as its server-side `cause`.
+ */
+export function withRemapDbErrors(
 	entityType: string,
 	action: "update" | "create" | "delete" | "select",
 	entityId?: unknown | { value: unknown; key: string }[],
 ) {
-	return (
-		effect: Effect.Effect<R, E, A>,
-	): Effect.Effect<R, Exclude<E, { _tag: "DatabaseError" | "SchemaError" }> | InternalServerError, A> => {
-		const toInternalError = (err: unknown, detailPrefix: string) =>
+	return <A, E, R>(
+		effect: Effect.Effect<A, E, R>,
+	): Effect.Effect<A, Exclude<E, { _tag: "DatabaseError" | "SchemaError" }> | InternalServerError, R> => {
+		const toInternalError = (cause: unknown, detailPrefix: string) =>
 			Effect.fail(
 				new InternalServerError({
 					message: `Error ${action}ing ${entityType}`,
 					detail: constructDetailMessage(detailPrefix, entityType, entityId),
-					cause: String(err),
+					cause,
 				}),
 			)
 
 		return effect.pipe(
 			Effect.catchIf(
-				(e): e is Extract<E, { _tag: "DatabaseError" }> => Predicate.isTagged(e, "DatabaseError"),
-				(err) => toInternalError(err, "There was a database error when"),
+				(e): e is Extract<E, { _tag: "DatabaseError" | "SchemaError" }> =>
+					Predicate.isTagged(e, "DatabaseError") || Predicate.isTagged(e, "SchemaError"),
+				(err) =>
+					toInternalError(
+						err,
+						Predicate.isTagged(err, "DatabaseError")
+							? "There was a database error when"
+							: "There was an error in parsing when",
+					),
 			),
-			Effect.catchIf(
-				(e): e is Extract<E, { _tag: "SchemaError" }> => Predicate.isTagged(e, "SchemaError"),
-				(err) => toInternalError(err, "There was an error in parsing when"),
-			),
-		) as Effect.Effect<R, Exclude<E, { _tag: "DatabaseError" | "SchemaError" }> | InternalServerError, A>
+		) as Effect.Effect<A, Exclude<E, { _tag: "DatabaseError" | "SchemaError" }> | InternalServerError, R>
 	}
 }
 

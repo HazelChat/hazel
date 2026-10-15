@@ -4,7 +4,7 @@ import type { Html, HtmlBuilder } from "foldkit/html"
 import { defineMessageUnion } from "foldkit/message"
 import { modifyFields } from "foldkit/struct"
 import { IconServers } from "../../icons"
-import { organizationHref } from "../../route"
+import { AppRoute, organizationRoute } from "../../route"
 import { HazelRpc } from "../../rpc"
 import { button } from "../../ui/button"
 import { dialogBody, dialogFooter, dialogHeader } from "../../ui/dialog"
@@ -14,7 +14,15 @@ import { closed, completed, ModalOutMessage } from "../out-message"
 import { ToastRequest } from "../toasts"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalViewInputs } from "./contract"
-import { Frame, Message as FrameMessage, frameView, initFrame, isFrameClosed, modalDescription, modalTitle } from "./frame"
+import {
+	Frame,
+	Message as FrameMessage,
+	frameView,
+	initFrame,
+	isCloseRequest,
+	modalDescription,
+	modalTitle,
+} from "./frame"
 import { failureToast, successToast } from "../../data/actions"
 
 /** `components/modals/create-organization-modal.tsx` (legacy `useModal("create-organization")`). */
@@ -38,7 +46,7 @@ const Message = defineMessageUnion({
 	ChangedSlug: { value: Schema.String },
 	ClickedCancel: {},
 	SubmittedForm: {},
-	SucceededCreateOrganization: { href: Schema.String },
+	SucceededCreateOrganization: { route: AppRoute },
 	FailedCreateOrganization: { toast: ToastRequest },
 })
 type Message = typeof Message.Type
@@ -56,7 +64,7 @@ const CreateOrganization = Command.define("CreateOrganization", {
 				settings: null,
 				isPublic: false,
 			})
-			return Message.SucceededCreateOrganization({ href: organizationHref(result.data) })
+			return Message.SucceededCreateOrganization({ route: organizationRoute(result.data) })
 		}).pipe(
 			Effect.catchCause((cause) =>
 				Effect.succeed(
@@ -64,7 +72,8 @@ const CreateOrganization = Command.define("CreateOrganization", {
 						toast: failureToast(cause, "friendly", {
 							OrganizationSlugAlreadyExistsError: {
 								title: "Slug already taken",
-								description: "That workspace URL is already in use. Please choose a different one.",
+								description:
+									"That workspace URL is already in use. Please choose a different one.",
 								isRetryable: false,
 							},
 						}),
@@ -101,7 +110,8 @@ const submitted = (model: Model): Return => {
 
 const update = (model: Model, message: Message): Return =>
 	Message.match<Return>(message, {
-		GotFrameMessage: ({ message }) => (isFrameClosed(model.frame, message) ? { model, outMessage: closed } : { model }),
+		GotFrameMessage: ({ message }) =>
+			isCloseRequest(message) ? { model, outMessage: closed } : { model },
 		ChangedName: ({ value }) => ({
 			model: modifyFields(model, { name: () => value, errors: () => validate(value, model.slug) }),
 		}),
@@ -110,9 +120,9 @@ const update = (model: Model, message: Message): Return =>
 		}),
 		ClickedCancel: () => ({ model, outMessage: closed }),
 		SubmittedForm: () => submitted(model),
-		SucceededCreateOrganization: ({ href }) => ({
+		SucceededCreateOrganization: ({ route }) => ({
 			model,
-			outMessage: completed({ href, toast: successToast("Server created successfully") }),
+			outMessage: completed({ route, toast: successToast("Server created successfully") }),
 		}),
 		FailedCreateOrganization: ({ toast }) => ({
 			model: modifyFields(model, { isSubmitting: () => false }),
@@ -146,7 +156,10 @@ const view = Submodel.defineView<Model, Message, ModalViewInputs>((model, _input
 		() => [
 			dialogHeader(h, {}, [
 				modalTitle(h, model.frame, "Create a new Server"),
-				modalDescription(h, "Give your server a name and optional slug to create a new organization."),
+				modalDescription(
+					h,
+					"Give your server a name and optional slug to create a new organization.",
+				),
 			]),
 			h.form(
 				[h.OnSubmit(Message.SubmittedForm())],
@@ -156,7 +169,11 @@ const view = Submodel.defineView<Model, Message, ModalViewInputs>((model, _input
 						[
 							textField(
 								h,
-								{ id: `${ID}-name`, value: model.name, onInput: (value) => Message.ChangedName({ value }) },
+								{
+									id: `${ID}-name`,
+									value: model.name,
+									onInput: (value) => Message.ChangedName({ value }),
+								},
 								(field) => [
 									field.label(["Server Name"]),
 									inputGroup(h, { attributes: [h.Role("presentation")] }, [
@@ -167,7 +184,11 @@ const view = Submodel.defineView<Model, Message, ModalViewInputs>((model, _input
 							),
 							textField(
 								h,
-								{ id: `${ID}-slug`, value: model.slug, onInput: (value) => Message.ChangedSlug({ value }) },
+								{
+									id: `${ID}-slug`,
+									value: model.slug,
+									onInput: (value) => Message.ChangedSlug({ value }),
+								},
 								(field) => [
 									field.label(["Server Slug"]),
 									inputGroup(h, { attributes: [h.Role("presentation")] }, [

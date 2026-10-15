@@ -8,9 +8,10 @@ import { AppRoute, hrefOf } from "../../../route"
 import { button } from "../../../ui/button"
 import { loader } from "../../../ui/loader"
 import type { PageViewInputs } from "../../contract"
-import { authError, authFrame, authHeading } from "../layout"
+import type { UserErrorMessage } from "~/lib/error-messages"
+import { authError, authFailureMessage, authFrame, authHeading } from "../layout"
 import { Message } from "./message"
-import type { Model, Pending } from "./model"
+import { type Attempt, type Model, pendingAttempt, type SignInFailure } from "./model"
 
 const providers: ReadonlyArray<{
 	readonly id: Provider
@@ -54,7 +55,7 @@ const divider = (h: HtmlBuilder<Message>): Html =>
 		[h.div([h.Class("h-px flex-1 bg-border")]), "or", h.div([h.Class("h-px flex-1 bg-border")])],
 	)
 
-const choices = (h: HtmlBuilder<Message>, pending: Pending): Html =>
+const choices = (h: HtmlBuilder<Message>, pending: Attempt | null): Html =>
 	h.div(
 		[h.Class("flex flex-col gap-3")],
 		[
@@ -89,7 +90,7 @@ const switchLink = (h: HtmlBuilder<Message>, model: Model): Html => {
 				[
 					h.Class("text-fg underline underline-offset-2"),
 					h.Href(
-						hrefOf(target({ splat: "", redirectUrl: Option.fromNullishOr(model.redirectUrl) })),
+						hrefOf(target({ redirectUrl: Option.fromNullishOr(model.redirectUrl) })),
 					),
 				],
 				[isSignIn ? "Create an account" : "Sign in"],
@@ -98,10 +99,23 @@ const switchLink = (h: HtmlBuilder<Message>, model: Model): Html => {
 	)
 }
 
+/** What a failed sign-in says, including the desktop browser's own failures. */
+const signInFailureMessage = (reason: SignInFailure): UserErrorMessage | null =>
+	reason === "BrowserTimedOut"
+		? { title: "Signing in took too long", description: "Please try again." }
+		: reason === "BrowserBusy"
+			? { title: "A sign-in is already in progress in your browser" }
+			: reason === "BrowserIndeterminate"
+				? { title: "Couldn't confirm the last sign-in", description: "Restart Hazel and try again." }
+				: authFailureMessage(reason)
+
+const failureOf = (model: Model): UserErrorMessage | null =>
+	model.submission._tag === "Failed" ? signInFailureMessage(model.submission.reason) : null
+
 /** The desktop app signs in through the system browser, where GitHub, Google and passkeys work. */
 const desktopChoices = (h: HtmlBuilder<Message>, model: Model): ReadonlyArray<Html> => [
 	authHeading(h, "Sign in to Hazel", "Continue in your browser, then come back here."),
-	model.pending === "browser"
+	pendingAttempt(model) === "browser"
 		? h.div(
 				[h.Class("flex flex-col gap-3")],
 				[
@@ -118,7 +132,7 @@ const desktopChoices = (h: HtmlBuilder<Message>, model: Model): ReadonlyArray<Ht
 				IconExternalLink(h, { className: "size-4", attributes: { "aria-hidden": "true" } }),
 				"Sign in with your browser",
 			]),
-	...[authError(h, model.error)].filter((html): html is Html => html !== null),
+	...[authError(h, failureOf(model))].filter((html): html is Html => html !== null),
 ]
 
 export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, { shared }, h) =>
@@ -132,8 +146,8 @@ export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, 
 					"Create your Hazel account",
 					"Sign up with GitHub or Google. It takes a few seconds.",
 				),
-		choices(h, model.pending),
-		authError(h, model.error),
+		choices(h, pendingAttempt(model)),
+		authError(h, failureOf(model)),
 		switchLink(h, model),
 	]),
 )

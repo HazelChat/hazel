@@ -1,8 +1,8 @@
 import { HazelAuth } from "@hazel/auth/server"
 import { UserRepo } from "@hazel/backend-core"
 import { CurrentUser, InvalidBearerTokenError, SessionLoadError } from "@hazel/domain"
-import type { UserId } from "@hazel/schema"
-import { Context, Effect, Layer, Option, Redacted } from "effect"
+import { UserId } from "@hazel/schema"
+import { Cause, Context, Effect, Layer, Option, Redacted } from "effect"
 import { Cookies, Headers } from "effect/http"
 import { HazelAuthInstance } from "./hazel-auth"
 
@@ -29,11 +29,18 @@ export class HazelSession extends Context.Service<HazelSession>()("@hazel/backen
 			new InvalidBearerTokenError({ message: "Invalid session", detail })
 
 		const loadUser = (subjectId: string) =>
-			userRepo.findById(subjectId as UserId).pipe(
+			userRepo.findById(UserId.make(subjectId)).pipe(
 				Effect.catchTags({
 					DatabaseError: (error) =>
-						Effect.fail(
-							new SessionLoadError({ message: "Failed to load user", detail: String(error) }),
+						Effect.logError("Failed to load the session user", Cause.fail(error)).pipe(
+							Effect.andThen(
+								Effect.fail(
+									new SessionLoadError({
+										message: "Failed to load user",
+										detail: "The session store is unavailable",
+									}),
+								),
+							),
 						),
 				}),
 				Effect.flatMap(

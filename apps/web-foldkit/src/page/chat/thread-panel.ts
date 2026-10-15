@@ -1,41 +1,24 @@
 import type { Html, HtmlBuilder } from "foldkit/html"
 import { handleStyles, indicatorStyles, panelStyles } from "~/components/ui/split-panel/split-panel.styles"
-import { format } from "~/lib/date-fns-shared"
+import { format } from "date-fns"
 import { messageRowView, type RowContext } from "../../chat/message/row"
 import { markdownView } from "../../chat/markdown/markdown-view"
 import { IconClose, IconEdit, IconPenSparkle } from "../../icons"
 import { avatar } from "../../ui/avatar"
 import { button } from "../../ui/button"
 import { loader } from "../../ui/loader"
-import { type DeriveContext, authorIdentity, messageRowData } from "./derive"
-import type { ChatMessage, GroupPosition, MessageRow } from "./rows"
+import { type DeriveContext, authorIdentity } from "./derive"
+import type { ChatMessage, MessageRow } from "./rows"
 
 /** Port of `SplitPanel` + `ThreadPanel` (header, original message, `ThreadMessageList`, composer). */
 
-const GROUP_THRESHOLD_MS = 3 * 60 * 1000
 const PANEL_WIDTH = 480
-
-/** `ThreadMessageListContent`'s grouping (oldest first). */
-const groupPositionAt = (messages: ReadonlyArray<ChatMessage>, index: number): GroupPosition => {
-	const message = messages[index]!
-	const previous = index > 0 ? messages[index - 1]! : null
-	const next = index < messages.length - 1 ? messages[index + 1]! : null
-	const isStart =
-		previous === null ||
-		message.authorId !== previous.authorId ||
-		message.createdAtMs - previous.createdAtMs > GROUP_THRESHOLD_MS ||
-		previous.replyToMessageId !== null
-	const isEnd =
-		next === null ||
-		message.authorId !== next.authorId ||
-		next.createdAtMs - message.createdAtMs > GROUP_THRESHOLD_MS
-	return isStart && isEnd ? "standalone" : isStart ? "start" : isEnd ? "end" : "middle"
-}
 
 export interface ThreadPanelInputs<M> {
 	readonly threadName: string
 	readonly original: ChatMessage | null
-	readonly messages: ReadonlyArray<ChatMessage>
+	/** The replies' rows, derived in `update` (`toThreadRows`). */
+	readonly rows: ReadonlyArray<MessageRow>
 	readonly context: DeriveContext
 	readonly rowContext: RowContext<M>
 	readonly onClose: M
@@ -48,7 +31,13 @@ export interface ThreadPanelInputs<M> {
 	readonly composer: Html
 }
 
-const headerButton = <M>(h: HtmlBuilder<M>, label: string, icon: Html, onPress: M, isDisabled = false): Html =>
+const headerButton = <M>(
+	h: HtmlBuilder<M>,
+	label: string,
+	icon: Html,
+	onPress: M,
+	isDisabled = false,
+): Html =>
 	button(
 		h,
 		{
@@ -99,26 +88,21 @@ const originalView = <M>(h: HtmlBuilder<M>, original: ChatMessage, context: Deri
 }
 
 const listView = <M>(h: HtmlBuilder<M>, inputs: ThreadPanelInputs<M>): Html =>
-	inputs.messages.length === 0
+	inputs.rows.length === 0
 		? h.div(
 				[h.Class("flex h-full items-center justify-center p-4")],
 				[h.p([h.Class("text-muted-fg")], ["No replies yet. Start the conversation!"])],
 			)
 		: h.div(
 				[h.Class("flex h-full flex-col overflow-y-auto px-2 py-2")],
-				inputs.messages.map((message, index) => {
-					const row: MessageRow = {
-						_tag: "MessageRow",
-						...messageRowData(
-							message,
-							groupPositionAt(inputs.messages, index),
-							[],
-							inputs.context,
-						),
-						thread: null,
-					}
-					return messageRowView(h, row, inputs.rowContext)
-				}),
+				// Keyed by message, so a reply arriving or deleted never re-renders the rows after it.
+				inputs.rows.map((row) =>
+					h.keyed("div")(
+						row.key,
+						[h.Style({ display: "contents" })],
+						[messageRowView(h, row, inputs.rowContext)],
+					),
+				),
 			)
 
 export const threadPanelView = <M>(h: HtmlBuilder<M>, inputs: ThreadPanelInputs<M>): Html =>
@@ -206,7 +190,11 @@ export const threadPanelView = <M>(h: HtmlBuilder<M>, inputs: ThreadPanelInputs<
 								[
 									inputs.isCreating
 										? h.div(
-												[h.Class("flex items-center justify-center gap-2 py-3 text-muted-fg text-sm")],
+												[
+													h.Class(
+														"flex items-center justify-center gap-2 py-3 text-muted-fg text-sm",
+													),
+												],
 												[loader(h, { className: "size-4" }), "Creating thread..."],
 											)
 										: inputs.composer,

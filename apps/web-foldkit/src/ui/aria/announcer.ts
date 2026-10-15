@@ -13,14 +13,20 @@ interface Announcer {
 	readonly politeLog: HTMLElement
 }
 
-let announcer: Announcer | undefined
-
 const createLog = (ariaLive: string) => {
 	const log = document.createElement("div")
 	log.setAttribute("role", "log")
 	log.setAttribute("aria-live", ariaLive)
 	log.setAttribute("aria-relevant", "additions")
 	return log
+}
+
+/** The announcer lives in the DOM: an existing `[data-live-announcer]` node is reused. */
+const existingAnnouncer = (): Announcer | undefined => {
+	const node = document.querySelector<HTMLElement>("[data-live-announcer]")
+	const assertiveLog = node?.querySelector<HTMLElement>('[aria-live="assertive"]')
+	const politeLog = node?.querySelector<HTMLElement>('[aria-live="polite"]')
+	return node && assertiveLog && politeLog ? { node, assertiveLog, politeLog } : undefined
 }
 
 const createAnnouncer = (): Announcer => {
@@ -68,9 +74,9 @@ export const announce = (
 	timeout: number = LIVE_REGION_TIMEOUT,
 	assertiveness: Assertiveness = "assertive",
 ): void => {
-	if (announcer !== undefined) return append(announcer, message, timeout, assertiveness)
+	const existing = existingAnnouncer()
+	if (existing !== undefined) return append(existing, message, timeout, assertiveness)
 	const created = createAnnouncer()
-	announcer = created
 	setTimeout(() => {
 		if (created.node.isConnected) append(created, message, timeout, assertiveness)
 	}, FIRST_ANNOUNCEMENT_DELAY)
@@ -78,7 +84,8 @@ export const announce = (
 
 /** clearAnnouncer("assertive"): drops every message still in the assertive log. */
 export const clearAssertive = (): void => {
-	if (announcer !== undefined) announcer.assertiveLog.innerHTML = ""
+	const existing = existingAnnouncer()
+	if (existing !== undefined) existing.assertiveLog.innerHTML = ""
 }
 
 export type Selection = ReadonlyArray<string> | "all"

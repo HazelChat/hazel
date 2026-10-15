@@ -1,35 +1,55 @@
-import { twJoin } from "tailwind-merge"
+import { tv } from "tailwind-variants"
 
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
+/**
+ * The `@foldkit/ui` Toast stack. The kit pins the container bottom-right with inline styles; the
+ * entry `<div>` carries the kit's Animation attributes (`data-closed`, `data-enter`, `data-leave`)
+ * and, while swiped, `data-swipe` with an inline `translate`.
+ */
+export const toastEntryClassName = [
+	"w-[356px] max-w-[calc(100vw-2rem)]",
+	"transition-[opacity,translate] duration-200 ease-out data-leave:duration-150 data-leave:ease-in",
+	"data-closed:translate-y-2 data-closed:opacity-0",
+	"data-[swipe=settling]:duration-150 data-[swipe=end]:duration-200",
+].join(" ")
 
-/** sonner `toastOptions.className`, applied to every toast `<li>`. */
-export const toastClassName = twJoin(
-	"not-has-data-[slot=note]:backdrop-blur-3xl *:data-icon:mt-0.5 *:data-icon:self-start has-data-description:*:data-icon:mt-1",
-	"**:data-action:[--normal-bg:var(--color-primary-fg)] **:data-action:[--normal-text:var(--color-primary)]",
-)
-
-/** sonner `Toaster` className, on the `<ol data-sonner-toaster>`. */
-export const toasterClassName = "toaster group"
-
-/** sonner `Toaster` style: the theme's colors for every toast kind, in this key order. */
-export const toasterStyle = {
-	"--normal-bg": "var(--color-overlay)",
-	"--normal-text": "var(--color-overlay-fg)",
-	"--normal-border": "var(--color-border)",
-
-	"--success-bg": "var(--color-success-subtle)",
-	"--success-border": "color-mix(in oklab, var(--success-subtle-fg) 20%, transparent)",
-	"--success-text": "var(--color-success-subtle-fg)",
-
-	"--error-bg": "var(--color-danger-subtle)",
-	"--error-border": "color-mix(in oklab, var(--danger-subtle-fg) 20%, transparent)",
-	"--error-text": "var(--color-danger-subtle-fg)",
-
-	"--warning-bg": "var(--color-warning-subtle)",
-	"--warning-border": "color-mix(in oklab, var(--warning-subtle-fg) 20%, transparent)",
-	"--warning-text": "var(--color-warning-subtle-fg)",
-
-	"--info-bg": "var(--color-info-subtle)",
-	"--info-border": "color-mix(in oklab, var(--info-subtle-fg) 20%, transparent)",
-	"--info-text": "var(--color-info-subtle-fg)",
-} as const
+/** The card inside an entry: the overlay surface, tinted per kind like sonner's `richColors`. */
+export const toastStyles = tv({
+	slots: {
+		card: [
+			"relative flex w-full items-start gap-2.5 rounded-xl border p-4 pr-9 text-sm shadow-lg",
+			"bg-(--toast-bg) text-(--toast-fg) border-(--toast-border)",
+		],
+		icon: "mt-0.5 size-4 shrink-0",
+		content: "flex min-w-0 flex-1 flex-col gap-0.5",
+		title: "font-medium",
+		description: "opacity-90",
+		action: [
+			"shrink-0 self-center rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-fg",
+			"outline-hidden transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring",
+		],
+		close: [
+			"absolute top-2 right-2 rounded-md p-1 opacity-60 outline-hidden transition-opacity",
+			"hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring",
+		],
+	},
+	variants: {
+		kind: {
+			info: {
+				card: "[--toast-bg:var(--color-info-subtle)] [--toast-border:color-mix(in_oklab,var(--color-info-subtle-fg)_20%,transparent)] [--toast-fg:var(--color-info-subtle-fg)]",
+			},
+			success: {
+				card: "[--toast-bg:var(--color-success-subtle)] [--toast-border:color-mix(in_oklab,var(--color-success-subtle-fg)_20%,transparent)] [--toast-fg:var(--color-success-subtle-fg)]",
+			},
+			warning: {
+				card: "[--toast-bg:var(--color-warning-subtle)] [--toast-border:color-mix(in_oklab,var(--color-warning-subtle-fg)_20%,transparent)] [--toast-fg:var(--color-warning-subtle-fg)]",
+			},
+			error: {
+				card: "[--toast-bg:var(--color-danger-subtle)] [--toast-border:color-mix(in_oklab,var(--color-danger-subtle-fg)_20%,transparent)] [--toast-fg:var(--color-danger-subtle-fg)]",
+			},
+			loading: {
+				card: "[--toast-bg:var(--color-overlay)] [--toast-border:var(--color-border)] [--toast-fg:var(--color-overlay-fg)]",
+				icon: "animate-spin",
+			},
+		},
+	},
+})

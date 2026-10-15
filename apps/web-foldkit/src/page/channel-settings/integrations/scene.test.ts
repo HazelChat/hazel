@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import * as Scene from "foldkit/scene"
 import { describe, test } from "vitest"
-import { errorToast, successToast } from "../../../data/actions"
+import { successToast } from "../../../data/actions"
 import { feedOf, webhookOf } from "../../../test/pages-channel-settings-fixtures"
 import {
 	channelId,
@@ -59,6 +59,33 @@ describe("lists", () => {
 			Scene.expect(Scene.role("button", { name: "Connect GitHub" })).toExist(),
 		)
 	})
+
+	test("a failed load shows the error and Try again instead of the empty state", () => {
+		Scene.scene(
+			config,
+			// A failed reload keeps what the list showed, under the failure.
+			Scene.given(
+				update(listed(), Message.FailedList({ kind: "rss", version: 1, reason: "Offline" }), shared)
+					.model,
+			),
+			Scene.expect(Scene.text("No RSS feeds subscribed")).toExist(),
+			Scene.expect(Scene.text("Connection lost")).toExist(),
+		)
+		Scene.scene(
+			config,
+			Scene.given(initial),
+			Scene.Subscription.emit(
+				Message.FailedList({ kind: "webhook", version: 1, reason: "Unavailable" }),
+			),
+			Scene.expect(Scene.text("No webhooks yet")).toBeAbsent(),
+			Scene.expect(Scene.text("Service temporarily unavailable")).toExist(),
+			Scene.click(Scene.role("button", { name: "Try again" })),
+			Scene.Command.expectExact(ListWebhooks({ channelId, version: 2 })),
+			Scene.Command.resolve(ListWebhooks, Message.SucceededListWebhooks({ version: 2, webhooks: [] })),
+			Scene.expect(Scene.text("Service temporarily unavailable")).toBeAbsent(),
+			Scene.expect(Scene.text("No webhooks yet")).toExist(),
+		)
+	})
 })
 
 describe("create webhook", () => {
@@ -108,6 +135,7 @@ describe("create webhook", () => {
 			Scene.click(createButton),
 			Scene.type(nameInput, "a"),
 			Scene.expect(nameInput).toHaveAttr("aria-invalid", "true"),
+			Scene.expect(Scene.text("Webhook name must be at least 2 characters")).toExist(),
 			Scene.expect(createButton).toBeDisabled(),
 			Scene.click(Scene.role("button", { name: "Cancel" })),
 			Scene.expect(nameInput).toBeAbsent(),
@@ -121,12 +149,7 @@ describe("create webhook", () => {
 			Scene.click(createButton),
 			Scene.type(nameInput, "Deploys"),
 			Scene.submit(Scene.selector("form")),
-			Scene.Command.resolve(
-				CreateWebhook,
-				Message.FailedCreateWebhook({
-					toast: errorToast(failureToastFixture.title, failureToastFixture.description),
-				}),
-			),
+			Scene.Command.resolve(CreateWebhook, Message.FailedCreateWebhook({ reason: "Unexpected" })),
 			Scene.expectOutMessage(PageOutMessage.RequestedToast({ toast: failureToastFixture })),
 			Scene.expect(nameInput).toHaveValue("Deploys"),
 			Scene.expect(createButton).toBeEnabled(),
@@ -169,10 +192,7 @@ describe("provider cards", () => {
 			Scene.click(connectOpenStatus),
 			Scene.Command.resolve(
 				ConnectProvider,
-				Message.FailedConnectProvider({
-					provider: "openstatus",
-					toast: errorToast(failureToastFixture.title, failureToastFixture.description),
-				}),
+				Message.FailedConnectProvider({ provider: "openstatus", reason: "Unexpected" }),
 			),
 			Scene.expectOutMessage(PageOutMessage.RequestedToast({ toast: failureToastFixture })),
 			Scene.expect(connectOpenStatus).toBeEnabled(),
@@ -192,7 +212,6 @@ describe("provider cards", () => {
 				Message.SucceededProviderAction({
 					provider: "openstatus",
 					successMessage: "OpenStatus disabled",
-					isDelete: false,
 				}),
 			),
 			Scene.expectOutMessage(
@@ -249,9 +268,10 @@ describe("row removal", () => {
 			),
 			Scene.expectOutMessage(PageOutMessage.RequestedToast({ toast: successToast("Webhook deleted") })),
 			Scene.expect(confirmDialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.PortalModal),
-			Scene.Mount.expectEnded(FocusTriggerOnPress),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
+			// The reload keeps the row (and its menu) on screen until the new list drops it.
 			Scene.Command.resolve(ListWebhooks, Message.SucceededListWebhooks({ version: 2, webhooks: [] })),
+			Scene.Mount.expectEnded(FocusTriggerOnPress),
 			Scene.expect(Scene.text("No webhooks yet")).toExist(),
 		)
 	})
@@ -282,12 +302,11 @@ describe("rss feeds", () => {
 				Message.SucceededRowAction({ kind: "rss", id: feed.id, successMessage: "Feed paused" }),
 			),
 			Scene.expectOutMessage(PageOutMessage.RequestedToast({ toast: successToast("Feed paused") })),
-			Scene.Mount.expectEnded(FocusTriggerOnPress),
+			// The reload keeps the row and its menu mounted.
 			Scene.Command.resolve(
 				ListRss,
 				Message.SucceededListRss({ version: 2, feeds: [{ ...feed, isEnabled: false }] }),
 			),
-			menuMounted,
 			Scene.expect(Scene.text("Paused")).toExist(),
 		)
 	})

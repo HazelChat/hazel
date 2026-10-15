@@ -1,6 +1,6 @@
 import { Database, PG, Repository, schema } from "@hazel/db"
 
-import type { ClerkUserId, UserId } from "@hazel/schema"
+import type { UserId } from "@hazel/schema"
 import { User } from "@hazel/domain/models"
 import { Context, DateTime, Effect, Layer, type Schema } from "effect"
 
@@ -66,11 +66,6 @@ export class UserRepo extends Context.Service<UserRepo>()("UserRepo", {
 				)
 				.pipe(Effect.map((results) => results[0]))
 
-		const upsertClerkUser = (
-			data: Omit<Schema.Schema.Type<typeof User.Insert>, "externalId"> & { externalId: ClerkUserId },
-			options?: { syncAvatarUrl?: boolean },
-		) => upsertByExternalId(data, options)
-
 		const findAllActive = () =>
 			db.run(
 				PG.from(schema.usersTable)
@@ -85,28 +80,12 @@ export class UserRepo extends Context.Service<UserRepo>()("UserRepo", {
 					.where(($) => [$.id.eq(id), $.deletedAt.isNull()]),
 			)
 
-		const softDeleteByExternalId = (externalId: string) =>
-			db.run(
-				PG.update(schema.usersTable)
-					.set({ deletedAt: new Date() })
-					.where(($) => [$.externalId.eq(externalId), $.deletedAt.isNull()]),
-			)
-
-		const softDeleteByClerkUserId = (clerkUserId: ClerkUserId) => softDeleteByExternalId(clerkUserId)
-
-		const bulkUpsertByExternalId = (users: Schema.Schema.Type<typeof User.Insert>[]) =>
-			Effect.forEach(users, (data) => upsertByExternalId(data), { concurrency: 10 })
-
 		return {
 			...baseRepo,
 			findByExternalId,
 			upsertByExternalId,
-			upsertClerkUser,
 			findAllActive,
 			softDelete,
-			softDeleteByExternalId,
-			softDeleteByClerkUserId,
-			bulkUpsertByExternalId,
 		}
 	}),
 }) {

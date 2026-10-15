@@ -1,5 +1,7 @@
 # S2: Data layer spike
 
+> **Historical.** The legacy React app (`apps/web`) and the parity harness (`packages/ui-parity`, the `/dev/gallery` routes and the `legacy-ui-guard` agent) have been deleted. Parity commands and baselines referenced below no longer exist.
+
 Status: **decided: keep the TanStack DB bridge (option a)** · 2026-10-07 · Branch `fk/s4-chat-list`
 
 Question: should the Foldkit app keep Electric + the legacy TanStack DB collections and bridge live query results into the Model (a), or hold a normalized store of every synced row in the Model and update it from Electric shape changes (b)? Measured on the `heavy` dataset: 500 channels, 12,063 messages (10,000 in #firehose), 2,860 reactions, 48 users.

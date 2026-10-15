@@ -1,13 +1,14 @@
 import { ChannelId, OrganizationId, SyncConnectionId, UserId } from "@hazel/schema"
-import { Option, Schema, pipe } from "effect"
+import { Match, Option, Schema, pipe } from "effect"
 import { Route } from "foldkit"
-import { defineRouteUnion, literal, query, restString, schemaSegment, slash, string } from "foldkit/route"
+import * as Url from "foldkit/url"
+import { defineRouteUnion, literal, query, schemaSegment, slash, string } from "foldkit/route"
 
-/** Flat route union mirroring the 39 legacy TanStack routes (`apps/web/src/routes`), plus NotFound. */
+/** Flat route union mirroring the 39 legacy TanStack routes, plus NotFound. */
 export const AppRoute = defineRouteUnion({
 	Root: {},
-	SignIn: { splat: Schema.String, redirectUrl: Schema.Option(Schema.String) },
-	SignUp: { splat: Schema.String, redirectUrl: Schema.Option(Schema.String) },
+	SignIn: { redirectUrl: Schema.Option(Schema.String) },
+	SignUp: { redirectUrl: Schema.Option(Schema.String) },
 	/** Where the OAuth callback sends a first-time user to pick their name (`?flowId=&reference=`). */
 	AuthRegister: { flowId: Schema.Option(Schema.String), reference: Schema.Option(Schema.String) },
 	/** Where the OAuth callback sends a user whose provider account it just linked (`?provider=`). */
@@ -99,27 +100,6 @@ const IntegrationCallbackQuery = Schema.Struct({
 	errorCode: Schema.OptionFromOptional(Schema.String),
 }).pipe(Schema.encodeKeys({ connectionStatus: "connection_status", errorCode: "error_code" }))
 
-/** `/sign-in/$`: the bare prefix and any splat below it (old Clerk sub-route links). */
-const authRouters = (segment: "sign-in" | "sign-up", make: typeof AppRoute.SignIn | typeof AppRoute.SignUp) =>
-	({
-		bare: pipe(
-			literal(segment),
-			query(RedirectQuery),
-			Route.mapTo({
-				make: ({ redirectUrl }: { redirectUrl: Option.Option<string> }) =>
-					make.make({ splat: "", redirectUrl }),
-			}),
-		),
-		splat: pipe(
-			literal(segment),
-			slash(restString("splat")),
-			query(RedirectQuery),
-			Route.mapTo({
-				make: (fields: { splat: string; redirectUrl: Option.Option<string> }) => make.make(fields),
-			}),
-		),
-	}) as const
-
 const org = string("orgSlug")
 const orgPath = (...segments: ReadonlyArray<string>) =>
 	segments.reduce((parser, segment) => pipe(parser, slash(literal(segment))), org)
@@ -131,12 +111,11 @@ const channelSettings = (...segments: ReadonlyArray<string>) =>
 		pipe(channel("channels"), slash(literal("settings"))),
 	)
 
-const signIn = authRouters("sign-in", AppRoute.SignIn)
-const signUp = authRouters("sign-up", AppRoute.SignUp)
-
 /** One router per route tag, used to parse URLs and to build them back (`hrefOf`). */
 const routers = {
 	Root: pipe(Route.root, Route.mapTo(AppRoute.Root)),
+	SignIn: pipe(literal("sign-in"), query(RedirectQuery), Route.mapTo(AppRoute.SignIn)),
+	SignUp: pipe(literal("sign-up"), query(RedirectQuery), Route.mapTo(AppRoute.SignUp)),
 	AuthRegister: pipe(
 		literal("auth"),
 		slash(literal("register")),
@@ -251,10 +230,8 @@ const routers = {
 export const urlToAppRoute = Route.parseUrlWithFallback(
 	Route.oneOf(
 		routers.Root,
-		signIn.bare,
-		signIn.splat,
-		signUp.bare,
-		signUp.splat,
+		routers.SignIn,
+		routers.SignUp,
 		routers.AuthRegister,
 		routers.AuthContinue,
 		routers.AuthDesktop,
@@ -304,9 +281,17 @@ export const urlToAppRoute = Route.parseUrlWithFallback(
 export const hrefOf = (route: AppRoute): string =>
 	AppRoute.match<string>(route, {
 		...routers,
-		SignIn: (signInRoute) => (signInRoute.splat === "" ? signIn.bare : signIn.splat)(signInRoute),
-		SignUp: (signUpRoute) => (signUpRoute.splat === "" ? signUp.bare : signUp.splat)(signUpRoute),
 		NotFound: ({ path }) => path,
+	})
+
+/**
+ * The route of a same-origin path (`/x?y`), e.g. a remembered page to return to. Query parameters
+ * the route does not model are dropped.
+ */
+export const routeOfPath = (path: string): AppRoute =>
+	Option.match(Url.fromString(`https://hazel.invalid${path.startsWith("/") ? path : `/${path}`}`), {
+		onNone: () => AppRoute.NotFound({ path }),
+		onSome: urlToAppRoute,
 	})
 
 // HELPERS
@@ -326,15 +311,109 @@ export const isPublicRoute = AppRoute.isAnyOf([
 	"NotFound",
 ])
 
+/** `/$orgSlug/settings/*`. */
+export const isSettingsRoute = AppRoute.isAnyOf([
+	"SettingsGeneral",
+	"TeamSettings",
+	"SettingsInvitations",
+	"SettingsCustomEmojis",
+	"SettingsDebug",
+	"SettingsConnectInvites",
+	"SettingsChatSync",
+	"SettingsChatSyncConnection",
+	"SettingsIntegrations",
+	"SettingsIntegrationsInstalled",
+	"SettingsIntegrationsMarketplace",
+	"SettingsIntegrationsYourApps",
+	"SettingsIntegration",
+])
+
+/** `/$orgSlug/my-settings/*`. */
+export const isMySettingsRoute = AppRoute.isAnyOf([
+	"MySettingsAppearance",
+	"MySettingsProfile",
+	"MySettingsLinkedAccounts",
+	"MySettingsNotifications",
+	"MySettingsDesktop",
+])
+
+/** `/$orgSlug/notifications/*`. */
+export const isNotificationsRoute = AppRoute.isAnyOf([
+	"NotificationsAll",
+	"NotificationsGeneral",
+	"NotificationsThreads",
+	"NotificationsDms",
+])
+
+/** `/$orgSlug/chat/$channelId/*`: a channel's messages, files or media. */
+export const isChannelChatRoute = AppRoute.isAnyOf(["ChatChannel", "ChatFiles", "ChatFilesMedia"])
+
+/** `/$orgSlug/chat` and everything below it. */
+export const isChatRoute = AppRoute.isAnyOf(["ChatIndex", "ChatChannel", "ChatFiles", "ChatFilesMedia"])
+
+/** The integration and chat sync pages, which sit in a narrower content column. */
+export const hasContentColumn = AppRoute.isAnyOf([
+	"SettingsIntegrations",
+	"SettingsIntegrationsInstalled",
+	"SettingsIntegrationsMarketplace",
+	"SettingsIntegrationsYourApps",
+	"SettingsIntegration",
+	"SettingsChatSync",
+	"SettingsChatSyncConnection",
+])
+
 /** Which secondary sidebar and section layout an org route gets (legacy `AppSidebar`). */
 export type OrgSection = "Chat" | "Settings" | "MySettings" | "Notifications"
 
 export const orgSectionOf = (route: AppRoute): OrgSection | undefined => {
 	if (orgSlugOf(route) === undefined) return undefined
-	if (route._tag.startsWith("Settings") || route._tag === "TeamSettings") return "Settings"
-	if (route._tag.startsWith("MySettings")) return "MySettings"
-	if (route._tag.startsWith("Notifications")) return "Notifications"
+	if (isSettingsRoute(route)) return "Settings"
+	if (isMySettingsRoute(route)) return "MySettings"
+	if (isNotificationsRoute(route)) return "Notifications"
 	return "Chat"
+}
+
+/** `currentChannelIdAtom`: the channel a chat route shows. */
+export const chatChannelIdOf = (route: AppRoute): ChannelId | null =>
+	isChannelChatRoute(route) ? route.channelId : null
+
+/** The channel settings layout's tab a route shows (`channels/$channelId/settings/*`). */
+export const channelSettingsTabOf = (route: AppRoute): "overview" | "integrations" | "connect" | undefined =>
+	AppRoute.matchOrElse<"overview" | "integrations" | "connect" | undefined>(
+		route,
+		{
+			ChannelSettingsOverview: () => "overview",
+			ChannelSettingsIntegrations: () => "integrations",
+			ChannelSettingsConnect: () => "connect",
+		},
+		() => undefined,
+	)
+
+/** The document title for a route (the tab and window title). */
+export const titleOf = (route: AppRoute): string => {
+	const section = AppRoute.matchOrElse<string | undefined>(
+		route,
+		{
+			SignIn: () => "Sign in",
+			SignUp: () => "Sign up",
+			Join: () => "Join",
+			Invite: () => "Invitation",
+			Onboarding: () => "Welcome",
+			OnboardingSetupOrganization: () => "Welcome",
+			SelectOrganization: () => "Select a workspace",
+			OrgHome: () => "Home",
+			NotFound: () => "Not found",
+		},
+		() =>
+			Match.value(orgSectionOf(route)).pipe(
+				Match.when("Chat", () => (isChatRoute(route) ? "Chat" : "Channel settings")),
+				Match.when("Settings", () => "Settings"),
+				Match.when("MySettings", () => "My settings"),
+				Match.when("Notifications", () => "Activity"),
+				Match.orElse(() => undefined),
+			),
+	)
+	return section === undefined ? "Hazel Chat" : `${section} · Hazel Chat`
 }
 
 /** `/onboarding` with its search in legacy order: `navigate({ search: (prev) => ({ ...prev, step }) })`. */
@@ -343,44 +422,54 @@ export const onboardingHref = (orgId: OrganizationId | null, step: string): stri
 
 /** `/sign-in?redirect_url=`: where a signed-out visitor goes, coming back to `returnTo` afterwards. */
 export const signInHref = (returnTo: string): string =>
-	hrefOf(AppRoute.SignIn({ splat: "", redirectUrl: Option.some(returnTo) }))
+	hrefOf(AppRoute.SignIn({ redirectUrl: Option.some(returnTo) }))
 
 /** An organization's home, or its slug setup step while it has no slug yet. */
+export const organizationRoute = (organization: {
+	readonly id: OrganizationId
+	readonly slug: string | null
+}): AppRoute =>
+	organization.slug
+		? AppRoute.OrgHome({ orgSlug: organization.slug })
+		: AppRoute.OnboardingSetupOrganization({ orgId: Option.some(organization.id) })
+
 export const organizationHref = (organization: {
 	readonly id: OrganizationId
 	readonly slug: string | null
-}): string =>
-	hrefOf(
-		organization.slug
-			? AppRoute.OrgHome({ orgSlug: organization.slug })
-			: AppRoute.OnboardingSetupOrganization({ orgId: Option.some(organization.id) }),
-	)
+}): string => hrefOf(organizationRoute(organization))
 
 /** A channel scrolled to one message (`?messageId=`, read by the channel page, not the route). */
 export const chatMessageHref = (orgSlug: string, channelId: ChannelId, messageId: string): string =>
 	`${hrefOf(AppRoute.ChatChannel({ orgSlug, channelId }))}?${new URLSearchParams({ messageId })}`
 
 /** My Settings > Linked Accounts without an OAuth callback result. */
-export const linkedAccountsHref = (orgSlug: string): string =>
-	hrefOf(
-		AppRoute.MySettingsLinkedAccounts({
-			orgSlug,
-			connectionStatus: Option.none(),
-			provider: Option.none(),
-			errorCode: Option.none(),
-		}),
-	)
+export const linkedAccountsRoute = (orgSlug: string): AppRoute =>
+	AppRoute.MySettingsLinkedAccounts({
+		orgSlug,
+		connectionStatus: Option.none(),
+		provider: Option.none(),
+		errorCode: Option.none(),
+	})
+
+export const linkedAccountsHref = (orgSlug: string): string => hrefOf(linkedAccountsRoute(orgSlug))
 
 /** An integration's settings page without an OAuth callback result. */
+export const integrationRoute = (orgSlug: string, integrationId: string): AppRoute =>
+	AppRoute.SettingsIntegration({
+		orgSlug,
+		integrationId,
+		connectionStatus: Option.none(),
+		errorCode: Option.none(),
+	})
+
 export const integrationHref = (orgSlug: string, integrationId: string): string =>
-	hrefOf(
-		AppRoute.SettingsIntegration({
-			orgSlug,
-			integrationId,
-			connectionStatus: Option.none(),
-			errorCode: Option.none(),
-		}),
-	)
+	hrefOf(integrationRoute(orgSlug, integrationId))
+
+/** An org route, or `undefined` outside an org, where the org-only overlays never open. */
+export const orgRouteOf = (
+	orgSlug: string | null,
+	toRoute: (orgSlug: string) => AppRoute,
+): AppRoute | undefined => (orgSlug === null ? undefined : toRoute(orgSlug))
 
 /** An org route's href, or `null` outside an org, where the org-only overlays never open. */
 export const orgHrefOf = (orgSlug: string | null, toRoute: (orgSlug: string) => AppRoute): string | null =>

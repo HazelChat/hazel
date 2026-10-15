@@ -45,8 +45,3 @@ export const sectionLabelRoot = <Message>(
 	])
 }
 
-export const sectionLabelActions = <Message>(
-	h: HtmlBuilder<Message>,
-	options: { readonly className?: string },
-	children: ReadonlyArray<Html | string>,
-): Html => h.div([h.Class(twMerge(sectionLabelStyles.actions, options.className))], [...children])

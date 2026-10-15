@@ -1,16 +1,17 @@
-import type { OrganizationId, UserId } from "@hazel/schema"
+import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect } from "effect"
-import { getEffectivePresenceStatus } from "~/utils/presence"
 import { Mount } from "foldkit"
-import type { Update } from "foldkit"
 import { createLazy, type Html, type HtmlBuilder } from "foldkit/html"
 import { modifyFields } from "foldkit/struct"
+import { failureMessage } from "~/lib/error-messages"
+import { errorToastOf, successToast } from "../data/actions"
+import type { AppRoute } from "../route"
 import type * as Menu from "../ui/menu"
 import { sidebarContent, sidebarSectionGroup, sidebarStatic } from "../ui/sidebar"
 import type { ShellContext } from "./context"
-import type { UserStatus } from "./model"
-import { orgSwitcherHeader, type SwitcherOrg, userMenuFooter } from "./menus"
-import { emptyData, Message, type Model } from "./channels-sidebar/model"
+import type { SwitcherOrg, UserStatus } from "./model"
+import { orgSwitcherHeader, userMenuFooter } from "./menus"
+import { emptyData, Message, type Model, type SidebarOutcome } from "./channels-sidebar/model"
 import { PageOutMessage } from "../page/out-message"
 import { PersistDismissedHint } from "./channels-sidebar/hints"
 import {
@@ -21,7 +22,7 @@ import {
 	updateRowMenu,
 	updateSectionMenu,
 } from "./channels-sidebar/menu-update"
-import { sectionMenuView } from "./channels-sidebar/menus"
+import { sectionActionLabel, sectionMenuEntries, sectionMenuView } from "./channels-sidebar/menus"
 import { dragDescription, sectionPlusButton } from "./channels-sidebar/tree"
 import { sectionGroupContent } from "./channels-sidebar/view"
 
@@ -32,48 +33,38 @@ import { sectionGroupContent } from "./channels-sidebar/view"
 
 // MODEL AND MESSAGE
 
-export { Message, Model } from "./channels-sidebar/model"
+export { Message, Model, OpenMenu, SidebarFailure, SidebarOutcome } from "./channels-sidebar/model"
 
 // INIT
 
-export const init = (): Model => ({
+/** `isCreateChannelHintDismissed` is read from storage at boot (`loadIsCreateChannelHintDismissed`). */
+export const init = (options: { readonly isCreateChannelHintDismissed: boolean }): Model => ({
 	organizationId: null,
 	currentUserId: null,
-	nowMs: 0,
 	...emptyData,
-	isCreateChannelHintDismissed: false,
+	isCreateChannelHintDismissed: options.isCreateChannelHintDismissed,
 })
+
+export { loadIsCreateChannelHintDismissed } from "./channels-sidebar/hints"
 
 // UPDATE
 
 export type { SidebarReturn } from "./channels-sidebar/menu-update"
 
-/**
- * Every DM partner's derived status at `nowMs`. After the first tick, a tick only lands (and
- * re-renders) when a status flips, so the clock lags real time by at most one tick.
- */
-const presenceStatuses = (model: Model, nowMs: number) =>
-	model.presence
-		.map((presence) =>
-			getEffectivePresenceStatus(
-				{
-					status: presence.status,
-					lastSeenAt: presence.lastSeenMs === null ? null : new Date(presence.lastSeenMs),
-				},
-				nowMs,
-			),
-		)
-		.join()
+const outcomeTitles: { readonly [O in SidebarOutcome]: string } = {
+	Muted: "Channel muted",
+	Unmuted: "Channel unmuted",
+	Favorited: "Added to favorites",
+	Unfavorited: "Removed from favorites",
+	Left: "Left channel successfully",
+	MovedToSection: "Channel moved to section",
+	MovedToDefault: "Channel moved to default",
+	SectionDeleted: "Section deleted",
+}
 
 export const update = (model: Model, message: Message): SidebarReturn =>
 	Message.match<SidebarReturn>(message, {
 		CompletedScrollActiveIntoView: () => ({ model }),
-		TickedPresenceClock: ({ nowMs }) => ({
-			model:
-				model.nowMs !== 0 && presenceStatuses(model, model.nowMs) === presenceStatuses(model, nowMs)
-					? model
-					: modifyFields(model, { nowMs: () => nowMs }),
-		}),
 		UpdatedMembership: ({ membership }) => ({
 			model: modifyFields(model, { membership: () => membership }),
 		}),
@@ -104,14 +95,13 @@ export const update = (model: Model, message: Message): SidebarReturn =>
 		UpdatedDiscoverableChannels: ({ channels }) => ({
 			model: modifyFields(model, { discoverableChannels: () => channels }),
 		}),
-		LoadedDismissedHints: ({ isCreateChannelHintDismissed }) => ({
-			model: modifyFields(model, { isCreateChannelHintDismissed: () => isCreateChannelHintDismissed }),
-		}),
 		ClickedDismissCreateChannelHint: () => ({
 			model: modifyFields(model, { isCreateChannelHintDismissed: () => true }),
 			commands: [PersistDismissedHint({ hintId: "create-channel" })],
 		}),
 		CompletedPersistDismissedHint: () => ({ model }),
+		// Storage is full or blocked: the hint is already hidden for this session, it only comes back next boot.
+		FailedPersistDismissedHint: () => ({ model }),
 		GotRowMenuMessage: ({ channelId, orgSlug, message }) =>
 			updateRowMenu(model, channelId, orgSlug, message),
 		GotSectionMenuMessage: ({ sectionId: sectionKey, message }) =>
@@ -122,27 +112,50 @@ export const update = (model: Model, message: Message): SidebarReturn =>
 			outMessage: PageOutMessage.RequestedCommandPalette({ page: "home" }),
 		}),
 		ClickedSectionAction: ({ action }) => requestedSectionAction(model, action),
-		SucceededSidebarAction: ({ toast }) => ({
+		SucceededSidebarAction: ({ outcome }) => ({
 			model,
-			outMessage: PageOutMessage.RequestedToast({ toast }),
+			outMessage: PageOutMessage.RequestedToast({ toast: successToast(outcomeTitles[outcome]) }),
 		}),
-		FailedSidebarAction: ({ toast }) => ({ model, outMessage: PageOutMessage.RequestedToast({ toast }) }),
+		FailedSidebarAction: ({ reason }) => ({
+			model,
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToastOf(
+					failureMessage(reason, {
+						MemberNotFound: {
+							title: "Membership not found",
+							description: "You may no longer be a member of this item.",
+						},
+						ChannelNotFound: {
+							title: "Channel not found",
+							description: "This channel may have been deleted.",
+						},
+						SectionNotFound: {
+							title: "Section not found",
+							description: "This section may have been deleted.",
+						},
+						SectionAlreadyDeleted: {
+							title: "Section not found",
+							description: "This section may have already been deleted.",
+						},
+					}),
+				),
+			}),
+		}),
 	})
 
 /** The root learned the organization or the signed-in user; the sidebar's queries depend on both. */
+/** The data the sidebar holds belongs to one organization and user; another pair starts it empty. */
 export const setContext = (
 	model: Model,
 	context: { readonly organizationId: OrganizationId | null; readonly currentUserId: UserId | null },
-): SidebarReturn =>
+): Model =>
 	model.organizationId === context.organizationId && model.currentUserId === context.currentUserId
-		? { model }
+		? model
 		: {
-				model: {
-					...model,
-					...emptyData,
-					organizationId: context.organizationId,
-					currentUserId: context.currentUserId,
-				},
+				...model,
+				...emptyData,
+				organizationId: context.organizationId,
+				currentUserId: context.currentUserId,
 			}
 
 // SUBSCRIPTION
@@ -169,6 +182,8 @@ const ScrollActiveIntoView = Mount.define("ScrollActiveIntoView", {
 export interface SidebarChrome<ParentMessage> {
 	readonly userMenu: Menu.Model
 	readonly orgSwitcher: Menu.Model
+	readonly userMenuEntries: ReadonlyArray<Menu.Entry>
+	readonly orgSwitcherEntries: ReadonlyArray<Menu.Entry>
 	readonly organizations: ReadonlyArray<SwitcherOrg>
 	readonly userStatus: UserStatus | null
 	/** The status's "Until ..." label at the root's clock (a string, so the memo stays cheap). */
@@ -179,14 +194,17 @@ export interface SidebarChrome<ParentMessage> {
 
 export interface ViewContext<ParentMessage> {
 	readonly shell: ShellContext
-	readonly activeChannelId: string | undefined
+	/** `chatChannelIdOf(route)`: the channel whose chat or files are open, its row is active. */
+	readonly activeChannelId: ChannelId | null
+	/** The root's wall clock (`presenceNowSignal`), for deriving stale DM presence. */
+	readonly nowMs: number
 	readonly chrome: SidebarChrome<ParentMessage>
 }
 
-/** The shell fields the sidebar reads, as primitives so the lazy slot can compare them. */
+/** The shell fields the sidebar reads, as primitives or stable refs so the lazy slot can compare them. */
 type ShellArgs = readonly [
 	orgSlug: string,
-	pathname: string,
+	route: AppRoute,
 	orgName: string | undefined,
 	orgLogoUrl: string | null | undefined,
 	displayName: string | undefined,
@@ -198,20 +216,23 @@ type ShellArgs = readonly [
 const sidebarBody = <ParentMessage>(
 	h: HtmlBuilder<ParentMessage>,
 	model: Model,
-	activeChannelId: string | undefined,
+	activeChannelId: ChannelId | null,
+	nowMs: number,
 	toParentMessage: (message: Message) => ParentMessage,
 	userMenu: Menu.Model,
 	orgSwitcher: Menu.Model,
+	userMenuEntries: ReadonlyArray<Menu.Entry>,
+	orgSwitcherEntries: ReadonlyArray<Menu.Entry>,
 	organizations: ReadonlyArray<SwitcherOrg>,
 	userStatus: UserStatus | null,
 	statusExpiration: string | null,
 	toUserMenuMessage: (message: Menu.Message) => ParentMessage,
 	toOrgSwitcherMessage: (message: Menu.Message) => ParentMessage,
-	...[orgSlug, pathname, orgName, orgLogoUrl, displayName, email, avatarUrl, appVersion]: ShellArgs
+	...[orgSlug, route, orgName, orgLogoUrl, displayName, email, avatarUrl, appVersion]: ShellArgs
 ): Html => {
 	const shell: ShellContext = {
 		orgSlug,
-		pathname,
+		route,
 		organization: orgName === undefined ? undefined : { name: orgName, logoUrl: orgLogoUrl ?? null },
 		currentUser:
 			displayName === undefined || email === undefined
@@ -220,14 +241,15 @@ const sidebarBody = <ParentMessage>(
 		appVersion,
 	}
 	return sidebarStatic(h, "flex flex-1", [
-		orgSwitcherHeader(h, orgSwitcher, shell, organizations, toOrgSwitcherMessage),
+		orgSwitcherHeader(h, orgSwitcher, orgSwitcherEntries, shell, organizations, toOrgSwitcherMessage),
 		sidebarContent(h, { state: "expanded" }, [
 			sidebarSectionGroup(
 				h,
 				sectionGroupContent(h, model, {
 					orgSlug,
-					pathname,
+					route,
 					activeChannelId,
+					nowMs,
 					onActiveMount: h.OnMount(Mount.mapMessage(ScrollActiveIntoView(), toParentMessage)),
 					onBrowseChannels: h.OnClick(toParentMessage(Message.ClickedBrowseChannels())),
 					onDismissCreateChannelHint: h.OnClick(
@@ -238,7 +260,7 @@ const sidebarBody = <ParentMessage>(
 				}),
 			),
 		]),
-		userMenuFooter(h, userMenu, shell, toUserMenuMessage, userStatus, statusExpiration),
+		userMenuFooter(h, userMenu, userMenuEntries, shell, toUserMenuMessage, userStatus, statusExpiration),
 		dragDescription(h),
 	])
 }
@@ -253,9 +275,12 @@ const sectionActionView = <ParentMessage>(
 	const { actions, isEditable } = sectionActionsOf(model, sectionKey)
 	const [only] = actions
 	return only !== undefined && actions.length === 1 && !isEditable
-		? sectionPlusButton(h, [h.OnClick(toParentMessage(Message.ClickedSectionAction({ action: only })))])
+		? sectionPlusButton(h, sectionActionLabel(only), [
+				h.OnClick(toParentMessage(Message.ClickedSectionAction({ action: only }))),
+			])
 		: sectionMenuView(h, {
 				menu: sectionMenuOf(model, sectionKey),
+				entries: sectionMenuEntries(actions, isEditable),
 				toMessage: (message) =>
 					toParentMessage(Message.GotSectionMenuMessage({ sectionId: sectionKey, message })),
 			})
@@ -278,16 +303,19 @@ export const view = <ParentMessage>(
 		h,
 		model,
 		context.activeChannelId,
+		context.nowMs,
 		toParentMessage,
 		chrome.userMenu,
 		chrome.orgSwitcher,
+		chrome.userMenuEntries,
+		chrome.orgSwitcherEntries,
 		chrome.organizations,
 		chrome.userStatus,
 		chrome.statusExpiration,
 		chrome.toUserMenuMessage,
 		chrome.toOrgSwitcherMessage,
 		shell.orgSlug,
-		shell.pathname,
+		shell.route,
 		shell.organization?.name,
 		shell.organization?.logoUrl,
 		shell.currentUser?.displayName,

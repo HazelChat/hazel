@@ -9,7 +9,7 @@
 import { bindBotGateways } from "@hazel/bot-gateway/object"
 import * as Cloudflare from "alchemy/Cloudflare"
 import { RuntimeContext } from "alchemy/RuntimeContext"
-import { Context, Effect, Layer, Ref } from "effect"
+import { Cause, Context, Effect, Layer, Ref } from "effect"
 import { FetchHttpClient } from "effect/http"
 import { AppServicesLive } from "../app"
 import { MessageOutboxProcessor, type OutboxBatchResult } from "../services/message-outbox-processor"
@@ -81,11 +81,14 @@ export const OutboxDispatcherObjectLive = OutboxDispatcherObject.make(
 					while (again) {
 						yield* Ref.set(rerun, false)
 						const { backlog, retried } = yield* drainOnce.pipe(
+							// Includes defects: a crashed drain must still re-arm the alarm below.
+							// Interruption is the object shutting down and passes through.
 							Effect.catchCause((cause) =>
-								Effect.logError("Outbox drain failed", {
-									workerId,
-									cause: String(cause),
-								}).pipe(Effect.as({ backlog: false, retried: 1 })),
+								Cause.hasInterruptsOnly(cause)
+									? Effect.interrupt
+									: Effect.logError("Outbox drain failed", cause, { workerId }).pipe(
+											Effect.as({ backlog: false, retried: 1 }),
+										),
 							),
 						)
 						if (backlog || retried > 0) {

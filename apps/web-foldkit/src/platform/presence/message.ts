@@ -1,6 +1,8 @@
 import { ChannelId, UserId } from "@hazel/schema"
 import { Schema } from "effect"
 import { defineMessageUnion } from "foldkit/message"
+import { CommonReason } from "~/lib/error-messages"
+import { Sent } from "./model"
 
 export const Message = defineMessageUnion({
 	/** The org layout's user and route channel, as of `nowMs` (null user: outside the layout). */
@@ -16,11 +18,14 @@ export const Message = defineMessageUnion({
 	/** The AFK deadline of the latest activity passed. */
 	ReachedAfkTimeout: { nowMs: Schema.Number },
 	ElapsedSyncDebounce: { version: Schema.Number },
-	SucceededSendPresenceUpdate: {},
-	FailedSendPresenceUpdate: { reason: Schema.String },
+	/** The server confirmed the write for `userId`; it now holds `sent`. */
+	SucceededSendPresenceUpdate: { userId: UserId, sent: Sent },
+	FailedSendPresenceUpdate: { userId: UserId, reason: CommonReason },
+	/** The backoff after a failed write ran out: sync again. */
+	ElapsedSyncRetry: { userId: UserId },
 	TickedHeartbeat: {},
 	SucceededSendHeartbeat: {},
-	FailedSendHeartbeat: { reason: Schema.String },
+	FailedSendHeartbeat: { reason: CommonReason },
 	CompletedBroadcastActivity: {},
 })
 export type Message = typeof Message.Type

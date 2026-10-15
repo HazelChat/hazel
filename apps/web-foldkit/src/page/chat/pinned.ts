@@ -1,5 +1,5 @@
 import type { Html, HtmlBuilder } from "foldkit/html"
-import { format } from "~/lib/date-fns-shared"
+import { format } from "date-fns"
 import { IconClose, IconPin } from "../../icons"
 import { avatar } from "../../ui/avatar"
 import * as Popover from "../../ui/popover"
@@ -17,7 +17,6 @@ const authorAvatar = <M>(h: HtmlBuilder<M>, pin: PinnedInfo): Html =>
 		[
 			h.Attribute("aria-expanded", "false"),
 			h.Class("size-fit outline-hidden"),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-react-aria-pressable", "true"),
 			h.Attribute("tabindex", "0"),
 			h.Attribute("type", "button"),
@@ -142,7 +141,7 @@ export const pinnedPopoverView = <M>(
 		model: popover,
 		view: Popover.view,
 		viewInputs: {
-			toTrigger: (attributes, overlay) => pinnedButton(h, attributes, overlay),
+			toTrigger: (attributes) => pinnedButton(h, attributes),
 			toContent: () => (popover.isOpen ? content(h, pins) : []),
 			placement: "bottom end",
 			className: "w-96 p-0",

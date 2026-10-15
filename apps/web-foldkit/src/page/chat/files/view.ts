@@ -8,7 +8,7 @@ import { searchField } from "../../../ui/search-field"
 import { view as selectView } from "../../../ui/select-view"
 import { documentsOf, filterAttachments, formatRelativeTime, mediaOf, uploaderIdentity } from "./derive"
 import { type FilesContext, filesHref, mediaGalleryView, mediaGridView } from "./media-view"
-import { Message, type Model, SEARCH_FIELD_ID } from "./page"
+import { filterItems, Message, type Model, SEARCH_FIELD_ID } from "./page"
 import type { FileAttachment } from "./queries"
 
 /** The `files/` and `files/media` route outlets (the lead renders the chat header and tab bar). */
@@ -37,7 +37,7 @@ const headerView = <M>(context: FilesContext<M>, fileCount: number): Html => {
 				model: model.filter,
 				view: selectView,
 				// Kit gap: legacy has no Label and puts `w-36` on the trigger (see the report).
-				viewInputs: { triggerClassName: "w-36" },
+				viewInputs: { items: filterItems, triggerClassName: "w-36" },
 				toParentMessage: (message) => toParentMessage(Message.GotFilterSelectMessage({ message })),
 			}),
 			h.span(
@@ -50,7 +50,7 @@ const headerView = <M>(context: FilesContext<M>, fileCount: number): Html => {
 
 /** `DocumentItem` of `channel-files-documents-list.tsx`. */
 const documentItem = <M>(context: FilesContext<M>, attachment: FileAttachment): Html => {
-	const { h, model, toParentMessage } = context
+	const { h, nowMs, toParentMessage } = context
 	const uploader = uploaderIdentity(attachment.uploader)
 	return h.keyed("div")(
 		attachment.id,
@@ -72,7 +72,7 @@ const documentItem = <M>(context: FilesContext<M>, attachment: FileAttachment): 
 						[
 							h.span([], [formatFileSize(attachment.fileSize)]),
 							h.span([h.AriaHidden(true)], ["·"]),
-							h.span([], [formatRelativeTime(attachment.uploadedAtMs, model.nowMs)]),
+							h.span([], [formatRelativeTime(attachment.uploadedAtMs, nowMs)]),
 						],
 					),
 				],
@@ -219,10 +219,17 @@ const mediaPageView = <M>(context: FilesContext<M>): Html => {
 	)
 }
 
-export const view = <M>(h: HtmlBuilder<M>, model: Model, toParentMessage: (message: Message) => M): Html => {
+/** `nowMs` is the shared clock, for "Today" / "Yesterday" (legacy reads `new Date()` at render). */
+export const view = <M>(
+	h: HtmlBuilder<M>,
+	model: Model,
+	toParentMessage: (message: Message) => M,
+	nowMs: number,
+): Html => {
 	const context: FilesContext<M> = {
 		h,
 		model,
+		nowMs,
 		toParentMessage,
 		wiring: {
 			model: model.interaction,
@@ -231,3 +238,5 @@ export const view = <M>(h: HtmlBuilder<M>, model: Model, toParentMessage: (messa
 	}
 	return model.view === "media" ? mediaPageView(context) : filesView(context)
 }
+
+export { imageViewerOverlay } from "./media-view"

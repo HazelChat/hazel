@@ -30,6 +30,24 @@ export const rememberReturnTo = (returnTo: string | null): Effect.Effect<void> =
 		}
 	})
 
+/** The remembered path, left in place: it applies until a redirect actually goes there (`forgetReturnTo`). */
+export const readReturnTo: Effect.Effect<string | null> = Effect.sync(() => {
+	try {
+		return safeReturnTo(sessionStorage.getItem(KEY))
+	} catch {
+		return null
+	}
+})
+
+/** Drops the remembered path once the app went there. */
+export const forgetReturnTo: Effect.Effect<void> = Effect.sync(() => {
+	try {
+		sessionStorage.removeItem(KEY)
+	} catch {
+		// Storage unavailable (private mode): nothing was remembered.
+	}
+})
+
 /** The remembered path, removed as it is read so it applies to one sign-in only. */
 export const takeReturnTo: Effect.Effect<string | null> = Effect.sync(() => {
 	try {

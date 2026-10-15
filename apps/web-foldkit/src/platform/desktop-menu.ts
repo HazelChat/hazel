@@ -13,16 +13,32 @@ const events: ReadonlyArray<readonly [string, DesktopMenuItem]> = [
 	["menu-invite", "Invite"],
 ]
 
-/** Every menu item the user picks; empty outside the desktop app. */
+/** The Tauri host refused a menu event listener. */
+class MenuListenError extends Schema.TaggedError<MenuListenError>()("MenuListenError", {
+	event: Schema.String,
+	cause: Schema.Defect(),
+}) {}
+
+/** Every menu item the user picks; empty outside the desktop app. A listener that fails is skipped. */
 export const desktopMenuItems: Stream.Stream<DesktopMenuItem> = Stream.callback<DesktopMenuItem>((queue) =>
-	Effect.gen(function* () {
+	Effect.suspend(() => {
 		const event = getTauriEvent()
-		if (!isDesktop || event === undefined) return
-		for (const [name, item] of events) {
-			yield* Effect.acquireRelease(
-				Effect.promise(() => event.listen(name, () => Queue.offerUnsafe(queue, item))),
-				(unlisten) => Effect.sync(unlisten),
-			)
-		}
+		if (!isDesktop || event === undefined) return Effect.void
+		return Effect.forEach(
+			events,
+			([name, item]) =>
+				Effect.acquireRelease(
+					Effect.tryPromise({
+						try: () => event.listen(name, () => Queue.offerUnsafe(queue, item)),
+						catch: (cause) => new MenuListenError({ event: name, cause }),
+					}),
+					(unlisten) => Effect.sync(unlisten),
+				).pipe(
+					Effect.catchTag("MenuListenError", (error) =>
+						Effect.logWarning("[desktop-menu] listener unavailable", error.event),
+					),
+				),
+			{ discard: true },
+		)
 	}).pipe(Effect.andThen(Effect.never)),
 )

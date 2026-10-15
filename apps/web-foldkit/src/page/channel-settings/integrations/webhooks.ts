@@ -5,8 +5,9 @@ import { button } from "../../../ui/button"
 import { loader } from "../../../ui/loader"
 import { textField } from "../../../ui/text-field"
 import type { Shared } from "../../contract"
+import { listBody } from "./cards"
 import { Message } from "./message"
-import { type CreateForm, isNameValid, type Model, rowMenuId, type Webhook } from "./model"
+import { type CreateForm, type Model, rowMenuId, type Webhook } from "./model"
 import { formatDistanceToNow } from "./relative-time"
 import { rowMenu } from "./row-menu"
 import { tokenDisplay } from "./token-display"
@@ -90,6 +91,7 @@ const compactWebhookItem = (
 								successMessage: "URL copied",
 								failureMessage: "Failed to copy",
 							}),
+							attributes: [h.AriaLabel("Copy webhook URL")],
 						},
 						[copyIcon(h, model.copiedIds.includes(webhook.id))],
 					),
@@ -98,6 +100,7 @@ const compactWebhookItem = (
 						id: webhook.id,
 						menu: model.rowMenus.find((menu) => menu.id === rowMenuId("webhook", webhook.id)),
 						isEnabled: webhook.isEnabled,
+						isToggling: model.togglingRowIds.includes(webhook.id),
 						triggerClassName: "text-muted-fg",
 						labels: { enable: "Enable", disable: "Disable", remove: "Delete" },
 					}),
@@ -118,7 +121,7 @@ const createWebhookForm = (h: HtmlBuilder<Message>, model: Model, form: CreateFo
 			IconPlus(h, { attributes: { "data-slot": "icon" } }),
 			"Create webhook",
 		])
-	const isNameInvalid = form.isNameDirty && !isNameValid(form.name)
+	const nameError = form.name._tag === "Invalid" ? form.name.errors[0] : null
 	return h.div(
 		[h.Class("rounded-xl border border-border bg-bg p-4")],
 		[
@@ -127,17 +130,17 @@ const createWebhookForm = (h: HtmlBuilder<Message>, model: Model, form: CreateFo
 				[
 					textField(
 						h,
-						{ id: "webhook-name", value: form.name, onInput: toField("name") },
+						{
+							id: "webhook-name",
+							value: form.name.value,
+							onInput: toField("name"),
+							isInvalid: nameError !== null,
+						},
 						(field) => [
 							field.label(["Name"]),
 							field.description(["A display name for this webhook"]),
-							field.input({
-								placeholder: "My Webhook",
-								attributes: [
-									h.AriaInvalid(isNameInvalid),
-									...(isNameInvalid ? [h.DataAttribute("invalid", "true")] : []),
-								],
-							}),
+							field.input({ placeholder: "My Webhook" }),
+							field.fieldError([nameError ?? ""]),
 						],
 					),
 					textField(
@@ -232,24 +235,27 @@ export const customWebhooksCard = (
 			h.div(
 				[h.Class("p-4")],
 				[
-					model.webhooks.isLoading
-						? h.div(
+					listBody(h, "webhook", model.webhooks.data, {
+						loading: () =>
+							h.div(
 								[h.Class("flex items-center justify-center py-6")],
 								[loader(h, { className: "size-5" })],
-							)
-						: regular.length === 0
-							? h.div(
-									[
-										h.Class(
-											"mb-4 rounded-lg border border-border border-dashed py-6 text-center",
-										),
-									],
-									[h.p([h.Class("text-muted-fg text-sm")], ["No webhooks yet"])],
-								)
-							: h.div(
-									[h.Class("mb-4 flex flex-col gap-2")],
-									regular.map((webhook) => compactWebhookItem(h, model, webhook, shared)),
-								),
+							),
+						empty: () =>
+							h.div(
+								[
+									h.Class(
+										"mb-4 rounded-lg border border-border border-dashed py-6 text-center",
+									),
+								],
+								[h.p([h.Class("text-muted-fg text-sm")], ["No webhooks yet"])],
+							),
+						rows: () =>
+							h.div(
+								[h.Class("mb-4 flex flex-col gap-2")],
+								regular.map((webhook) => compactWebhookItem(h, model, webhook, shared)),
+							),
+					}),
 					createWebhookForm(h, model, model.createForm),
 				],
 			),

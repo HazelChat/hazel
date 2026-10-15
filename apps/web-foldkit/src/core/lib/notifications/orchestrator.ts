@@ -1,5 +1,4 @@
 import { toEpochMs } from "~/lib/utils"
-import { pushNotificationDiagnostics } from "./diagnostics-store"
 import type {
 	NotificationDecision,
 	NotificationDecisionContext,
@@ -10,7 +9,6 @@ import type {
 
 export interface NotificationOrchestratorDependencies {
 	getContext: () => NotificationDecisionContext
-	inAppSink: NotificationSink
 	soundSink: NotificationSink
 	nativeSink: NotificationSink
 }
@@ -50,7 +48,8 @@ export class NotificationOrchestrator {
 	}
 
 	private async processQueue() {
-		if (!this.deps || this.processing) return
+		const deps = this.deps
+		if (!deps || this.processing) return
 		this.processing = true
 
 		try {
@@ -60,8 +59,7 @@ export class NotificationOrchestrator {
 					continue
 				}
 
-				const record = await this.processEvent(event)
-				pushNotificationDiagnostics(record)
+				const record = await this.processEvent(deps, event)
 
 				const hasFailures = record.results.some((result) => result.status === "failed")
 				if (!hasFailures) {
@@ -77,18 +75,16 @@ export class NotificationOrchestrator {
 		}
 	}
 
-	private async processEvent(event: NotificationEvent): Promise<NotificationProcessingRecord> {
-		if (!this.deps) {
-			throw new Error("NotificationOrchestrator dependencies are not configured")
-		}
-
+	private async processEvent(
+		deps: NotificationOrchestratorDependencies,
+		event: NotificationEvent,
+	): Promise<NotificationProcessingRecord> {
 		const startedAt = Date.now()
-		const decision = this.makeDecision(event, this.deps.getContext())
+		const decision = this.makeDecision(event, deps.getContext())
 
 		const results = await Promise.all([
-			this.deps.inAppSink.handle(event, decision),
-			this.deps.soundSink.handle(event, decision),
-			this.deps.nativeSink.handle(event, decision),
+			deps.soundSink.handle(event, decision),
+			deps.nativeSink.handle(event, decision),
 		])
 
 		const finishedAt = Date.now()

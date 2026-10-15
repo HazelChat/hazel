@@ -1,11 +1,18 @@
 import type { Attribute, Html, HtmlBuilder } from "foldkit/html"
 import { twMerge } from "tailwind-merge"
 import { IconBell, IconDashboard, IconGear, IconMenu, IconMsgs } from "../icons"
-import { AppRoute, hrefOf } from "../route"
+import {
+	AppRoute,
+	hrefOf,
+	isChannelChatRoute,
+	isChatRoute,
+	isNotificationsRoute,
+	isSettingsRoute,
+} from "../route"
 import { button } from "../ui/button"
-import type * as Modal from "../ui/modal"
+import * as Modal from "../ui/modal"
 import * as Sheet from "../ui/sheet"
-import { isActiveFuzzy, type ShellContext } from "./context"
+import type { ShellContext } from "./context"
 
 /** The mobile shell (`useSidebar().isMobile`): bottom nav, the sidebar sheet and its menu buttons. */
 
@@ -24,11 +31,10 @@ export const mobileNav = <Message>(
 	const chat = hrefOf(AppRoute.ChatIndex({ orgSlug }))
 	const notifications = hrefOf(AppRoute.NotificationsAll({ orgSlug }))
 	const settings = hrefOf(AppRoute.SettingsGeneral({ orgSlug }))
-	const path = context.pathname
-	const link = (label: string, href: string, isActive: boolean, icon: Html) => {
-		// TanStack `Link` marks any fuzzy match active, independently of the colour rule above.
-		const isLinkActive = isActiveFuzzy(path, href)
-		return h.a(
+	const { route } = context
+	/** `isActive` colours the item; `isLinkActive` is TanStack `Link`'s own (fuzzy) match. */
+	const link = (label: string, href: string, isActive: boolean, isLinkActive: boolean, icon: Html) =>
+		h.a(
 			[
 				h.Class(
 					twMerge(
@@ -44,8 +50,6 @@ export const mobileNav = <Message>(
 			],
 			[icon, h.span([h.Class("font-medium text-[10px]")], [label])],
 		)
-	}
-	const chatPrefix = `${chat}/`
 	return h.nav(
 		[
 			h.Class(
@@ -67,23 +71,32 @@ export const mobileNav = <Message>(
 							h.span([h.Class("font-medium text-[10px]")], ["Menu"]),
 						],
 					),
-					link("Home", home, path === home, IconDashboard(h, { className: "size-6" })),
+					link(
+						"Home",
+						home,
+						route._tag === "OrgHome",
+						route._tag === "OrgHome",
+						IconDashboard(h, { className: "size-6" }),
+					),
 					link(
 						"Messages",
 						chat,
-						path.startsWith(chatPrefix) && path.length > chatPrefix.length,
+						isChannelChatRoute(route),
+						isChatRoute(route),
 						IconMsgs(h, { className: "size-6" }),
 					),
 					link(
 						"Activity",
 						notifications,
-						isActiveFuzzy(path, notifications),
+						isNotificationsRoute(route),
+						isNotificationsRoute(route),
 						IconBell(h, { className: "size-6" }),
 					),
 					link(
 						"Settings",
 						settings,
-						isActiveFuzzy(path, settings),
+						isSettingsRoute(route),
+						isSettingsRoute(route),
 						IconGear(h, { className: "size-6" }),
 					),
 				],
@@ -104,7 +117,7 @@ export const mobileMenuButton = <Message>(
 			intent: "plain",
 			size: "sq-xs",
 			className: twMerge("-ml-1 md:hidden", options.className),
-			attributes: [options.onPress],
+			attributes: [h.AriaLabel("Open sidebar"), options.onPress],
 		},
 		[IconMenu(h, { className: "size-5" })],
 	)
@@ -112,6 +125,10 @@ export const mobileMenuButton = <Message>(
 /** `<span className="sr-only" aria-hidden data-intent>`: what `<Sidebar>` leaves in place on mobile. */
 export const mobileSidebarPlaceholder = <Message>(h: HtmlBuilder<Message>): Html =>
 	h.span([h.Attribute("aria-hidden", "true"), h.Class("sr-only"), h.Attribute("data-intent", "default")])
+
+/** The sheet's Model, derived from the shell's `isSidebarOpen`: open for as long as the flag is set. */
+export const mobileSidebarModel = (isOpen: boolean): Modal.Model =>
+	isOpen ? Modal.initOpen(MOBILE_SIDEBAR_ID) : Modal.init(MOBILE_SIDEBAR_ID)
 
 /** `<Sidebar>` on mobile: a controlled left `SheetContent` labelled "Sidebar", without a close button. */
 export const mobileSidebarSheet = <Message>(
@@ -124,19 +141,15 @@ export const mobileSidebarSheet = <Message>(
 ): Html =>
 	h.submodel({
 		slotId: MOBILE_SIDEBAR_ID,
-		model: { id: MOBILE_SIDEBAR_ID, isOpen: options.isOpen },
+		model: mobileSidebarModel(options.isOpen),
 		view: Sheet.view,
 		viewInputs: {
-			// Controlled from the header and bottom nav, so the overlay renders without a trigger.
-			toTrigger: (_attributes, overlay) => overlay,
 			toContent: () => options.children,
 			side: "left",
 			closeButton: false,
 			ariaLabel: "Sidebar",
-			restoresFocusToPrevious: true,
-			overlayAttributes: { "data-slot": "sidebar", "data-intent": "default" },
-			className:
-				"w-(--sidebar-width) entering:blur-in exiting:blur-out [--sidebar-width:18rem] has-data-[slot=calendar]:[--sidebar-width:23rem]",
+			panelAttributes: { "data-slot": "sidebar", "data-intent": "default" },
+			className: "w-(--sidebar-width) [--sidebar-width:18rem] has-data-[slot=calendar]:[--sidebar-width:23rem]",
 		},
 		toParentMessage: options.toMessage,
 	})

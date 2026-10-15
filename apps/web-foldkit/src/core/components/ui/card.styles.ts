@@ -1,4 +1,3 @@
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const cardStyles = {
 	card: "overflow-hidden rounded-xl border shadow-sm",
 	cardDefault: "border-border bg-bg",

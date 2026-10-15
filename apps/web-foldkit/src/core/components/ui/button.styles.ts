@@ -1,15 +1,14 @@
 import { tv } from "tailwind-variants"
 
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const buttonStyles = tv({
 	base: [
 		"[--btn-border:var(--color-fg)]/15 [--btn-icon-active:var(--btn-fg)] [--btn-outline:var(--btn-bg)] [--btn-radius:calc(var(--radius-lg)-1px)] [--btn-ring:var(--btn-bg)]/20",
-		"bg-(--btn-bg) text-(--btn-fg) outline-(--btn-outline) ring-(--btn-ring) hover:bg-(--btn-overlay)",
+		"bg-(--btn-bg) text-(--btn-fg) outline-(--btn-outline) ring-(--btn-ring) not-disabled:not-data-pending:hover:bg-(--btn-overlay)",
 		"relative isolate inline-flex items-center justify-center border border-(--btn-border) font-medium hover:no-underline",
 		"focus:outline-0 focus-visible:outline focus-visible:outline-offset-2 focus-visible:ring-2 focus-visible:ring-offset-3 focus-visible:ring-offset-bg",
-		"*:data-[slot=icon]:-mx-0.5 *:data-[slot=icon]:shrink-0 *:data-[slot=icon]:self-center *:data-[slot=icon]:text-(--btn-icon) focus-visible:*:data-[slot=icon]:text-(--btn-icon-active)/80 hover:*:data-[slot=icon]:text-(--btn-icon-active)/90 forced-colors:[--btn-icon:ButtonText] forced-colors:hover:[--btn-icon:ButtonText]",
+		"*:data-[slot=icon]:-mx-0.5 *:data-[slot=icon]:shrink-0 *:data-[slot=icon]:self-center *:data-[slot=icon]:text-(--btn-icon) focus-visible:*:data-[slot=icon]:text-(--btn-icon-active)/80 not-disabled:not-data-pending:hover:*:data-[slot=icon]:text-(--btn-icon-active)/90 forced-colors:[--btn-icon:ButtonText] forced-colors:hover:[--btn-icon:ButtonText]",
 		"*:data-[slot=loader]:-mx-0.5 *:data-[slot=loader]:shrink-0 *:data-[slot=loader]:self-center *:data-[slot=loader]:text-(--btn-icon)",
-		"pending:opacity-50 disabled:opacity-50 disabled:forced-colors:text-[GrayText]",
+		"data-pending:opacity-50 data-disabled:opacity-50 data-disabled:forced-colors:text-[GrayText]",
 		"*:data-[slot=color-swatch]:-mx-0.5 *:data-[slot=color-swatch]:shrink-0 *:data-[slot=color-swatch]:self-center *:data-[slot=color-swatch]:[--color-swatch-size:--spacing(5)]",
 	],
 	variants: {

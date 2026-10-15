@@ -9,13 +9,14 @@ import { loader } from "../../../ui/loader"
 import * as Modal from "../../../ui/modal"
 import { cropArea } from "./crop"
 import { Message } from "./message"
+import * as DropZone from "../../shared/drop-zone"
+import { ALLOWED_AVATAR_TYPES } from "../../settings/upload"
 import { AVATAR_BUTTON, FILE_INPUT_ID, type Model } from "./model"
-import { interaction, toCropModalMessage } from "./update"
+import { interaction, toCropModalMessage, toDropZoneMessage } from "./update"
 
 /** Port of `components/profile/profile-picture-upload.tsx` and `avatar-crop-modal.tsx`. */
 
 const squircle = <M>(h: HtmlBuilder<M>) => h.Attribute("style", "corner-shape: squircle;")
-const ALLOWED_TYPES = "image/jpeg,image/png,image/webp"
 
 const dropOverlay = <M>(h: HtmlBuilder<M>, label: string, labelClassName: string) =>
 	h.div(
@@ -67,7 +68,9 @@ export const profilePictureUpload = (
 	user: { readonly avatarUrl: string | null; readonly initials: string },
 ): Html => {
 	const wiring = interaction.wiring(model)
-	const isDraggingOnPage = model.dragDepth > 0
+	const isUploading = model.avatarAction._tag === "Uploading"
+	const isOver = model.dropZone.isOver
+	const isDraggingOnPage = DropZone.isDraggingOnPage(model.dropZone)
 	return h.div(
 		[h.Class("relative inline-block")],
 		[
@@ -76,16 +79,11 @@ export const profilePictureUpload = (
 					h.Class(
 						"rounded-xl focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
 					),
-					h.DataAttribute("rac", ""),
-					...(model.isDropTarget ? [h.DataAttribute("drop-target", "true")] : []),
-					...(model.isUploading
+					...(isUploading
 						? [h.DataAttribute("disabled", "true")]
-						: [
-								h.OnDragEnter(Message.EnteredDropZone()),
-								h.OnDragLeave(Message.LeftDropZone()),
-								h.OnDragOver(Message.EnteredDropZone()),
-								h.OnDropFiles((files) => Message.SelectedAvatarFiles({ files })),
-							]),
+						: DropZone.zoneAttributes(h, model.dropZone, toDropZoneMessage, (files) =>
+								Message.SelectedAvatarFiles({ files }),
+							)),
 				],
 				[
 					h.div(
@@ -110,15 +108,15 @@ export const profilePictureUpload = (
 						{
 							className: cx(
 								"group relative size-24 cursor-pointer rounded-xl transition-all duration-200",
-								model.isUploading && "pointer-events-none",
-								model.isDropTarget && "scale-105",
+								isUploading && "pointer-events-none",
+								isOver && "scale-105",
 							),
 							onPress: Message.ClickedAvatar(),
 							interaction: { wiring, target: AVATAR_BUTTON },
 							attributes: [
 								squircle(h),
 								h.AriaLabel("Change profile picture"),
-								...(model.isUploading ? [h.Attribute("aria-busy", "true")] : []),
+								...(isUploading ? [h.Attribute("aria-busy", "true")] : []),
 							],
 						},
 						[
@@ -129,7 +127,7 @@ export const profilePictureUpload = (
 								size: "4xl",
 								className: "transition-all duration-200",
 							}),
-							...(model.isDropTarget
+							...(isOver
 								? [
 										dropOverlay(
 											h,
@@ -138,13 +136,11 @@ export const profilePictureUpload = (
 										),
 									]
 								: []),
-							...(isDraggingOnPage && !model.isDropTarget
+							...(isDraggingOnPage && !isOver
 								? [dropOverlay(h, "Drop image", "font-medium text-fg text-xs")]
 								: []),
-							...(!model.isDropTarget && !isDraggingOnPage
-								? [editOverlay(h, model.isUploading)]
-								: []),
-							...(model.isUploading
+							...(!isOver && !isDraggingOnPage ? [editOverlay(h, isUploading)] : []),
+							...(isUploading
 								? [
 										h.div(
 											[
@@ -168,9 +164,8 @@ export const profilePictureUpload = (
 					h.input([
 						h.Id(FILE_INPUT_ID),
 						h.Type("file"),
-						h.Attribute("accept", ALLOWED_TYPES),
+						h.Attribute("accept", ALLOWED_AVATAR_TYPES.join(",")),
 						h.Class(""),
-						h.DataAttribute("rac", ""),
 						h.Style({ display: "none" }),
 						h.OnFileChange((files) => Message.SelectedAvatarFiles({ files })),
 					]),
@@ -181,12 +176,12 @@ export const profilePictureUpload = (
 				[
 					h.Type("button"),
 					h.OnClick(Message.ClickedResetAvatar()),
-					h.Disabled(model.isResetting || model.isUploading),
+					h.Disabled(model.avatarAction._tag !== "Idle"),
 					h.Class(
 						"mt-1 w-full text-center text-muted-fg text-xs underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50",
 					),
 				],
-				[model.isResetting ? "Removing..." : "Remove photo"],
+				[model.avatarAction._tag === "Resetting" ? "Removing..." : "Remove photo"],
 			),
 			Modal.controlledModal(h, {
 				model: model.cropModal,
@@ -236,9 +231,14 @@ const cropContent = (
 					["Cancel"],
 				),
 			]),
-			button(h, { onPress: Message.ClickedSaveCrop(), isDisabled: !isReady || isProcessing }, [
-				...(isProcessing ? [loader(h, {}), "Saving..."] : ["Save"]),
-			]),
+			button(
+				h,
+				{
+					onPress: Message.ClickedSaveCrop(),
+					isDisabled: !isReady || isProcessing || model.avatarAction._tag !== "Idle",
+				},
+				isProcessing ? [loader(h, {}), "Saving..."] : ["Save"],
+			),
 		]),
 	]
 }

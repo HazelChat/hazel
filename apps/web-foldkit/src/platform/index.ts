@@ -1,5 +1,6 @@
-import { Effect, Option, Schema } from "effect"
-import { Command, ManagedResource, Subscription, type Update } from "foldkit"
+import type { ChannelId } from "@hazel/schema"
+import { Option, Schema } from "effect"
+import { Subscription, Update } from "foldkit"
 import { defineMessageUnion } from "foldkit/message"
 import { modifyFields } from "foldkit/struct"
 import type { HazelRpc } from "../rpc"
@@ -7,53 +8,46 @@ import * as PresenceMessage from "./presence/message"
 import * as PresenceModel from "./presence/model"
 import * as PresenceSubscription from "./presence/subscription"
 import * as PresenceUpdate from "./presence/update"
-import { acquireRivetClient, RivetClient, RivetClientLoadError } from "./rivet"
 
-/** App-wide background work the legacy providers did: presence and the Rivet client. */
-
-export const RivetStatus = Schema.Literals(["Connecting", "Ready", "Failed"])
+/** App-wide background work the legacy providers did: presence (`PresenceProvider`). */
 
 export const Model = Schema.Struct({
 	presence: PresenceModel.Model,
-	rivet: RivetStatus,
 })
 export type Model = typeof Model.Type
 
 export const Message = defineMessageUnion({
 	GotPresenceMessage: { message: PresenceMessage.Message },
-	AcquiredRivetClient: {},
-	ReleasedRivetClient: {},
-	FailedAcquireRivetClient: { reason: Schema.String },
 })
 export type Message = typeof Message.Type
 
-export const init = (): Model => ({ presence: PresenceModel.init(), rivet: "Connecting" })
+export const init = (): Model => ({ presence: PresenceModel.init() })
 
 type Return = Update.Return<Model, Message, HazelRpc>
 
-const withPresence = (model: Model, result: PresenceUpdate.Return): Return => ({
-	model: modifyFields(model, { presence: () => result.model }),
-	commands: Command.mapMessages(result.commands, (child) => Message.GotPresenceMessage({ message: child })),
+const foldPresence = Update.foldChild({
+	update: (presence: PresenceModel.Model, step: (presence: PresenceModel.Model) => PresenceUpdate.Return) =>
+		step(presence),
+	read: (model: Model) => Option.some(model.presence),
+	write: (model, presence) => modifyFields(model, { presence: () => presence }),
+	toParentMessage: (message: PresenceMessage.Message) => Message.GotPresenceMessage({ message }),
 })
 
 /** The user picked a status in the command palette (`usePresence().setStatus`). */
 export const pickPresenceStatus = (model: Model, status: PresenceModel.PresenceStatus): Return =>
-	withPresence(model, PresenceUpdate.pickStatus(model.presence, status))
+	foldPresence(model, (presence) => PresenceUpdate.pickStatus(presence, status))
 
 export const update = (model: Model, message: Message): Return =>
 	Message.match<Return>(message, {
 		GotPresenceMessage: ({ message: inner }) =>
-			withPresence(model, PresenceUpdate.update(model.presence, inner)),
-		AcquiredRivetClient: () => ({ model: modifyFields(model, { rivet: () => "Ready" }) }),
-		ReleasedRivetClient: () => ({ model: modifyFields(model, { rivet: () => "Connecting" }) }),
-		FailedAcquireRivetClient: () => ({ model: modifyFields(model, { rivet: () => "Failed" }) }),
+			foldPresence(model, (presence) => PresenceUpdate.update(presence, inner)),
 	})
 
-/** What the root tells the platform: the org layout's user (null outside it) and the pathname. */
+/** What the root tells the platform: the org layout's user (null outside it) and the route's channel. */
 export interface Input {
 	readonly model: Model
 	readonly userId: PresenceSubscription.Input["userId"]
-	readonly pathname: string
+	readonly activeChannelId: ChannelId | null
 }
 
 export const subscriptions = Subscription.lift(PresenceSubscription.subscriptions)<Input, Message>({
@@ -61,23 +55,7 @@ export const subscriptions = Subscription.lift(PresenceSubscription.subscription
 		Option.some({
 			model: input.model.presence,
 			userId: input.userId,
-			activeChannelId: input.userId === null ? null : PresenceModel.channelIdOfPathname(input.pathname),
+			activeChannelId: input.userId === null ? null : input.activeChannelId,
 		}),
 	toParentMessage: (message) => Message.GotPresenceMessage({ message }),
 })
-
-export const managedResources = ManagedResource.make<Model, Message>()((entry) => ({
-	// Legacy creates the client when its module loads: on every route, signed in or not.
-	rivetClient: entry(Schema.Option(Schema.Null), {
-		resource: RivetClient,
-		modelToMaybeRequirements: () => Option.some(null),
-		acquire: () => acquireRivetClient,
-		release: () => Effect.void,
-		onAcquired: () => Message.AcquiredRivetClient(),
-		onReleased: () => Message.ReleasedRivetClient(),
-		onAcquireError: (error) =>
-			Message.FailedAcquireRivetClient({
-				reason: error instanceof RivetClientLoadError ? error.message : String(error),
-			}),
-	}),
-}))

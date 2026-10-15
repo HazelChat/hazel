@@ -1,4 +1,6 @@
-import { Effect, Option, Schema } from "effect"
+import { Effect, Option, Schedule, Schema } from "effect"
+import { FetchHttpClient, Headers, HttpClient, type HttpClientError, HttpClientResponse } from "effect/http"
+import { isRetryableError } from "~/lib/error-messages"
 
 /**
  * frimousse's emoji data (`data/emoji.ts`, `data/emoji-picker.ts`): the emojibase dataset from
@@ -16,6 +18,7 @@ const SkinTones = Schema.Struct({
 	"medium-dark": Schema.String,
 	dark: Schema.String,
 })
+type SkinTones = typeof SkinTones.Type
 
 export const EmojiDataEmoji = Schema.Struct({
 	emoji: Schema.String,
@@ -38,7 +41,10 @@ export type EmojiData = typeof EmojiData.Type
 
 const LocalData = Schema.Struct({
 	data: EmojiData,
-	metadata: Schema.Struct({ emojisEtag: Schema.NullOr(Schema.String), messagesEtag: Schema.NullOr(Schema.String) }),
+	metadata: Schema.Struct({
+		emojisEtag: Schema.NullOr(Schema.String),
+		messagesEtag: Schema.NullOr(Schema.String),
+	}),
 })
 
 const SessionMetadata = Schema.Struct({ emojiVersion: Schema.Number, countryFlags: Schema.Boolean })
@@ -54,78 +60,137 @@ const readStorage = <A>(storage: Storage, key: string, schema: Schema.Codec<A>) 
 		Option.flatMap(Schema.decodeUnknownOption(schema)),
 	)
 
+/** A best-effort cache write: a full or disabled storage only costs the next load a download. */
+const writeStorage = (storage: Storage, key: string, value: unknown) =>
+	Effect.try(() => storage.setItem(key, JSON.stringify(value))).pipe(Effect.ignore)
+
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 
-interface EmojibaseEmoji {
-	readonly emoji: string
-	readonly label: string
-	readonly version: number
-	readonly group?: number
-	readonly subgroup?: number
-	readonly tags?: ReadonlyArray<string>
-	readonly skins?: ReadonlyArray<{ readonly emoji: string; readonly tone?: number | ReadonlyArray<number> }>
+/** emojibase's `data.json` entries, as far as the picker reads them. */
+const EmojibaseEmoji = Schema.Struct({
+	emoji: Schema.String,
+	label: Schema.String,
+	version: Schema.Number,
+	group: Schema.optionalKey(Schema.Number),
+	subgroup: Schema.optionalKey(Schema.Number),
+	tags: Schema.optionalKey(Schema.Array(Schema.String)),
+	skins: Schema.optionalKey(
+		Schema.Array(
+			Schema.Struct({
+				emoji: Schema.String,
+				tone: Schema.optionalKey(Schema.Union([Schema.Number, Schema.Array(Schema.Number)])),
+			}),
+		),
+	),
+})
+type EmojibaseEmoji = typeof EmojibaseEmoji.Type
+
+/** emojibase's `messages.json`, as far as the picker reads it. */
+const EmojibaseMessages = Schema.Struct({
+	groups: Schema.Array(Schema.Struct({ key: Schema.String, message: Schema.String, order: Schema.Number })),
+	subgroups: Schema.Array(Schema.Struct({ key: Schema.String, order: Schema.Number })),
+	skinTones: Schema.Array(Schema.Struct({ key: Schema.String, message: Schema.String })),
+})
+type EmojibaseMessages = typeof EmojibaseMessages.Type
+
+/** emojibase's tone numbers 1 to 5, in `SkinTones` order. */
+const TONES = ["light", "medium-light", "medium", "medium-dark", "dark"] as const
+
+/** The five single-tone variants, or none when emojibase lists fewer. */
+const skinsOf = (skins: EmojibaseEmoji["skins"]): Option.Option<SkinTones> => {
+	const byTone = new Map(
+		(skins ?? []).flatMap((skin) =>
+			typeof skin.tone === "number" ? [[skin.tone, skin.emoji] as const] : [],
+		),
+	)
+	const light = byTone.get(1)
+	const mediumLight = byTone.get(2)
+	const medium = byTone.get(3)
+	const mediumDark = byTone.get(4)
+	const dark = byTone.get(5)
+	return light !== undefined &&
+		mediumLight !== undefined &&
+		medium !== undefined &&
+		mediumDark !== undefined &&
+		dark !== undefined
+		? Option.some({ light, "medium-light": mediumLight, medium, "medium-dark": mediumDark, dark })
+		: Option.none()
 }
 
-interface EmojibaseMessages {
-	readonly groups: ReadonlyArray<{ readonly key: string; readonly message: string; readonly order: number }>
-	readonly subgroups: ReadonlyArray<{ readonly key: string; readonly order: number }>
-	readonly skinTones: ReadonlyArray<{ readonly key: string; readonly message: string }>
+const skinToneLabels = (messages: EmojibaseMessages): SkinTones => {
+	const label = (key: (typeof TONES)[number]) =>
+		capitalize(messages.skinTones.find((tone) => tone.key === key)?.message ?? key)
+	return {
+		light: label("light"),
+		"medium-light": label("medium-light"),
+		medium: label("medium"),
+		"medium-dark": label("medium-dark"),
+		dark: label("dark"),
+	}
 }
 
-const TONES = ["none", "light", "medium-light", "medium", "medium-dark", "dark"] as const
-
-const fetchJson = <A>(url: string) =>
-	Effect.tryPromise(async () => {
-		const response = await fetch(url)
-		return { json: (await response.json()) as A, etag: response.headers.get("etag") }
-	})
+/** A CDN JSON file, decoded, with its ETag. Fails with `HttpClientError` (transport, non-2xx) or `SchemaError`. */
+const fetchJson = <S extends Schema.Top & { readonly DecodingServices: never }>(url: string, schema: S) =>
+	HttpClient.get(url).pipe(
+		Effect.flatMap(HttpClientResponse.filterStatusOk),
+		Effect.flatMap((response) =>
+			HttpClientResponse.schemaBodyJson(schema)(response).pipe(
+				Effect.map((json) => ({
+					json,
+					etag: Option.getOrNull(Headers.get(response.headers, "etag")),
+				})),
+			),
+		),
+	)
 
 /** `fetchEmojiData`: download, reshape and cache the dataset. */
 const fetchEmojiData = (locale: string) =>
 	Effect.gen(function* () {
 		const [emojis, messages] = yield* Effect.all(
 			[
-				fetchJson<ReadonlyArray<EmojibaseEmoji>>(`${BASE_URL}/${locale}/data.json`),
-				fetchJson<EmojibaseMessages>(`${BASE_URL}/${locale}/messages.json`),
+				fetchJson(`${BASE_URL}/${locale}/data.json`, Schema.Array(EmojibaseEmoji)),
+				fetchJson(`${BASE_URL}/${locale}/messages.json`, EmojibaseMessages),
 			],
 			{ concurrency: 2 },
 		)
-		const flags = messages.json.subgroups.find((group) => group.key === "country-flag" || group.key === "subdivision-flag")
+		const flags = messages.json.subgroups.find(
+			(group) => group.key === "country-flag" || group.key === "subdivision-flag",
+		)
 		const data: EmojiData = {
 			locale,
-			emojis: emojis.json
-				.filter((emoji) => emoji.group !== undefined)
-				.map((emoji) => {
-					const skins = (emoji.skins ?? []).filter((skin) => typeof skin.tone === "number")
-					return {
-						emoji: emoji.emoji,
-						category: emoji.group ?? 0,
-						version: emoji.version,
-						label: capitalize(emoji.label),
-						tags: [...(emoji.tags ?? [])],
-						...(flags && emoji.subgroup === flags.order ? { countryFlag: true } : {}),
-						...(skins.length > 0
-							? {
-									skins: Object.fromEntries(
-										skins.map((skin) => [TONES[skin.tone as number], skin.emoji]),
-									) as EmojiData["skinTones"],
-								}
-							: {}),
-					}
-				}),
+			emojis: emojis.json.flatMap((emoji) =>
+				emoji.group === undefined
+					? []
+					: [
+							{
+								emoji: emoji.emoji,
+								category: emoji.group,
+								version: emoji.version,
+								label: capitalize(emoji.label),
+								tags: [...(emoji.tags ?? [])],
+								...(flags && emoji.subgroup === flags.order ? { countryFlag: true } : {}),
+								...Option.match(skinsOf(emoji.skins), {
+									onNone: () => ({}),
+									onSome: (skins) => ({ skins }),
+								}),
+							},
+						],
+			),
 			categories: messages.json.groups
 				.filter((group) => group.key !== "component")
 				.map((group) => ({ index: group.order, label: capitalize(group.message) })),
-			skinTones: Object.fromEntries(
-				messages.json.skinTones.map((tone) => [tone.key, capitalize(tone.message)]),
-			) as EmojiData["skinTones"],
+			skinTones: skinToneLabels(messages.json),
 		}
-		localStorage.setItem(
-			LOCAL_DATA_KEY(locale),
-			JSON.stringify({ data, metadata: { emojisEtag: emojis.etag, messagesEtag: messages.etag } }),
-		)
+		yield* writeStorage(localStorage, LOCAL_DATA_KEY(locale), {
+			data,
+			metadata: { emojisEtag: emojis.etag, messagesEtag: messages.etag },
+		})
 		return data
-	})
+	}).pipe(
+		// A dropped connection or a CDN hiccup gets two more tries before the picker shows its error.
+		Effect.retry({ times: 2, schedule: Schedule.exponential("300 millis"), while: isRetryableError }),
+		Effect.provide(FetchHttpClient.layer),
+	)
 
 /** `isEmojiSupported`: a color emoji renders the same in two text colors. */
 const isEmojiSupported = (emoji: string): boolean => {
@@ -150,26 +215,31 @@ const isEmojiSupported = (emoji: string): boolean => {
 /** `getSessionMetadata`: the newest emoji version this browser renders. */
 const sessionMetadataFor = (emojis: ReadonlyArray<EmojiDataEmoji>): SessionMetadata => {
 	const firstByVersion = new Map<number, string>()
-	for (const emoji of emojis) if (!firstByVersion.has(emoji.version)) firstByVersion.set(emoji.version, emoji.emoji)
+	for (const emoji of emojis)
+		if (!firstByVersion.has(emoji.version)) firstByVersion.set(emoji.version, emoji.emoji)
 	const versions = [...firstByVersion.keys()].sort((a, b) => b - a)
 	const supported = versions.find((version) => isEmojiSupported(firstByVersion.get(version)!))
 	return { emojiVersion: supported ?? versions[0] ?? 0, countryFlags: isEmojiSupported("🇪🇺") }
 }
 
 /** `getEmojiData`: cached data when present (ETag checks skipped once per session), else the CDN. */
-export const loadEmojiData = (locale = "en"): Effect.Effect<EmojiData, unknown> =>
+export const loadEmojiData = (
+	locale = "en",
+): Effect.Effect<EmojiData, HttpClientError.HttpClientError | Schema.SchemaError> =>
 	Effect.gen(function* () {
 		const cached = readStorage(localStorage, LOCAL_DATA_KEY(locale), LocalData)
 		const data = Option.isSome(cached) ? cached.value.data : yield* fetchEmojiData(locale)
-		const metadata = Option.getOrElse(readStorage(sessionStorage, SESSION_METADATA_KEY, SessionMetadata), () =>
-			sessionMetadataFor(data.emojis),
+		const metadata = Option.getOrElse(
+			readStorage(sessionStorage, SESSION_METADATA_KEY, SessionMetadata),
+			() => sessionMetadataFor(data.emojis),
 		)
-		sessionStorage.setItem(SESSION_METADATA_KEY, JSON.stringify(metadata))
+		yield* writeStorage(sessionStorage, SESSION_METADATA_KEY, metadata)
 		return {
 			...data,
 			emojis: data.emojis.filter(
 				(emoji) =>
-					emoji.version <= metadata.emojiVersion && (emoji.countryFlag !== true || metadata.countryFlags),
+					emoji.version <= metadata.emojiVersion &&
+					(emoji.countryFlag !== true || metadata.countryFlags),
 			),
 		}
 	})
@@ -212,14 +282,7 @@ const searchEmojis = (emojis: ReadonlyArray<EmojiDataEmoji>, search: string) => 
 	return scored.sort((a, b) => b.score - a.score).map(({ emoji }) => emoji)
 }
 
-const cache = new WeakMap<EmojiData, Map<string, PickerData>>()
-
-/** `getEmojiPickerData`, memoized per dataset and search. */
-export const pickerDataOf = (data: EmojiData, columns: number, search: string): PickerData => {
-	const bySearch = cache.get(data) ?? new Map<string, PickerData>()
-	cache.set(data, bySearch)
-	const hit = bySearch.get(search)
-	if (hit) return hit
+const buildPickerData = (data: EmojiData, columns: number, search: string): PickerData => {
 	const emojis = searchEmojis(data.emojis, search)
 	const byCategory = new Map<number, Array<PickerEmoji>>()
 	for (const emoji of emojis) {
@@ -238,12 +301,31 @@ export const pickerDataOf = (data: EmojiData, columns: number, search: string): 
 			rows.push({ categoryIndex, emojis: list.slice(index, index + columns) })
 		categories.push({ label: category.label, rowsCount: rows.length - startRowIndex, startRowIndex })
 	}
-	const result = {
+	return {
 		count: emojis.length,
 		categories,
 		categoriesStartRowIndices: categories.map((category) => category.startRowIndex),
 		rows,
 	}
-	bySearch.set(search, result)
+}
+
+/** How many searches each dataset remembers: the open pickers' current ones and a few recent ones. */
+const CACHE_SIZE = 8
+
+const cache = new WeakMap<EmojiData, Map<string, PickerData>>()
+
+/** `getEmojiPickerData`, memoized per dataset in a small LRU keyed by columns and search. */
+export const pickerDataOf = (data: EmojiData, columns: number, search: string): PickerData => {
+	const recent = cache.get(data) ?? new Map<string, PickerData>()
+	cache.set(data, recent)
+	const key = `${columns}:${search}`
+	const hit = recent.get(key)
+	recent.delete(key)
+	const result = hit ?? buildPickerData(data, columns, search)
+	recent.set(key, result)
+	if (recent.size > CACHE_SIZE) {
+		const oldest = recent.keys().next()
+		if (!oldest.done) recent.delete(oldest.value)
+	}
 	return result
 }

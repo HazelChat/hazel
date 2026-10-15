@@ -1,19 +1,22 @@
+import { Option } from "effect"
 import { Command } from "foldkit"
+import * as AsyncData from "foldkit/asyncData"
 import { modifyFields } from "foldkit/struct"
+import { failureMessage } from "~/lib/error-messages"
+import { errorToastOf, successToast } from "../../../data/actions"
 import type { RouteOf } from "../../../route"
 import * as Interaction from "../../../ui/aria/interaction"
-import { successToast } from "../../../data/actions"
-import { embedInteraction } from "../../settings/integrations/shared/interaction"
-import type { PageReturn, Shared } from "../../contract"
+import type { PageReturn, PageSubscriptionInput, Shared } from "../../contract"
 import { PageOutMessage } from "../../out-message"
 import { DisconnectOrganization, ListOutgoingInvites, RevokeInvite } from "./command"
-import { Message, type Model, rowRoles } from "./model"
+import { Invites, Message, type Model, rowRoles } from "./model"
 import * as ShareModal from "./share-modal"
 
 type Return = PageReturn<Model, Message>
 
-export const interaction = embedInteraction<Model, Message>((message) =>
-	Message.GotInteractionMessage({ message }),
+export const interaction = Interaction.embed<Model, Message, PageSubscriptionInput<Model>>(
+	(message) => Message.GotInteractionMessage({ message }),
+	(input) => input.model,
 )
 
 /** The interaction target of an invite's Revoke button. */
@@ -23,7 +26,10 @@ const requestInvites = (model: Model, shared: Shared): Return => {
 	const organizationId = shared.organization?.id ?? null
 	if (organizationId === null || organizationId === model.requestedOrganizationId) return { model }
 	return {
-		model: modifyFields(model, { requestedOrganizationId: () => organizationId, invites: () => [] }),
+		model: modifyFields(model, {
+			requestedOrganizationId: () => organizationId,
+			invites: () => Invites.Loading(),
+		}),
 		commands: [ListOutgoingInvites({ organizationId, channelId: model.channelId })],
 	}
 }
@@ -36,7 +42,7 @@ export const init = (route: RouteOf<"ChannelSettingsConnect">, shared: Shared): 
 			mounts: [],
 			orgs: {},
 			requestedOrganizationId: null,
-			invites: [],
+			invites: Invites.Idle(),
 			revokingInviteIds: [],
 			disconnectingMountIds: [],
 			share: ShareModal.init(),
@@ -47,11 +53,20 @@ export const init = (route: RouteOf<"ChannelSettingsConnect">, shared: Shared): 
 
 export const sharedChanged = (model: Model, shared: Shared): Return => requestInvites(model, shared)
 
-/** The reactivity key `connectInvites:outgoing:<org>` refetches the list after a write. */
-const refetchInvites = (model: Model) =>
-	model.requestedOrganizationId === null
-		? []
-		: [ListOutgoingInvites({ organizationId: model.requestedOrganizationId, channelId: model.channelId })]
+/**
+ * Refetches the list, keeping what it shows (`Refreshing`): after a write (the reactivity key
+ * `connectInvites:outgoing:<org>`) and on retry. A load in flight may predate the write, so it refetches anyway.
+ */
+const reloadInvites = (model: Model): Return => {
+	const organizationId = model.requestedOrganizationId
+	if (organizationId === null) return { model }
+	return {
+		model: modifyFields(model, {
+			invites: (invites) => Option.getOrElse(AsyncData.revalidateOrLoad(invites), () => invites),
+		}),
+		commands: [ListOutgoingInvites({ organizationId, channelId: model.channelId })],
+	}
+}
 
 const without = <Id extends string>(ids: ReadonlyArray<Id>, id: Id): ReadonlyArray<Id> =>
 	ids.filter((candidate) => candidate !== id)
@@ -63,9 +78,22 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 		UpdatedOrgs: ({ orgs }) => ({ model: modifyFields(model, { orgs: () => orgs }) }),
 		SucceededListOutgoingInvites: ({ organizationId, invites }) =>
 			organizationId === model.requestedOrganizationId
-				? { model: modifyFields(model, { invites: () => invites }) }
+				? { model: modifyFields(model, { invites: () => Invites.Success({ data: invites }) }) }
 				: { model },
-		FailedListOutgoingInvites: () => ({ model }),
+		FailedListOutgoingInvites: ({ organizationId, reason }) =>
+			organizationId === model.requestedOrganizationId
+				? {
+						// A failed refetch keeps the list it had (`Stale`).
+						model: modifyFields(model, {
+							invites: (invites) =>
+								Option.match(AsyncData.getData(invites), {
+									onNone: () => Invites.Failure({ error: reason }),
+									onSome: (data) => Invites.Stale({ error: reason, data }),
+								}),
+						}),
+					}
+				: { model },
+		ClickedRetryInvites: () => reloadInvites(model),
 		ClickedShareChannel: () => ({ model: modifyFields(model, { share: ShareModal.open }) }),
 		ClickedRevokeInvite: ({ inviteId }) =>
 			model.revokingInviteIds.includes(inviteId)
@@ -78,14 +106,31 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 						}),
 						commands: [RevokeInvite({ inviteId })],
 					},
-		SucceededRevokeInvite: ({ inviteId }) => ({
+		SucceededRevokeInvite: ({ inviteId }) => {
+			const reloaded = reloadInvites(
+				modifyFields(model, { revokingInviteIds: (ids) => without(ids, inviteId) }),
+			)
+			return {
+				...reloaded,
+				outMessage: PageOutMessage.RequestedToast({ toast: successToast("Invite revoked") }),
+			}
+		},
+		FailedRevokeInvite: ({ inviteId, reason }) => ({
 			model: modifyFields(model, { revokingInviteIds: (ids) => without(ids, inviteId) }),
-			commands: refetchInvites(model),
-			outMessage: PageOutMessage.RequestedToast({ toast: successToast("Invite revoked") }),
-		}),
-		FailedRevokeInvite: ({ inviteId, toast }) => ({
-			model: modifyFields(model, { revokingInviteIds: (ids) => without(ids, inviteId) }),
-			outMessage: PageOutMessage.RequestedToast({ toast }),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToastOf(
+					failureMessage(reason, {
+						NotFound: {
+							title: "Invite not found",
+							description: "This invite may have already been revoked or expired.",
+						},
+						NotRevokable: {
+							title: "Cannot revoke",
+							description: "This invite is no longer in a revokable state.",
+						},
+					}),
+				),
+			}),
 		}),
 		GotInteractionMessage: ({ message }) => interaction.fold(model, message),
 		ClickedDisconnect: ({ mountId }) => {
@@ -114,23 +159,36 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 			model: modifyFields(model, { disconnectingMountIds: (ids) => without(ids, mountId) }),
 			outMessage: PageOutMessage.RequestedToast({ toast: successToast(successMessage) }),
 		}),
-		FailedDisconnect: ({ mountId, toast }) => ({
+		FailedDisconnect: ({ mountId, reason }) => ({
 			model: modifyFields(model, { disconnectingMountIds: (ids) => without(ids, mountId) }),
-			outMessage: PageOutMessage.RequestedToast({ toast }),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToastOf(
+					failureMessage(reason, {
+						NotFound: {
+							title: "Connection not found",
+							description: "This organization may already be disconnected.",
+						},
+					}),
+				),
+			}),
 		}),
 		GotShareModalMessage: ({ message: shareMessage }) => {
 			const next = ShareModal.update(model.share, shareMessage, {
 				channelId: model.channelId,
 				organizationId: shared.organization?.id ?? null,
 			})
-			const sentInvite = shareMessage._tag === "SucceededCreateInvite"
+			const withShare = modifyFields(model, { share: () => next.model })
+			const reloaded =
+				shareMessage._tag === "SucceededCreateInvite"
+					? reloadInvites(withShare)
+					: { model: withShare }
 			return {
-				model: modifyFields(model, { share: () => next.model }),
+				model: reloaded.model,
 				commands: [
 					...Command.mapMessages(next.commands ?? [], (child) =>
 						Message.GotShareModalMessage({ message: child }),
 					),
-					...(sentInvite ? refetchInvites(model) : []),
+					...(reloaded.commands ?? []),
 				],
 				outMessage: next.outMessage,
 			}

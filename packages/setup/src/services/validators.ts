@@ -1,4 +1,3 @@
-import { createClerkClient } from "@clerk/backend"
 import { Context, Data, Effect, Layer } from "effect"
 import { SQL } from "bun"
 
@@ -9,21 +8,6 @@ export class ValidationError extends Data.TaggedError("ValidationError")<{
 
 export class CredentialValidator extends Context.Service<CredentialValidator>()("CredentialValidator", {
 	make: Effect.succeed({
-		validateClerk: (secretKey: string, publishableKey: string) =>
-			Effect.tryPromise({
-				try: async () => {
-					const clerk = createClerkClient({ secretKey, publishableKey })
-					// Cheap auth-check call: list users with limit=1.
-					await clerk.users.getUserList({ limit: 1 })
-					return { valid: true as const }
-				},
-				catch: (error) =>
-					new ValidationError({
-						service: "Clerk",
-						message: error instanceof Error ? error.message : String(error),
-					}),
-			}),
-
 		validateDatabase: (url: string) =>
 			Effect.tryPromise({
 				try: async () => {

@@ -31,16 +31,13 @@ describe("session states", () => {
 		)
 	})
 
-	test("a failed user.me keeps the loader (no error screen) and asks again", () => {
+	test("a failed user.me keeps the loader while it retries", () => {
 		const [, user] = sessionMessages()
 		scene(
 			rootScene,
 			given(boot("/hazel/settings/team")),
 			Subscription.emit(Message.ChangedAuth({ auth: "SignedIn" })),
-			Command.resolve(
-				FetchCurrentUser,
-				Message.FailedFetchCurrentUser({ reason: "offline", isUnauthorized: false }),
-			),
+			Command.resolve(FetchCurrentUser, Message.FailedFetchCurrentUser({ reason: "Offline" })),
 			sceneExpect(loader).toExist(),
 			Command.resolve(RetryFetchCurrentUser, user),
 			sceneExpect(loader).toExist(),

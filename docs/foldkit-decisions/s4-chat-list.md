@@ -1,5 +1,7 @@
 # S4: Chat list spike
 
+> **Historical.** The legacy React app (`apps/web`) and the parity harness (`packages/ui-parity`, the `/dev/gallery` routes and the `legacy-ui-guard` agent) have been deleted. Parity commands and baselines referenced below no longer exist.
+
 Status: **passed (desktop)** · 2026-10-07 · Branch `fk/s4-chat-list`
 
 Question: can Foldkit render the channel screen pixel-identical to legacy with a bottom-anchored, virtualized message list that scrolls at 60fps through a 10k-message channel, keeps its position when older messages are prepended, and sticks to the bottom when a new message arrives?

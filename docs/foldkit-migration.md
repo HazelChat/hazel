@@ -1,5 +1,7 @@
 # Foldkit migration plan
 
+> **Historical.** The legacy React app (`apps/web`) and the parity harness (`packages/ui-parity`, the `/dev/gallery` routes and the `legacy-ui-guard` agent) have been deleted. Parity commands and baselines referenced below no longer exist.
+
 Status: draft · Branch: `experiment-2.0` · Last updated: 2026-10-09
 
 Goal: replace the React frontend (`apps/web`) with a Foldkit frontend (`apps/web-foldkit`) that looks pixel-identical to it. Users should notice nothing except speed and stability. Engineers should get a single Model, Messages as facts, and side effects that are testable.

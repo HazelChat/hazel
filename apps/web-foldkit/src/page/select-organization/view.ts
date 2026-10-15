@@ -5,18 +5,12 @@ import { avatar } from "../../ui/avatar"
 import { button } from "../../ui/button"
 import type { PageViewInputs } from "../contract"
 import * as CreateWorkspace from "../create-workspace"
+import { initialsOf } from "../initials"
 import { Message } from "./message"
-import type { Model, UserOrganization } from "./model"
+import { type Model, Organizations, type UserOrganization } from "./model"
 
 const toCreateWorkspaceMessage = (message: CreateWorkspace.Message): Message =>
 	Message.GotCreateWorkspaceMessage({ message })
-
-const initialsOf = (name: string) =>
-	name
-		.split(" ")
-		.map((word) => word.charAt(0).toUpperCase())
-		.slice(0, 2)
-		.join("")
 
 const capitalize = (role: string) => role.charAt(0).toUpperCase() + role.slice(1)
 
@@ -45,7 +39,8 @@ const createWorkspace = (h: HtmlBuilder<Message>, model: Model): Html =>
 	)
 
 const organizationButton = (h: HtmlBuilder<Message>, organization: UserOrganization): Html =>
-	h.button(
+	h.keyed("button")(
+		organization.id,
 		[
 			h.Type("button"),
 			h.OnClick(Message.ClickedOrganization({ organization })),
@@ -150,10 +145,14 @@ const picker = (h: HtmlBuilder<Message>, organizations: ReadonlyArray<UserOrgani
 		],
 	)
 
-export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, { shared }, h) => {
-	const organizations = model.organizations
-	// A single organization redirects, so it shows the loader like `<Navigate>` does.
-	if (shared.currentUser === null || organizations === null || organizations.length === 1)
-		return appLoader(h)
-	return organizations.length === 0 ? createWorkspace(h, model) : picker(h, organizations)
-})
+export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, { shared }, h) =>
+	shared.currentUser === null
+		? appLoader(h)
+		: Organizations.match(model.organizations, {
+				Loading: () => appLoader(h),
+				// A single organization redirects, so it shows the loader like `<Navigate>` does.
+				Redirected: () => appLoader(h),
+				Loaded: ({ organizations }) =>
+					organizations.length === 0 ? createWorkspace(h, model) : picker(h, organizations),
+			}),
+)

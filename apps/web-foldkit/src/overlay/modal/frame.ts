@@ -1,3 +1,4 @@
+import { Schema } from "effect"
 import type { ChildAttribute, Html, HtmlBuilder } from "foldkit/html"
 import type { ModalSize } from "~/components/ui/modal.styles"
 import { dialogTitle } from "../../ui/dialog"
@@ -6,20 +7,24 @@ import * as KitModal from "../../ui/modal"
 
 /**
  * Legacy controlled `<Modal isOpen onOpenChange><ModalContent>`: the kit Modal without a trigger.
- * A modal keeps a `frame` (kit Modal Model, always open) and closes when the frame reports closed.
+ * A modal is open for as long as its slot exists, so its `frame` is only the dialog's id; the modal
+ * closes itself when the frame asks to (`isCloseRequest`).
  */
 
-export const Frame = KitModal.Model
-export type Frame = KitModal.Model
+export const Frame = Schema.Struct({ id: Schema.String })
+export type Frame = typeof Frame.Type
 /** The frame's Message; modals import it `as FrameMessage` so their Got wrapper names the child Message. */
 export const Message = KitModal.Message
 export type Message = KitModal.Message
 type FrameMessage = KitModal.Message
 
-export const initFrame = (id: string): Frame => ({ id, isOpen: true })
+export const initFrame = (id: string): Frame => ({ id })
 
-/** True once the frame's Dismiss, close icon, Escape or outside press closed it. */
-export const isFrameClosed = (frame: Frame, message: FrameMessage) => !KitModal.update(frame, message).model.isOpen
+/** The frame's close icon, a close button, Escape or a press on the backdrop. */
+export const isCloseRequest = KitModal.isCloseRequest
+
+/** The frame's dialog rendered and moved focus in: the moment for a field's `autoFocus`. */
+export const isPortalReady = KitModal.isReady
 
 export interface FrameOptions {
 	readonly size?: ModalSize
@@ -38,9 +43,9 @@ export const frameView = <Message>(
 ): Html =>
 	h.submodel({
 		slotId: frame.id,
-		model: frame,
+		model: KitModal.initOpen(frame.id),
 		view: KitModal.view,
-		viewInputs: { toTrigger: (_attributes, overlay) => overlay, toContent, ...options },
+		viewInputs: { toContent, ...options },
 		toParentMessage,
 	})
 

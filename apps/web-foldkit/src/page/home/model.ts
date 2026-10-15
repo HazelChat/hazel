@@ -1,6 +1,7 @@
 import { ChannelId, OrganizationId, UserId } from "@hazel/schema"
 import { Schema } from "effect"
 import { defineTaggedUnion } from "foldkit/schema"
+import { CommonReason } from "~/lib/error-messages"
 import * as Interaction from "../../ui/aria/interaction"
 import * as Menu from "../../ui/menu"
 
@@ -32,11 +33,27 @@ export const DmRequest = defineTaggedUnion({
 })
 export type DmRequest = typeof DmRequest.Type
 
+/** The member directory live query; `Loading` shows the legacy loader. */
+export const Members = defineTaggedUnion({
+	Loading: {},
+	Loaded: { members: Schema.Array(DirectoryMember) },
+})
+export type Members = typeof Members.Type
+
+/** The DM live query; a Message press before it loads waits in `DmRequest.AwaitingChannels`. */
+export const DmChannels = defineTaggedUnion({
+	Loading: {},
+	Loaded: { rows: Schema.Array(DmRow) },
+})
+export type DmChannels = typeof DmChannels.Type
+
+/** Why `channel.createDm` failed. `AlreadyExists`: the server has a DM the synced rows don't show yet. */
+export const CreateDmFailure = Schema.Union([Schema.Literals(["AlreadyExists"]), CommonReason])
+export type CreateDmFailure = typeof CreateDmFailure.Type
+
 export const Model = Schema.Struct({
-	/** `null` until the live query is ready (the legacy loader). */
-	members: Schema.NullOr(Schema.Array(DirectoryMember)),
-	/** `null` until the DM live query is ready. */
-	dmRows: Schema.NullOr(Schema.Array(DmRow)),
+	members: Members,
+	dmChannels: DmChannels,
 	dmRequest: DmRequest,
 	searchQuery: Schema.String,
 	/** One "Member actions" menu per member, keyed by user id. */
@@ -55,6 +72,10 @@ export const menuEntries: ReadonlyArray<Menu.Entry> = [
 	Menu.item("start-call"),
 	Menu.item("copy-email"),
 ]
+
+/** The loaded members, or none while the query loads. */
+export const loadedMembers = (model: Model): ReadonlyArray<DirectoryMember> =>
+	model.members._tag === "Loaded" ? model.members.members : []
 
 /** `filteredMembers`: case-insensitive match on the full name or the email. */
 export const filterMembers = (

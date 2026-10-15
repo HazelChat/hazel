@@ -1,7 +1,8 @@
-import { Schema } from "effect"
+import { MessageId } from "@hazel/schema"
+import { Duration, Schema } from "effect"
 import { Command, type Update } from "foldkit"
 import { type ChildAttribute, childAttributes, type Html, type HtmlBuilder } from "foldkit/html"
-import type { Placement } from "../ui/aria/position"
+import type { Placement } from "../ui/aria/placement"
 import * as Tooltip from "../ui/tooltip"
 
 /**
@@ -14,32 +15,42 @@ export type Model = typeof Model.Type
 
 export const Message = Schema.Struct({
 	key: Schema.String,
+	/** The message the trigger renders in (which row owns the open tooltip). */
+	messageId: MessageId,
 	delayMs: Schema.Number,
 	message: Tooltip.Message,
 })
 export type Message = typeof Message.Type
 
-/** Messages that move the host to a new trigger; the rest only apply to the current one. */
+/**
+ * Messages that move the host to a new trigger; the rest only apply to the current one. A press
+ * moves it too, so the focus that follows a mouse press finds the press and keeps the tooltip shut.
+ */
 const isActivating = (message: Tooltip.Message) =>
-	message._tag === "HoveredTrigger" || message._tag === "FocusedTrigger"
+	message._tag === "EnteredTrigger" ||
+	message._tag === "FocusedTrigger" ||
+	message._tag === "PressedPointerOnTrigger"
 
 export const update = <Wrapped>(
 	model: Model,
-	{ key, delayMs, message }: Message,
+	{ key, messageId, delayMs, message }: Message,
 	wrap: (message: Message) => Wrapped,
 ): Update.Return<Model, Wrapped> => {
 	const current =
 		model !== null && model.id === key
 			? model
 			: isActivating(message)
-				? Tooltip.initWithDelay(key, delayMs)
+				? Tooltip.init(key, delayMs)
 				: null
 	if (current === null) return { model }
 	const result = Tooltip.update(current, message)
 	return {
 		model: result.model,
 		commands: Command.mapMessages(
-			Command.mapMessages(result.commands ?? [], (inner): Message => ({ key, delayMs, message: inner })),
+			Command.mapMessages(
+				result.commands ?? [],
+				(inner): Message => ({ key, messageId, delayMs, message: inner }),
+			),
 			wrap,
 		),
 	}
@@ -48,13 +59,14 @@ export const update = <Wrapped>(
 const closedModels = new Map<string, Tooltip.Model>()
 const closedModel = (key: string, delayMs: number) => {
 	let model = closedModels.get(key)
-	if (model === undefined || model.delayMs !== delayMs)
-		closedModels.set(key, (model = Tooltip.initWithDelay(key, delayMs)))
+	if (model === undefined || Duration.toMillis(model.showDelay) !== delayMs)
+		closedModels.set(key, (model = Tooltip.init(key, delayMs)))
 	return model
 }
 
 export interface TriggerOptions<M> {
 	readonly key: string
+	readonly messageId: MessageId
 	readonly active: Model
 	/** The trigger under the pointer: React Aria's `data-hovered` on the TooltipTrigger. */
 	readonly hoveredKey?: string | null
@@ -81,13 +93,16 @@ export const tooltipTrigger = <M>(h: HtmlBuilder<M>, options: TriggerOptions<M>)
 			toTrigger:
 				options.hoveredKey === options.key
 					? (attributes, overlay) =>
-							options.toTrigger([...attributes, ...childAttributes([h.Attribute("data-hovered", "true")])], overlay)
+							options.toTrigger(
+								[...attributes, ...childAttributes([h.Attribute("data-hovered", "true")])],
+								overlay,
+							)
 					: options.toTrigger,
 			content: model.isOpen ? options.content : [],
 			placement: options.placement,
 			className: options.className,
 		},
 		toParentMessage: (message: Tooltip.Message) =>
-			options.toMessage({ key: options.key, delayMs, message }),
+			options.toMessage({ key: options.key, messageId: options.messageId, delayMs, message }),
 	})
 }

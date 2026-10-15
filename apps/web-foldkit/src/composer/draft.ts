@@ -7,21 +7,21 @@ import {
 	OrganizationId,
 	UserId,
 } from "@hazel/schema"
-import { Cause, Effect, Schema } from "effect"
+import { Effect, Schema } from "effect"
 import { Command, File } from "foldkit"
+import * as Dom from "foldkit/dom"
 import { defineMessageUnion } from "foldkit/message"
+import { defineTaggedUnion } from "foldkit/schema"
 import { editMessageAction, sendMessageAction } from "~/db/actions"
-import { HazelApiClient } from "~/lib/services/common/atom-client"
+import { CommonReason } from "~/lib/error-messages"
+import { HazelApiClient } from "../rpc"
 import { ToastRequest } from "../overlay/toasts"
-import { errorToast, failureToast, runAtomFn, successToast, toastOfExit } from "../data/actions"
-import { notRetryable, rateLimited } from "../page/chat/action-effects"
+import { catchCommon } from "../data/actions"
 import * as Composer from "./composer"
 import * as Typing from "./typing"
-import { emojiUsageAtom } from "~/atoms/emoji-atoms"
 import * as EmojiDialog from "../emoji-picker/dialog"
 import * as GifPicker from "../gif-picker/picker"
-import { trackEmojiUsage } from "../emoji-picker/usage"
-import { DropEvent } from "./drop"
+import { DragState, DropEvent } from "./drop"
 import { UploadEvent } from "./upload"
 
 /**
@@ -32,29 +32,31 @@ import { UploadEvent } from "./upload"
 
 // MODEL
 
-export const UploadingFile = Schema.Struct({
-	fileId: Schema.String,
-	fileName: Schema.String,
-	fileSize: Schema.Number,
-	progress: Schema.Number,
+/** What Send does with the draft: a new message, a reply, or an edit (never both). */
+export const ComposeMode = defineTaggedUnion({
+	Plain: {},
+	Replying: { messageId: MessageId },
+	Editing: { messageId: MessageId },
 })
-export type UploadingFile = typeof UploadingFile.Type
+export type ComposeMode = typeof ComposeMode.Type
 
+/** The file being uploaded: what the upload Subscription depends on. */
 export const CurrentUpload = Schema.Struct({ fileId: Schema.String, file: File.File })
+export type CurrentUpload = typeof CurrentUpload.Type
+
+export const ActiveUpload = Schema.Struct({ fileId: Schema.String, file: File.File, progress: Schema.Number })
+export type ActiveUpload = typeof ActiveUpload.Type
 
 export const Model = Schema.Struct({
 	channelId: ChannelId,
 	composer: Composer.Model,
-	replyToMessageId: Schema.NullOr(MessageId),
-	editingMessageId: Schema.NullOr(MessageId),
+	composeMode: ComposeMode,
 	attachmentIds: Schema.Array(AttachmentId),
-	uploadingFiles: Schema.Array(UploadingFile),
 	/** Files waiting their turn; legacy uploads them one after another. */
 	pendingFiles: Schema.Array(File.File),
-	currentUpload: Schema.NullOr(CurrentUpload),
+	currentUpload: Schema.NullOr(ActiveUpload),
 	typing: Typing.Model,
-	isDraggingOnPage: Schema.Boolean,
-	isDropTarget: Schema.Boolean,
+	drag: DragState,
 	/** The Emoji button's `EmojiPickerDialog`. */
 	emojiPicker: EmojiDialog.Model,
 	/** The GIF button's `GifPickerDialog`. */
@@ -65,32 +67,51 @@ export type Model = typeof Model.Type
 export const init = (channelId: ChannelId, editorId: string, placeholder = "Type a message..."): Model => ({
 	channelId,
 	composer: Composer.init(editorId, placeholder),
-	replyToMessageId: null,
-	editingMessageId: null,
+	composeMode: ComposeMode.Plain(),
 	attachmentIds: [],
-	uploadingFiles: [],
 	pendingFiles: [],
 	currentUpload: null,
 	typing: Typing.init(),
-	isDraggingOnPage: false,
-	isDropTarget: false,
+	drag: DragState.Idle(),
 	emojiPicker: EmojiDialog.init(`${editorId}-emoji-picker`),
 	gifPicker: GifPicker.init(`${editorId}-gif-picker`),
 })
 
+export const replyToMessageIdOf = (model: Model): MessageId | null =>
+	model.composeMode._tag === "Replying" ? model.composeMode.messageId : null
+
+export const editingMessageIdOf = (model: Model): MessageId | null =>
+	model.composeMode._tag === "Editing" ? model.composeMode.messageId : null
+
 /** `useChatDraft().isUploading`. */
 export const isUploading = (model: Model) => model.currentUpload !== null || model.pendingFiles.length > 0
 
+/** The upload Subscription's dependency: the file and its id, not its progress. */
+export const currentUploadOf = (model: Model): CurrentUpload | null =>
+	model.currentUpload === null
+		? null
+		: { fileId: model.currentUpload.fileId, file: model.currentUpload.file }
+
 /** `ComposerFrame`'s `hasTopContent`: indicators or previews sit on the frame's top edge. */
 export const hasTopContent = (model: Model) =>
-	model.replyToMessageId !== null ||
-	model.editingMessageId !== null ||
-	model.attachmentIds.length > 0 ||
-	model.uploadingFiles.length > 0
+	model.composeMode._tag !== "Plain" || model.attachmentIds.length > 0 || model.currentUpload !== null
 
 export const fileInputId = (model: Model) => `${model.composer.editorId}-file-input`
 
 // MESSAGE
+
+/** Why a send failed, beyond the shared reasons. `SyncDelayed`: it was delivered, the sync lags. */
+export const SendFailure = Schema.Union([Schema.Literals(["ChannelNotFound", "SyncDelayed"]), CommonReason])
+export type SendFailure = typeof SendFailure.Type
+
+export const EditFailure = Schema.Union([Schema.Literal("MessageNotFound"), CommonReason])
+export type EditFailure = typeof EditFailure.Type
+
+export const BotCommandFailure = Schema.Union([
+	Schema.Literals(["BotNotFound", "BotNotInstalled", "CommandNotFound", "ExecutionFailed"]),
+	CommonReason,
+])
+export type BotCommandFailure = typeof BotCommandFailure.Type
 
 export const Message = defineMessageUnion({
 	GotComposerMessage: { message: Composer.Message },
@@ -110,16 +131,21 @@ export const Message = defineMessageUnion({
 		restoreContent: Schema.Boolean,
 		replyToMessageId: Schema.NullOr(MessageId),
 		attachmentIds: Schema.Array(AttachmentId),
-		toast: ToastRequest,
+		reason: SendFailure,
 	},
-	CompletedEditMessage: { toast: Schema.NullOr(ToastRequest) },
+	SucceededEditMessage: {},
+	FailedEditMessage: { reason: EditFailure },
 	LeftWindow: {},
 	SelectedEmoji: { emoji: Schema.String, label: Schema.String, imageUrl: Schema.NullOr(Schema.String) },
 	SelectedGif: { url: Schema.String },
 	GotEmojiPickerMessage: { message: EmojiDialog.Message },
 	GotGifPickerMessage: { message: GifPicker.Message },
-	CompletedTrackEmojiUsage: {},
-	CompletedExecuteBotCommand: { succeeded: Schema.Boolean, toast: ToastRequest },
+	SucceededExecuteBotCommand: { commandName: Schema.String },
+	FailedExecuteBotCommand: {
+		commandName: Schema.String,
+		botName: Schema.String,
+		reason: BotCommandFailure,
+	},
 })
 export type Message = typeof Message.Type
 
@@ -156,37 +182,39 @@ export const SendMessage = Command.define("SendMessage", {
 		restoreContent: Schema.Boolean,
 	},
 	messages: [Message.SucceededSendMessage, Message.FailedSendMessage],
-	execute: ({ restoreContent, ...variables }) =>
-		Effect.matchCause(runAtomFn(sendMessageAction, { ...variables, attachmentIds: [...variables.attachmentIds] }), {
-			onSuccess: () => Message.SucceededSendMessage(),
-			onFailure: (cause) =>
-				Message.FailedSendMessage({
-					content: variables.content,
-					restoreContent,
-					replyToMessageId: variables.replyToMessageId,
-					attachmentIds: variables.attachmentIds,
-					toast: failureToast(cause, "exitToast", sendHandlers),
-				}),
-		}),
+	execute: ({ restoreContent, ...variables }) => {
+		const failed = (reason: SendFailure) =>
+			Message.FailedSendMessage({
+				content: variables.content,
+				restoreContent,
+				replyToMessageId: variables.replyToMessageId,
+				attachmentIds: variables.attachmentIds,
+				reason,
+			})
+		return sendMessageAction({ ...variables, attachmentIds: [...variables.attachmentIds] }).pipe(
+			Effect.as(Message.SucceededSendMessage()),
+			Effect.catchTags({
+				ChannelNotFoundError: () => Effect.succeed(failed("ChannelNotFound")),
+				SyncError: () => Effect.succeed(failed("SyncDelayed")),
+			}),
+			catchCommon(failed),
+		)
+	},
 })
-
-const sendHandlers = {
-	RateLimitExceededError: rateLimited("sending another message"),
-	ChannelNotFoundError: notRetryable("Channel not found", "This channel may have been deleted."),
-	SyncError: notRetryable("Message sent", "Sync is delayed but your message was delivered."),
-}
 
 /** `ChatProvider.editMessage`. */
 export const EditMessage = Command.define("EditMessage", {
 	args: { messageId: MessageId, content: Schema.String },
-	messages: [Message.CompletedEditMessage],
+	messages: [Message.SucceededEditMessage, Message.FailedEditMessage],
 	execute: (args) =>
-		toastOfExit(runAtomFn(editMessageAction, args), "exitToast", {
-			handlers: {
-				RateLimitExceededError: rateLimited("trying again"),
-				MessageNotFoundError: notRetryable("Message not found", "This message may have been deleted."),
-			},
-		}).pipe(Effect.map((toast) => Message.CompletedEditMessage({ toast }))),
+		editMessageAction(args).pipe(
+			Effect.as(Message.SucceededEditMessage()),
+			Effect.catchTags({
+				MessageNotFoundError: () =>
+					Effect.succeed(Message.FailedEditMessage({ reason: "MessageNotFound" })),
+			}),
+			catchCommon((reason) => Message.FailedEditMessage({ reason })),
+		),
 })
 
 /** `handleFilesUpload` names each upload with a fresh id. */
@@ -200,63 +228,41 @@ export const OpenFilePicker = Command.define("OpenFilePicker", {
 	args: { inputId: Schema.String },
 	messages: [Message.CompletedOpenFilePicker],
 	execute: ({ inputId }) =>
-		Effect.sync(() => document.getElementById(inputId)?.click()).pipe(Effect.as(Message.CompletedOpenFilePicker())),
+		Dom.clickElement(`#${CSS.escape(inputId)}`).pipe(
+			// Best-effort: the input renders with the composer, so it is only missing mid-unmount.
+			Effect.ignore,
+			Effect.as(Message.CompletedOpenFilePicker()),
+		),
 })
-
-const executeBotCommand = HazelApiClient.mutation("bot-commands", "executeBotCommand")
-
-const tagOf = (error: unknown) =>
-	typeof error === "object" && error !== null && "_tag" in error ? String(error._tag) : undefined
 
 /** The slash command panel's Execute (`bot-commands.executeBotCommand`). */
 export const ExecuteBotCommand = Command.define("ExecuteBotCommand", {
 	args: {
 		orgId: OrganizationId,
-		botId: Schema.String,
+		botId: BotId,
 		commandName: Schema.String,
 		botName: Schema.String,
 		channelId: ChannelId,
 		arguments: Schema.Array(Schema.Struct({ name: Schema.String, value: Schema.String })),
 	},
-	messages: [Message.CompletedExecuteBotCommand],
-	execute: ({ orgId, botId, commandName, botName, channelId, arguments: args }) =>
-		Effect.matchCause(
-			runAtomFn(executeBotCommand, {
-				params: { orgId, botId: BotId.make(botId), commandName },
+	messages: [Message.SucceededExecuteBotCommand, Message.FailedExecuteBotCommand],
+	execute: ({ orgId, botId, commandName, botName, channelId, arguments: args }) => {
+		const failed = (reason: BotCommandFailure) =>
+			Message.FailedExecuteBotCommand({ commandName, botName, reason })
+		return HazelApiClient.use((client) =>
+			client["bot-commands"].executeBotCommand({
+				params: { orgId, botId, commandName },
 				payload: { channelId, arguments: [...args] },
 			}),
-			{
-				onSuccess: () =>
-					Message.CompletedExecuteBotCommand({
-						succeeded: true,
-						toast: successToast(`Executed /${commandName}`),
-					}),
-				onFailure: (cause) => {
-					const error = cause.reasons.find(Cause.isFailReason)?.error
-					const tag = tagOf(error)
-					const title =
-						error === undefined
-							? "Command failed"
-							: tag === "BotNotInstalledError"
-								? `Bot "${botName}" is not installed`
-								: tag === "BotCommandNotFoundError"
-									? `Command /${commandName} not found`
-									: tag === "BotCommandExecutionError" && typeof error === "object" && error !== null && "message" in error
-										? String(error.message)
-										: "Command execution failed"
-					return Message.CompletedExecuteBotCommand({
-						succeeded: false,
-						toast: errorToast(title),
-					})
-				},
-			},
-		),
-})
-
-/** `ComposerActions.handleEmojiSelect` counts the emoji before inserting it. */
-export const TrackEmojiUsage = Command.define("TrackEmojiUsage", {
-	args: { emoji: Schema.String },
-	messages: [Message.CompletedTrackEmojiUsage],
-	execute: ({ emoji }) =>
-		Effect.sync(() => trackEmojiUsage(emojiUsageAtom, emoji)).pipe(Effect.as(Message.CompletedTrackEmojiUsage())),
+		).pipe(
+			Effect.as(Message.SucceededExecuteBotCommand({ commandName })),
+			Effect.catchTags({
+				BotNotFoundError: () => Effect.succeed(failed("BotNotFound")),
+				BotNotInstalledError: () => Effect.succeed(failed("BotNotInstalled")),
+				BotCommandNotFoundError: () => Effect.succeed(failed("CommandNotFound")),
+				BotCommandExecutionError: () => Effect.succeed(failed("ExecutionFailed")),
+			}),
+			catchCommon(failed),
+		)
+	},
 })

@@ -2,7 +2,7 @@ import { OrganizationId, UserId } from "@hazel/schema"
 import { Effect, Schema } from "effect"
 import { Command, Mount } from "foldkit"
 import * as Dom from "foldkit/dom"
-import { failureToast, settle } from "../../data/actions"
+import { catchCommon } from "../../data/actions"
 import { HazelRpc } from "../../rpc"
 import { searchFieldIds } from "../../ui/search-field"
 import { Message } from "./message"
@@ -31,14 +31,17 @@ export const CreateDm = Command.define("CreateDm", {
 	args: { organizationId: OrganizationId, userId: UserId, name: Schema.String },
 	messages: [Message.SucceededCreateDm, Message.FailedCreateDm],
 	execute: ({ organizationId, userId, name }) =>
-		Effect.gen(function* () {
-			const rpc = yield* HazelRpc
-			return yield* settle(
-				rpc("channel.createDm", { organizationId, participantIds: [userId], type: "single" }),
-				(result) => Message.SucceededCreateDm({ channelId: result.data.id, name }),
-				(cause) => Message.FailedCreateDm({ toast: failureToast(cause, "friendly") }),
-			)
-		}),
+		HazelRpc.use((rpc) =>
+			rpc("channel.createDm", { organizationId, participantIds: [userId], type: "single" }),
+		).pipe(
+			Effect.map((result) => Message.SucceededCreateDm({ channelId: result.data.id, name })),
+			Effect.catchTags({
+				DmChannelAlreadyExistsError: () => Effect.succeed(Message.FailedCreateDm({ reason: "AlreadyExists" })),
+				// The page only asks for a single DM with one member; a rejected shape is a bug here.
+				InvalidChannelRequestError: () => Effect.succeed(Message.FailedCreateDm({ reason: "Unexpected" })),
+			}),
+			catchCommon((reason) => Message.FailedCreateDm({ reason })),
+		),
 })
 
 /** `handleCopyEmail`. */

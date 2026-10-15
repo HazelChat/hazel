@@ -4,77 +4,90 @@ import { Command, Update } from "foldkit"
 import * as Dom from "foldkit/dom"
 import { modifyFields } from "foldkit/struct"
 import { setPublicModeAction, updateOrganizationAction } from "~/db/actions"
-import type { ToastRequest } from "../../../overlay/toasts"
-import * as Modal from "../../../ui/modal"
+import { failureMessage, type UserErrorMessage } from "~/lib/error-messages"
+import { catchCommon, errorToast, errorToastOf, successToast } from "../../../data/actions"
 import { HazelRpc } from "../../../rpc"
-import type { RouteOf } from "../../../route"
+import { AppRoute, type RouteOf } from "../../../route"
 import type { PageReturn, Shared } from "../../contract"
 import { PageOutMessage } from "../../out-message"
-import { errorToast, failureToast, runAtomFn, settle, successToast } from "../../../data/actions"
-import { publicUrlOf, uploadFile } from "../upload"
+import * as ConfirmAction from "../../shared/confirm-action"
+import { UploadProblem, UploadTarget, uploadFile, uploadProblemMessage } from "../upload"
 import { Message } from "./message"
-import type { Model } from "./model"
+import {
+	CopyTarget,
+	type DeleteTarget,
+	type DeleteWorkspaceFailure,
+	LogoUpload,
+	type Model,
+	NameSave,
+	PublicModeSave,
+	type RenameFailure,
+	type SetPublicModeFailure,
+	type UploadLogoFailure,
+} from "./model"
 
 type Return = PageReturn<Model, Message>
 
 export const LOGO_INPUT_ID = "organization-logo-input"
 
-const organizationNotFound = {
-	OrganizationNotFoundError: {
-		title: "Organization not found",
-		description: "This organization may have been deleted.",
-	},
-}
+/** The Clipboard API refused the write (no permission, or the document isn't focused). */
+class ClipboardWriteError extends Schema.TaggedError<ClipboardWriteError>()("ClipboardWriteError", {
+	cause: Schema.Defect(),
+}) {}
 
 // COMMAND
 
 export const UpdateOrganizationName = Command.define("UpdateOrganizationName", {
 	args: { organizationId: OrganizationId, name: Schema.String },
 	messages: [Message.SucceededUpdateName, Message.FailedUpdateName],
-	execute: ({ organizationId, name }) =>
-		settle(
-			runAtomFn(updateOrganizationAction, { organizationId, name }),
-			() => Message.SucceededUpdateName(),
-			(cause) =>
-				Message.FailedUpdateName({
-					toast: failureToast(cause, "friendly", {
-						...organizationNotFound,
-						OrganizationSlugAlreadyExistsError: {
-							title: "Slug already exists",
-							description: "This organization slug is already taken.",
-						},
-					}),
-				}),
-		),
+	execute: ({ organizationId, name }) => {
+		const failed = (reason: RenameFailure) => Effect.succeed(Message.FailedUpdateName({ reason }))
+		return updateOrganizationAction({ organizationId, name }).pipe(
+			Effect.as(Message.SucceededUpdateName()),
+			Effect.catchTags({
+				OrganizationNotFoundError: () => failed("NotFound"),
+				OrganizationSlugAlreadyExistsError: () => failed("SlugTaken"),
+			}),
+			catchCommon((reason) => Message.FailedUpdateName({ reason })),
+		)
+	},
 })
 
 export const SetPublicMode = Command.define("SetPublicMode", {
 	args: { organizationId: OrganizationId, isPublic: Schema.Boolean },
 	messages: [Message.SucceededSetPublicMode, Message.FailedSetPublicMode],
 	execute: ({ organizationId, isPublic }) =>
-		settle(
-			runAtomFn(setPublicModeAction, { organizationId, isPublic }),
-			() => Message.SucceededSetPublicMode({ isPublic }),
-			(cause) =>
-				Message.FailedSetPublicMode({ toast: failureToast(cause, "friendly", organizationNotFound) }),
+		setPublicModeAction({ organizationId, isPublic }).pipe(
+			Effect.as(Message.SucceededSetPublicMode({ isPublic })),
+			Effect.catchTags({
+				OrganizationNotFoundError: () =>
+					Effect.succeed(
+						Message.FailedSetPublicMode({ reason: "NotFound" satisfies SetPublicModeFailure }),
+					),
+			}),
+			catchCommon((reason) => Message.FailedSetPublicMode({ reason })),
 		),
 })
 
 export const CopyText = Command.define("CopyText", {
-	args: { text: Schema.String, successTitle: Schema.String, failureTitle: Schema.String },
-	messages: [Message.CompletedCopy],
-	execute: ({ text, successTitle, failureTitle }) =>
-		Effect.tryPromise(() => navigator.clipboard.writeText(text)).pipe(
-			Effect.match({
-				onSuccess: () => Message.CompletedCopy({ toast: successToast(successTitle) }),
-				onFailure: () => Message.CompletedCopy({ toast: errorToast(failureTitle) }),
+	args: { target: CopyTarget, text: Schema.String },
+	messages: [Message.SucceededCopy, Message.FailedCopy],
+	execute: ({ target, text }) =>
+		Effect.tryPromise({
+			try: () => navigator.clipboard.writeText(text),
+			catch: (cause) => new ClipboardWriteError({ cause }),
+		}).pipe(
+			Effect.as(Message.SucceededCopy({ target })),
+			Effect.catchTags({
+				ClipboardWriteError: () =>
+					Effect.succeed(Message.FailedCopy({ target, reason: "ClipboardDenied" })),
 			}),
 		),
 })
 
 export const OpenLogoPicker = Command.define("OpenLogoPicker", {
 	messages: [Message.CompletedOpenLogoPicker],
-	// The hidden input's change event reports the file (`SelectedLogo`).
+	// The hidden input's change event reports the file (`SelectedLogo`). Best effort: a missing input opens nothing.
 	execute: Dom.clickElement(`#${LOGO_INPUT_ID}`).pipe(
 		Effect.ignore,
 		Effect.as(Message.CompletedOpenLogoPicker()),
@@ -89,67 +102,41 @@ export const ReadOrigin = Command.define("ReadOrigin", {
 export const UploadLogo = Command.define("UploadLogo", {
 	args: { organizationId: OrganizationId, file: Schema.instanceOf(File) },
 	messages: [Message.SucceededUploadLogo, Message.FailedUploadLogo],
-	execute: ({ organizationId, file }) =>
-		Effect.gen(function* () {
+	execute: ({ organizationId, file }) => {
+		const failed = (reason: UploadLogoFailure) => Effect.succeed(Message.FailedUploadLogo({ reason }))
+		return Effect.sync(() => {
 			// Reset the input so the same file can be picked again.
 			const input = document.getElementById(LOGO_INPUT_ID)
 			if (input instanceof HTMLInputElement) input.value = ""
-			const key = yield* uploadFile({ type: "organization-avatar", organizationId }, file)
-			const logoUrl = publicUrlOf(key)
-			if (logoUrl === null) {
-				return Message.FailedUploadLogo({
-					toast: errorToast(
-						"Configuration error",
-						"Image upload is not configured. Please contact support.",
-					),
-				})
-			}
-			return yield* runAtomFn(updateOrganizationAction, { organizationId, logoUrl }).pipe(
-				Effect.as(Message.SucceededUploadLogo()),
-				Effect.catch(() =>
-					Effect.succeed(
-						Message.FailedUploadLogo({
-							toast: errorToast(
-								"Upload failed",
-								"Failed to update organization. Please try again.",
-							),
-						}),
-					),
-				),
-			)
 		}).pipe(
-			Effect.catchTag("UploadFailedError", (error) =>
-				Effect.succeed(
-					Message.FailedUploadLogo({ toast: errorToast(error.message, error.description) }),
-				),
-			),
-		),
+			Effect.andThen(uploadFile(UploadTarget.OrganizationAvatar({ organizationId }), file)),
+			Effect.flatMap((logoUrl) => updateOrganizationAction({ organizationId, logoUrl })),
+			Effect.as(Message.SucceededUploadLogo()),
+			Effect.catchTags({
+				UploadFailedError: (error) => failed(error.problem),
+				OrganizationNotFoundError: () => failed("NotFound"),
+				OrganizationSlugAlreadyExistsError: () => failed("SlugTaken"),
+			}),
+			catchCommon((reason) => Message.FailedUploadLogo({ reason })),
+		)
+	},
 })
 
 export const DeleteOrganization = Command.define("DeleteOrganization", {
 	args: { organizationId: OrganizationId },
 	messages: [Message.SucceededDeleteWorkspace, Message.FailedDeleteWorkspace],
-	execute: ({ organizationId }) =>
-		settle(
-			Effect.gen(function* () {
-				const client = yield* HazelRpc
-				return yield* client("organization.delete", { id: organizationId })
+	execute: ({ organizationId }) => {
+		const failed = (reason: DeleteWorkspaceFailure) =>
+			Effect.succeed(Message.FailedDeleteWorkspace({ reason }))
+		return HazelRpc.use((client) => client("organization.delete", { id: organizationId })).pipe(
+			Effect.as(Message.SucceededDeleteWorkspace()),
+			Effect.catchTags({
+				OrganizationNotFoundError: () => failed("NotFound"),
+				UnauthorizedError: () => failed("NotPermitted"),
 			}),
-			() => Message.SucceededDeleteWorkspace(),
-			(cause) =>
-				Message.FailedDeleteWorkspace({
-					toast: failureToast(cause, "friendly", {
-						OrganizationNotFoundError: {
-							title: "Workspace not found",
-							description: "This workspace may have already been deleted.",
-						},
-						UnauthorizedError: {
-							title: "Unauthorized",
-							description: "You don't have permission to delete this workspace.",
-						},
-					}),
-				}),
-		),
+			catchCommon((reason) => Message.FailedDeleteWorkspace({ reason })),
+		)
+	},
 })
 
 // INIT
@@ -161,12 +148,11 @@ export const init = (route: RouteOf<"SettingsGeneral">, shared: Shared): Return 
 		name: shared.organization?.name ?? "",
 		syncedName: shared.organization?.name ?? null,
 		isPublic: false,
-		isSavingName: false,
-		isTogglingPublic: false,
-		isUploading: false,
-		deleteModal: Modal.init("delete-workspace"),
+		nameSave: NameSave.Idle(),
+		logoUpload: LogoUpload.Idle(),
+		publicModeSave: PublicModeSave.Idle(),
+		deleteConfirm: ConfirmAction.init<DeleteTarget>("delete-workspace"),
 		confirmationText: "",
-		isDeleting: false,
 	},
 	commands: [ReadOrigin()],
 })
@@ -183,29 +169,49 @@ export const sharedChanged = (model: Model, shared: Shared): Return => {
 	}
 }
 
+// COPY
+
+const organizationNotFound: UserErrorMessage = {
+	title: "Organization not found",
+	description: "This organization may have been deleted.",
+}
+
+const slugTaken: UserErrorMessage = {
+	title: "Slug already exists",
+	description: "This organization slug is already taken.",
+}
+
+const isUploadProblem = Schema.is(UploadProblem)
+
+const uploadLogoFailureMessage = (reason: UploadLogoFailure): UserErrorMessage =>
+	isUploadProblem(reason)
+		? uploadProblemMessage("avatar", reason)
+		: failureMessage(reason, { NotFound: organizationNotFound, SlugTaken: slugTaken })
+
+const COPIED: { readonly [T in CopyTarget]: { readonly success: string; readonly failure: string } } = {
+	WorkspaceUrl: { success: "Workspace URL copied to clipboard", failure: "Failed to copy URL" },
+	InviteLink: { success: "Invite link copied to clipboard", failure: "Failed to copy link" },
+}
+
 // UPDATE
 
 export const isAdminOf = (shared: Shared) =>
 	shared.member?.role === "owner" || shared.member?.role === "admin"
 
-const toast = (model: Model, request: ToastRequest): Return => ({
-	model,
-	outMessage: PageOutMessage.RequestedToast({ toast: request }),
-})
+/** Every way the delete dialog closes clears the typed confirmation. */
+const withDeleteConfirm = (model: Model, deleteConfirm: ConfirmAction.Model<DeleteTarget>): Model =>
+	modifyFields(model, {
+		deleteConfirm: () => deleteConfirm,
+		confirmationText: (text) => (deleteConfirm.modal.isOpen ? text : ""),
+	})
 
-const deleteModalFold = {
-	read: (model: Model) => Option.some(model.deleteModal),
-	write: (model: Model, deleteModal: Modal.Model): Model =>
-		modifyFields(model, {
-			deleteModal: () => deleteModal,
-			// Closing the dialog (any path) clears the typed confirmation.
-			confirmationText: (text) => (deleteModal.isOpen ? text : ""),
-		}),
-	toParentMessage: (message: Modal.Message) => Message.GotDeleteModalMessage({ message }),
-}
-const foldDeleteModal = Update.foldChild({ update: Modal.update, ...deleteModalFold })
-const openDeleteModal = Update.foldChildStep({ update: Modal.open, ...deleteModalFold })
-const closeDeleteModal = Update.foldChildStep({ update: Modal.close, ...deleteModalFold })
+const foldDeleteConfirm = Update.foldChild({
+	update: (child: ConfirmAction.Model<DeleteTarget>, message: ConfirmAction.Message) =>
+		ConfirmAction.update(child, message),
+	read: (model: Model) => Option.some(model.deleteConfirm),
+	write: withDeleteConfirm,
+	toParentMessage: (message: ConfirmAction.Message) => Message.GotDeleteConfirmMessage({ message }),
+})
 
 export const update = (model: Model, message: Message, shared: Shared): Return =>
 	Message.match<Return>(message, {
@@ -214,92 +220,139 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 		ChangedName: ({ value }) => ({ model: modifyFields(model, { name: () => value }) }),
 		SubmittedName: () => {
 			const organization = shared.organization
+			const name = model.name.trim()
 			if (
 				!organization ||
-				!model.name.trim() ||
+				!name ||
 				model.name === organization.name ||
-				model.isSavingName
+				NameSave.guards.Saving(model.nameSave)
 			) {
 				return { model }
 			}
 			return {
-				model: modifyFields(model, { isSavingName: () => true }),
-				commands: [
-					UpdateOrganizationName({ organizationId: organization.id, name: model.name.trim() }),
-				],
+				model: modifyFields(model, { nameSave: () => NameSave.Saving() }),
+				commands: [UpdateOrganizationName({ organizationId: organization.id, name })],
 			}
 		},
 		ClickedCancelName: () => ({
 			model: modifyFields(model, { name: () => shared.organization?.name ?? "" }),
 		}),
-		SucceededUpdateName: () =>
-			toast(
-				modifyFields(model, { isSavingName: () => false }),
-				successToast("Organization name updated"),
-			),
-		FailedUpdateName: ({ toast: request }) =>
-			toast(modifyFields(model, { isSavingName: () => false }), request),
+		SucceededUpdateName: () => ({
+			model: modifyFields(model, { nameSave: () => NameSave.Idle() }),
+			outMessage: PageOutMessage.RequestedToast({ toast: successToast("Organization name updated") }),
+		}),
+		FailedUpdateName: ({ reason }) => ({
+			model: modifyFields(model, { nameSave: () => NameSave.Idle() }),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToastOf(
+					failureMessage(reason, { NotFound: organizationNotFound, SlugTaken: slugTaken }),
+				),
+			}),
+		}),
 		ClickedLogo: () => ({ model, commands: [OpenLogoPicker()] }),
 		CompletedOpenLogoPicker: () => ({ model }),
 		SelectedLogo: ({ files }) =>
-			model.isUploading
+			LogoUpload.guards.Uploading(model.logoUpload)
 				? { model }
 				: Option.match(Option.all([Array.head(files), Option.fromNullishOr(shared.organization)]), {
 						onNone: () => ({ model }),
 						onSome: ([file, organization]) => ({
-							model: modifyFields(model, { isUploading: () => true }),
+							model: modifyFields(model, { logoUpload: () => LogoUpload.Uploading() }),
 							commands: [UploadLogo({ organizationId: organization.id, file })],
 						}),
 					}),
-		SucceededUploadLogo: () =>
-			toast(
-				modifyFields(model, { isUploading: () => false }),
-				successToast("Organization logo updated"),
-			),
-		FailedUploadLogo: ({ toast: request }) =>
-			toast(modifyFields(model, { isUploading: () => false }), request),
+		SucceededUploadLogo: () => ({
+			model: modifyFields(model, { logoUpload: () => LogoUpload.Idle() }),
+			outMessage: PageOutMessage.RequestedToast({ toast: successToast("Organization logo updated") }),
+		}),
+		FailedUploadLogo: ({ reason }) => ({
+			model: modifyFields(model, { logoUpload: () => LogoUpload.Idle() }),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToastOf(uploadLogoFailureMessage(reason)),
+			}),
+		}),
 		ToggledPublicMode: ({ isPublic }) =>
-			shared.organization === null || model.isTogglingPublic
+			shared.organization === null || PublicModeSave.guards.Saving(model.publicModeSave)
 				? { model }
 				: {
-						model: modifyFields(model, { isTogglingPublic: () => true }),
+						model: modifyFields(model, {
+							publicModeSave: () => PublicModeSave.Saving({ isPublic }),
+						}),
 						commands: [SetPublicMode({ organizationId: shared.organization.id, isPublic })],
 					},
-		SucceededSetPublicMode: ({ isPublic }) =>
-			toast(
-				modifyFields(model, { isTogglingPublic: () => false }),
-				successToast(isPublic ? "Public invites enabled" : "Public invites disabled"),
-			),
-		FailedSetPublicMode: ({ toast: request }) =>
-			toast(modifyFields(model, { isTogglingPublic: () => false }), request),
-		ClickedCopy: (args) => ({ model, commands: [CopyText(args)] }),
-		CompletedCopy: ({ toast: request }) => toast(model, request),
-		ClickedDeleteWorkspace: () => openDeleteModal(model),
-		GotDeleteModalMessage: ({ message: child }) => foldDeleteModal(model, child),
+		SucceededSetPublicMode: ({ isPublic }) => ({
+			model: modifyFields(model, { publicModeSave: () => PublicModeSave.Idle() }),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: successToast(isPublic ? "Public invites enabled" : "Public invites disabled"),
+			}),
+		}),
+		FailedSetPublicMode: ({ reason }) => ({
+			model: modifyFields(model, { publicModeSave: () => PublicModeSave.Idle() }),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToastOf(failureMessage(reason, { NotFound: organizationNotFound })),
+			}),
+		}),
+		ClickedCopy: ({ target, text }) => ({ model, commands: [CopyText({ target, text })] }),
+		SucceededCopy: ({ target }) => ({
+			model,
+			outMessage: PageOutMessage.RequestedToast({ toast: successToast(COPIED[target].success) }),
+		}),
+		FailedCopy: ({ target }) => ({
+			model,
+			outMessage: PageOutMessage.RequestedToast({ toast: errorToast(COPIED[target].failure) }),
+		}),
+		ClickedDeleteWorkspace: () =>
+			shared.organization === null
+				? { model }
+				: {
+						model: withDeleteConfirm(
+							model,
+							ConfirmAction.ask(model.deleteConfirm, {
+								organizationId: shared.organization.id,
+							}),
+						),
+					},
+		GotDeleteConfirmMessage: ({ message: child }) => foldDeleteConfirm(model, child),
 		ChangedConfirmation: ({ value }) => ({
 			model: modifyFields(model, { confirmationText: () => value }),
 		}),
-		ClickedCancelDelete: () => closeDeleteModal(model),
-		ClickedConfirmDelete: () =>
-			shared.organization === null ||
-			model.confirmationText !== shared.organization.name ||
-			model.isDeleting
+		ClickedCancelDelete: () =>
+			ConfirmAction.isRunning(model.deleteConfirm)
 				? { model }
-				: {
-						model: modifyFields(model, { isDeleting: () => true }),
-						commands: [DeleteOrganization({ organizationId: shared.organization.id })],
-					},
-		SucceededDeleteWorkspace: () => {
-			const closed = closeDeleteModal(modifyFields(model, { isDeleting: () => false }))
-			return {
-				...closed,
-				outMessage: PageOutMessage.RequestedNavigation({
-					href: "/",
-					replace: false,
-					toast: successToast("Workspace deleted successfully"),
-				}),
-			}
-		},
-		FailedDeleteWorkspace: ({ toast: request }) =>
-			toast(modifyFields(model, { isDeleting: () => false }), request),
+				: { model: withDeleteConfirm(model, ConfirmAction.close(model.deleteConfirm)) },
+		ClickedConfirmDelete: () =>
+			shared.organization === null || model.confirmationText !== shared.organization.name
+				? { model }
+				: Option.match(ConfirmAction.confirm(model.deleteConfirm), {
+						onNone: () => ({ model }),
+						onSome: ([deleteConfirm, target]) => ({
+							model: withDeleteConfirm(model, deleteConfirm),
+							commands: [DeleteOrganization(target)],
+						}),
+					}),
+		SucceededDeleteWorkspace: () => ({
+			model: withDeleteConfirm(model, ConfirmAction.close(model.deleteConfirm)),
+			outMessage: PageOutMessage.RequestedNavigation({
+				route: AppRoute.Root(),
+				replace: false,
+				toast: successToast("Workspace deleted successfully"),
+			}),
+		}),
+		FailedDeleteWorkspace: ({ reason }) => ({
+			model: withDeleteConfirm(model, ConfirmAction.failed(model.deleteConfirm)),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToastOf(
+					failureMessage(reason, {
+						NotFound: {
+							title: "Workspace not found",
+							description: "This workspace may have already been deleted.",
+						},
+						NotPermitted: {
+							title: "Unauthorized",
+							description: "You don't have permission to delete this workspace.",
+						},
+					}),
+				),
+			}),
+		}),
 	})

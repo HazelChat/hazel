@@ -24,7 +24,7 @@ describe("desktop updates", () => {
 		).model
 		expect(progressed).toEqual(Model.Downloading({ downloadedBytes: 5, totalBytes: 10 }))
 		expect(update(progressed, Message.StartedInstall()).model).toEqual(Model.Installing())
-		const failed = update(progressed, Message.FailedInstall({ message: "disk full" })).model
+		const failed = update(progressed, Message.FailedInstall({ reason: "DownloadFailed" })).model
 		expect(isInstalling(failed)).toBe(false)
 		expect(check(failed).model).toEqual(Model.Checking())
 	})

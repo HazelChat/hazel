@@ -1,3 +1,4 @@
+import type { ChannelId, MessageId } from "@hazel/schema"
 import type { Html, HtmlBuilder } from "foldkit/html"
 import { twMerge } from "tailwind-merge"
 import { menuHeaderBase } from "~/components/ui/menu.styles"
@@ -16,24 +17,49 @@ import { avatarButton, type RowContext } from "../../chat/message/row"
 import { TOP_EMOJIS } from "../../chat/message/toolbar"
 import { popoverTrigger } from "../../chat/popover-host"
 import { profilePopoverContent } from "../../chat/profile-popover"
+import type * as TooltipHost from "../../chat/tooltip-host"
 import { button } from "../../ui/button"
+import type * as Menu from "../../ui/menu"
 import { contextMenuView, menuLabel } from "../../ui/menu-view"
+import type * as Popover from "../../ui/popover"
 import * as Overlays from "./overlays"
 import { factsOf, Message, type Model } from "./channel/page"
 import type { MessageRow } from "./rows"
 
 /**
  * The context message rows render with. Rows are memoized by argument identity, so every row
- * without an open overlay shares one cached context; only the row owning an overlay gets its own.
+ * without an open overlay shares one context per user list; only the row owning an overlay gets its own.
  */
 
-type ToParent<M> = (message: Message) => M
+type H = HtmlBuilder<Message>
 
-const overlaysMessage = <M>(toParentMessage: ToParent<M>, message: Overlays.Message) =>
-	toParentMessage(Message.GotOverlaysMessage({ message }))
+// The page's mappers, built once: a row context made of them compares equal across renders.
+
+const toOverlays = (message: Overlays.Message) => Message.GotOverlaysMessage({ message })
+
+const toTooltipMessage = (message: TooltipHost.Message) =>
+	toOverlays(Overlays.Message.GotTooltipMessage({ message }))
+
+const toOpenImage = (messageId: MessageId, index: number) =>
+	toOverlays(Overlays.Message.ClickedAttachmentImage({ messageId, index }))
+
+const toOpenEmbedImage = (
+	messageId: MessageId,
+	images: ReadonlyArray<{ readonly url: string; readonly alt: string }>,
+	index: number,
+) => toOverlays(Overlays.Message.ClickedEmbedImage({ messageId, images, index }))
+
+const toReact = (messageId: MessageId, emoji: string) =>
+	toOverlays(Overlays.Message.ClickedReaction({ messageId, emoji }))
+
+const toOpenThread = (threadChannelId: ChannelId, messageId: MessageId) =>
+	Message.ClickedThreadPreview({ threadChannelId, messageId })
+
+const toContextMenuMessage = (message: Menu.Message) =>
+	toOverlays(Overlays.Message.GotContextMenuMessage({ message }))
 
 /** `ContextMenuHeader` with the quick reactions row. */
-const contextMenuHeader = <M>(h: HtmlBuilder<M>, toReact: (emoji: string) => M): Html =>
+const contextMenuHeader = (h: H, messageId: MessageId): Html =>
 	h.header(
 		[h.Class(twMerge(menuHeaderBase, false, "flex items-center gap-1 px-1 py-1"))],
 		TOP_EMOJIS.map((emoji) =>
@@ -43,7 +69,7 @@ const contextMenuHeader = <M>(h: HtmlBuilder<M>, toReact: (emoji: string) => M):
 					size: "sq-md",
 					intent: "plain",
 					className: "p-1! text-lg hover:bg-secondary",
-					onPress: toReact(emoji),
+					onPress: toReact(messageId, emoji),
 					attributes: [h.Attribute("aria-label", `React with ${emoji}`)],
 				},
 				[emoji],
@@ -51,13 +77,13 @@ const contextMenuHeader = <M>(h: HtmlBuilder<M>, toReact: (emoji: string) => M):
 		),
 	)
 
-const contextItem = <M>(h: HtmlBuilder<M>, key: string, label: string, icon: Html): ReadonlyArray<Html> => [
+const contextItem = (h: H, key: string, label: string, icon: Html): ReadonlyArray<Html> => [
 	menuLabel(h, "message-context-menu", key, label),
 	icon,
 ]
 
 const contextMenuContent =
-	<M>(h: HtmlBuilder<M>, isPinned: boolean) =>
+	(h: H, isPinned: boolean) =>
 	(key: string): ReadonlyArray<Html> => {
 		const icon = (render: typeof IconCopy, className = "ml-auto size-4 text-muted-fg") =>
 			render(h, { className, attributes: { "data-slot": "icon" } })
@@ -77,68 +103,86 @@ const contextMenuContent =
 		return contextItem(h, key, "Copy Message ID", icon(IconHashtag))
 	}
 
-const buildContext = <M>(
-	h: HtmlBuilder<M>,
-	model: Model,
-	toParentMessage: ToParent<M>,
-	isIdle: boolean,
-	nowMs: number,
-): RowContext<M> => {
-	const users = model.lookups.users
-	const names = new Map(users.map((user) => [user.id as string, `${user.firstName} ${user.lastName}`]))
-	const overlays = model.overlays
-	const toPopoverMessage = (
-		key: string,
-		message: Parameters<typeof Overlays.Message.GotPopoverMessage>[0]["message"],
-	) => overlaysMessage(toParentMessage, Overlays.Message.GotPopoverMessage({ popoverId: key, message }))
+const userNamesOf = (users: Model["lookups"]["users"]) =>
+	new Map(users.map((user) => [user.id as string, `${user.firstName} ${user.lastName}`]))
+
+/** The context of a row without an open overlay: no tooltip, menu or popover is ever open in it. */
+const buildIdleContext = (
+	h: H,
+	users: Model["lookups"]["users"],
+	currentUserId: Model["currentUserId"],
+): RowContext<Message> => {
+	const names = userNamesOf(users)
 	return {
 		tooltip: {
-			active: isIdle ? null : overlays.tooltip,
-			hoveredKey: isIdle ? null : overlays.hoveredTriggerKey,
-			toMessage: (message) =>
-				overlaysMessage(toParentMessage, Overlays.Message.GotTooltipMessage({ message })),
+			active: null,
+			hoveredKey: null,
+			toMessage: toTooltipMessage,
+			userName: (userId) => names.get(userId) ?? null,
+			currentUserId,
+		},
+		toOpenImage,
+		toOpenEmbedImage,
+		toReact,
+		toOpenThread,
+		contextMenu: (_row, render) => render([], h.empty),
+		avatar: (row: MessageRow) =>
+			popoverTrigger(h, {
+				key: Overlays.avatarPopoverKey(row.message.id),
+				active: null,
+				toMessage: (_key, message: Popover.Message) =>
+					toOverlays(Overlays.Message.GotPopoverMessage({ messageId: row.message.id, message })),
+				placement: "right top",
+				className: "w-72 p-0 lg:w-80",
+				toTrigger: (attributes) => avatarButton(h, row, attributes),
+				toContent: () => [],
+			}),
+	}
+}
+
+/** The context of the row an overlay belongs to: the open tooltip, context menu or profile popover. */
+const buildOwnerContext = (h: H, model: Model, nowMs: number): RowContext<Message> => {
+	const users = model.lookups.users
+	const names = userNamesOf(users)
+	const overlays = model.overlays
+	const contextMenu = Overlays.contextMenuOf(overlays)
+	return {
+		tooltip: {
+			active: Overlays.activeTooltipOf(overlays),
+			hoveredKey: overlays.hoveredTrigger?.key ?? null,
+			toMessage: toTooltipMessage,
 			userName: (userId) => names.get(userId) ?? null,
 			currentUserId: model.currentUserId,
 		},
-		toOpenImage: (messageId, index) =>
-			overlaysMessage(toParentMessage, Overlays.Message.ClickedAttachmentImage({ messageId, index })),
-		toOpenEmbedImage: (messageId, images, index) =>
-			overlaysMessage(toParentMessage, Overlays.Message.ClickedEmbedImage({ messageId, images, index })),
-		toReact: (messageId, emoji) =>
-			overlaysMessage(toParentMessage, Overlays.Message.ClickedReaction({ messageId, emoji })),
-		toOpenThread: (threadChannelId, messageId) =>
-			overlaysMessage(
-				toParentMessage,
-				Overlays.Message.ClickedThreadPreview({ threadChannelId, messageId }),
-			),
-		contextMenu: (row, render) => {
-			const open = isIdle ? null : overlays.contextMenu
-			if (open === null || open.messageId !== row.message.id) return render([], h.empty)
-			return h.submodel({
-				slotId: "message-context-menu",
-				model: open.menu,
-				view: contextMenuView,
-				viewInputs: {
-					toTrigger: render,
-					content: contextMenuContent(h, factsOf(model).isPinned(row.message.id)),
-					className: "min-w-56",
-					header: () =>
-						contextMenuHeader(h, (emoji) =>
-							overlaysMessage(toParentMessage, Overlays.Message.ClickedReaction({ messageId: row.message.id, emoji })),
-						),
-				},
-				toParentMessage: (message) =>
-					overlaysMessage(toParentMessage, Overlays.Message.GotContextMenuMessage({ message })),
-			})
-		},
+		toOpenImage,
+		toOpenEmbedImage,
+		toReact,
+		toOpenThread,
+		contextMenu: (row, render) =>
+			contextMenu === null || contextMenu.messageId !== row.message.id
+				? render([], h.empty)
+				: h.submodel({
+						slotId: "message-context-menu",
+						model: contextMenu.menu,
+						view: contextMenuView,
+						viewInputs: {
+							entries: Overlays.contextMenuEntries(factsOf(model), row.message.id),
+							toTrigger: render,
+							content: contextMenuContent(h, factsOf(model).isPinned(row.message.id)),
+							className: "min-w-56",
+							header: () => contextMenuHeader(h, row.message.id),
+						},
+						toParentMessage: toContextMenuMessage,
+					}),
 		avatar: (row: MessageRow) =>
 			popoverTrigger(h, {
-				key: `${row.message.id}:avatar`,
-				active: isIdle ? null : overlays.popover,
-				toMessage: toPopoverMessage,
+				key: Overlays.avatarPopoverKey(row.message.id),
+				active: Overlays.activePopoverOf(overlays),
+				toMessage: (_key, message: Popover.Message) =>
+					toOverlays(Overlays.Message.GotPopoverMessage({ messageId: row.message.id, message })),
 				placement: "right top",
 				className: "w-72 p-0 lg:w-80",
-				toTrigger: (attributes, overlay) => avatarButton(h, row, attributes, overlay),
+				toTrigger: (attributes) => avatarButton(h, row, attributes),
 				toContent: () => {
 					const user = users.find((candidate) => candidate.id === row.message.authorId)
 					if (user === undefined) return []
@@ -157,50 +201,31 @@ const buildContext = <M>(
 	}
 }
 
-interface Cache<M> {
-	readonly toParentMessage: ToParent<M>
-	readonly users: Model["lookups"]["users"]
-	readonly currentUserId: Model["currentUserId"]
-	readonly context: RowContext<M>
-}
-
-// A view memo, not state: one shared context for idle rows keeps the row lazies hitting (see view.ts memoRow).
-// oxlint-disable-next-line foldkit/no-module-level-mutable-state
-let idleCache: Cache<never> | null = null
+// A pure view memo keyed by the (frozen) user list, like `MessageList.layoutOf`: the same Model
+// always yields the same idle context, so rendering it twice gives the same result.
+const idleContexts = new WeakMap<
+	Model["lookups"]["users"],
+	Map<Model["currentUserId"], RowContext<Message>>
+>()
 
 /** The shared context for rows without an open overlay. */
-export const idleRowContext = <M>(
-	h: HtmlBuilder<M>,
-	model: Model,
-	toParentMessage: ToParent<M>,
-): RowContext<M> => {
-	const cache: Cache<M> | null = idleCache
-	if (
-		cache !== null &&
-		cache.toParentMessage === toParentMessage &&
-		cache.users === model.lookups.users &&
-		cache.currentUserId === model.currentUserId
-	)
-		return cache.context
-	// Idle rows never open the profile popover, so they need no clock.
-	const context = buildContext(h, model, toParentMessage, true, 0)
-	const next: Cache<M> = {
-		toParentMessage,
-		users: model.lookups.users,
-		currentUserId: model.currentUserId,
-		context,
-	}
-	idleCache = next as Cache<never>
+export const idleRowContext = (h: H, model: Model): RowContext<Message> => {
+	const byUser =
+		idleContexts.get(model.lookups.users) ?? new Map<Model["currentUserId"], RowContext<Message>>()
+	const cached = byUser.get(model.currentUserId)
+	if (cached !== undefined) return cached
+	const context = buildIdleContext(h, model.lookups.users, model.currentUserId)
+	byUser.set(model.currentUserId, context)
+	idleContexts.set(model.lookups.users, byUser)
 	return context
 }
 
 /** The context for one row: the idle one, unless an overlay belongs to this message. */
-export const rowContextFor = <M>(
-	h: HtmlBuilder<M>,
+export const rowContextFor = (
+	h: H,
 	model: Model,
 	row: MessageRow,
-	toParentMessage: ToParent<M>,
-	idle: RowContext<M>,
+	idle: RowContext<Message>,
 	nowMs: number,
-): RowContext<M> =>
-	Overlays.ownsRow(model.overlays, row.message.id) ? buildContext(h, model, toParentMessage, false, nowMs) : idle
+): RowContext<Message> =>
+	Overlays.ownsRow(model.overlays, row.message.id) ? buildOwnerContext(h, model, nowMs) : idle

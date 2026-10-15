@@ -5,7 +5,7 @@ import * as Menu from "../../../../ui/menu"
 import type { ModalRequest } from "../../../../overlay/modal/requests"
 import type { PageReturn } from "../../../contract"
 import { PageOutMessage } from "../../../out-message"
-import { BOT_MENU_ENTRIES, botMenuId } from "../shared/bot-card"
+import { botMenuId } from "../shared/bot-card"
 import type { Bot } from "../shared/bots"
 import { Message } from "./message"
 import type { Model } from "./model"
@@ -19,7 +19,7 @@ const menusFor = (bots: ReadonlyArray<Bot>, previous: ReadonlyArray<Menu.Model>)
 	bots.map((bot) =>
 		Option.getOrElse(
 			Array.findFirst(previous, (menu) => menu.id === botMenuId(bot.id)),
-			() => Menu.init({ id: botMenuId(bot.id), entries: BOT_MENU_ENTRIES, placement: "bottom end" }),
+			() => Menu.init({ id: botMenuId(bot.id), placement: "bottom end" }),
 		),
 	)
 
@@ -51,9 +51,14 @@ const foldMenu = (model: Model, botId: BotId, message: Menu.Message): Return =>
 			onSome: (menu) => {
 				const result = Menu.update(menu, message)
 				const bot = model.bots?.find((candidate) => candidate.id === botId)
-				const selected = result.outMessage?._tag === "SelectedItem" && bot ? modalFor(bot, result.outMessage.key) : null
+				const selected =
+					result.outMessage?._tag === "SelectedItem" && bot
+						? modalFor(bot, result.outMessage.key)
+						: null
 				return {
-					...(selected === null ? {} : { outMessage: PageOutMessage.RequestedModal({ modal: selected }) }),
+					...(selected === null
+						? {}
+						: { outMessage: PageOutMessage.RequestedModal({ modal: selected }) }),
 					model: {
 						...model,
 						menus: model.menus.map((other) => (other.id === menu.id ? result.model : other)),

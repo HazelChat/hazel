@@ -1,29 +1,39 @@
+import { AsyncData } from "foldkit"
 import type { Document, Html, HtmlBuilder } from "foldkit/html"
+import { commonMessage } from "~/lib/error-messages"
 import * as CommandPalette from "../overlay/command-palette"
 import * as Modal from "../overlay/modal"
 import * as Toasts from "../overlay/toaster"
 import { type PageMessage, viewPage } from "../page/registry"
-import { type AppRoute, isPublicRoute, orgSectionOf, orgSlugOf } from "../route"
-import { displayNameOf } from "../session"
+import {
+	channelSettingsTabOf,
+	chatChannelIdOf,
+	hasContentColumn,
+	isPublicRoute,
+	orgSectionOf,
+	orgSlugOf,
+	titleOf,
+} from "../route"
+import { type CurrentUser, displayNameOf, type Organization } from "../session"
 import { orgShell } from "../shell/app-shell"
 import * as ChannelsSidebar from "../shell/channels-sidebar"
-import { formatStatusExpirationAt } from "../shell/menus"
 import type { ShellContext } from "../shell/context"
 import {
+	appError,
 	appLoader,
-	organizationNotFound,
-	type ChannelSettingsTab,
 	channelSettingsLayout,
-	contentColumnLayout,
+	organizationNotFound,
 	sectionLayout,
+	contentColumnLayout,
 } from "../shell/layouts"
+import { formatStatusExpirationAt } from "../shell/menus"
 import * as Shell from "../shell/model"
 import * as Notifications from "../shell/notifications"
 import { mySettingsSidebar, notificationsSidebar, settingsSidebar } from "../shell/sidebars"
 import type * as Menu from "../ui/menu"
 import type * as ModalKit from "../ui/modal"
 import { Message } from "./message"
-import { type Model, resolvedThemeOf, sharedOf } from "./model"
+import { type Model, OrgState, Session, sharedOf } from "./model"
 
 // Module-level and built as literals: memoized shell views compare them by reference, and
 // wrapper constructors would re-validate large payloads (sidebar rows, message pages) per dispatch.
@@ -43,24 +53,29 @@ const openedMobileSidebar = toShellMessage(Shell.Message.ToggledSidebar({ isOpen
 export const toPageMessage = (message: PageMessage): Message => ({ _tag: "GotPageMessage", message })
 const toToastsMessage = (message: Toasts.Message): Message => ({ _tag: "GotToastsMessage", message })
 const toaster = (h: HtmlBuilder<Message>, model: Model): Html =>
-	Toasts.view(h, model.toasts, resolvedThemeOf(model), toToastsMessage)
+	Toasts.view(h, model.toasts, toToastsMessage)
 const toModalMessage = (message: Modal.Message): Message => ({ _tag: "GotModalMessage", message })
 const toCommandPaletteMessage = (message: CommandPalette.Message): Message => ({
 	_tag: "GotCommandPaletteMessage",
 	message,
 })
 
-const shellContextOf = (model: Model, orgSlug: string): ShellContext => ({
-	orgSlug,
-	pathname: model.pathname,
-	organization: model.organization ?? undefined,
-	currentUser: model.currentUser
-		? {
-				displayName: displayNameOf(model.currentUser),
-				email: model.currentUser.email,
-				avatarUrl: model.currentUser.avatarUrl,
-			}
-		: undefined,
+/** What the org shell shows: the loaded user and organization of `orgSlug`. */
+interface ShellData {
+	readonly orgSlug: string
+	readonly user: CurrentUser
+	readonly organization: Organization
+}
+
+const shellContextOf = (model: Model, data: ShellData): ShellContext => ({
+	orgSlug: data.orgSlug,
+	route: model.route,
+	organization: data.organization,
+	currentUser: {
+		displayName: displayNameOf(data.user),
+		email: data.user.email,
+		avatarUrl: data.user.avatarUrl,
+	},
 	appVersion: __APP_VERSION__,
 })
 
@@ -71,21 +86,9 @@ const pageBody = (model: Model, h: HtmlBuilder<Message>, isInsideMain: boolean):
 	return isInsideMain ? h.div([placeholder]) : h.main([placeholder])
 }
 
-const channelSettingsTabOf = (route: AppRoute): ChannelSettingsTab | undefined =>
-	route._tag === "ChannelSettingsOverview"
-		? "overview"
-		: route._tag === "ChannelSettingsIntegrations"
-			? "integrations"
-			: route._tag === "ChannelSettingsConnect"
-				? "connect"
-				: undefined
-
-const hasContentColumn = (route: AppRoute) =>
-	route._tag.startsWith("SettingsIntegration") || route._tag.startsWith("SettingsChatSync")
-
 /** The route's section layout around the page (`settings/layout.tsx` and friends). */
 const sectionBody = (model: Model, h: HtmlBuilder<Message>): Html => {
-	const route = model.route
+	const { route } = model
 	const section = orgSectionOf(route)
 	if (section === "Settings")
 		return sectionLayout(
@@ -105,8 +108,9 @@ const sectionBody = (model: Model, h: HtmlBuilder<Message>): Html => {
 				channelId: route.channelId,
 				channel: model.shell.settingsChannel,
 				selectedTab: tab,
-				onSelectTab: (href) => h.OnClick(Message.ClickedLayoutTab({ href })),
-				onChangeTab: (toHref) => h.OnChange((tab) => Message.ClickedLayoutTab({ href: toHref(tab) })),
+				onSelectTab: (tabRoute) => h.OnClick(Message.ClickedLayoutTab({ route: tabRoute })),
+				onChangeTab: (toRoute) =>
+					h.OnChange((value) => Message.ClickedLayoutTab({ route: toRoute(value) })),
 			},
 			pageBody(model, h, true),
 		)
@@ -118,6 +122,8 @@ const secondarySidebar = (model: Model, h: HtmlBuilder<Message>, context: ShellC
 	const chrome = {
 		userMenu: shell.userMenu,
 		orgSwitcher: shell.orgSwitcher,
+		userMenuEntries: shell.userMenuEntries,
+		orgSwitcherEntries: shell.orgSwitcherEntries,
 		organizations: shell.userOrganizations,
 		userStatus: shell.userStatus,
 		statusExpiration: formatStatusExpirationAt(shell.userStatus?.expiresAtMs ?? null, model.nowMs),
@@ -133,16 +139,10 @@ const secondarySidebar = (model: Model, h: HtmlBuilder<Message>, context: ShellC
 			isPending: Notifications.isMarkingAllRead(shell.notifications),
 			onPress: h.OnClick(clickedMarkAllRead),
 		})
-	const route = model.route
 	return ChannelsSidebar.view(
 		h,
 		shell.channelsSidebar,
-		{
-			shell: context,
-			activeChannelId:
-				route._tag.startsWith("Chat") && "channelId" in route ? route.channelId : undefined,
-			chrome,
-		},
+		{ shell: context, activeChannelId: chatChannelIdOf(model.route), nowMs: model.nowMs, chrome },
 		toChannelsSidebarMessage,
 	)
 }
@@ -154,22 +154,8 @@ const loader = (h: HtmlBuilder<Message>, isStalled: boolean): Html =>
 const appRoot = (h: HtmlBuilder<Message>, model: Model, children: ReadonlyArray<Html>): Html =>
 	h.div([h.Id("app")], [toaster(h, model), ...children])
 
-const body = (model: Model, h: HtmlBuilder<Message>): Html => {
-	const route = model.route
-	if (route._tag === "NotFound") return h.div([h.Id("app")], [`Not found: ${route.path}`])
-	if (isPublicRoute(route)) return appRoot(h, model, [pageBody(model, h, false)])
-	// `_app/layout.tsx`: a loader until the API answers for the session; signed out redirects to sign-in.
-	if (model.auth !== "SignedIn") return appRoot(h, model, [loader(h, model.isSessionStalled)])
-	// `AppShell`: a loader until `user.me` answers.
-	if (model.currentUser === null) return appRoot(h, model, [loader(h, model.isCurrentUserStalled)])
-	const orgSlug = orgSlugOf(route)
-	if (orgSlug === undefined) return appRoot(h, model, [pageBody(model, h, false)])
-	// `$orgSlug/layout.tsx`: a loader while `useOrganization()` loads the route's organization.
-	const orgLoad = model.orgLoad?.slug === orgSlug ? model.orgLoad.status : "Loading"
-	if (orgLoad === "Loading" || orgLoad === "Stalled")
-		return appRoot(h, model, [loader(h, orgLoad === "Stalled")])
-	if (orgLoad === "NotFound") return appRoot(h, model, [organizationNotFound(h, orgSlug)])
-	const context = shellContextOf(model, orgSlug)
+const orgShellView = (model: Model, h: HtmlBuilder<Message>, data: ShellData): Html => {
+	const context = shellContextOf(model, data)
 	return orgShell(h, context, {
 		page: sectionBody(model, h),
 		secondarySidebar: secondarySidebar(model, h, context),
@@ -187,7 +173,7 @@ const body = (model: Model, h: HtmlBuilder<Message>): Html => {
 			}),
 		],
 		mobile: {
-			isMobile: model.shell.isMobile,
+			isMobile: model.isMobile,
 			isSidebarOpen: model.shell.isSidebarOpen,
 			onMenu: h.OnClick(openedMobileSidebar),
 			toSheetMessage: toMobileSidebarMessage,
@@ -195,7 +181,52 @@ const body = (model: Model, h: HtmlBuilder<Message>): Html => {
 	})
 }
 
+/** `$orgSlug/layout.tsx`: a loader while `useOrganization()` loads the route's organization. */
+const orgBody = (model: Model, h: HtmlBuilder<Message>, user: CurrentUser): Html => {
+	const orgSlug = orgSlugOf(model.route)
+	if (orgSlug === undefined) return appRoot(h, model, [pageBody(model, h, false)])
+	return OrgState.match(model.org, {
+		None: () => appRoot(h, model, [loader(h, false)]),
+		Loading: ({ isStalled }) => appRoot(h, model, [loader(h, isStalled)]),
+		NotFound: () => appRoot(h, model, [organizationNotFound(h, orgSlug)]),
+		Loaded: ({ organization }) => orgShellView(model, h, { orgSlug, user, organization }),
+	})
+}
+
+const body = (model: Model, h: HtmlBuilder<Message>): Html => {
+	const { route } = model
+	if (route._tag === "NotFound") return h.div([h.Id("app")], [`Not found: ${route.path}`])
+	if (isPublicRoute(route)) return appRoot(h, model, [pageBody(model, h, false)])
+	// `_app/layout.tsx`: a loader until the API answers for the session; signed out redirects to sign-in.
+	return Session.match(model.session, {
+		Loading: () => appRoot(h, model, [loader(h, false)]),
+		SignedOut: () => appRoot(h, model, [loader(h, false)]),
+		Unreachable: ({ reason }) =>
+			appRoot(h, model, [
+				appError(h, {
+					title: "Can't reach Hazel",
+					description: commonMessage(reason).description,
+					onRetry: Message.PressedRetrySession(),
+				}),
+			]),
+		// `AppShell`: a loader until `user.me` answers, then the error if it could not.
+		SignedIn: ({ user }) =>
+			AsyncData.matchData(user, {
+				onEmpty: () => appRoot(h, model, [loader(h, false)]),
+				onFailure: (reason) =>
+					appRoot(h, model, [
+						appError(h, {
+							title: "Couldn't load your account",
+							description: commonMessage(reason).description,
+							onRetry: Message.PressedRetryCurrentUser(),
+						}),
+					]),
+				onData: (data) => orgBody(model, h, data),
+			}),
+	})
+}
+
 export const view = (model: Model, h: HtmlBuilder<Message>): Document => ({
-	title: "Hazel Chat",
+	title: titleOf(model.route),
 	body: body(model, h),
 })

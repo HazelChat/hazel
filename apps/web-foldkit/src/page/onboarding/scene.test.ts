@@ -4,9 +4,15 @@ import { Command, Mount, all, click, expect, expectAll, expectOutMessage, given,
 import { describe, test, vi, expect as vitestExpect } from "vitest"
 import type { Shared } from "../contract"
 import { PageOutMessage } from "../out-message"
-import { CompleteOnboarding, ReplaceOnboardingStepUrl, SendInvites, UpdateProfile } from "./command"
+import {
+	CompleteOnboarding,
+	LoadOnboardingHome,
+	ReplaceOnboardingStepUrl,
+	SendInvites,
+	UpdateProfile,
+} from "./command"
 import { Message } from "./message"
-import type { Model } from "./model"
+import type { Membership, Model } from "./model"
 import { EnterAnimation } from "./enter-animation"
 import { AutoFocus } from "./navigation"
 import { DrawGlobePath, TwinkleStar } from "./timezone/globe"
@@ -47,6 +53,9 @@ const membership = {
 	slug: "hazel",
 }
 
+/** A creator's membership (no slug yet), so the invite step has an organization to invite into. */
+const creator = { ...membership, slug: null }
+
 const config = {
 	update: (model: Model, message: Message) => update(model, message, shared),
 	view: (model: Model, h: Parameters<typeof view>[2]) => view(model, { shared }, h),
@@ -62,7 +71,7 @@ const darkConfig = {
 /** The page once `?step=` and the membership are known. */
 const ready = (
 	urlStep: string | null,
-	member: typeof membership | null = null,
+	member: Membership | null = null,
 	extra: ReadonlyArray<Message> = [],
 ): Model => {
 	const steps = [
@@ -160,18 +169,24 @@ describe("onboarding flow", () => {
 			expect(text("Setting up your workspace...")).toExist(),
 			Mount.expectEnded(AutoFocus),
 			Mount.resolve(EnterAnimation, settled),
-			Command.resolve(
-				CompleteOnboarding,
-				Message.FailedCompleteOnboarding({ error: "Failed to finalize onboarding" }),
+			Command.resolve(CompleteOnboarding, Message.FailedCompleteOnboarding({ reason: "Offline" })),
+			expect(text("Setting up your workspace...")).toBeAbsent(),
+			expect(role("alert")).toHaveText("Connection lost. Check your internet connection and try again."),
+			click(role("button", { name: "Try again" })),
+			Command.expectExact(CompleteOnboarding),
+			expect(text("Setting up your workspace...")).toExist(),
+			Command.resolve(CompleteOnboarding, Message.SucceededCompleteOnboarding()),
+			Command.resolveAll(
+				[ReplaceOnboardingStepUrl, Message.CompletedReplaceStepUrl()],
+				[LoadOnboardingHome, Message.CompletedLoadHome()],
 			),
-			expect(text("Failed to finalize onboarding")).toExist(),
 		)
 	})
 
 	test("an invalid invite address blocks sending until it is fixed", () => {
 		scene(
 			config,
-			given(ready("teamInvitation")),
+			given(ready("teamInvitation", creator)),
 			Mount.resolveAll([EnterAnimation, settled], [AutoFocus, focused]),
 			type(role("textbox", { name: "Email 1" }), "grace@"),
 			expect(role("button", { name: /Skip for now/ })).toExist(),
@@ -183,7 +198,8 @@ describe("onboarding flow", () => {
 			expect(text("Please enter a valid email address")).not.toExist(),
 			click(role("button", { name: /Send invites/ })),
 			Command.expectExact(SendInvites),
-			Command.resolve(SendInvites, Message.FailedSendInvites({ reason: "NoOrganization" })),
+			Command.resolve(SendInvites, Message.FailedSendInvites({ reason: "AllFailed" })),
+			expectOutMessage(errorOut("Failed to send invitations")),
 			expect(role("button", { name: /Send invites/ })).toBeEnabled(),
 		)
 	})
@@ -203,7 +219,8 @@ describe("onboarding flow", () => {
 })
 
 const firstMounts = Mount.resolveAll([EnterAnimation, settled], [AutoFocus, focused])
-const errorOut = (title: string) => PageOutMessage.RequestedToast({ toast: errorToast(title) })
+const errorOut = (title: string, description: string | null = null) =>
+	PageOutMessage.RequestedToast({ toast: errorToast(title, description) })
 
 describe("profile step validation", () => {
 	test("clearing a name marks only that input invalid, and Enter does not submit", () => {
@@ -229,8 +246,8 @@ describe("profile step validation", () => {
 			click(role("button", { name: /Continue/ })),
 			expect(role("button", { name: /Continue/ })).toBeDisabled(),
 			expect(role("button", { name: /Back/ })).toBeDisabled(),
-			Command.resolve(UpdateProfile, Message.FailedUpdateProfile()),
-			expectOutMessage(errorOut("Failed to update profile")),
+			Command.resolve(UpdateProfile, Message.FailedUpdateProfile({ reason: "Unexpected" })),
+			expectOutMessage(errorOut("Something went wrong", "Please try again.")),
 			expect(role("heading", { name: "Set up your profile" })).toExist(),
 			expect(role("button", { name: /Continue/ })).toBeEnabled(),
 		)
@@ -243,7 +260,7 @@ describe("invite step", () => {
 	test("rows can be added and removed, and only extra rows have a remove button", () => {
 		scene(
 			config,
-			given(ready("teamInvitation")),
+			given(ready("teamInvitation", creator)),
 			firstMounts,
 			expectAll(removeButtons).toHaveCount(0),
 			click(role("button", { name: /Add another email/ })),
@@ -259,7 +276,7 @@ describe("invite step", () => {
 		const addRow = click(role("button", { name: /Add another email/ }))
 		scene(
 			config,
-			given(ready("teamInvitation")),
+			given(ready("teamInvitation", creator)),
 			firstMounts,
 			addRow, addRow, addRow, addRow, addRow, addRow, addRow, addRow, addRow,
 			expect(role("textbox", { name: "Email 10" })).toExist(),
@@ -271,11 +288,11 @@ describe("invite step", () => {
 	test("sending locks the step, then a full success toasts and finalizes", () => {
 		scene(
 			config,
-			given(ready("teamInvitation")),
+			given(ready("teamInvitation", creator)),
 			firstMounts,
 			type(role("textbox", { name: "Email 1" }), "grace@hazel.test"),
 			click(role("button", { name: /Send invites/ })),
-			Command.expectExact(SendInvites({ organizationId: null, emails: ["grace@hazel.test"] })),
+			Command.expectExact(SendInvites({ organizationId: creator.organizationId, emails: ["grace@hazel.test"] })),
 			expect(role("button", { name: /Send invites/ })).toBeDisabled(),
 			expect(role("button", { name: /Back/ })).toBeDisabled(),
 			Command.resolve(SendInvites, Message.SucceededSendInvites({ emails: ["grace@hazel.test"], failedCount: 0 })),
@@ -286,14 +303,14 @@ describe("invite step", () => {
 			expect(text("Setting up your workspace...")).toExist(),
 			Mount.expectEnded(AutoFocus),
 			Mount.resolve(EnterAnimation, settled),
-			Command.resolve(CompleteOnboarding, Message.FailedCompleteOnboarding({ error: "Failed to finalize onboarding" })),
+			Command.resolve(CompleteOnboarding, Message.FailedCompleteOnboarding({ reason: "Offline" })),
 		)
 	})
 
 	test("when every invitation fails the address stays for another try", () => {
 		scene(
 			config,
-			given(ready("teamInvitation")),
+			given(ready("teamInvitation", creator)),
 			firstMounts,
 			type(role("textbox", { name: "Email 1" }), "grace@hazel.test"),
 			click(role("button", { name: /Send invites/ })),

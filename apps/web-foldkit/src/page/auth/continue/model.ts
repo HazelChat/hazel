@@ -1,8 +1,12 @@
 import { Schema } from "effect"
+import { defineTaggedUnion } from "foldkit/schema"
+import { Provider } from "../../../auth/client"
+import { AuthFailure } from "../../../auth/flows"
 
-export const Model = Schema.Struct({
-	/** `null` when `?provider=` is missing or not one the API offers. */
-	provider: Schema.NullOr(Schema.String),
-	error: Schema.NullOr(Schema.String),
+/** `Invalid`: `?provider=` is missing or not one the API offers. */
+export const Model = defineTaggedUnion({
+	Invalid: {},
+	Redirecting: { provider: Schema.Literals(Provider) },
+	Failed: { reason: AuthFailure },
 })
 export type Model = typeof Model.Type

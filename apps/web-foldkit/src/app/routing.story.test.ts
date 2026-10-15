@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
+import { OrganizationId } from "@hazel/schema"
+import { Schema } from "effect"
 import { Command, given, message, model, story } from "foldkit/story"
 import { UrlRequest } from "foldkit/navigation"
 import { describe, expect, test } from "vitest"
-import { update } from "../main"
-import { ada, after, boot, signedIn, urlOf } from "../test/root-fixtures"
+import { MAX_AUTO_RETRIES, update } from "../main"
+import { AppRoute } from "../route"
+import { ada, after, boot, hazelOrg, owner, signedIn, urlOf } from "../test/root-fixtures"
 import {
 	CheckSession,
 	FetchCurrentUser,
@@ -14,8 +17,9 @@ import {
 	RetryFetchCurrentUser,
 } from "./command"
 import { Message } from "./message"
+import { currentUserOf, sharedOf } from "./model"
 
-/** Root routing: links, URL changes, the `beforeLoad` redirects and the signed-out gate. */
+/** Root routing: links, URL changes, the `beforeLoad` redirects, the signed-out gate and the session. */
 
 describe("links", () => {
 	test("an internal link pushes the URL and an external one loads the page", () => {
@@ -31,11 +35,11 @@ describe("links", () => {
 		)
 	})
 
-	test("a section layout tab navigates like a link", () => {
+	test("a section layout tab navigates to its route", () => {
 		story(
 			update,
 			given(signedIn("/hazel/settings/team")),
-			message(Message.ClickedLayoutTab({ href: "/hazel/settings/invitations" })),
+			message(Message.ClickedLayoutTab({ route: AppRoute.SettingsInvitations({ orgSlug: "hazel" }) })),
 			Command.expectExact(NavigateInternal({ url: "/hazel/settings/invitations" })),
 			Command.resolve(NavigateInternal, Message.CompletedNavigateInternal()),
 		)
@@ -59,22 +63,20 @@ describe("redirects", () => {
 			update,
 			given(boot("/hazel/settings/team?tab=roles")),
 			message(Message.ChangedAuth({ auth: "SignedOut" })),
-			Command.expectExact(ReplaceUrl({ url: "/sign-in?redirect_url=%2Fhazel%2Fsettings%2Fteam%3Ftab%3Droles" })),
+			Command.expectExact(
+				ReplaceUrl({ url: "/sign-in?redirect_url=%2Fhazel%2Fsettings%2Fteam%3Ftab%3Droles" }),
+			),
 			Command.resolve(ReplaceUrl, Message.CompletedReplaceUrl()),
 		)
 	})
 
-	test("a signed-out visitor on a public route stays, and the join page still asks for user.me", () => {
+	test("a signed-out visitor on a public route stays, with no user to ask for", () => {
 		story(
 			update,
 			given(boot("/join/hazel")),
 			message(Message.ChangedAuth({ auth: "SignedOut" })),
-			Command.expectExact(FetchCurrentUser()),
-			Command.resolve(
-				FetchCurrentUser,
-				Message.FailedFetchCurrentUser({ reason: "Unauthorized", isUnauthorized: true }),
-			),
-			model((m) => expect(m.currentUser).toBeNull()),
+			Command.expectNone(),
+			model((m) => expect(currentUserOf(m)).toBeNull()),
 		)
 	})
 
@@ -86,70 +88,6 @@ describe("redirects", () => {
 			Command.expectExact(FetchCurrentUser()),
 			Command.resolve(FetchCurrentUser, Message.SucceededFetchCurrentUser({ user: ada })),
 			message(Message.ChangedAuth({ auth: "SignedIn" })),
-			Command.expectNone(),
-		)
-	})
-
-	test("a signed-in user.me failure asks again until it succeeds", () => {
-		const offline = Message.FailedFetchCurrentUser({ reason: "offline", isUnauthorized: false })
-		story(
-			update,
-			given(boot("/hazel/settings/team")),
-			message(Message.ChangedAuth({ auth: "SignedIn" })),
-			Command.resolve(FetchCurrentUser, offline),
-			Command.expectExact(RetryFetchCurrentUser()),
-			Command.resolve(RetryFetchCurrentUser, offline),
-			Command.expectExact(RetryFetchCurrentUser()),
-			Command.resolve(RetryFetchCurrentUser, Message.SucceededFetchCurrentUser({ user: ada })),
-			model((m) => expect(m.currentUser).toEqual(ada)),
-			Command.expectNone(),
-		)
-	})
-
-	test("an unanswered session check keeps auth loading and asks again", () => {
-		story(
-			update,
-			given(boot("/hazel/settings/team")),
-			message(Message.FailedCheckSession()),
-			Command.expectExact(RetryCheckSession()),
-			model((m) => expect(m.auth).toBe("Loading")),
-			Command.resolve(RetryCheckSession, Message.ChangedAuth({ auth: "SignedIn" })),
-			model((m) => expect(m.isSessionStalled).toBe(false)),
-			Command.resolve(FetchCurrentUser, Message.SucceededFetchCurrentUser({ user: ada })),
-		)
-	})
-
-	test("a refused access token re-reads the session, and an ended one goes to sign-in", () => {
-		story(
-			update,
-			given(signedIn("/hazel/settings/team")),
-			message(Message.RejectedSession()),
-			Command.expectExact(CheckSession()),
-			Command.resolve(CheckSession, Message.ChangedAuth({ auth: "SignedOut" })),
-			Command.expectHas(ReplaceUrl({ url: "/sign-in?redirect_url=%2Fhazel%2Fsettings%2Fteam" })),
-			Command.resolve(ReplaceUrl, Message.CompletedReplaceUrl()),
-		)
-	})
-
-	test("an unauthorized user.me while signed in re-reads the session", () => {
-		story(
-			update,
-			given(boot("/hazel/settings/team")),
-			message(Message.ChangedAuth({ auth: "SignedIn" })),
-			Command.resolve(
-				FetchCurrentUser,
-				Message.FailedFetchCurrentUser({ reason: "Unauthorized", isUnauthorized: true }),
-			),
-			Command.expectExact(CheckSession(), RetryFetchCurrentUser()),
-			Command.resolve(CheckSession, Message.ChangedAuth({ auth: "SignedOut" })),
-			Command.expectHas(ReplaceUrl({ url: "/sign-in?redirect_url=%2Fhazel%2Fsettings%2Fteam" })),
-			Command.resolveAll(
-				[ReplaceUrl, Message.CompletedReplaceUrl()],
-				[
-					RetryFetchCurrentUser,
-					Message.FailedFetchCurrentUser({ reason: "Unauthorized", isUnauthorized: true }),
-				],
-			),
 			Command.expectNone(),
 		)
 	})
@@ -169,6 +107,152 @@ describe("redirects", () => {
 	})
 })
 
+// P0: an unreachable API at boot used to count as signed out and send the user to sign-in.
+describe("boot session check", () => {
+	test("an unanswered check is Unreachable, never signed out, and retries a bounded number of times", () => {
+		const offline = Message.FailedCheckSession({ reason: "Offline" })
+		const steps = Array.from({ length: MAX_AUTO_RETRIES }, () => [
+			Command.expectExact(RetryCheckSession()),
+			Command.resolve(RetryCheckSession, offline),
+		]).flat()
+		story(
+			update,
+			given(boot("/hazel/settings/team")),
+			message(offline),
+			model((m) => {
+				expect(m.session).toEqual({ _tag: "Unreachable", reason: "Offline", retries: 1 })
+				expect(sharedOf(m).auth).toBe("Loading")
+			}),
+			...steps,
+			// Out of automatic retries: no sign-in redirect, no further Command; the error screen waits.
+			Command.expectNone(),
+			model((m) => expect(m.session._tag).toBe("Unreachable")),
+		)
+	})
+
+	test("Try again checks at once, and an answer clears the error", () => {
+		story(
+			update,
+			given(boot("/hazel/settings/team")),
+			message(Message.FailedCheckSession({ reason: "Unavailable" })),
+			Command.resolve(RetryCheckSession, Message.FailedCheckSession({ reason: "Unavailable" })),
+			Command.resolve(RetryCheckSession, Message.FailedCheckSession({ reason: "Unavailable" })),
+			Command.resolve(RetryCheckSession, Message.FailedCheckSession({ reason: "Unavailable" })),
+			message(Message.PressedRetrySession()),
+			model((m) => expect(m.session._tag).toBe("Loading")),
+			Command.expectExact(CheckSession()),
+			Command.resolve(CheckSession, Message.ChangedAuth({ auth: "SignedIn" })),
+			Command.resolve(FetchCurrentUser, Message.SucceededFetchCurrentUser({ user: ada })),
+			model((m) => expect(currentUserOf(m)).toEqual(ada)),
+		)
+	})
+
+	test("a failed re-check while signed in keeps the session", () => {
+		story(
+			update,
+			given(signedIn("/hazel/settings/team")),
+			message(Message.RejectedSession()),
+			Command.resolve(CheckSession, Message.FailedCheckSession({ reason: "Offline" })),
+			Command.expectNone(),
+			model((m) => expect(m.session._tag).toBe("SignedIn")),
+		)
+	})
+
+	test("a refused access token re-reads the session, and an ended one goes to sign-in", () => {
+		story(
+			update,
+			given(signedIn("/hazel/settings/team")),
+			message(Message.RejectedSession()),
+			Command.expectExact(CheckSession()),
+			Command.resolve(CheckSession, Message.ChangedAuth({ auth: "SignedOut" })),
+			Command.expectHas(ReplaceUrl({ url: "/sign-in?redirect_url=%2Fhazel%2Fsettings%2Fteam" })),
+			Command.resolve(ReplaceUrl, Message.CompletedReplaceUrl()),
+		)
+	})
+})
+
+describe("user.me", () => {
+	test("a transient failure retries a bounded number of times, then waits for Try again", () => {
+		const offline = Message.FailedFetchCurrentUser({ reason: "Offline" })
+		const steps = Array.from({ length: MAX_AUTO_RETRIES }, () => [
+			Command.expectExact(RetryFetchCurrentUser()),
+			Command.resolve(RetryFetchCurrentUser, offline),
+		]).flat()
+		story(
+			update,
+			given(boot("/hazel/settings/team")),
+			message(Message.ChangedAuth({ auth: "SignedIn" })),
+			Command.resolve(FetchCurrentUser, offline),
+			...steps,
+			Command.expectNone(),
+			model((m) =>
+				expect(m.session).toMatchObject({
+					_tag: "SignedIn",
+					user: { _tag: "Failure", error: "Offline" },
+				}),
+			),
+			message(Message.PressedRetryCurrentUser()),
+			Command.expectExact(FetchCurrentUser()),
+			Command.resolve(FetchCurrentUser, Message.SucceededFetchCurrentUser({ user: ada })),
+			model((m) => expect(currentUserOf(m)).toEqual(ada)),
+		)
+	})
+
+	test("an ended session re-reads it instead of retrying, and goes to sign-in once it is gone", () => {
+		story(
+			update,
+			given(boot("/hazel/settings/team")),
+			message(Message.ChangedAuth({ auth: "SignedIn" })),
+			Command.resolve(FetchCurrentUser, Message.FailedFetchCurrentUser({ reason: "SignedOut" })),
+			Command.expectExact(CheckSession()),
+			Command.resolve(CheckSession, Message.ChangedAuth({ auth: "SignedOut" })),
+			Command.expectHas(ReplaceUrl({ url: "/sign-in?redirect_url=%2Fhazel%2Fsettings%2Fteam" })),
+			Command.resolve(ReplaceUrl, Message.CompletedReplaceUrl()),
+			Command.expectNone(),
+		)
+	})
+})
+
+// P0: after a switch, pages saw the previous organization and role until the new one loaded.
+describe("organization switch", () => {
+	const acmeOrg = {
+		...hazelOrg,
+		id: Schema.decodeSync(OrganizationId)("00000000-0000-4000-8000-0000000000a2"),
+		slug: "acme",
+		name: "Acme",
+	}
+
+	test("the new slug starts loading: no previous organization or role is shared", () => {
+		const switched = after(signedIn("/hazel/settings/team"), [
+			Message.ChangedUrl({ url: urlOf("/acme/settings/team") }),
+		])
+		expect(switched.org).toEqual({ _tag: "Loading", slug: "acme", isStalled: false })
+		const shared = sharedOf(switched)
+		expect([shared.orgSlug, shared.organization, shared.member]).toEqual(["acme", null, null])
+	})
+
+	test("a late answer for the previous slug, or its member row, is ignored", () => {
+		const switched = after(signedIn("/hazel/settings/team"), [
+			Message.ChangedUrl({ url: urlOf("/acme/settings/team") }),
+			Message.UpdatedOrganization({ orgSlug: "hazel", organization: hazelOrg }),
+			Message.UpdatedMember({ organizationId: hazelOrg.id, member: owner }),
+		])
+		expect(switched.org._tag).toBe("Loading")
+		expect(sharedOf(switched).member).toBeNull()
+	})
+
+	test("the new organization arrives without the previous role, which waits for its own row", () => {
+		const loaded = after(signedIn("/hazel/settings/team"), [
+			Message.ChangedUrl({ url: urlOf("/acme/settings/team") }),
+			Message.UpdatedOrganization({ orgSlug: "acme", organization: acmeOrg }),
+		])
+		expect(sharedOf(loaded).organization).toEqual(acmeOrg)
+		expect(sharedOf(loaded).member).toBeNull()
+		const withRole = after(loaded, [Message.UpdatedMember({ organizationId: acmeOrg.id, member: owner })])
+		expect(sharedOf(withRole).member).toEqual(owner)
+	})
+})
+
 describe("page instances", () => {
 	test("a URL change builds the new route's page and drops the previous one", () => {
 		const model = after(signedIn("/hazel/settings/team"), [
@@ -176,7 +260,7 @@ describe("page instances", () => {
 		])
 		expect(model.route._tag).toBe("MySettingsDesktop")
 		expect(model.page?._tag).not.toBe(signedIn("/hazel/settings/team").page?._tag)
-		expect(model.pathname).toBe("/hazel/my-settings/desktop")
+		expect(model.currentUrl).toBe("/hazel/my-settings/desktop")
 	})
 
 	test("tabs of one page keep its instance (the page key ignores the tab)", () => {

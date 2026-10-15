@@ -35,7 +35,6 @@ const ROW = "flex h-14 shrink-0 items-center justify-between border-border borde
 export const pinnedButton = <M>(
 	h: HtmlBuilder<M>,
 	attributes: ReadonlyArray<Attribute<M> | ChildAttribute>,
-	overlay: Html,
 ) =>
 	button(
 		h,
@@ -44,7 +43,7 @@ export const pinnedButton = <M>(
 			size: "sm",
 			attributes: [h.Attribute("aria-label", "View pinned messages"), ...attributes],
 		},
-		[IconPin(h, { attributes: { "data-slot": "icon" } }), overlay],
+		[IconPin(h, { attributes: { "data-slot": "icon" } })],
 	)
 
 const threadTitle = <M>(h: HtmlBuilder<M>, inputs: HeaderInputs, channel: ChannelInfo): Html =>

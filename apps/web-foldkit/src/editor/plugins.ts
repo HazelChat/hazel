@@ -140,9 +140,17 @@ export interface AutocompleteState {
 	readonly from: number
 	/** Options the host currently shows; keys are only captured when there are some. */
 	readonly optionCount: number
+	/** The DOM id of the highlighted option (`aria-activedescendant`). */
+	readonly activeOptionId: string | null
 }
 
-export const closedAutocomplete: AutocompleteState = { trigger: null, search: "", from: 0, optionCount: 0 }
+export const closedAutocomplete: AutocompleteState = {
+	trigger: null,
+	search: "",
+	from: 0,
+	optionCount: 0,
+	activeOptionId: null,
+}
 
 export const autocompleteKey = new PluginKey<AutocompleteState>("autocomplete")
 

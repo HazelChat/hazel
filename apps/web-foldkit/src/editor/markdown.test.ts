@@ -11,7 +11,7 @@ import {
 import { schema } from "./schema"
 
 /**
- * Port of `apps/web/src/components/chat/slate-editor/slate-markdown-serializer.test.ts`.
+ * Port of the legacy Slate editor's `slate-markdown-serializer.test.ts`.
  * Every case and every expected markdown string is unchanged. Only the document model
  * moved: `fromLegacy` builds ProseMirror nodes from the legacy Slate-shaped literals, and
  * `shape` projects ProseMirror nodes back to that shape so structural assertions read the

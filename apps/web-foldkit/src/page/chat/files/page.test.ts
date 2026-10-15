@@ -3,7 +3,7 @@ import { Schema } from "effect"
 import { describe, expect, test, vi } from "vitest"
 import * as Select from "../../../ui/select"
 import { documentsOf, filterAttachments, formatRelativeTime, mediaOf, visibleCountFor } from "./derive"
-import { init, Message, setView, update } from "./page"
+import { filterItems, init, Message, OutMessage, setView, update, viewerImagesOf } from "./page"
 import type { FileAttachment } from "./queries"
 
 /** Files tab update loop and derivations: search, type filter, relative dates, route resets. */
@@ -36,8 +36,7 @@ const files = [
 ]
 
 const loaded = () =>
-	update(init(channelId, "hazel", "files"), Message.UpdatedAttachments({ attachments: files, nowMs: NOW }))
-		.model
+	update(init(channelId, "hazel", "files"), Message.UpdatedAttachments({ attachments: files })).model
 
 describe("filterAttachments", () => {
 	test("search is case-insensitive on the file name", () => {
@@ -72,7 +71,9 @@ describe("update", () => {
 		).model
 		const picked = update(
 			opened,
-			Message.GotFilterSelectMessage({ message: Select.Message.ClickedOption({ key: "image" }) }),
+			Message.GotFilterSelectMessage({
+				message: Select.Message.ClickedOption({ key: "image", items: filterItems }),
+			}),
 		).model
 		expect(picked.filterType).toBe("image")
 		expect(picked.filter.popup._tag).toBe("Closed")
@@ -97,6 +98,31 @@ describe("update", () => {
 		expect(media.view).toBe("media")
 		expect(media.searchQuery).toBe("")
 		expect(media.attachments).toBe(searched.attachments)
+	})
+
+	test("an image opens the viewer over the channel's images; a video opens a tab instead", () => {
+		const image = files[0]!
+		const opened = update(
+			loaded(),
+			Message.ClickedMedia({ attachmentId: image.id, isVideo: false }),
+		).model
+		expect(opened.viewerImageId).toBe(image.id)
+		expect(viewerImagesOf(opened).map((attachment) => attachment.id)).toEqual([image.id])
+		const action = update(
+			opened,
+			Message.ClickedViewerAction({ action: "download", url: image.url, fileName: image.fileName }),
+		)
+		expect(action.outMessage).toEqual(
+			OutMessage.RequestedViewerAction({
+				action: "download",
+				url: image.url,
+				fileName: image.fileName,
+			}),
+		)
+		expect(update(opened, Message.ClosedImageViewer()).model.viewerImageId).toBeNull()
+		const video = update(loaded(), Message.ClickedMedia({ attachmentId: files[1]!.id, isVideo: true }))
+		expect(video.model.viewerImageId).toBeNull()
+		expect(video.commands?.map((command) => command.name)).toEqual(["OpenMediaTab"])
 	})
 
 	test("the grid row size follows the breakpoint", () => {

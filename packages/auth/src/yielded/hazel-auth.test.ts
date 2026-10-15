@@ -468,6 +468,38 @@ describe.skipIf(DATABASE_URL === undefined)("Hazel auth on Postgres", () => {
 		expect((await signInWithGitHub(browser)).pathname).toBe("/auth/register-profile")
 	}, 60_000)
 
+	test("a failing email lookup fails sign-in instead of continuing to registration", async () => {
+		await insertClerkUser("octo6767@example.com")
+		githubUserId = 6767
+		const browser = jar()
+		const begin = await call(browser, "POST", "/auth/signIn", { provider: "github", returnTarget: "/" })
+		const state = new URL((await begin.json()).value.authorizationUrl).searchParams.get("state")!
+
+		// Break only the users lookup; registration would otherwise create a duplicate account.
+		await query(
+			SqlClient.SqlClient.use((sql) =>
+				sql.unsafe(`ALTER TABLE users RENAME COLUMN email TO email_moved`),
+			),
+		)
+		try {
+			const callback = await send(
+				new Request(
+					`${origin}/auth/github/callback?${new URLSearchParams({ code: "abc", state, iss: "https://github.com/login/oauth" })}`,
+					{ headers: { cookie: browser.header() }, redirect: "manual" },
+				),
+			)
+			const location = callback.headers.get("location")
+			expect(location === null ? null : new URL(location).pathname).not.toBe("/auth/register-profile")
+		} finally {
+			await query(
+				SqlClient.SqlClient.use((sql) =>
+					sql.unsafe(`ALTER TABLE users RENAME COLUMN email_moved TO email`),
+				),
+			)
+		}
+		expect(await usersWithEmail("octo6767@example.com")).toBe(1)
+	}, 60_000)
+
 	test("the desktop app signs in through the browser and gets its own session", async () => {
 		// A signed-in browser, as on app.hazel.sh.
 		githubUserId = 7777

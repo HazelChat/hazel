@@ -1,7 +1,9 @@
 import { Submodel } from "foldkit"
+import * as AsyncData from "foldkit/asyncData"
 import type { Html, HtmlBuilder } from "foldkit/html"
 import { twMerge } from "tailwind-merge"
 import { dialogTitleBase } from "~/components/ui/dialog.styles"
+import { type CommonReason, commonMessage, isRetryableReason } from "~/lib/error-messages"
 import { IconClose } from "../../../icons"
 import { avatar } from "../../../ui/avatar"
 import { button } from "../../../ui/button"
@@ -43,21 +45,52 @@ const resultRow = (h: HtmlBuilder<Message>, workspace: Workspace): Html => {
 	)
 }
 
+const searchMessage = (h: HtmlBuilder<Message>, text: string): Html =>
+	h.div([h.Class("px-4 py-6 text-center text-muted-fg text-sm")], [text])
+
+const searchLoading = (h: HtmlBuilder<Message>): Html =>
+	h.div([h.Class("flex items-center justify-center py-6")], [loader(h)])
+
+const workspaceList = (h: HtmlBuilder<Message>, workspaces: ReadonlyArray<Workspace>): Html =>
+	workspaces.length === 0
+		? searchMessage(h, "No public workspaces found")
+		: h.div(
+				[h.Class("divide-y divide-border")],
+				workspaces.map((workspace) => resultRow(h, workspace)),
+			)
+
+const searchFailed = (h: HtmlBuilder<Message>, reason: CommonReason): Html => {
+	const message = commonMessage(reason)
+	return h.div(
+		[h.Class("flex flex-col items-center gap-2 px-4 py-6 text-center"), h.Role("alert")],
+		[
+			h.span([h.Class("font-medium text-fg text-sm")], [message.title]),
+			...(message.description === undefined
+				? []
+				: [h.span([h.Class("text-muted-fg text-xs")], [message.description])]),
+			...(isRetryableReason(reason)
+				? [
+						button(h, { intent: "outline", size: "sm", onPress: Message.ClickedRetrySearch() }, [
+							"Try again",
+						]),
+					]
+				: []),
+		],
+	)
+}
+
 const searchResults = (h: HtmlBuilder<Message>, model: Model): Html =>
 	h.div(
 		[h.Class("rounded-lg border border-border bg-bg")],
 		[
-			model.isSearching
-				? h.div([h.Class("flex items-center justify-center py-6")], [loader(h)])
-				: model.searchResults.length === 0
-					? h.div(
-							[h.Class("px-4 py-6 text-center text-muted-fg text-sm")],
-							["No public workspaces found"],
-						)
-					: h.div(
-							[h.Class("divide-y divide-border")],
-							model.searchResults.map((workspace) => resultRow(h, workspace)),
-						),
+			AsyncData.match(model.searchResults, {
+				onIdle: () => searchLoading(h),
+				onLoading: () => searchLoading(h),
+				onRefreshing: (workspaces) => workspaceList(h, workspaces),
+				onFailure: (reason) => searchFailed(h, reason),
+				onStale: ({ error }) => searchFailed(h, error),
+				onSuccess: (workspaces) => workspaceList(h, workspaces),
+			}),
 		],
 	)
 
@@ -71,6 +104,7 @@ const selectedChip = (h: HtmlBuilder<Message>, workspace: Workspace): Html =>
 				[
 					h.Type("button"),
 					h.OnClick(Message.ClickedClearWorkspace()),
+					h.AriaLabel("Clear workspace"),
 					h.Class("ml-auto text-muted-fg hover:text-fg"),
 				],
 				[IconClose(h, { className: "size-4" })],
@@ -85,7 +119,6 @@ const body = (h: HtmlBuilder<Message>, model: Model, channelName: string): Html 
 		model: model.modal,
 		view: Modal.view,
 		viewInputs: {
-			toTrigger: (_attributes, overlay) => overlay,
 			size: "lg",
 			toContent: () => [
 				dialogHeader(h, {}, [

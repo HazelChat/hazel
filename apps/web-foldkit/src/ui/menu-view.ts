@@ -10,14 +10,11 @@ import {
 import { twMerge } from "tailwind-merge"
 import {
 	dropdownCheckIndicatorClassName,
-	dropdownDescriptionBase,
 	dropdownItemStyles,
-	dropdownKeyboardBase,
 	dropdownLabelBase,
 	dropdownSectionStyles,
 	dropdownSeparatorBase,
 } from "~/components/ui/dropdown.styles"
-import { keyboardStyles } from "~/components/ui/keyboard.styles"
 import {
 	menuChevronClassName,
 	menuContentStyles,
@@ -68,42 +65,43 @@ const PortalMenu = Mount.defineStream("PortalMenu", {
 	messages: [Message.CompletedPortalMenu, Message.PressedOutside],
 	execute: ({ element, id, placement, offset, crossOffset, isTriggerWidthSet, initialFocusId }) =>
 		Stream.callback<PortalMenuMessage>((queue) =>
-			Effect.acquireRelease(
-				Effect.sync(() => {
-					const release = openModalPopover(element, {
-						triggerId: triggerId(id),
-						placement,
-						offset,
-						crossOffset,
-						isTriggerWidthSet,
-						initialFocusId,
-						insideSelector: popoverSelector(id),
-						onInteractOutside: () => Queue.offerUnsafe(queue, Message.PressedOutside()),
-					})
-					// useMenuItem focuses an item in onHoverStart, synchronously, so the click that follows
-					// lands on a focused item and never focuses it with the mouse (Chrome keeps :focus-visible).
-					const onPointerOver = (event: Event) => {
-						if (!(event instanceof PointerEvent) || event.pointerType === "touch") return
-						const item =
-							event.target instanceof Element
-								? event.target.closest('[role^="menuitem"]')
-								: null
-						if (
-							item instanceof HTMLElement &&
-							item.getAttribute("aria-disabled") !== "true" &&
-							document.activeElement !== item
-						)
-							item.focus({ preventScroll: true })
-					}
-					element.addEventListener("pointerover", onPointerOver)
-					Queue.offerUnsafe(queue, Message.CompletedPortalMenu())
-					return () => {
-						element.removeEventListener("pointerover", onPointerOver)
-						release()
-					}
-				}),
-				(release) => Effect.sync(release),
-			).pipe(Effect.flatMap(() => Effect.never)),
+			openModalPopover(element, {
+				triggerId: triggerId(id),
+				placement,
+				offset,
+				crossOffset,
+				isTriggerWidthSet,
+				initialFocusId,
+				insideSelector: popoverSelector(id),
+				onInteractOutside: () => Queue.offerUnsafe(queue, Message.PressedOutside()),
+			}).pipe(
+				Effect.andThen(
+					Effect.acquireRelease(
+						Effect.sync(() => {
+							// useMenuItem focuses an item in onHoverStart, synchronously, so the click that follows
+							// lands on a focused item and never focuses it with the mouse (Chrome keeps :focus-visible).
+							const onPointerOver = (event: Event) => {
+								if (!(event instanceof PointerEvent) || event.pointerType === "touch") return
+								const item =
+									event.target instanceof Element
+										? event.target.closest('[role^="menuitem"]')
+										: null
+								if (
+									item instanceof HTMLElement &&
+									item.getAttribute("aria-disabled") !== "true" &&
+									document.activeElement !== item
+								)
+									item.focus({ preventScroll: true })
+							}
+							element.addEventListener("pointerover", onPointerOver)
+							Queue.offerUnsafe(queue, Message.CompletedPortalMenu())
+							return () => element.removeEventListener("pointerover", onPointerOver)
+						}),
+						(release) => Effect.sync(release),
+					),
+				),
+				Effect.andThen(Effect.never),
+			),
 		),
 })
 
@@ -206,35 +204,14 @@ export const menuLabel = <M>(
 		typeof text === "string" ? [text] : [...text],
 	)
 
-/** `MenuDescription` (DropdownDescription). */
-export const menuDescription = <M>(h: HtmlBuilder<M>, id: string, key: string, text: string): Html =>
-	h.span(
-		[
-			h.Class(twMerge(dropdownDescriptionBase)),
-			h.Id(descriptionId(id, key)),
-			h.Attribute("slot", "description"),
-		],
-		[text],
-	)
-
-/** `MenuShortcut` (DropdownKeyboard over Keyboard). */
-export const menuShortcut = <M>(h: HtmlBuilder<M>, id: string, key: string, text: string): Html =>
-	h.kbd(
-		[
-			h.Class(twMerge(keyboardStyles, twMerge(dropdownKeyboardBase))),
-			h.Attribute("data-slot", "keyboard"),
-			h.Attribute("dir", "ltr"),
-			h.Id(descriptionId(id, key)),
-		],
-		[text],
-	)
-
 /** `MenuTrigger`'s classes, for an icon trigger that is not a `Button`. */
 export const menuTriggerClassName = (className?: string) => twMerge(twMerge(...menuTriggerBase), className)
 
 // VIEW
 
 export type ViewInputs = Readonly<{
+	/** The menu's structure, owned by the parent (build it with `item`, `section` and `separator`). */
+	entries: ReadonlyArray<Entry>
 	/** Renders the trigger. Spread `attributes` on it and put `overlay` last among its children. */
 	toTrigger: (attributes: ReadonlyArray<ChildAttribute>, overlay: Html) => Html
 	/** The children of one item (icon, label, shortcut, description), or of a section's header. */
@@ -269,7 +246,7 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 		),
 		h.OnKeyDownPreventDefault((key) =>
 			Array.contains(["Enter", " ", "ArrowDown", "ArrowUp"], key)
-				? Option.some(Message.PressedTriggerKey({ key }))
+				? Option.some(Message.PressedTriggerKey({ key, entries: viewInputs.entries }))
 				: Option.none(),
 		),
 	])
@@ -309,6 +286,7 @@ const overlay = (model: Model, open: Open, viewInputs: ViewInputs, h: HtmlBuilde
 		Message.PressedMenuKey({
 			key,
 			isModified: modifiers.ctrlKey || modifiers.metaKey || modifiers.altKey,
+			entries: viewInputs.entries,
 		})
 
 	return h.div(
@@ -343,7 +321,6 @@ const overlay = (model: Model, open: Open, viewInputs: ViewInputs, h: HtmlBuilde
 						[
 							...(isAtPointer ? [] : [h.Attribute("aria-labelledby", triggerId(model.id))]),
 							h.Class(popoverClassName(viewInputs.popoverClassName)),
-							h.Attribute("data-rac", ""),
 							...(isAtPointer ? [] : [h.Attribute("data-trigger", "MenuTrigger")]),
 							h.Attribute("data-menu-popover", model.id),
 							h.Attribute("data-popover", ""),
@@ -368,7 +345,7 @@ const overlay = (model: Model, open: Open, viewInputs: ViewInputs, h: HtmlBuilde
 										className: viewInputs.className,
 										elementId: menuId(model.id),
 										labelledBy: isAtPointer ? undefined : triggerId(model.id),
-										entries: model.entries,
+										entries: viewInputs.entries,
 										header:
 											typeof viewInputs.header === "function"
 												? viewInputs.header()
@@ -409,13 +386,15 @@ const submenuPopover = (
 	triggerKey: string,
 	focusedKey: Option.Option<string>,
 ): Html => {
-	const trigger = Array.findFirst(rootItems(model), (candidate) => candidate.key === triggerKey)
+	const trigger = Array.findFirst(
+		rootItems(viewInputs.entries),
+		(candidate) => candidate.key === triggerKey,
+	)
 	const leaves = Option.match(trigger, { onNone: () => [], onSome: (found) => found.submenu })
 	return h.div(
 		[
 			h.Attribute("aria-labelledby", itemId(model.id, triggerKey)),
 			h.Class(popoverClassName(undefined)),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-trigger", "SubmenuTrigger"),
 			h.Attribute("data-menu-popover", model.id),
 			h.Attribute("dir", "ltr"),
@@ -470,7 +449,6 @@ const menuElement = (
 		[
 			...(level.labelledBy ? [h.Attribute("aria-labelledby", level.labelledBy)] : []),
 			h.Class(menuContentStyles({ className: level.className })),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-slot", "menu-content"),
 			h.Id(level.elementId),
 			h.Role("menu"),
@@ -506,7 +484,6 @@ const menuElement = (
 							onSome: (id) => [h.Attribute("aria-labelledby", id)],
 						}),
 						h.Class(section()),
-						h.Attribute("data-rac", ""),
 						h.Role("group"),
 					],
 					[
@@ -604,7 +581,6 @@ const menuItem = (
 			...flag("data-has-submenu", hasSubmenu),
 			...flag("data-hovered", isHovered),
 			...flag("data-open", isSubmenuOpen),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-react-aria-pressable", "true"),
 			...flag("data-selected", isSelected),
 			...(isSelectable ? [h.Attribute("data-selection-mode", "single")] : []),
@@ -613,9 +589,9 @@ const menuItem = (
 			h.Id(itemId(model.id, key)),
 			h.Role(isSelectable ? "menuitemradio" : "menuitem"),
 			...(entry.isDisabled ? [] : [h.Attribute("tabindex", isFocused ? "0" : "-1")]),
-			h.OnMouseEnter(Message.HoveredItem({ key })),
+			h.OnMouseEnter(Message.HoveredItem({ key, entries: viewInputs.entries })),
 			h.OnMouseLeave(Message.UnhoveredItem({ key })),
-			h.OnClick(Message.ClickedItem({ key })),
+			h.OnClick(Message.ClickedItem({ key, entries: viewInputs.entries })),
 		],
 		[
 			...(isSelected

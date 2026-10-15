@@ -1,10 +1,14 @@
 import type { KlipyGif } from "@hazel/domain/http"
-import { Duration, Effect, Schema } from "effect"
-import { Command, type Update } from "foldkit"
+import { Duration, Effect, Option, Result, Schema } from "effect"
+import { AsyncData, Command, Update } from "foldkit"
+import * as Dom from "foldkit/dom"
 import { defineMessageUnion } from "foldkit/message"
-import { HazelApiClient } from "~/lib/services/common/atom-client"
-import { runAtomFn } from "../data/actions"
+import { modifyFields } from "foldkit/struct"
+import { CommonReason } from "~/lib/error-messages"
+import { catchCommon } from "../data/actions"
 import { PopoverEvent } from "../picker-popover/popover"
+import { HazelApiClient } from "../rpc"
+import { searchFieldIds } from "../ui/search-field"
 
 /**
  * `GifPickerDialog` with `useKlipy`: trending GIFs and categories on open, a 300ms debounced
@@ -29,24 +33,42 @@ export type Gif = typeof Gif.Type
 
 export const Category = Schema.Struct({ category: Schema.String, query: Schema.String })
 
+/** What can go wrong fetching from KLIPY: the provider itself failing (`KlipyApiError`), or the shared reasons. */
+export const GifFailure = Schema.Union([Schema.Literals(["ProviderFailed"]), CommonReason])
+export type GifFailure = typeof GifFailure.Type
+
+/** The GIFs loaded so far for one query, through `page`. */
+export const GifPage = Schema.Struct({ gifs: Schema.Array(Gif), page: Schema.Number })
+export type GifPage = typeof GifPage.Type
+
+export const GifResults = AsyncData.Schema(GifPage, GifFailure)
+export const Categories = AsyncData.Schema(Schema.Array(Category), GifFailure)
+
+/** Paging past the first page: ready, fetching, failed (with why), or nothing left. */
+export const More = Schema.Union([
+	Schema.TaggedStruct("Idle", {}),
+	Schema.TaggedStruct("Loading", {}),
+	Schema.TaggedStruct("Failed", { reason: GifFailure }),
+	Schema.TaggedStruct("Exhausted", {}),
+])
+export type More = typeof More.Type
+
+const moreAfter = (hasMore: boolean): More => (hasMore ? { _tag: "Idle" } : { _tag: "Exhausted" })
+
 export const Model = Schema.Struct({
 	id: Schema.String,
 	isOpen: Schema.Boolean,
 	query: Schema.String,
 	selectedCategory: Schema.NullOr(Schema.String),
-	categories: Schema.Array(Category),
-	gifs: Schema.Array(Gif),
-	isLoading: Schema.Boolean,
-	isLoadingMore: Schema.Boolean,
-	hasMore: Schema.Boolean,
-	page: Schema.Number,
-	/** The query the shown GIFs answer ("" is trending). */
+	categories: Categories.schema,
+	/** The query `results` answer, or are loading for ("" is trending). Responses for any other query are stale. */
 	currentQuery: Schema.String,
-	requestId: Schema.Number,
+	results: GifResults.schema,
+	more: More,
 	debounceVersion: Schema.Number,
 	hoveredSlug: Schema.NullOr(Schema.String),
 	/** The trending query's first page; going back to "" shows it without refetching. */
-	trending: Schema.NullOr(Schema.Struct({ gifs: Schema.Array(Gif), page: Schema.Number, hasMore: Schema.Boolean })),
+	trending: Schema.NullOr(Schema.Struct({ page: GifPage, hasMore: Schema.Boolean })),
 })
 export type Model = typeof Model.Type
 
@@ -55,18 +77,20 @@ export const init = (id: string): Model => ({
 	isOpen: false,
 	query: "",
 	selectedCategory: null,
-	categories: [],
-	gifs: [],
-	isLoading: true,
-	isLoadingMore: false,
-	hasMore: true,
-	page: 1,
+	categories: AsyncData.Idle(),
 	currentQuery: "",
-	requestId: 0,
+	results: AsyncData.Idle(),
+	more: { _tag: "Idle" },
 	debounceVersion: 0,
 	hoveredSlug: null,
 	trending: null,
 })
+
+export const searchInputId = (model: Model) => searchFieldIds(`${model.id}-search`).input
+
+/** The GIFs on screen (none while the first page loads or failed). */
+export const gifsOf = (model: Model): ReadonlyArray<Gif> =>
+	Option.match(AsyncData.getData(model.results), { onNone: () => [], onSome: (page) => page.gifs })
 
 // MESSAGE
 
@@ -76,15 +100,16 @@ export const Message = defineMessageUnion({
 	ClickedCategory: { category: Schema.String },
 	CompletedWaitForGifSearch: { version: Schema.Number },
 	SucceededFetchGifs: {
-		requestId: Schema.Number,
-		append: Schema.Boolean,
-		gifs: Schema.Array(Gif),
+		query: Schema.String,
 		page: Schema.Number,
+		gifs: Schema.Array(Gif),
 		hasMore: Schema.Boolean,
 	},
-	FailedFetchGifs: { requestId: Schema.Number },
+	FailedFetchGifs: { query: Schema.String, page: Schema.Number, reason: GifFailure },
+	ClickedRetryFetchGifs: {},
 	SucceededFetchCategories: { categories: Schema.Array(Category) },
-	FailedFetchCategories: {},
+	FailedFetchCategories: { reason: GifFailure },
+	ClickedRetryFetchCategories: {},
 	ScrolledNearEnd: {},
 	HoveredGif: { slug: Schema.NullOr(Schema.String) },
 	ClickedGif: { slug: Schema.String },
@@ -96,10 +121,6 @@ export const OutMessage = defineMessageUnion({ SelectedGif: { url: Schema.String
 export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
-
-const trending = HazelApiClient.mutation("klipy", "trending")
-const search = HazelApiClient.mutation("klipy", "search")
-const categories = HazelApiClient.mutation("klipy", "categories")
 
 const toGif = (gif: KlipyGif): Gif => ({
 	slug: gif.slug,
@@ -113,35 +134,43 @@ const toGif = (gif: KlipyGif): Gif => ({
 
 /** `fetchGifs`: `klipy.search` with a query, `klipy.trending` without. */
 export const FetchGifs = Command.define("FetchGifs", {
-	args: { query: Schema.String, page: Schema.Number, append: Schema.Boolean, requestId: Schema.Number },
+	args: { query: Schema.String, page: Schema.Number },
 	messages: [Message.SucceededFetchGifs, Message.FailedFetchGifs],
-	execute: ({ query, page, append, requestId }) =>
+	execute: ({ query, page }) =>
 		(query
-			? runAtomFn(search, { query: { q: query, page, per_page: PER_PAGE } })
-			: runAtomFn(trending, { query: { page, per_page: PER_PAGE } })
+			? HazelApiClient.use((client) =>
+					client.klipy.search({ query: { q: query, page, per_page: PER_PAGE } }),
+				)
+			: HazelApiClient.use((client) => client.klipy.trending({ query: { page, per_page: PER_PAGE } }))
 		).pipe(
 			Effect.map((response) =>
 				Message.SucceededFetchGifs({
-					requestId,
-					append,
-					gifs: response.data.map(toGif),
+					query,
 					page: response.current_page,
+					gifs: response.data.map(toGif),
 					hasMore: response.has_next,
 				}),
 			),
-			Effect.catchCause(() => Effect.succeed(Message.FailedFetchGifs({ requestId }))),
+			Effect.catchTags({
+				KlipyApiError: () =>
+					Effect.succeed(Message.FailedFetchGifs({ query, page, reason: "ProviderFailed" })),
+			}),
+			catchCommon((reason) => Message.FailedFetchGifs({ query, page, reason })),
 		),
 })
 
 export const FetchCategories = Command.define("FetchCategories", {
 	messages: [Message.SucceededFetchCategories, Message.FailedFetchCategories],
-	execute: runAtomFn(categories, {}).pipe(
+	execute: HazelApiClient.use((client) => client.klipy.categories()).pipe(
 		Effect.map((response) =>
 			Message.SucceededFetchCategories({
 				categories: response.categories.map(({ category, query }) => ({ category, query })),
 			}),
 		),
-		Effect.catchCause(() => Effect.succeed(Message.FailedFetchCategories())),
+		Effect.catchTags({
+			KlipyApiError: () => Effect.succeed(Message.FailedFetchCategories({ reason: "ProviderFailed" })),
+		}),
+		catchCommon((reason) => Message.FailedFetchCategories({ reason })),
 	),
 })
 
@@ -153,47 +182,83 @@ export const WaitForGifSearch = Command.define("WaitForGifSearch", {
 		Effect.sleep(SEARCH_DEBOUNCE).pipe(Effect.as(Message.CompletedWaitForGifSearch({ version }))),
 })
 
+/** `SearchField autoFocus`: focus the search input once the popover is in the DOM. */
+export const FocusGifSearch = Command.define("FocusGifSearch", {
+	args: { inputId: Schema.String },
+	messages: [Message.CompletedFocusGifSearch],
+	execute: ({ inputId }) =>
+		Dom.focus(`#${CSS.escape(inputId)}`, { preventScroll: true }).pipe(
+			// Best effort: a popover closed before the focus lands has no input to focus.
+			Effect.ignore,
+			Effect.as(Message.CompletedFocusGifSearch()),
+		),
+})
+
 // UPDATE
 
-export type Return = Update.ReturnWithOutMessage<Model, Message, OutMessage>
+export type Return = Update.ReturnWithOutMessage<Model, Message, OutMessage, HazelApiClient>
+type StepReturn = Update.Return<Model, Message, HazelApiClient>
 
-const fetch = (model: Model, query: string, page: number, append: boolean): Return => {
-	const requestId = model.requestId + 1
-	return {
-		model: { ...model, requestId, isLoading: !append || model.isLoading, isLoadingMore: append },
-		commands: [FetchGifs({ query, page, append, requestId })],
-	}
+/** The first page of `query`, replacing whatever was shown. */
+const fetchFirstPage = (model: Model, query: string): StepReturn => ({
+	model: modifyFields(model, {
+		currentQuery: () => query,
+		results: () => AsyncData.Loading(),
+		more: (): More => ({ _tag: "Idle" }),
+	}),
+	commands: [FetchGifs({ query, page: 1 })],
+})
+
+/** `search(query)`: a fresh first page ("" goes back to the cached trending page when there is one). */
+const runSearch = (model: Model, query: string): Return => {
+	const { trending } = model
+	return query === "" && trending !== null
+		? {
+				model: modifyFields(model, {
+					currentQuery: () => "",
+					results: () => GifResults.Success({ data: trending.page }),
+					more: () => moreAfter(trending.hasMore),
+				}),
+			}
+		: fetchFirstPage(model, query)
 }
 
-/** `search(query)`: a fresh first page ("" goes back to trending). */
-const runSearch = (model: Model, query: string): Return =>
-	query === "" && model.trending !== null
-		? {
-				model: {
-					...model,
-					currentQuery: "",
-					requestId: model.requestId + 1,
-					gifs: model.trending.gifs,
-					page: model.trending.page,
-					hasMore: model.trending.hasMore,
-					isLoading: false,
-					isLoadingMore: false,
-				},
-			}
-		: fetch({ ...model, currentQuery: query, page: 1, hasMore: true, gifs: [] }, query, 1, false)
+/** `loadMore`: the next page of the current query. */
+const fetchNextPage = (model: Model, current: GifPage): Return => ({
+	model: modifyFields(model, { more: (): More => ({ _tag: "Loading" }) }),
+	commands: [FetchGifs({ query: model.currentQuery, page: current.page + 1 })],
+})
 
-const close = (model: Model): Return => ({ model: { ...model, isOpen: false } })
+const loadedPage = (model: Model): Option.Option<GifPage> =>
+	AsyncData.isSuccess(model.results) ? AsyncData.getData(model.results) : Option.none()
+
+const close = (model: Model): Return => ({ model: modifyFields(model, { isOpen: () => false }) })
+
+/** Opening starts over: trending, the categories, and focus in the search field. */
+const open = (model: Model): Return =>
+	Update.combine<Model, Message, HazelApiClient>(modifyFields(init(model.id), { isOpen: () => true }), [
+		(opened) => fetchFirstPage(opened, ""),
+		(opened) => ({
+			model: modifyFields(opened, { categories: () => Categories.Loading() }),
+			commands: [FetchCategories(), FocusGifSearch({ inputId: searchInputId(opened) })],
+		}),
+	])
+
+/** A first-page response still answers what is on screen: the same query, and it is still loading. */
+const isAwaitedFirstPage = (model: Model, query: string) =>
+	query === model.currentQuery && AsyncData.isPending(model.results)
+
+/** A next-page response still extends what is on screen: the same query, the page after, still loading. */
+const isAwaitedNextPage = (model: Model, query: string, page: number) =>
+	query === model.currentQuery &&
+	model.more._tag === "Loading" &&
+	Option.exists(loadedPage(model), (current) => current.page + 1 === page)
 
 export const update = (model: Model, message: Message): Return =>
 	Message.match<Return>(message, {
 		ReceivedPopoverEvent: ({ event }) =>
 			PopoverEvent.match<Return>(event, {
-				ClickedTrigger: () => {
-					if (model.isOpen) return close(model)
-					const opened = { ...init(model.id), isOpen: true, requestId: model.requestId }
-					const first = fetch(opened, "", 1, false)
-					return { ...first, commands: [...(first.commands ?? []), FetchCategories()] }
-				},
+				ClickedTrigger: () => (model.isOpen ? close(model) : open(model)),
 				ClickedDismiss: () => close(model),
 				PressedEscape: () => close(model),
 				PressedOutside: () => close(model),
@@ -202,7 +267,11 @@ export const update = (model: Model, message: Message): Return =>
 		UpdatedQuery: ({ query }) => {
 			const debounceVersion = model.debounceVersion + 1
 			return {
-				model: { ...model, query, selectedCategory: null, debounceVersion },
+				model: modifyFields(model, {
+					query: () => query,
+					selectedCategory: () => null,
+					debounceVersion: () => debounceVersion,
+				}),
 				commands: [WaitForGifSearch({ version: debounceVersion })],
 			}
 		},
@@ -211,40 +280,88 @@ export const update = (model: Model, message: Message): Return =>
 		// Selecting the selected chip again goes back to trending.
 		ClickedCategory: ({ category }) => {
 			const next = model.selectedCategory === category ? null : category
-			return runSearch({ ...model, selectedCategory: next, debounceVersion: model.debounceVersion + 1 }, next ?? "")
+			return runSearch(
+				modifyFields(model, {
+					selectedCategory: () => next,
+					debounceVersion: (version) => version + 1,
+				}),
+				next ?? "",
+			)
 		},
-		SucceededFetchGifs: ({ requestId, append, gifs, page, hasMore }) =>
-			requestId !== model.requestId
-				? { model }
-				: {
-						model: {
-							...model,
-							gifs: append ? [...model.gifs, ...gifs] : gifs,
-							page,
-							hasMore,
-							isLoading: false,
-							isLoadingMore: false,
-							trending:
-								model.currentQuery === "" && !append && model.trending === null
-									? { gifs, page, hasMore }
-									: model.trending,
-						},
-					},
-		FailedFetchGifs: ({ requestId }) =>
-			requestId !== model.requestId ? { model } : { model: { ...model, isLoading: false, isLoadingMore: false } },
-		SucceededFetchCategories: ({ categories: loaded }) => ({ model: { ...model, categories: loaded } }),
-		FailedFetchCategories: () => ({ model }),
-		// `loadMore`: the next page of the current query, unless one is loading or none is left.
+		SucceededFetchGifs: ({ query, page, gifs, hasMore }) => {
+			if (page === 1) {
+				if (!isAwaitedFirstPage(model, query)) return { model }
+				const loaded: GifPage = { gifs, page }
+				return {
+					model: modifyFields(model, {
+						results: () => GifResults.Success({ data: loaded }),
+						more: () => moreAfter(hasMore),
+						trending: (trending) =>
+							query === "" && trending === null ? { page: loaded, hasMore } : trending,
+					}),
+				}
+			}
+			if (!isAwaitedNextPage(model, query, page)) return { model }
+			return {
+				model: modifyFields(model, {
+					results: (results) =>
+						AsyncData.map(results, (current) => ({ gifs: [...current.gifs, ...gifs], page })),
+					more: () => moreAfter(hasMore),
+				}),
+			}
+		},
+		FailedFetchGifs: ({ query, page, reason }) => {
+			if (page === 1)
+				return isAwaitedFirstPage(model, query)
+					? {
+							model: modifyFields(model, {
+								results: (results) => AsyncData.settle(results, Result.fail(reason)),
+							}),
+						}
+					: { model }
+			return isAwaitedNextPage(model, query, page)
+				? { model: modifyFields(model, { more: (): More => ({ _tag: "Failed", reason }) }) }
+				: { model }
+		},
+		ClickedRetryFetchGifs: () => {
+			if (AsyncData.isFailure(model.results)) return fetchFirstPage(model, model.currentQuery)
+			return model.more._tag === "Failed"
+				? Option.match(loadedPage(model), {
+						onNone: () => ({ model }),
+						onSome: (current) => fetchNextPage(model, current),
+					})
+				: { model }
+		},
+		SucceededFetchCategories: ({ categories }) => ({
+			model: modifyFields(model, { categories: () => Categories.Success({ data: categories }) }),
+		}),
+		FailedFetchCategories: ({ reason }) => ({
+			model: modifyFields(model, {
+				categories: (previous) => AsyncData.settle(previous, Result.fail(reason)),
+			}),
+		}),
+		ClickedRetryFetchCategories: () => ({
+			model: modifyFields(model, { categories: () => Categories.Loading() }),
+			commands: [FetchCategories()],
+		}),
+		// `loadMore`: the next page of the current query, unless one is loading, failed or none is left.
 		ScrolledNearEnd: () =>
-			model.isLoading || model.isLoadingMore || !model.hasMore || model.gifs.length === 0
+			model.more._tag !== "Idle"
 				? { model }
-				: fetch(model, model.currentQuery, model.page + 1, true),
-		HoveredGif: ({ slug }) => ({ model: { ...model, hoveredSlug: slug } }),
+				: Option.match(loadedPage(model), {
+						onNone: () => ({ model }),
+						onSome: (current) =>
+							current.gifs.length === 0 ? { model } : fetchNextPage(model, current),
+					}),
+		HoveredGif: ({ slug }) => ({ model: modifyFields(model, { hoveredSlug: () => slug }) }),
 		CompletedFocusGifSearch: () => ({ model }),
 		ClickedGif: ({ slug }) => {
-			const gif = model.gifs.find((candidate) => candidate.slug === slug)
+			const gif = gifsOf(model).find((candidate) => candidate.slug === slug)
 			return gif === undefined
 				? { model }
-				: { model: { ...model, isOpen: false }, outMessage: OutMessage.SelectedGif({ url: gif.hdGifUrl }) }
+				: {
+						model: modifyFields(model, { isOpen: () => false }),
+						outMessage: OutMessage.SelectedGif({ url: gif.hdGifUrl }),
+					}
 		},
 	})

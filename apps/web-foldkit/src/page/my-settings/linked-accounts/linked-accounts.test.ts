@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { routeOfPath } from "../../../route"
 import { Option } from "effect"
 import { describe, expect, test } from "vitest"
 import { PageOutMessage } from "../../out-message"
@@ -19,7 +20,7 @@ describe("linked accounts callback", () => {
 		const page = init(routeWith({ status: "success", provider: "discord" }))
 		expect(page.outMessage).toEqual(
 			PageOutMessage.RequestedNavigation({
-				href: "/hazel/my-settings/linked-accounts",
+				route: routeOfPath("/hazel/my-settings/linked-accounts"),
 				replace: true,
 				toast: { intent: "success", title: "Discord account linked", description: null },
 			}),
@@ -27,15 +28,30 @@ describe("linked accounts callback", () => {
 		expect(page.commands).toBeUndefined()
 	})
 
-	test("a failed link shows the error code", () => {
+	test("a failed link explains a known error code in words", () => {
 		const page = init(routeWith({ status: "error", provider: "discord", errorCode: "db_error" }))
 		expect(page.outMessage).toEqual(
 			PageOutMessage.RequestedNavigation({
-				href: "/hazel/my-settings/linked-accounts",
+				route: routeOfPath("/hazel/my-settings/linked-accounts"),
 				replace: true,
-				toast: { intent: "error", title: "Failed to link Discord account", description: "db_error" },
+				toast: {
+					intent: "error",
+					title: "Failed to link Discord account",
+					description: "A database error occurred. Please try again.",
+				},
 			}),
 		)
+	})
+
+	test("an unknown error code never reaches the toast", () => {
+		const page = init(routeWith({ status: "error", provider: "discord", errorCode: "<script>" }))
+		expect(page.outMessage).toMatchObject({
+			toast: {
+				intent: "error",
+				title: "Failed to link Discord account",
+				description: "Please try again.",
+			},
+		})
 	})
 
 	test("other providers and the cleaned URL show nothing", () => {

@@ -16,8 +16,6 @@
 		"@standard-schema/spec": "^1.1.0",
 		"@tanstack/db": "0.11.3",
 		"@tanstack/electric-db-collection": "0.5.4",
-		"@tanstack/react-db": "0.5.3",
-		"@tanstack/store": "^0.8.0",
 		"effect": "catalog:effect"
 	},
 	"devDependencies": {

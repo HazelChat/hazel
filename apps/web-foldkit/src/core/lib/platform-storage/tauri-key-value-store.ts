@@ -8,92 +8,58 @@
  */
 
 import * as KeyValueStore from "effect/persistence/KeyValueStore"
-import { KeyValueStoreError as SystemError } from "effect/persistence/KeyValueStore"
+import { KeyValueStoreError } from "effect/persistence/KeyValueStore"
 import { getTauriStore, type TauriStoreApi } from "@hazel/desktop/bridge"
 import { Effect, Layer } from "effect"
 
 const STORE_NAME = "settings.json"
 
-type StoreType = Awaited<ReturnType<TauriStoreApi["load"]>>
+type Store = Awaited<ReturnType<TauriStoreApi["load"]>>
 
-// Load store effect - separate from caching
-const loadStore: Effect.Effect<StoreType, SystemError> = Effect.tryPromise({
-	try: async () => {
-		const store = getTauriStore()
-		if (!store) throw new Error("Tauri store not available")
-		return store.load(STORE_NAME, { autoSave: true, defaults: {} })
-	},
-	catch: (error) =>
-		new SystemError({
-			message: `Failed to load Tauri store: ${error}`,
-			method: "getStore",
-			key: STORE_NAME,
-			cause: error,
-		}),
+const storeError = (method: string, key: string, cause: unknown) =>
+	new KeyValueStoreError({ message: `Tauri store ${method} failed`, method, key, cause })
+
+const loadStore: Effect.Effect<Store, KeyValueStoreError> = Effect.suspend(() => {
+	const tauriStore = getTauriStore()
+	if (!tauriStore) {
+		return Effect.fail(
+			new KeyValueStoreError({ message: "Tauri store not available", method: "load", key: STORE_NAME }),
+		)
+	}
+	return Effect.tryPromise({
+		try: () => tauriStore.load(STORE_NAME, { autoSave: true, defaults: {} }),
+		catch: (cause) => storeError("load", STORE_NAME, cause),
+	})
 })
 
-// Effect.cached memoizes the effect - only runs once, result is cached
-const getStore = Effect.cached(loadStore)
-
-const makeError = (method: string, key: string, error: unknown) =>
-	new SystemError({
-		message: `Tauri store ${method} failed: ${error}`,
-		method,
-		key,
-		cause: error,
-	})
-
 /**
- * Creates a KeyValueStore layer backed by Tauri's plugin-store
+ * A KeyValueStore layer backed by Tauri's plugin-store. The store loads on first use, so a store that fails to
+ * load fails that read or write (a typed `KeyValueStoreError` callers recover from), not the whole layer.
  */
 export const layerTauriStore: Layer.Layer<KeyValueStore.KeyValueStore> = Layer.effect(
 	KeyValueStore.KeyValueStore,
 	Effect.gen(function* () {
-		// Effect.cached returns Effect<Effect<A, E>>, yield twice to get the cached value
-		const store = yield* (yield* getStore).pipe(Effect.orDie)
+		const getStore = yield* Effect.cached(loadStore)
+		const withStore = <A>(method: string, key: string, run: (store: Store) => Promise<A>) =>
+			getStore.pipe(
+				Effect.flatMap((store) =>
+					Effect.tryPromise({
+						try: () => run(store),
+						catch: (cause) => storeError(method, key, cause),
+					}),
+				),
+			)
 
 		return KeyValueStore.makeStringOnly({
-			get: (key: string) =>
-				Effect.tryPromise({
-					try: async () => await store.get<string>(key),
-					catch: (error) => makeError("get", key, error),
-				}),
-
-			set: (key: string, value: string) =>
-				Effect.tryPromise({
-					try: async () => {
-						await store.set(key, value)
-					},
-					catch: (error) => makeError("set", key, error),
-				}),
-
-			remove: (key: string) =>
-				Effect.tryPromise({
-					try: async () => {
-						await store.delete(key)
-					},
-					catch: (error) => makeError("remove", key, error),
-				}),
-
-			clear: Effect.tryPromise({
-				try: async () => {
-					await store.clear()
-				},
-				catch: (error) => makeError("clear", "all", error),
-			}),
-
-			size: Effect.tryPromise({
-				try: async () => store.length(),
-				catch: (error) => makeError("size", "length", error),
-			}),
-
-			has: (key: string) =>
-				Effect.tryPromise({
-					try: async () => {
-						const value = await store.get<string>(key)
-						return value !== null && value !== undefined
-					},
-					catch: (error) => makeError("has", key, error),
+			get: (key) => withStore("get", key, (store) => store.get<string>(key)),
+			set: (key, value) => withStore("set", key, (store) => store.set(key, value)),
+			remove: (key) => withStore("remove", key, (store) => store.delete(key)).pipe(Effect.asVoid),
+			clear: withStore("clear", "all", (store) => store.clear()),
+			size: withStore("size", "length", (store) => store.length()),
+			has: (key) =>
+				withStore("has", key, async (store) => {
+					const value = await store.get<string>(key)
+					return value !== null && value !== undefined
 				}),
 		})
 	}),

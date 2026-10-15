@@ -13,9 +13,8 @@ import { IconClose } from "../icons"
 import { button } from "./button"
 
 /**
- * Port of `components/ui/dialog.tsx`: the parts Modal, Sheet and Popover compose. The overlay that
- * hosts a dialog owns its behavior; these are pure views. Header and footer heights
- * (`--dialog-header-height`, `--dialog-footer-height`) are measured by that host's Mount.
+ * The dialog parts Modal, Sheet and Popover compose. The overlay that hosts a dialog owns its
+ * behavior; these are pure views. The body takes the height the header and footer leave (flex).
  */
 
 type Children = ReadonlyArray<Html | string>
@@ -38,12 +37,22 @@ export const dialog = <Message>(
 			...(options.labelledBy ? [h.Attribute("aria-labelledby", options.labelledBy)] : []),
 			...(options.ariaLabel ? [h.Attribute("aria-label", options.ariaLabel)] : []),
 			h.Class(twMerge(dialogBase, options.className)),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-slot", "dialog"),
 			h.Id(options.id),
 			h.Role(options.role),
 			h.Attribute("tabindex", "-1"),
 		],
+		children,
+	)
+
+/** The content wrapper inside a Modal or Sheet panel; the `<dialog>` around it carries the role. */
+export const dialogSection = <Message>(
+	h: HtmlBuilder<Message>,
+	options: Readonly<{ id: string; className?: string }>,
+	children: Children,
+): Html =>
+	h.section(
+		[h.Class(twMerge(dialogBase, options.className)), h.Attribute("data-slot", "dialog"), h.Id(options.id)],
 		children,
 	)
 
@@ -125,10 +134,8 @@ export const dialogCloseIcon = <Message>(
 			...attributes,
 			h.Attribute("aria-label", "Close"),
 			h.Class(twMerge(twMerge(dialogCloseIconBase), className)),
-			h.Attribute("data-react-aria-pressable", "true"),
 			h.Attribute("slot", "close"),
-			h.Attribute("tabindex", "0"),
-			h.Attribute("type", "button"),
+			h.Type("button"),
 		],
 		[IconClose(h, { className: "size-4" })],
 	)

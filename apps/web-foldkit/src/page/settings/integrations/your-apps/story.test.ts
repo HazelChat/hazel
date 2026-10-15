@@ -8,6 +8,7 @@ import type { Bot } from "../shared/bots"
 import { PageOutMessage } from "../../../out-message"
 import { Message } from "./message"
 import { init, update } from "./update"
+import { BOT_MENU_ENTRIES } from "../shared/bot-card"
 
 const bot = (n: number, name: string): Bot => ({
 	id: Schema.decodeSync(BotId)(`00000000-0000-4000-8000-00000000000${n}`),
@@ -53,9 +54,11 @@ describe("your apps menu actions", () => {
 		story(
 			update,
 			given(withOpenMenu),
-			message(Message.GotMenuMessage({ botId: deploy.id, message: Menu.Message.ClickedItem({ key: "regenerate" }) })),
+			message(Message.GotMenuMessage({ botId: deploy.id, message: Menu.Message.ClickedItem({ key: "regenerate", entries: BOT_MENU_ENTRIES }) })),
 			expectOutMessage(
-				PageOutMessage.RequestedModal({ modal: { _tag: "RegenerateBotToken", botId: deploy.id, botName: "Deploy Bot" } }),
+				PageOutMessage.RequestedModal({
+					modal: { _tag: "RegenerateBotToken", botId: deploy.id, botName: "Deploy Bot" },
+				}),
 			),
 			model((current) => expect(current.menus[0]?.popup._tag).toBe("Closed")),
 		)
@@ -65,7 +68,7 @@ describe("your apps menu actions", () => {
 		story(
 			update,
 			given(withOpenMenu),
-			message(Message.GotMenuMessage({ botId: triage.id, message: Menu.Message.ClickedItem({ key: "delete" }) })),
+			message(Message.GotMenuMessage({ botId: triage.id, message: Menu.Message.ClickedItem({ key: "delete", entries: BOT_MENU_ENTRIES }) })),
 			expectNoOutMessage(),
 			model((current) => expect(current).toEqual(withOpenMenu)),
 		)

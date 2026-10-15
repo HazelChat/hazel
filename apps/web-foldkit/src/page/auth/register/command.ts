@@ -14,6 +14,8 @@ export const Register = Command.define("Register", {
 	execute: (input) =>
 		register(input).pipe(
 			Effect.as(Message.LeftForApp()),
-			Effect.catch((error) => Effect.succeed(Message.FailedRegistration({ message: error.message }))),
+			Effect.catchTags({
+				AuthFlowError: ({ reason }) => Effect.succeed(Message.FailedRegistration({ reason })),
+			}),
 		),
 })

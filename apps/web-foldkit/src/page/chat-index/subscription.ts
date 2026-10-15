@@ -53,7 +53,7 @@ export const subscriptions = Subscription.make<PageSubscriptionInput<Model>, Mes
 		{ userIds: Schema.Array(UserId) },
 		{
 			modelToDependencies: ({ model, shared }) => ({
-				userIds: singleDmPartnerIds(model.groups, shared.currentUser?.id),
+				userIds: singleDmPartnerIds(model.channels, shared.currentUser?.id),
 			}),
 			dependenciesToStream: ({ userIds }) =>
 				userIds.length === 0

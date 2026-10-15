@@ -24,486 +24,102 @@ import {
 	User,
 	UserPresenceStatus,
 } from "@hazel/domain/models"
+import type { Schema } from "effect"
 import { electricFetchClient, electricOnError } from "~/lib/electric-fetch"
-import { runtime } from "~/lib/services/common/runtime"
-import { createEffectCollection } from "@hazel/effect-electric-db-collection"
+import { createEffectCollection, type EffectCollection } from "@hazel/effect-electric-db-collection"
 
 const electricUrl = import.meta.env.VITE_ELECTRIC_URL
 
-export const organizationCollection = createEffectCollection({
-	id: "organizations",
-	runtime: runtime,
-	backoff: false, // Retries: the Electric client (5xx, 429, network) and `electricOnError` (401)
-	shapeOptions: {
-		url: electricUrl,
-		//liveSse: true,
+interface ElectricCollectionOptions {
+	/** TanStack DB's sync mode; the default loads the whole shape eagerly. */
+	readonly syncMode?: "eager" | "on-demand"
+	/** Parse `timestamptz` columns into `Date`s before the schema sees them (default true). */
+	readonly parseTimestamps?: boolean
+}
 
-		params: {
-			table: "organizations",
+/**
+ * One Electric-synced table: the shape is the table itself (the proxy scopes it to the user), rows are keyed by
+ * `id`. Retries: the Electric client (5xx, 429, network) and `electricOnError` (401), so collection backoff is off.
+ */
+const electricCollection = <A extends { readonly id: string }>(
+	table: string,
+	schema: Schema.Schema<A>,
+	{ syncMode, parseTimestamps = true }: ElectricCollectionOptions = {},
+): EffectCollection<A> =>
+	createEffectCollection({
+		id: table,
+		...(syncMode === undefined ? {} : { syncMode }),
+		backoff: false,
+		shapeOptions: {
+			url: electricUrl,
+			params: { table },
+			// The parser's value type follows the row, which a generic row can't name; `Schema.JsonDate`
+			// columns accept the string form too, so this is only the fast path.
+			...(parseTimestamps
+				? { parser: { timestamptz: ((date: string) => new Date(date)) as never } }
+				: {}),
+			fetchClient: electricFetchClient,
+			onError: electricOnError,
 		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
+		schema,
+		getKey: (item) => item.id,
+	})
 
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: Organization.Schema,
-	getKey: (item) => item.id,
-})
-
-export const messageCollection = createEffectCollection({
-	id: "messages",
-	// syncMode: "on-demand",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		params: {
-			table: "messages",
-		},
-		//// liveSse: true,
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: Message.Schema,
-	getKey: (item) => item.id,
-})
-
-export const messageReactionCollection = createEffectCollection({
-	id: "message_reactions",
+export const organizationCollection = electricCollection("organizations", Organization.Schema)
+export const messageCollection = electricCollection("messages", Message.Schema)
+export const messageReactionCollection = electricCollection("message_reactions", MessageReaction.Schema, {
 	syncMode: "on-demand",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		params: {
-			table: "message_reactions",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: MessageReaction.Schema,
-	getKey: (item) => item.id,
 })
-
-export const pinnedMessageCollection = createEffectCollection({
-	id: "pinned_messages",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		params: {
-			table: "pinned_messages",
-		},
-		//liveSse: true,
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: PinnedMessage.Schema,
-	getKey: (item) => item.id,
-})
-
-export const notificationCollection = createEffectCollection({
-	id: "notifications",
+export const pinnedMessageCollection = electricCollection("pinned_messages", PinnedMessage.Schema)
+export const notificationCollection = electricCollection("notifications", Notification.Schema, {
 	syncMode: "on-demand",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		//liveSse: true,
-		params: {
-			table: "notifications",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: Notification.Schema,
-	getKey: (item) => item.id,
 })
-
-export const userCollection = createEffectCollection({
-	id: "users",
-	// syncMode: "progressive",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		//// liveSse: true,
-		params: {
-			table: "users",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: User.Schema,
-	getKey: (item) => item.id,
-})
-
-export const organizationMemberCollection = createEffectCollection({
-	id: "organization_members",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		//liveSse: true,
-		params: {
-			table: "organization_members",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: OrganizationMember.Schema,
-	getKey: (item) => item.id,
-})
-
-export const channelCollection = createEffectCollection({
-	id: "channels",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		//liveSse: true,
-		params: {
-			table: "channels",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: Channel.Schema,
-	getKey: (item) => item.id,
-})
-
-export const connectConversationCollection = createEffectCollection({
-	id: "connect_conversations",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		params: {
-			table: "connect_conversations",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: ConnectConversation.Schema,
-	getKey: (item) => item.id,
-})
-
-export const connectConversationChannelCollection = createEffectCollection({
-	id: "connect_conversation_channels",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		params: {
-			table: "connect_conversation_channels",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: ConnectConversationChannel.Schema,
-	getKey: (item) => item.id,
-})
-
-export const connectParticipantCollection = createEffectCollection({
-	id: "connect_participants",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		params: {
-			table: "connect_participants",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: ConnectParticipant.Schema,
-	getKey: (item) => item.id,
-})
-
-export const channelMemberCollection = createEffectCollection({
-	id: "channel_members",
-	// syncMode: "progressive",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		//liveSse: true,
-		params: {
-			table: "channel_members",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: ChannelMember.Schema,
-	getKey: (item) => item.id,
-})
-
-export const channelSectionCollection = createEffectCollection({
-	id: "channel_sections",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		params: {
-			table: "channel_sections",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: ChannelSection.Schema,
-	getKey: (item) => item.id,
-})
-
-export const attachmentCollection = createEffectCollection({
-	id: "attachments",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		//liveSse: true,
-		params: {
-			table: "attachments",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: Attachment.Schema,
-	getKey: (item) => item.id,
-})
-
-export const typingIndicatorCollection = createEffectCollection({
-	id: "typing_indicators",
+export const userCollection = electricCollection("users", User.Schema)
+export const organizationMemberCollection = electricCollection(
+	"organization_members",
+	OrganizationMember.Schema,
+)
+export const channelCollection = electricCollection("channels", Channel.Schema)
+export const connectConversationCollection = electricCollection(
+	"connect_conversations",
+	ConnectConversation.Schema,
+)
+export const connectConversationChannelCollection = electricCollection(
+	"connect_conversation_channels",
+	ConnectConversationChannel.Schema,
+)
+export const connectParticipantCollection = electricCollection(
+	"connect_participants",
+	ConnectParticipant.Schema,
+)
+export const channelMemberCollection = electricCollection("channel_members", ChannelMember.Schema)
+export const channelSectionCollection = electricCollection("channel_sections", ChannelSection.Schema)
+export const attachmentCollection = electricCollection("attachments", Attachment.Schema)
+export const typingIndicatorCollection = electricCollection("typing_indicators", TypingIndicator.Schema, {
 	syncMode: "eager",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		//liveSse: true,
-		params: {
-			table: "typing_indicators",
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: TypingIndicator.Schema,
-	getKey: (item) => item.id,
+	parseTimestamps: false,
 })
-
-export const userPresenceStatusCollection = createEffectCollection({
-	id: "user_presence_status",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		//liveSse: true,
-		params: {
-			table: "user_presence_status",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: UserPresenceStatus.Schema,
-	getKey: (item) => item.id,
-})
-
-export const integrationConnectionCollection = createEffectCollection({
-	id: "integration_connections",
-	// syncMode: "on-demand",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		//liveSse: true,
-		params: {
-			table: "integration_connections",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: IntegrationConnection.Schema,
-	getKey: (item) => item.id,
-})
-
-export const chatSyncConnectionCollection = createEffectCollection({
-	id: "chat_sync_connections",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		params: {
-			table: "chat_sync_connections",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: ChatSyncConnection.Schema,
-	getKey: (item) => item.id,
-})
-
-export const chatSyncChannelLinkCollection = createEffectCollection({
-	id: "chat_sync_channel_links",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		params: {
-			table: "chat_sync_channel_links",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: ChatSyncChannelLink.Schema,
-	getKey: (item) => item.id,
-})
-
-export const chatSyncMessageLinkCollection = createEffectCollection({
-	id: "chat_sync_message_links",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		params: {
-			table: "chat_sync_message_links",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: ChatSyncMessageLink.Schema,
-	getKey: (item) => item.id,
-})
-
-export const botCollection = createEffectCollection({
-	id: "bots",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		params: {
-			table: "bots",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: Bot.Schema,
-	getKey: (item) => item.id,
-})
-
-export const botCommandCollection = createEffectCollection({
-	id: "bot_commands",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		params: {
-			table: "bot_commands",
-		},
-		// Schema's nested array (`arguments`) narrows Electric's row extension to
-		// `never`, so `Parser<never>` requires return type `Value<never>` — impossible
-		// to satisfy. Widening via `as never` is the minimum cast needed; `Schema.JsonDate`
-		// already accepts string-form dates, so the parser is belt-and-suspenders.
-		parser: {
-			timestamptz: ((date: string) => new Date(date)) as never,
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: BotCommand.Schema,
-	getKey: (item) => item.id,
-})
-
-export const botInstallationCollection = createEffectCollection({
-	id: "bot_installations",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		params: {
-			table: "bot_installations",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: BotInstallation.Schema,
-	getKey: (item) => item.id,
-})
-
-export const customEmojiCollection = createEffectCollection({
-	id: "custom_emojis",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		params: {
-			table: "custom_emojis",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-		onError: electricOnError,
-	},
-	schema: CustomEmoji.Schema,
-	getKey: (item) => item.id,
-})
+export const userPresenceStatusCollection = electricCollection(
+	"user_presence_status",
+	UserPresenceStatus.Schema,
+)
+export const integrationConnectionCollection = electricCollection(
+	"integration_connections",
+	IntegrationConnection.Schema,
+)
+export const chatSyncConnectionCollection = electricCollection(
+	"chat_sync_connections",
+	ChatSyncConnection.Schema,
+)
+export const chatSyncChannelLinkCollection = electricCollection(
+	"chat_sync_channel_links",
+	ChatSyncChannelLink.Schema,
+)
+export const chatSyncMessageLinkCollection = electricCollection(
+	"chat_sync_message_links",
+	ChatSyncMessageLink.Schema,
+)
+export const botCollection = electricCollection("bots", Bot.Schema)
+export const botCommandCollection = electricCollection("bot_commands", BotCommand.Schema)
+export const botInstallationCollection = electricCollection("bot_installations", BotInstallation.Schema)
+export const customEmojiCollection = electricCollection("custom_emojis", CustomEmoji.Schema)

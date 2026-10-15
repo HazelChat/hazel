@@ -11,7 +11,7 @@ import {
 } from "@hazel/schema"
 import { DiscordConfig } from "dfx"
 import { DiscordGateway, DiscordLive } from "dfx/gateway"
-import { Context, Config, Effect, Layer, Option, Redacted, Ref, Schema } from "effect"
+import { Cause, Context, Config, Effect, Layer, Option, Redacted, Ref, Schema } from "effect"
 import type * as Socket from "effect/socket/Socket"
 import { DiscordSyncWorker, DiscordSyncWorkerLayer } from "./discord-sync-worker"
 import type { ChatSyncIngressMessageAttachment } from "./chat-sync-core-worker"
@@ -726,9 +726,9 @@ export class DiscordGatewayService extends Context.Service<DiscordGatewayService
 			}).pipe(
 				Effect.provide(DiscordLayer),
 				Effect.catchCause((cause) =>
-					Effect.logError("Discord gateway background worker stopped", {
-						cause: String(cause),
-					}),
+					Cause.hasInterruptsOnly(cause)
+						? Effect.interrupt
+						: Effect.logError("Discord gateway background worker stopped", cause),
 				),
 			)
 		}) as Effect.Effect<void, never, Socket.WebSocketConstructor>

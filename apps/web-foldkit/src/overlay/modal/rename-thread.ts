@@ -1,4 +1,3 @@
-import { ChannelId } from "@hazel/schema"
 import * as Requests from "./requests"
 import { defineModal } from "./contract"
 import { Message, Model, renameModalSpec } from "./rename-channel"
@@ -15,7 +14,6 @@ const spec = renameModalSpec({
 	notFound: {
 		title: "Thread not found",
 		description: "This thread may have been deleted.",
-		isRetryable: false,
 	},
 })
 

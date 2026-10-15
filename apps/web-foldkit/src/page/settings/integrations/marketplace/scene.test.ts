@@ -62,7 +62,7 @@ describe("marketplace page", () => {
 			click(role("button", { name: "Install" })),
 			Command.expectExact(InstallBot({ botId })),
 			expectView(role("button", { name: "Installing..." })).toBeDisabled(),
-			Command.resolve(InstallBot, Message.FailedInstallBot({ botId, toast })),
+			Command.resolve(InstallBot, Message.FailedInstallBot({ botId, reason: "AlreadyInstalled" })),
 			expectOutMessage(PageOutMessage.RequestedToast({ toast })),
 			expectView(role("button", { name: "Install" })).toBeEnabled(),
 		)

@@ -48,9 +48,9 @@ export const channelSettingsLayout = <Message>(
 		channel: ChannelSummary | null
 		selectedTab: ChannelSettingsTab
 		/** Tabs navigate on selection, as `onSelectionChange` does. */
-		onSelectTab: (href: string) => Attribute<Message>
-		/** The mobile `<select>` navigates on change, with the chosen option's href. */
-		onChangeTab: (toHref: (tab: string) => string) => Attribute<Message>
+		onSelectTab: (route: AppRoute) => Attribute<Message>
+		/** The mobile `<select>` navigates on change, to the chosen option's route. */
+		onChangeTab: (toRoute: (tab: string) => AppRoute) => Attribute<Message>
 	}>,
 	page: Html,
 ): Html => {
@@ -60,7 +60,7 @@ export const channelSettingsLayout = <Message>(
 		integrations: AppRoute.ChannelSettingsIntegrations,
 		connect: AppRoute.ChannelSettingsConnect,
 	} as const
-	const tabHref = (tab: ChannelSettingsTab) => hrefOf(tabRoutes[tab]({ orgSlug, channelId }))
+	const tabRoute = (tab: ChannelSettingsTab): AppRoute => tabRoutes[tab]({ orgSlug, channelId })
 	return h.main(
 		[h.Class("h-full w-full min-w-0 bg-bg")],
 		[
@@ -147,7 +147,7 @@ export const channelSettingsLayout = <Message>(
 											),
 											h.Value(options.selectedTab),
 											options.onChangeTab((tab) =>
-												tabHref(
+												tabRoute(
 													isChannelSettingsTab(tab) ? tab : options.selectedTab,
 												),
 											),
@@ -181,7 +181,7 @@ export const channelSettingsLayout = <Message>(
 												id: tab,
 												label: tabLabels[tab],
 												isSelected: tab === options.selectedTab,
-												attributes: [options.onSelectTab(tabHref(tab))],
+												attributes: [options.onSelectTab(tabRoute(tab))],
 											}),
 										),
 									),
@@ -253,6 +253,25 @@ const stalledNotice = <Message>(h: HtmlBuilder<Message>, onReload: Message): Htm
 		[
 			h.p([h.Class("text-muted-fg text-sm")], ["This is taking longer than usual. Still trying…"]),
 			button(h, { intent: "outline", size: "sm", onPress: onReload }, ["Reload"]),
+		],
+	)
+
+/**
+ * A full-page error the app cannot get past on its own (the API did not answer, `user.me` failed):
+ * what happened, and a way to try again.
+ */
+export const appError = <Message>(
+	h: HtmlBuilder<Message>,
+	options: Readonly<{ title: string; description: string | undefined; onRetry: Message }>,
+): Html =>
+	h.div(
+		[h.Class("flex h-screen items-center justify-center p-6"), h.Role("alert")],
+		[
+			emptyState(h, {
+				title: options.title,
+				...(options.description === undefined ? {} : { description: options.description }),
+				action: button(h, { intent: "primary", onPress: options.onRetry }, ["Try again"]),
+			}),
 		],
 	)
 

@@ -33,7 +33,7 @@ import {
 	focusScopeSentinel,
 	portalOverlay,
 	restoreFocusToPrevious,
-	trackViewportHeight,
+	isolateOverlay,
 	watchInteractOutside,
 } from "./aria/overlay"
 import {
@@ -57,32 +57,40 @@ export const PortalCommandMenu = Mount.defineStream("PortalCommandMenu", {
 	messages: [Message.CompletedPortalCommandMenu, Message.PressedOutside],
 	execute: ({ element, id, isDismissable }) =>
 		Stream.callback<PortalCommandMenuMessage>((queue) =>
-			Effect.acquireRelease(
-				Effect.sync(() => {
-					const restoreFocus = restoreFocusToPrevious(element)
-					const releasePortal = portalOverlay(element, { isModal: true, inertAfterPaint: true })
-					const overlay = element.querySelector<HTMLElement>("[data-modal-overlay]")
-					const releaseViewport = overlay ? trackViewportHeight(overlay) : () => undefined
-					;(document.getElementById(searchId(id)) ?? document.getElementById(dialogId(id)))?.focus({
-						preventScroll: true,
-					})
-					const releaseFocus = containFocus(element)
-					const releaseOutside = isDismissable
-						? watchInteractOutside(`[data-modal-content="${CSS.escape(id)}"]`, () =>
-								Queue.offerUnsafe(queue, Message.PressedOutside()),
-							)
-						: () => undefined
-					Queue.offerUnsafe(queue, Message.CompletedPortalCommandMenu())
-					return () => {
-						releaseOutside()
-						releaseFocus()
-						releaseViewport()
-						releasePortal()
-						restoreFocus()
-					}
-				}),
-				(release) => Effect.sync(release),
-			).pipe(Effect.flatMap(() => Effect.never)),
+			Effect.gen(function* () {
+				const restoreFocus = restoreFocusToPrevious(element)
+				yield* Effect.acquireRelease(
+					Effect.sync(() => portalOverlay(element)),
+					(releasePortal) =>
+						Effect.sync(() => {
+							releasePortal()
+							restoreFocus()
+						}),
+				)
+				yield* isolateOverlay(element, `command-menu-${id}`)
+				yield* Effect.acquireRelease(
+					Effect.sync(() => {
+						;(
+							document.getElementById(searchId(id)) ?? document.getElementById(dialogId(id))
+						)?.focus({
+							preventScroll: true,
+						})
+						const releaseFocus = containFocus(element)
+						const releaseOutside = isDismissable
+							? watchInteractOutside(element, `[data-modal-content="${CSS.escape(id)}"]`, () =>
+									Queue.offerUnsafe(queue, Message.PressedOutside()),
+								)
+							: () => undefined
+						Queue.offerUnsafe(queue, Message.CompletedPortalCommandMenu())
+						return () => {
+							releaseOutside()
+							releaseFocus()
+						}
+					}),
+					(release) => Effect.sync(release),
+				)
+				return yield* Effect.never
+			}),
 		),
 })
 
@@ -154,7 +162,6 @@ const commandMenuOverlay = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder
 				[
 					h.Class(commandMenuOverlayClassName(viewInputs.isBlurred ?? false)),
 					h.Attribute("data-modal-overlay", ""),
-					h.Attribute("data-rac", ""),
 				],
 				[
 					h.div(
@@ -166,7 +173,6 @@ const commandMenuOverlay = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder
 								),
 							),
 							h.Attribute("data-modal-content", model.id),
-							h.Attribute("data-rac", ""),
 						],
 						[
 							...(isDismissable ? [dismissButton(h, Message.ClickedDismiss())] : []),
@@ -174,7 +180,6 @@ const commandMenuOverlay = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder
 								[
 									h.Attribute("aria-label", viewInputs["aria-label"] ?? "Command Menu"),
 									h.Class(commandMenuDialogClassName),
-									h.Attribute("data-rac", ""),
 									h.Id(dialogId(model.id)),
 									h.Role("dialog"),
 									h.Attribute("tabindex", "-1"),
@@ -215,7 +220,6 @@ const searchField = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder<Messag
 		[
 			h.Class(twMerge(twMerge(commandMenuSearchBase), undefined)),
 			...(model.inputValue === "" ? [h.Attribute("data-empty", "true")] : []),
-			h.Attribute("data-rac", ""),
 		],
 		[
 			IconMagnifier3(h, {
@@ -273,7 +277,6 @@ const list = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder<Message>): Ht
 			h.Attribute("aria-label", "Suggestions"),
 			h.Class(twMerge(twMerge(commandMenuListBase), undefined)),
 			...(isEmpty ? [h.Attribute("data-empty", "true")] : []),
-			h.Attribute("data-rac", ""),
 			h.Id(listId(model.id)),
 			h.Role("menu"),
 		],
@@ -285,7 +288,6 @@ const list = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder<Message>): Ht
 						[
 							...(Option.isSome(entry.label) ? [h.Attribute("aria-labelledby", headerId)] : []),
 							h.Class(twMerge(commandMenuSectionBase, undefined)),
-							h.Attribute("data-rac", ""),
 							h.Role("group"),
 						],
 						[
@@ -333,7 +335,6 @@ const menuItem = (model: Model, viewInputs: ViewInputs, candidate: Item, h: Html
 			...flag("data-focus-visible", isFocused && model.modality === "Keyboard"),
 			...flag("data-focused", isFocused),
 			...flag("data-hovered", isHovered),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-react-aria-pressable", "true"),
 			h.Attribute("data-slot", "menu-item"),
 			h.Id(itemId(model.id, key)),

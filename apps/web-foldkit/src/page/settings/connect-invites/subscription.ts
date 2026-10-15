@@ -6,7 +6,7 @@ import { organizationCollection } from "~/db/collections"
 import { liveQueryStream } from "../../../data/live-query"
 import type { PageSubscriptionInput } from "../../contract"
 import { Message } from "./message"
-import { interaction } from "./update"
+import { interaction, invitesOf } from "./update"
 import type { Model } from "./model"
 
 /** Host organization names (legacy: one `organizationCollection` live query per row). */
@@ -16,7 +16,7 @@ const dataSubscriptions = Subscription.make<PageSubscriptionInput<Model>, Messag
 		{
 			modelToDependencies: ({ model }) => ({
 				organizationIds: [
-					...new Set(model.invites.map((invite) => invite.hostOrganizationId)),
+					...new Set(invitesOf(model).map((invite) => invite.hostOrganizationId)),
 				].sort(),
 			}),
 			dependenciesToStream: ({ organizationIds }) =>

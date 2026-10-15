@@ -17,7 +17,7 @@ import {
 	IconUsers,
 	IconUsersPlus,
 } from "../icons"
-import { AppRoute, hrefOf, linkedAccountsHref } from "../route"
+import { AppRoute, hrefOf, isNotificationsRoute, linkedAccountsHref, type RouteTag } from "../route"
 import { button } from "../ui/button"
 import {
 	sidebarContent,
@@ -30,7 +30,7 @@ import {
 	sidebarStatic,
 } from "../ui/sidebar"
 import type { SidebarChrome } from "./channels-sidebar"
-import { isActiveFuzzy, type ShellContext } from "./context"
+import type { ShellContext } from "./context"
 import { orgSwitcherHeader, userMenuFooter } from "./menus"
 import { isDesktop, sidebarHeaderHeightClass } from "../platform/desktop"
 
@@ -56,6 +56,12 @@ const navList = <Message>(h: HtmlBuilder<Message>) => {
 	return item
 }
 
+/** An item that is current (and its link active) on exactly these routes. */
+const onRoutes = (route: AppRoute, ...tags: ReadonlyArray<RouteTag>) => {
+	const isOn = tags.includes(route._tag)
+	return { isCurrent: isOn, isLinkActive: isOn }
+}
+
 const sectionTitle = <Message>(h: HtmlBuilder<Message>, title: string) =>
 	h.div(
 		[h.Class("px-3 pt-3 pb-1")],
@@ -79,63 +85,75 @@ export const settingsSidebar = <Message>(
 	const yourApps = hrefOf(AppRoute.SettingsIntegrationsYourApps({ orgSlug }))
 	const connectInvites = hrefOf(AppRoute.SettingsConnectInvites({ orgSlug }))
 	const chatSync = hrefOf(AppRoute.SettingsChatSync({ orgSlug }))
-	const path = context.pathname
+	const { route } = context
 	const item = navList(h)
-	const fuzzy = (to: string) => ({
-		isCurrent: isActiveFuzzy(path, to),
-		isLinkActive: isActiveFuzzy(path, to),
-	})
-	const integrationSubRoutes = [marketplace, installed, yourApps]
-	const isBaseIntegrations =
-		path === integrations ||
-		(isActiveFuzzy(path, integrations) && !integrationSubRoutes.some((sub) => isActiveFuzzy(path, sub)))
 
 	return sidebarStatic(h, "flex flex-1", [
-		orgSwitcherHeader(h, chrome.orgSwitcher, context, chrome.organizations, chrome.toOrgSwitcherMessage),
+		orgSwitcherHeader(
+			h,
+			chrome.orgSwitcher,
+			chrome.orgSwitcherEntries,
+			context,
+			chrome.organizations,
+			chrome.toOrgSwitcherMessage,
+		),
 		sidebarContent(h, { state: "expanded" }, [
 			sidebarSectionGroup(h, [
 				sectionTitle(h, "Settings"),
 				sidebarSection(h, {}, [
-					item(
-						"General",
-						general,
-						{ isCurrent: path === general, isLinkActive: path === general },
-						IconGear,
-					),
-					item(
-						"Team",
-						team,
-						{
-							isCurrent: path === team,
-							isLinkActive: isActiveFuzzy(path, team),
-						},
-						IconUsers,
-					),
-					item("Invitations", invitations, fuzzy(invitations), IconUsersPlus),
-					item("Custom Emoji", customEmojis, fuzzy(customEmojis), IconEmojiAdd),
+					item("General", general, onRoutes(route, "SettingsGeneral"), IconGear),
+					item("Team", team, onRoutes(route, "TeamSettings"), IconUsers),
+					item("Invitations", invitations, onRoutes(route, "SettingsInvitations"), IconUsersPlus),
+					item("Custom Emoji", customEmojis, onRoutes(route, "SettingsCustomEmojis"), IconEmojiAdd),
 				]),
 				sidebarSection(h, { label: "Apps & Integrations" }, [
+					// An integration's own page (`integrations/$id`) keeps "Integrations" current.
 					item(
 						"Integrations",
 						integrations,
-						{ isCurrent: isBaseIntegrations, isLinkActive: path === integrations },
+						{
+							isCurrent: onRoutes(route, "SettingsIntegrations", "SettingsIntegration")
+								.isCurrent,
+							isLinkActive: route._tag === "SettingsIntegrations",
+						},
 						IconIntegratio,
 					),
-					item("Marketplace", marketplace, fuzzy(marketplace), IconShop),
-					item("Installed Apps", installed, fuzzy(installed), IconGridCirclePlus),
-					item("Your Apps", yourApps, fuzzy(yourApps), IconCode),
+					item(
+						"Marketplace",
+						marketplace,
+						onRoutes(route, "SettingsIntegrationsMarketplace"),
+						IconShop,
+					),
+					item(
+						"Installed Apps",
+						installed,
+						onRoutes(route, "SettingsIntegrationsInstalled"),
+						IconGridCirclePlus,
+					),
+					item("Your Apps", yourApps, onRoutes(route, "SettingsIntegrationsYourApps"), IconCode),
 				]),
 				sidebarSection(h, { label: "Hazel Connect" }, [
-					item("Connect Invites", connectInvites, fuzzy(connectInvites), IconArrowPath),
+					item(
+						"Connect Invites",
+						connectInvites,
+						onRoutes(route, "SettingsConnectInvites"),
+						IconArrowPath,
+					),
 				]),
 				sidebarSection(h, { label: "Chat Sync" }, [
-					item("Connections", chatSync, fuzzy(chatSync), IconArrowPath),
+					item(
+						"Connections",
+						chatSync,
+						onRoutes(route, "SettingsChatSync", "SettingsChatSyncConnection"),
+						IconArrowPath,
+					),
 				]),
 			]),
 		]),
 		userMenuFooter(
 			h,
 			chrome.userMenu,
+			chrome.userMenuEntries,
 			context,
 			chrome.toUserMenuMessage,
 			chrome.userStatus,
@@ -156,34 +174,45 @@ export const mySettingsSidebar = <Message>(
 	const linkedAccounts = linkedAccountsHref(orgSlug)
 	const notifications = hrefOf(AppRoute.MySettingsNotifications({ orgSlug }))
 	const desktop = hrefOf(AppRoute.MySettingsDesktop({ orgSlug }))
-	const path = context.pathname
+	const { route } = context
 	const item = navList(h)
-	const fuzzy = (to: string) => ({
-		isCurrent: isActiveFuzzy(path, to),
-		isLinkActive: isActiveFuzzy(path, to),
-	})
 	return sidebarStatic(h, "flex flex-1", [
-		orgSwitcherHeader(h, chrome.orgSwitcher, context, chrome.organizations, chrome.toOrgSwitcherMessage),
+		orgSwitcherHeader(
+			h,
+			chrome.orgSwitcher,
+			chrome.orgSwitcherEntries,
+			context,
+			chrome.organizations,
+			chrome.toOrgSwitcherMessage,
+		),
 		sidebarContent(h, { state: "expanded" }, [
 			sidebarSectionGroup(h, [
 				sectionTitle(h, "My Settings"),
 				sidebarSection(h, {}, [
+					item("Appearance", appearance, onRoutes(route, "MySettingsAppearance"), IconPaintbrush),
+					item("Profile", profile, onRoutes(route, "MySettingsProfile"), IconUser),
 					item(
-						"Appearance",
-						appearance,
-						{ isCurrent: path === appearance, isLinkActive: path === appearance },
-						IconPaintbrush,
+						"Linked Accounts",
+						linkedAccounts,
+						onRoutes(route, "MySettingsLinkedAccounts"),
+						IconArrowPath,
 					),
-					item("Profile", profile, fuzzy(profile), IconUser),
-					item("Linked Accounts", linkedAccounts, fuzzy(linkedAccounts), IconArrowPath),
-					item("Notifications", notifications, fuzzy(notifications), IconBell),
-					...(isDesktop ? [item("Desktop", desktop, fuzzy(desktop), IconCube)] : []),
+					item(
+						"Notifications",
+						notifications,
+						onRoutes(route, "MySettingsNotifications"),
+						IconBell,
+					),
+					...(isDesktop
+						? [item("Desktop", desktop, onRoutes(route, "MySettingsDesktop"), IconCube)]
+						: []),
 				]),
 			]),
 		]),
 		userMenuFooter(
 			h,
 			chrome.userMenu,
+			chrome.userMenuEntries,
 			context,
 			chrome.toUserMenuMessage,
 			chrome.userStatus,
@@ -204,12 +233,8 @@ export const notificationsSidebar = <Message>(
 	const general = hrefOf(AppRoute.NotificationsGeneral({ orgSlug }))
 	const threads = hrefOf(AppRoute.NotificationsThreads({ orgSlug }))
 	const dms = hrefOf(AppRoute.NotificationsDms({ orgSlug }))
-	const path = context.pathname
+	const { route } = context
 	const item = navList(h)
-	const fuzzy = (to: string) => ({
-		isCurrent: isActiveFuzzy(path, to),
-		isLinkActive: isActiveFuzzy(path, to),
-	})
 	return sidebarStatic(h, "flex flex-1", [
 		sidebarHeader(h, { state: "expanded", className: `border-b py-4 ${sidebarHeaderHeightClass()}` }, [
 			h.span([h.Class("text-muted-fg text-xs font-medium uppercase tracking-wider")], ["Activity"]),
@@ -221,12 +246,15 @@ export const notificationsSidebar = <Message>(
 					item(
 						"All Activity",
 						all,
-						{ isCurrent: isActiveFuzzy(path, all), isLinkActive: path === all },
+						{
+							isCurrent: isNotificationsRoute(route),
+							isLinkActive: route._tag === "NotificationsAll",
+						},
 						IconBell,
 					),
-					item("Channels", general, fuzzy(general), IconHashtag),
-					item("Threads", threads, fuzzy(threads), IconThread),
-					item("Direct Messages", dms, fuzzy(dms), IconMsgs),
+					item("Channels", general, onRoutes(route, "NotificationsGeneral"), IconHashtag),
+					item("Threads", threads, onRoutes(route, "NotificationsThreads"), IconThread),
+					item("Direct Messages", dms, onRoutes(route, "NotificationsDms"), IconMsgs),
 				]),
 				...(markAllRead.unreadCount > 0
 					? [
@@ -250,6 +278,7 @@ export const notificationsSidebar = <Message>(
 		userMenuFooter(
 			h,
 			chrome.userMenu,
+			chrome.userMenuEntries,
 			context,
 			chrome.toUserMenuMessage,
 			chrome.userStatus,

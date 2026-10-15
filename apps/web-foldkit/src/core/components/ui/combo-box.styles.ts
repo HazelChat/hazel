@@ -1,4 +1,3 @@
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const comboBoxPopoverBase = "min-w-(--trigger-width) scroll-py-1 overflow-y-auto overscroll-contain"
 
 export const comboBoxListBoxBase =

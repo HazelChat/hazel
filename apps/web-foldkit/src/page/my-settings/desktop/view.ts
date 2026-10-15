@@ -2,7 +2,7 @@ import { Submodel } from "foldkit"
 import type { Html, HtmlBuilder } from "foldkit/html"
 import { IconCheck, IconCube, IconDownload } from "../../../icons"
 import { isDesktop } from "../../../platform/desktop"
-import type * as Updates from "../../../platform/updates"
+import * as Updates from "../../../platform/updates"
 import { badge } from "../../../ui/badge"
 import { button } from "../../../ui/button"
 import { progressBar, progressBarTrack } from "../../../ui/progress-bar"
@@ -11,13 +11,14 @@ import type { PageViewInputs } from "../../contract"
 import { divider, pageHeader, settingsRow } from "../shared"
 import { Message } from "./message"
 import type { Model } from "./model"
-import { interaction } from "./update"
 
 const spinner = (h: HtmlBuilder<Message>, label: string): Html =>
 	h.div(
 		[h.Class("flex items-center gap-2 text-sm text-muted-fg")],
 		[
-			h.span([h.Class("size-4 animate-spin rounded-full border-2 border-current border-t-transparent")]),
+			h.span([
+				h.Class("size-4 animate-spin rounded-full border-2 border-current border-t-transparent"),
+			]),
 			h.span([], [label]),
 		],
 	)
@@ -43,14 +44,12 @@ const checkRow = (h: HtmlBuilder<Message>, text: string, label: string): Html =>
 const megabytes = (bytes: number) => (bytes / 1024 / 1024).toFixed(1)
 
 /** Legacy `UpdateStatusDisplay`: the update's state and what can be done next. */
-const updateStatus = (h: HtmlBuilder<Message>, state: Updates.Model): Html => {
-	switch (state._tag) {
-		case "Idle":
-			return checkRow(h, "Check for available updates", "Check for updates")
-		case "Checking":
-			return spinner(h, "Checking for updates...")
-		case "Available":
-			return h.div(
+const updateStatus = (h: HtmlBuilder<Message>, state: Updates.Model): Html =>
+	Updates.Model.match(state, {
+		Idle: () => checkRow(h, "Check for available updates", "Check for updates"),
+		Checking: () => spinner(h, "Checking for updates..."),
+		Available: (state) =>
+			h.div(
 				[h.Class("flex flex-col gap-3")],
 				[
 					h.div(
@@ -60,7 +59,11 @@ const updateStatus = (h: HtmlBuilder<Message>, state: Updates.Model): Html => {
 								[h.Class("flex items-center gap-3")],
 								[
 									h.div(
-										[h.Class("flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10")],
+										[
+											h.Class(
+												"flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10",
+											),
+										],
 										[IconDownload(h, { className: "size-4 text-primary" })],
 									),
 									h.div(
@@ -69,12 +72,26 @@ const updateStatus = (h: HtmlBuilder<Message>, state: Updates.Model): Html => {
 											h.div(
 												[h.Class("flex items-center gap-2")],
 												[
-													h.span([h.Class("text-sm font-medium text-fg")], ["Update available"]),
-													badge(h, { intent: "primary", size: "sm" }, [`v${state.version}`]),
+													h.span(
+														[h.Class("text-sm font-medium text-fg")],
+														["Update available"],
+													),
+													badge(h, { intent: "primary", size: "sm" }, [
+														`v${state.version}`,
+													]),
 												],
 											),
 											...(state.body
-												? [h.p([h.Class("mt-1 whitespace-pre-wrap text-sm text-muted-fg")], [state.body])]
+												? [
+														h.p(
+															[
+																h.Class(
+																	"mt-1 whitespace-pre-wrap text-sm text-muted-fg",
+																),
+															],
+															[state.body],
+														),
+													]
 												: []),
 										],
 									),
@@ -86,16 +103,20 @@ const updateStatus = (h: HtmlBuilder<Message>, state: Updates.Model): Html => {
 						"Install & Restart",
 					]),
 				],
-			)
-		case "UpToDate":
-			return h.div(
+			),
+		UpToDate: (state) =>
+			h.div(
 				[h.Class("flex items-center justify-between")],
 				[
 					h.div(
 						[h.Class("flex items-center gap-3")],
 						[
 							h.div(
-								[h.Class("flex size-8 shrink-0 items-center justify-center rounded-full bg-success/10")],
+								[
+									h.Class(
+										"flex size-8 shrink-0 items-center justify-center rounded-full bg-success/10",
+									),
+								],
 								[IconCheck(h, { className: "size-4 text-success" })],
 							),
 							h.div(
@@ -114,10 +135,9 @@ const updateStatus = (h: HtmlBuilder<Message>, state: Updates.Model): Html => {
 						"Check again",
 					]),
 				],
-			)
-		case "CheckFailed":
-			return retry(h, state.message, "Retry")
-		case "Downloading": {
+			),
+		CheckFailed: () => retry(h, Updates.CHECK_FAILURE_TEXT, "Retry"),
+		Downloading: (state) => {
 			const percent =
 				state.totalBytes === null ? 0 : Math.round((state.downloadedBytes / state.totalBytes) * 100)
 			return h.div(
@@ -142,15 +162,11 @@ const updateStatus = (h: HtmlBuilder<Message>, state: Updates.Model): Html => {
 					]),
 				],
 			)
-		}
-		case "Installing":
-			return spinner(h, "Installing update...")
-		case "Restarting":
-			return spinner(h, "Restarting...")
-		case "InstallFailed":
-			return retry(h, state.message, "Retry")
-	}
-}
+		},
+		Installing: () => spinner(h, "Installing update..."),
+		Restarting: () => spinner(h, "Restarting..."),
+		InstallFailed: (state) => retry(h, Updates.installFailureText(state.reason), "Retry"),
+	})
 
 const appUpdates = (h: HtmlBuilder<Message>, model: Model, state: Updates.Model): ReadonlyArray<Html> => [
 	divider(h),
@@ -173,16 +189,38 @@ const appUpdates = (h: HtmlBuilder<Message>, model: Model, state: Updates.Model)
 											[h.Class("flex items-center gap-3")],
 											[
 												h.div(
-													[h.Class("flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary")],
+													[
+														h.Class(
+															"flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary",
+														),
+													],
 													[IconCube(h, { className: "size-5 text-muted-fg" })],
 												),
 												h.div(
 													[h.Class("flex flex-1 flex-col gap-0.5")],
 													[
-														h.span([h.Class("text-sm text-muted-fg")], ["Current version"]),
-														badge(h, { intent: "secondary", size: "md", className: "self-start" }, [
-															h.span([h.Class("font-mono")], [model.version ? `v${model.version}` : "..."]),
-														]),
+														h.span(
+															[h.Class("text-sm text-muted-fg")],
+															["Current version"],
+														),
+														badge(
+															h,
+															{
+																intent: "secondary",
+																size: "md",
+																className: "self-start",
+															},
+															[
+																h.span(
+																	[h.Class("font-mono")],
+																	[
+																		model.version
+																			? `v${model.version}`
+																			: "...",
+																	],
+																),
+															],
+														),
 													],
 												),
 											],
@@ -229,7 +267,6 @@ export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, 
 												isDisabled: model.autostartEnabled === null,
 												onChange: (isSelected) =>
 													Message.ToggledAutostart({ isSelected }),
-												interaction: interaction.wiring(model),
 											},
 											"Open at login",
 										),

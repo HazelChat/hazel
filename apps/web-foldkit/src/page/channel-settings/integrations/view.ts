@@ -1,3 +1,4 @@
+import { Option } from "effect"
 import { Submodel } from "foldkit"
 import type { Html, HtmlBuilder } from "foldkit/html"
 import { IconPlus } from "../../../icons"
@@ -5,17 +6,19 @@ import { button } from "../../../ui/button"
 import { dialogClose, dialogFooter, dialogHeader } from "../../../ui/dialog"
 import * as Modal from "../../../ui/modal"
 import type { PageViewInputs } from "../../contract"
+import * as ConfirmAction from "../../shared/confirm-action"
 import { tabHeader } from "../section-header"
 import { gitHubCard } from "./cards"
 import { rssCard } from "./rss-card"
 import { Message } from "./message"
-import type { Model, RowKind } from "./model"
+import { itemsOf, type Model, type RowKind } from "./model"
 import { providerCard } from "./provider-card"
 import { customWebhooksCard } from "./webhooks"
 
 /** Port of `channels/$channelId/settings/integrations.tsx`. */
 
-const toConfirmModalMessage = (message: Modal.Message) => Message.GotConfirmModalMessage({ message })
+const toConfirmModalMessage = (message: Modal.Message) =>
+	Message.GotRemoveConfirmMessage({ message: ConfirmAction.toModalMessage(message) })
 
 const CONFIRM_COPY: Readonly<Record<RowKind, { title: string; description: string; action: string }>> = {
 	webhook: {
@@ -37,18 +40,21 @@ const CONFIRM_COPY: Readonly<Record<RowKind, { title: string; description: strin
 
 /** Each row's `<ModalContent role="alertdialog" size="xs">` delete confirmation. */
 const confirmModal = (h: HtmlBuilder<Message>, model: Model): Html => {
-	const copy = CONFIRM_COPY[model.confirm._tag === "Closed" ? "webhook" : model.confirm.target.kind]
+	const kind = Option.match(ConfirmAction.targetOf(model.remove), {
+		onNone: (): RowKind => "webhook",
+		onSome: (target) => target.kind,
+	})
+	const copy = CONFIRM_COPY[kind]
 	return h.submodel({
 		slotId: "integration-row-remove",
-		model: model.confirmModal,
+		model: model.remove.modal,
 		view: Modal.view,
 		viewInputs: {
-			toTrigger: (_attributes, overlay) => overlay,
 			role: "alertdialog",
 			size: "xs",
 			toContent: (closeAttributes) => [
 				dialogHeader(h, {
-					title: { id: Modal.titleId(model.confirmModal.id), text: copy.title },
+					title: { id: Modal.titleId(model.remove.modal.id), text: copy.title },
 					description: copy.description,
 				}),
 				dialogFooter(h, [
@@ -57,7 +63,7 @@ const confirmModal = (h: HtmlBuilder<Message>, model: Model): Html => {
 						h,
 						{
 							intent: "danger",
-							isPending: model.confirm._tag === "Removing",
+							isPending: ConfirmAction.isRunning(model.remove),
 							onPress: Message.ClickedConfirmRemove(),
 						},
 						[copy.action],
@@ -92,7 +98,7 @@ const comingSoon = (h: HtmlBuilder<Message>): Html =>
 	)
 
 export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, { shared }, h) => {
-	const regular = model.webhooks.items.filter(
+	const regular = itemsOf(model.webhooks).filter(
 		(webhook) => webhook.name !== "OpenStatus" && webhook.name !== "Railway",
 	)
 	return h.div(

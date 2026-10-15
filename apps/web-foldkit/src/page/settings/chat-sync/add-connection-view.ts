@@ -1,3 +1,4 @@
+import * as AsyncData from "foldkit/asyncData"
 import type { ChildAttribute, Html, HtmlBuilder } from "foldkit/html"
 import { button } from "../../../ui/button"
 import { dialogBody, dialogClose, dialogFooter, dialogHeader, dialogTitle } from "../../../ui/dialog"
@@ -5,7 +6,7 @@ import { description, label } from "../../../ui/field"
 import * as Modal from "../../../ui/modal"
 import { GUILD_SEARCH_ID } from "./add-connection"
 import { discordLogo } from "./brand-icons"
-import type { DiscordGuild } from "./discord"
+import { type DiscordFailure, type DiscordGuild, discordFailureMessage, isRetryable } from "./discord"
 import { filterByName, scrollList, searchInput, selectedName, selectedRow, spinnerLine } from "./modal-parts"
 import { Message, type Model } from "./model"
 import { CONNECT_TARGET, GUILD_SEARCH_TARGET, interaction } from "./update"
@@ -95,50 +96,86 @@ const connectFirst = (h: HtmlBuilder<Message>): Html =>
 		],
 	)
 
-const body = (h: HtmlBuilder<Message>, model: Model): Html => {
-	const guilds = model.discordGuilds
-	if (guilds._tag === "Loading")
-		return h.div(
-			[h.Class("flex items-center justify-center py-8")],
-			[spinnerLine(h, "Loading Discord guilds...")],
-		)
-	return guilds._tag === "Failed" ? connectFirst(h) : guildPicker(h, model, guilds.items)
+/** A guild list that failed for another reason than Discord not being authorized. */
+const loadFailed = (h: HtmlBuilder<Message>, reason: DiscordFailure): Html => {
+	const message = discordFailureMessage(reason, "guilds")
+	return h.div(
+		[h.Class("rounded-lg border border-border bg-bg-muted/20 p-4")],
+		[
+			h.p([h.Class("font-medium text-fg text-sm")], [message.title]),
+			...(message.description === undefined
+				? []
+				: [h.p([h.Class("mt-1 text-muted-fg text-sm")], [message.description])]),
+			...(isRetryable(reason)
+				? [
+						button(
+							h,
+							{
+								intent: "secondary",
+								size: "sm",
+								className: "mt-3",
+								onPress: Message.ClickedRetryListDiscordGuilds(),
+							},
+							["Try again"],
+						),
+					]
+				: []),
+		],
+	)
 }
+
+const loadingGuilds = (h: HtmlBuilder<Message>): Html =>
+	h.div([h.Class("flex items-center justify-center py-8")], [spinnerLine(h, "Loading Discord guilds...")])
+
+const body = (h: HtmlBuilder<Message>, model: Model): Html =>
+	AsyncData.match(model.discordGuilds, {
+		onIdle: () => loadingGuilds(h),
+		onLoading: () => loadingGuilds(h),
+		onFailure: (reason) => (reason === "NotConnected" ? connectFirst(h) : loadFailed(h, reason)),
+		onRefreshing: (guilds) => guildPicker(h, model, guilds),
+		onStale: ({ data }) => guildPicker(h, model, data),
+		onSuccess: (guilds) => guildPicker(h, model, guilds),
+	})
 
 const content = (
 	h: HtmlBuilder<Message>,
 	model: Model,
 	closeAttributes: ReadonlyArray<ChildAttribute>,
-): ReadonlyArray<Html> => [
-	dialogHeader(h, {}, [
-		h.div(
-			[h.Class("flex items-center gap-3")],
-			[
-				h.div(
-					[h.Class("flex size-10 items-center justify-center rounded-xl bg-[#5865F2]/[0.06]")],
-					[discordLogo(h, "size-6")],
-				),
-				dialogTitle(h, { id: Modal.titleId(model.addModal.id) }, "Connect Discord Server"),
-			],
-		),
-	]),
-	dialogBody(h, [body(h, model)], "flex flex-col gap-5"),
-	dialogFooter(h, [
-		dialogClose(h, closeAttributes, ["Cancel"], "secondary"),
-		button(
-			h,
-			{
-				intent: "primary",
-				onPress: Message.ClickedConnect(),
-				isDisabled:
-					model.selectedGuild === null || model.isCreating || model.discordGuilds._tag !== "Loaded",
-				isPending: model.isCreating,
-				interaction: { wiring: interaction.wiring(model), target: CONNECT_TARGET },
-			},
-			[model.isCreating ? "Connecting..." : "Connect"],
-		),
-	]),
-]
+): ReadonlyArray<Html> => {
+	const isSubmitting = model.submission._tag === "Submitting"
+	return [
+		dialogHeader(h, {}, [
+			h.div(
+				[h.Class("flex items-center gap-3")],
+				[
+					h.div(
+						[h.Class("flex size-10 items-center justify-center rounded-xl bg-[#5865F2]/[0.06]")],
+						[discordLogo(h, "size-6")],
+					),
+					dialogTitle(h, { id: Modal.titleId(model.addModal.id) }, "Connect Discord Server"),
+				],
+			),
+		]),
+		dialogBody(h, [body(h, model)], "flex flex-col gap-5"),
+		dialogFooter(h, [
+			dialogClose(h, closeAttributes, ["Cancel"], "secondary"),
+			button(
+				h,
+				{
+					intent: "primary",
+					onPress: Message.ClickedConnect(),
+					isDisabled:
+						model.selectedGuild === null ||
+						isSubmitting ||
+						!AsyncData.isSuccess(model.discordGuilds),
+					isPending: isSubmitting,
+					interaction: { wiring: interaction.wiring(model), target: CONNECT_TARGET },
+				},
+				[isSubmitting ? "Connecting..." : "Connect"],
+			),
+		]),
+	]
+}
 
 /** `<Modal><ModalContent isOpen onOpenChange size="md">`, rendered while open. */
 export const addConnectionModal = (h: HtmlBuilder<Message>, model: Model): Html =>

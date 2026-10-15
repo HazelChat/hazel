@@ -6,9 +6,17 @@ import { describe, expect, test } from "vitest"
 import { PageOutMessage } from "../../out-message"
 import type { Shared } from "../../contract"
 import { Message } from "./message"
-import { AcceptInvite, DeclineInvite, init, ListIncomingInvites, sharedChanged, update } from "./update"
-import { successToast } from "../../../data/actions"
-import { failureToastFixture } from "../../../test/pages-fixtures"
+import { Invites } from "./model"
+import {
+	AcceptInvite,
+	DeclineInvite,
+	init,
+	invitesOf,
+	ListIncomingInvites,
+	sharedChanged,
+	update,
+} from "./update"
+import { errorToast, reasonToast, successToast } from "../../../data/actions"
 import { sharedDefaults } from "../../test-shared"
 
 /** Update-loop tests for connect invitations: list requests and the accept/decline lifecycle. */
@@ -56,8 +64,12 @@ describe("connect invitations", () => {
 	test("a failed decline keeps the list and reports the error", () => {
 		const loaded = init(undefined, shared(hazel)).model
 		const declining = update(loaded, Message.ClickedDecline({ inviteId }), shared(hazel)).model
-		const toast = { intent: "error" as const, title: "Cannot decline", description: null }
-		const failed = update(declining, Message.FailedDecline({ inviteId, toast }), shared(hazel))
+		const toast = errorToast("Cannot decline", "This invite is no longer in a declinable state.")
+		const failed = update(
+			declining,
+			Message.FailedDecline({ inviteId, reason: "InvalidState" }),
+			shared(hazel),
+		)
 		expect(failed.model.decliningIds).toEqual([])
 		expect(failed.commands ?? []).toEqual([])
 		expect(failed.outMessage).toMatchObject({ toast })
@@ -66,17 +78,13 @@ describe("connect invitations", () => {
 
 describe("accept failure", () => {
 	test("Accept sends connectShare.invite.accept for this organization and toasts the failure", () => {
-		const toast = {
-			intent: "error" as const,
-			title: "Cannot accept",
-			description: "This invite is no longer in an acceptable state.",
-		}
+		const toast = errorToast("Cannot accept", "This invite is no longer in an acceptable state.")
 		story(
 			(current: Parameters<typeof update>[0], next: Message) => update(current, next, shared(hazel)),
 			given(init(undefined, shared(hazel)).model),
 			message(Message.ClickedAccept({ inviteId })),
 			Command.expectExact(AcceptInvite({ inviteId, guestOrganizationId: hazel })),
-			Command.resolve(AcceptInvite, Message.FailedAccept({ inviteId, toast })),
+			Command.resolve(AcceptInvite, Message.FailedAccept({ inviteId, reason: "InvalidState" })),
 			expectOutMessage(PageOutMessage.RequestedToast({ toast })),
 			model((current) => expect(current.acceptingIds).toEqual([])),
 		)
@@ -91,14 +99,32 @@ const listed = run(
 ).model
 
 describe("list", () => {
-	test("a failed list shows the empty list and toasts nothing", () => {
+	test("a failed first list is a Failure, not an empty list, and toasts nothing", () => {
 		story(
 			run,
-			given(listed),
-			message(Message.FailedListInvites({ organizationId: hazel, version: 1 })),
+			given(init(undefined, shared(hazel)).model),
+			model((current) => expect(current.invites).toEqual(Invites.Loading())),
+			message(Message.FailedListInvites({ organizationId: hazel, version: 1, reason: "Offline" })),
 			expectNoOutMessage(),
-			model((current) => expect(current.invites).toEqual([])),
+			model((current) => expect(current.invites).toEqual(Invites.Failure({ error: "Offline" }))),
+			message(Message.ClickedRetryListInvites()),
+			Command.expectExact(ListIncomingInvites({ organizationId: hazel, version: 2 })),
+			model((current) => expect(current.invites).toEqual(Invites.Loading())),
+			Command.resolve(
+				ListIncomingInvites,
+				Message.SucceededListInvites({ organizationId: hazel, version: 2, invites: [pending] }),
+			),
+			model((current) => expect(current.invites).toEqual(Invites.Success({ data: [pending] }))),
 		)
+	})
+
+	test("a failed refetch keeps the listed invites as Stale", () => {
+		const refetching = { ...listed, listVersion: 2 }
+		const failed = run(
+			refetching,
+			Message.FailedListInvites({ organizationId: hazel, version: 2, reason: "Timeout" }),
+		)
+		expect(failed.model.invites).toEqual(Invites.Stale({ error: "Timeout", data: [pending] }))
 	})
 
 	test("an older list or one for another organization is dropped", () => {
@@ -108,20 +134,23 @@ describe("list", () => {
 			refetching,
 			Message.SucceededListInvites({ organizationId: hazel, version: 1, invites: [] }),
 		)
-		expect(stale.model.invites).toEqual([pending])
+		expect(invitesOf(stale.model)).toEqual([pending])
 		const foreign = run(
 			refetching,
 			Message.SucceededListInvites({ organizationId: other, version: 2, invites: [] }),
 		)
-		expect(foreign.model.invites).toEqual([pending])
-		const staleFailure = run(refetching, Message.FailedListInvites({ organizationId: hazel, version: 1 }))
-		expect(staleFailure.model.invites).toEqual([pending])
+		expect(invitesOf(foreign.model)).toEqual([pending])
+		const staleFailure = run(
+			refetching,
+			Message.FailedListInvites({ organizationId: hazel, version: 1, reason: "Offline" }),
+		)
+		expect(staleFailure.model.invites).toEqual(Invites.Success({ data: [pending] }))
 	})
 
 	test("a new organization drops the old list and requests its own", () => {
 		const other = Schema.decodeSync(OrganizationId)(uuid(9))
 		const switched = sharedChanged(listed, shared(other))
-		expect(switched.model.invites).toEqual([])
+		expect(switched.model.invites).toEqual(Invites.Loading())
 		expect(switched.model.requestedFor).toBe(other)
 		expect(switched.commands?.map((command) => command.name)).toEqual([ListIncomingInvites.name])
 	})
@@ -144,7 +173,7 @@ describe("decline", () => {
 			),
 			model((current) => {
 				expect(current.decliningIds).toEqual([])
-				expect(current.invites).toEqual([])
+				expect(invitesOf(current)).toEqual([])
 			}),
 		)
 	})
@@ -154,8 +183,8 @@ describe("decline", () => {
 			run,
 			given(listed),
 			message(Message.ClickedDecline({ inviteId })),
-			Command.resolve(DeclineInvite, Message.FailedDecline({ inviteId, toast: failureToastFixture })),
-			expectOutMessage(PageOutMessage.RequestedToast({ toast: failureToastFixture })),
+			Command.resolve(DeclineInvite, Message.FailedDecline({ inviteId, reason: "Unexpected" })),
+			expectOutMessage(PageOutMessage.RequestedToast({ toast: reasonToast("Unexpected") })),
 			Command.expectNone(),
 		)
 	})

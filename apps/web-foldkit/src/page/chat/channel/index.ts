@@ -1,25 +1,13 @@
 import { Submodel } from "foldkit"
 import type { RouteOf } from "../../../route"
 import { definePage, type PageViewInputs } from "../../contract"
-import { PageOutMessage } from "../../out-message"
-import {
-	type ChatTab,
-	init,
-	Message,
-	Model,
-	setCurrentUserId,
-	setTab,
-	switchChannel,
-	tabPath,
-	update,
-} from "./page"
+import { type ChatTab, init, Message, Model, setCurrentUserId, setTab, switchChannel, update } from "./page"
 import { clearNotificationsOnMount } from "./clear-notifications"
 import { subscriptions } from "./subscription"
 import { view as channelView } from "./view"
+import { andThen } from "./write"
 
 /** `/$orgSlug/chat/$id` with its Messages, Files and All Media tabs (one layout, one page). */
-
-const toSelf = (message: Message) => message
 
 type ChannelRoute = RouteOf<"ChatChannel" | "ChatFiles" | "ChatFilesMedia">
 
@@ -36,39 +24,24 @@ export const page = definePage(
 		key: (route) => route.orgSlug,
 		init: (route, shared) =>
 			clearNotificationsOnMount(
-				init(route.channelId, shared.currentUser?.id ?? null, {
-					tab: tabOf(route),
-					orgSlug: route.orgSlug,
-				}),
+				init(route.channelId, route.orgSlug, shared.currentUser?.id ?? null, { tab: tabOf(route) }),
 				shared,
 			),
-		update: (model, message, shared) =>
-			message._tag === "ClickedMobileMenu"
-				? { model, outMessage: PageOutMessage.RequestedMobileSidebar() }
-				: message._tag === "ClickedTab" && message.tab !== model.tab && model.orgSlug !== null
-					? {
-							model,
-							outMessage: PageOutMessage.RequestedNavigation({
-								href: tabPath(model.orgSlug, model.channelId, message.tab),
-								replace: false,
-							}),
-						}
-					: update(model, message, shared),
+		update,
 		routeChanged: (model, route, shared) =>
 			route.channelId === model.channelId
 				? { model: setTab(model, tabOf(route)) }
 				: clearNotificationsOnMount(
-						switchChannel(model, route.channelId, { tab: tabOf(route), orgSlug: route.orgSlug }),
+						switchChannel(model, route.channelId, { tab: tabOf(route) }),
 						shared,
 					),
 		view: Submodel.defineView<Model, Message, PageViewInputs>((model, inputs, h) =>
-			channelView(h, model, toSelf, inputs.shared.isMobile, inputs.shared.nowMs),
+			channelView(h, model, { isMobile: inputs.shared.isMobile, nowMs: inputs.shared.nowMs }),
 		),
 		subscriptions,
-		sharedChanged: (model, shared) => {
-			const withUser = setCurrentUserId(model, shared.currentUser?.id ?? null)
-			const cleared = clearNotificationsOnMount(withUser.model, shared)
-			return { ...cleared, commands: [...(withUser.commands ?? []), ...(cleared.commands ?? [])] }
-		},
+		sharedChanged: (model, shared) =>
+			andThen(setCurrentUserId(model, shared.currentUser?.id ?? null), (next) =>
+				clearNotificationsOnMount(next, shared),
+			),
 	},
 )

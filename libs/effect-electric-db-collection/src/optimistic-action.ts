@@ -1,8 +1,7 @@
-import { Atom, type AsyncResult } from "effect/reactivity"
 import type { Collection, Transaction } from "@tanstack/db"
 import { createTransaction } from "@tanstack/db"
 import type { Txid } from "@tanstack/electric-db-collection"
-import { Cause, Effect, Exit, type ManagedRuntime } from "effect"
+import { type Cause, Effect, Exit } from "effect"
 import {
 	type AwaitTxIdError,
 	type InvalidTxIdError,
@@ -80,11 +79,6 @@ export interface OptimisticActionConfig<
 	collections: TCollections
 
 	/**
-	 * ManagedRuntime for Effect execution
-	 */
-	runtime: ManagedRuntime.ManagedRuntime<TRequires, unknown>
-
-	/**
 	 * Optimistic mutation - synchronous, returns IDs/metadata
 	 */
 	onMutate: (variables: TVariables) => TMutateResult
@@ -126,17 +120,15 @@ function normalizeCollections(collections: CollectionInput): NormalizedCollectio
 }
 
 /**
- * Sync all collections with transaction ID using pure Effect.
- * Uses Effect.all for parallel execution with full Effect control.
+ * Waits until every collection has synced `txid`, in parallel.
  */
 function syncAllCollections(
 	collections: NormalizedCollection[],
 	txid: Txid,
 	timeout: number,
-): Effect.Effect<void, SyncError | TxIdTimeoutError | InvalidTxIdError | AwaitTxIdError> {
-	return Effect.gen(function* () {
-		// Create sync effect for each collection
-		const syncEffects = collections.map(({ name, collection }) =>
+): Effect.Effect<void, SyncError> {
+	return Effect.all(
+		collections.map(({ name, collection }) =>
 			collection.utils.awaitTxIdEffect(txid, timeout).pipe(
 				Effect.mapError(
 					(error) =>
@@ -149,64 +141,37 @@ function syncAllCollections(
 						}),
 				),
 			),
-		)
-
-		// Run all syncs in parallel using Effect.all
-		yield* Effect.all(syncEffects, { concurrency: "unbounded" })
-	})
+		),
+		{ concurrency: "unbounded", discard: true },
+	)
 }
 
 /**
- * Creates an Effect-based optimistic action with automatic collection sync.
+ * Creates an optimistic action with automatic collection sync: a function from variables to an Effect that
+ * applies `onMutate` to the collections at once, runs `mutate` against the server, waits until every
+ * collection has synced the returned transaction id, and rolls the optimistic change back if any step fails.
  *
- * Pure Effect implementation - no raw Promises for sync operations.
- * Collections are declared upfront and sync happens automatically on all of them.
+ * The Effect requires what `mutate` requires (e.g. an RPC client), so the caller's runtime provides it.
+ * A typed failure of `mutate` or of the sync is kept as is; a defect stays a defect.
  *
  * @example
  * ```typescript
- * // Single collection
  * const sendMessageAction = optimisticAction({
  *   collections: [messageCollection],
- *   runtime: runtime,
  *   onMutate: (props) => {
  *     const messageId = MessageId.make(crypto.randomUUID())
  *     messageCollection.insert({ id: messageId, ...props })
  *     return { messageId }
  *   },
- *   mutate: (props, ctx) => Effect.gen(function* () {
- *     const client = yield* RpcClient
- *     const result = yield* client.message.create(props)
- *     // No manual sync needed! Just return the transactionId
+ *   mutate: (props) => Effect.gen(function* () {
+ *     const rpc = yield* HazelRpc
+ *     const result = yield* rpc("message.create", props)
  *     return { data: result, transactionId: result.transactionId }
  *   }),
  * })
  *
- * // Multiple collections
- * const createDmChannel = optimisticAction({
- *   collections: {
- *     channel: channelCollection,
- *     members: channelMemberCollection,
- *   },
- *   runtime: runtime,
- *   onMutate: (props) => {
- *     channelCollection.insert({ ... })
- *     channelMemberCollection.insert({ ... })
- *     return { channelId }
- *   },
- *   mutate: (props, ctx) => Effect.gen(function* () {
- *     const result = yield* client.channel.createDm(props)
- *     // Automatic sync on BOTH channel AND members collections!
- *     return { data: { channelId: result.data.id }, transactionId: result.transactionId }
- *   }),
- * })
- *
- * // In component:
- * const sendMessage = useAtomSet(sendMessageAction, { mode: "promiseExit" })
- * const exit = await sendMessage({ content: "Hello" })
- * Exit.match(exit, {
- *   onSuccess: (result) => console.log("Sent:", result.data),
- *   onFailure: (cause) => console.error("Failed:", cause)
- * })
+ * // In a Command:
+ * sendMessageAction({ content: "Hello" }).pipe(Effect.as(SentMessage()), Effect.catchTags({ ... }))
  * ```
  */
 export function optimisticAction<
@@ -218,113 +183,75 @@ export function optimisticAction<
 	TMutateResult extends Record<string, unknown> = Record<string, unknown>,
 >(
 	config: OptimisticActionConfig<TVariables, TSuccess, TError, TCollections, TRequires, TMutateResult>,
-): Atom.Writable<
-	AsyncResult.AsyncResult<
-		OptimisticActionResult<TSuccess, TMutateResult>,
-		TError | SyncError | OptimisticActionError
-	>,
-	TVariables
+): (
+	variables: TVariables,
+) => Effect.Effect<
+	OptimisticActionResult<TSuccess, TMutateResult>,
+	TError | SyncError | OptimisticActionError,
+	TRequires
 > {
-	const { collections, runtime, onMutate, mutate, syncTimeout = 30000 } = config
+	const { collections, onMutate, mutate, syncTimeout = 30000 } = config
 	const normalizedCollections = normalizeCollections(collections)
 
-	return Atom.fn((variables: TVariables) =>
+	return (variables) =>
 		Effect.gen(function* () {
+			const context = yield* Effect.context<TRequires>()
 			let mutateResult!: TMutateResult
 			let mutationResult!: MutationResultWithTxId<TSuccess>
+			/** Why `mutationFn` rejected, so the typed failure (or defect) survives TanStack's Promise. */
+			let failure: Cause.Cause<TError | SyncError> | undefined
 
-			// Create transaction that wraps the Effect-based mutation
 			const transaction = createTransaction({
 				autoCommit: true,
 				mutationFn: async (params) => {
-					// Run the mutation Effect
-					const mutationEffect = mutate(variables, {
-						mutateResult,
-						transaction: params.transaction,
-					})
-
-					const exit = await runtime.runPromiseExit(mutationEffect)
-
-					if (Exit.isFailure(exit)) {
-						const cause = exit.cause
-						const failReason = cause.reasons.find(Cause.isFailReason)
-						if (failReason) {
-							throw failReason.error // Typed TError
-						}
-						throw new OptimisticActionError({
-							message: "Mutation failed unexpectedly",
-							cause: Cause.pretty(cause),
-						})
-					}
-
-					mutationResult = exit.value
-
-					// Run automatic sync on ALL collections using Effect.all
-					const syncEffect = syncAllCollections(
-						normalizedCollections,
-						mutationResult.transactionId,
-						syncTimeout,
+					const exit = await Effect.runPromiseExit(
+						Effect.gen(function* () {
+							mutationResult = yield* mutate(variables, {
+								mutateResult,
+								transaction: params.transaction,
+							})
+							yield* syncAllCollections(
+								normalizedCollections,
+								mutationResult.transactionId,
+								syncTimeout,
+							)
+							return mutationResult.data
+						}).pipe(Effect.provideContext(context)),
 					)
-
-					const syncExit = await runtime.runPromiseExit(
-						syncEffect as Effect.Effect<
-							void,
-							SyncError | TxIdTimeoutError | InvalidTxIdError | AwaitTxIdError,
-							never
-						>,
-					)
-
-					if (Exit.isFailure(syncExit)) {
-						const cause = syncExit.cause
-						const syncFailReason = cause.reasons.find(Cause.isFailReason)
-						if (syncFailReason) {
-							throw syncFailReason.error // SyncError
-						}
-						throw new SyncError({
-							message: "Sync failed unexpectedly",
-							cause: Cause.pretty(cause),
-						})
-					}
-
-					return mutationResult.data
+					if (Exit.isSuccess(exit)) return exit.value
+					failure = exit.cause
+					throw new OptimisticActionError({ message: "Optimistic mutation failed" })
 				},
 			})
 
-			// Execute optimistic mutation synchronously
+			// Apply the optimistic change synchronously; `autoCommit` then runs `mutationFn`.
 			transaction.mutate(() => {
 				mutateResult = onMutate(variables)
 			})
 
-			// Wait for transaction completion
-			const result = yield* Effect.tryPromise({
-				try: () => transaction.isPersisted.promise,
-				catch: (error) => {
-					// Attempt rollback
-					if (transaction.state !== "completed" && transaction.state !== "failed") {
-						try {
-							transaction.rollback()
-						} catch {
-							// Ignore rollback errors
-						}
-					}
+			const persisted = yield* Effect.exit(
+				Effect.tryPromise({
+					try: () => transaction.isPersisted.promise,
+					catch: (cause) =>
+						new OptimisticActionError({ message: "Optimistic action failed", cause }),
+				}),
+			)
 
-					// Preserve typed errors
-					if (error && typeof error === "object" && "_tag" in error) {
-						return error as TError | SyncError
-					}
-
-					return new OptimisticActionError({
-						message: error instanceof Error ? error.message : "Optimistic action failed",
-						cause: error,
-					})
-				},
-			})
+			if (Exit.isFailure(persisted)) {
+				// TanStack rolls back a transaction whose `mutationFn` rejected; this covers any other rejection.
+				if (transaction.state !== "completed" && transaction.state !== "failed") {
+					// Best effort: the failure below is what the caller needs to see.
+					yield* Effect.ignore(Effect.try(() => transaction.rollback()))
+				}
+				return yield* failure === undefined
+					? Effect.failCause(persisted.cause)
+					: Effect.failCause(failure)
+			}
 
 			return {
 				data: mutationResult.data,
 				mutateResult,
 				transactionId: mutationResult.transactionId,
 			}
-		}),
-	)
+		})
 }

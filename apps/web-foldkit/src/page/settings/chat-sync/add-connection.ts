@@ -1,9 +1,9 @@
 import { OrganizationId } from "@hazel/schema"
-import { Effect, Exit, Schema } from "effect"
+import { Effect, Schema } from "effect"
 import { Command, Render } from "foldkit"
 import * as Dom from "foldkit/dom"
 import { HazelRpc } from "../../../rpc"
-import { failureToast } from "../../../data/actions"
+import { catchCommon } from "../../../data/actions"
 import { Message } from "./model"
 
 /** `AddConnectionModal`'s commands (`components/chat-sync/add-connection-modal.tsx`). */
@@ -11,7 +11,7 @@ import { Message } from "./model"
 export const ADD_CONNECTION_MODAL_ID = "chat-sync-add-connection"
 export const GUILD_SEARCH_ID = `${ADD_CONNECTION_MODAL_ID}-search`
 
-/** `createConnection` (`chatSync.connection.create`) with the modal's `exitToast` handlers. */
+/** `createConnection` (`chatSync.connection.create`). */
 export const CreateConnection = Command.define("CreateConnection", {
 	args: {
 		organizationId: OrganizationId,
@@ -24,33 +24,22 @@ export const CreateConnection = Command.define("CreateConnection", {
 			// React paints the pending button on the click, before any reply; wait for that commit.
 			yield* Render.afterCommit
 			const client = yield* HazelRpc
-			const exit = yield* Effect.exit(
-				client("chatSync.connection.create", {
-					organizationId,
-					provider: "discord",
-					externalWorkspaceId,
-					externalWorkspaceName,
-				}),
-			)
-			return Exit.match(exit, {
-				onSuccess: () => Message.SucceededCreateConnection(),
-				onFailure: (cause) => {
-					const toast = failureToast(cause, "exitToast", {
-						ChatSyncConnectionExistsError: {
-							title: "Connection already exists",
-							description: "A connection to this Discord server already exists in your workspace.",
-							isRetryable: false,
-						},
-						ChatSyncIntegrationNotConnectedError: {
-							title: "Discord not connected",
-							description: "Connect Discord first to load your guilds.",
-							isRetryable: false,
-						},
-					})
-					return Message.FailedCreateConnection({ toast })
-				},
+			yield* client("chatSync.connection.create", {
+				organizationId,
+				provider: "discord",
+				externalWorkspaceId,
+				externalWorkspaceName,
 			})
-		}),
+			return Message.SucceededCreateConnection()
+		}).pipe(
+			Effect.catchTags({
+				ChatSyncConnectionExistsError: () =>
+					Effect.succeed(Message.FailedCreateConnection({ reason: "AlreadyExists" })),
+				ChatSyncIntegrationNotConnectedError: () =>
+					Effect.succeed(Message.FailedCreateConnection({ reason: "DiscordNotConnected" })),
+			}),
+			catchCommon((reason) => Message.FailedCreateConnection({ reason })),
+		),
 })
 
 /** The search Input's `autoFocus`, once it is rendered. */

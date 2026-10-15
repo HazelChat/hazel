@@ -34,13 +34,13 @@ describe("discord card", () => {
 			Scene.click(link),
 			Scene.Command.expectExact(StartDiscordLink({ orgId: organizationId })),
 			Scene.expect(Scene.role("button", { name: "Redirecting..." })).toBeDisabled(),
-			Scene.Command.resolve(StartDiscordLink, Message.FailedGetDiscordOAuthUrl()),
+			Scene.Command.resolve(StartDiscordLink, Message.FailedGetDiscordOAuthUrl({ reason: "Offline" })),
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedToast({
 					toast: {
 						intent: "error",
 						title: "Failed to start Discord linking flow",
-						description: null,
+						description: "Check your internet connection and try again.",
 					},
 				}),
 			),
@@ -84,10 +84,17 @@ describe("discord card", () => {
 			Scene.given(init(route).model),
 			Scene.Subscription.emit(active),
 			Scene.click(unlink),
-			Scene.Command.resolve(DisconnectDiscord, Message.FailedDisconnectDiscord()),
+			Scene.Command.resolve(
+				DisconnectDiscord,
+				Message.FailedDisconnectDiscord({ reason: "NotConnected" }),
+			),
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Failed to unlink Discord account", description: null },
+					toast: {
+						intent: "error",
+						title: "Failed to unlink Discord account",
+						description: "This Discord account is no longer linked.",
+					},
 				}),
 			),
 			Scene.expect(unlink).toBeEnabled(),

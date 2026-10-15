@@ -153,13 +153,13 @@ const notificationList = (
 	nowMs: number,
 ): Html => {
 	const copy = COPY[model.category]
-	if (model.notifications === null) {
+	if (model.notifications._tag === "Loading") {
 		return h.div(
 			[h.Class("flex h-full items-center justify-center py-16")],
 			[loader(h, { className: "size-8" })],
 		)
 	}
-	const filtered = filterByCategory(model.notifications, model.category)
+	const filtered = filterByCategory(model.notifications.items, model.category)
 	if (filtered.length === 0) {
 		return emptyState(h, {
 			icon: (className) => IconBell(h, { className }),

@@ -1,6 +1,6 @@
 import type { Attribute, Html, HtmlBuilder } from "foldkit/html"
 import { IconBell, IconDashboard, IconGear, IconMsgs, Logo } from "../icons"
-import { AppRoute, hrefOf } from "../route"
+import { AppRoute, hrefOf, isChatRoute, isNotificationsRoute, isSettingsRoute } from "../route"
 import { linkClassName } from "../ui/link"
 import {
 	sidebarContent,
@@ -16,7 +16,7 @@ import {
 	sidebarStatic,
 } from "../ui/sidebar"
 import type * as Modal from "../ui/modal"
-import { isActiveFuzzy, type ShellContext } from "./context"
+import type { ShellContext } from "./context"
 import { mobileNav, mobileSidebarPlaceholder, mobileSidebarSheet } from "./mobile"
 import { hasDesktopTitlebar } from "../platform/desktop"
 
@@ -51,7 +51,7 @@ const bellIcon = <Message>(h: HtmlBuilder<Message>, unreadCount: number): Html =
 
 /** `NavSidebar` */
 const navRail = <Message>(h: HtmlBuilder<Message>, context: ShellContext, unreadCount: number): Html => {
-	const { orgSlug } = context
+	const { orgSlug, route } = context
 	const home = hrefOf(AppRoute.OrgHome({ orgSlug }))
 	const chat = hrefOf(AppRoute.ChatIndex({ orgSlug }))
 	const notifications = hrefOf(AppRoute.NotificationsAll({ orgSlug }))
@@ -61,52 +61,73 @@ const navRail = <Message>(h: HtmlBuilder<Message>, context: ShellContext, unread
 			sidebarLink(h, { href: to, isActive, activeClassName: NAV_ACTIVE }, [icon]),
 		])
 	// Under the macOS window controls the dock draws its own borders, below the titlebar strip.
-	return sidebarStatic(h, `hidden w-[calc(var(--sidebar-width-dock)+1px)] md:flex ${hasDesktopTitlebar ? "" : "md:border-r"}`, [
-		sidebarHeader(h, { state: "expanded", className: `px-3 py-4  border-b ${hasDesktopTitlebar ? "pt-14 relative before:absolute before:top-10 before:left-0 before:right-0 before:bottom-0 before:border-t before:border-r before:border-sidebar-border" : "h-14"}` }, [
-			h.a(
+	return sidebarStatic(
+		h,
+		`hidden w-[calc(var(--sidebar-width-dock)+1px)] md:flex ${hasDesktopTitlebar ? "" : "md:border-r"}`,
+		[
+			sidebarHeader(
+				h,
+				{
+					state: "expanded",
+					className: `px-3 py-4  border-b ${hasDesktopTitlebar ? "pt-14 relative before:absolute before:top-10 before:left-0 before:right-0 before:bottom-0 before:border-t before:border-r before:border-sidebar-border" : "h-14"}`,
+				},
 				[
-					h.Class(linkClassName({ hasHref: true, className: "flex items-center justify-center" })),
-					h.Href(hrefOf(AppRoute.Root())),
-					h.Attribute("tabindex", "0"),
-					h.Attribute("data-react-aria-pressable", "true"),
+					h.a(
+						[
+							h.Class(
+								linkClassName({
+									hasHref: true,
+									className: "flex items-center justify-center",
+								}),
+							),
+							h.Href(hrefOf(AppRoute.Root())),
+							h.Attribute("tabindex", "0"),
+							h.Attribute("data-react-aria-pressable", "true"),
+						],
+						[Logo(h, { className: "size-7" })],
+					),
 				],
-				[Logo(h, { className: "size-7" })],
 			),
-		]),
-		sidebarContent(h, { state: "expanded", className: `mask-none ${hasDesktopTitlebar ? "border-r border-sidebar-border" : ""}` }, [
-			sidebarSectionGroup(h, [
-				sidebarSection(h, { className: "p-2! *:data-[slot=sidebar-section-inner]:gap-y-2" }, [
-					navItem(
-						"Home",
-						home,
-						context.pathname === home,
-						IconDashboard(h, { className: "size-5" }),
-					),
-					navItem(
-						"Chat",
-						chat,
-						isActiveFuzzy(context.pathname, chat),
-						IconMsgs(h, { className: "size-5" }),
-					),
-					navItem(
-						"Notifications",
-						notifications,
-						isActiveFuzzy(context.pathname, notifications),
-						bellIcon(h, unreadCount),
-					),
-					navItem(
-						"Settings",
-						settings,
-						isActiveFuzzy(context.pathname, settings),
-						IconGear(h, { className: "size-5" }),
-					),
-				]),
+			sidebarContent(
+				h,
+				{
+					state: "expanded",
+					className: `mask-none ${hasDesktopTitlebar ? "border-r border-sidebar-border" : ""}`,
+				},
+				[
+					sidebarSectionGroup(h, [
+						sidebarSection(h, { className: "p-2! *:data-[slot=sidebar-section-inner]:gap-y-2" }, [
+							navItem(
+								"Home",
+								home,
+								route._tag === "OrgHome",
+								IconDashboard(h, { className: "size-5" }),
+							),
+							navItem("Chat", chat, isChatRoute(route), IconMsgs(h, { className: "size-5" })),
+							navItem(
+								"Notifications",
+								notifications,
+								isNotificationsRoute(route),
+								bellIcon(h, unreadCount),
+							),
+							navItem(
+								"Settings",
+								settings,
+								isSettingsRoute(route),
+								IconGear(h, { className: "size-5" }),
+							),
+						]),
+					]),
+				],
+			),
+			sidebarFooter(h, "p-2 ", [
+				h.span(
+					[h.Class("text-center text-[10px] font-mono text-muted-fg")],
+					["v", context.appVersion],
+				),
 			]),
-		]),
-		sidebarFooter(h, "p-2 ", [
-			h.span([h.Class("text-center text-[10px] font-mono text-muted-fg")], ["v", context.appVersion]),
-		]),
-	])
+		],
+	)
 }
 
 export interface MobileShell<Message> {

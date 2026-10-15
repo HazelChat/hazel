@@ -32,22 +32,18 @@ const PortalPickerPopover = Mount.defineStream("PortalPickerPopover", {
 	messages: [PopoverEvent.CompletedPortalPickerPopover, PopoverEvent.PressedOutside],
 	execute: ({ element, id }) =>
 		Stream.callback<PortalEvent>((queue) =>
-			Effect.acquireRelease(
-				Effect.sync(() => {
-					const release = openModalPopover(element, {
-						triggerId: triggerId(id),
-						placement: "bottom",
-						offset: 8,
-						initialFocusId: dialogId(id),
-						insideSelector: `#${CSS.escape(popoverId(id))}`,
-						onInteractOutside: () => Queue.offerUnsafe(queue, PopoverEvent.PressedOutside()),
-						inertAfterPaint: true,
-					})
-					Queue.offerUnsafe(queue, PopoverEvent.CompletedPortalPickerPopover())
-					return release
-				}),
-				(release) => Effect.sync(release),
-			).pipe(Effect.flatMap(() => Effect.never)),
+			Effect.gen(function* () {
+				yield* openModalPopover(element, {
+					triggerId: triggerId(id),
+					placement: "bottom",
+					offset: 8,
+					initialFocusId: dialogId(id),
+					insideSelector: `#${CSS.escape(popoverId(id))}`,
+					onInteractOutside: () => Queue.offerUnsafe(queue, PopoverEvent.PressedOutside()),
+				})
+				Queue.offerUnsafe(queue, PopoverEvent.CompletedPortalPickerPopover())
+				return yield* Effect.never
+			}),
 		),
 })
 
@@ -56,7 +52,11 @@ export interface PopoverInputs<M> {
 	readonly isOpen: boolean
 	readonly ariaLabel: string
 	readonly toMessage: (event: PopoverEvent) => M
-	/** The DialogTrigger's child: spread `attributes` on the button and put `overlay` last. */
+	/**
+	 * The DialogTrigger's child: spread `attributes` on the button and render `overlay` as its sibling
+	 * (e.g. `h.div([h.Class("contents")], [button, overlay])`), never inside the `<button>`: interactive
+	 * content inside a button is invalid HTML and its clicks would bubble to the trigger.
+	 */
 	readonly toTrigger: (attributes: ReadonlyArray<ChildAttribute>, overlay: Html) => Html
 	readonly content: () => ReadonlyArray<Html>
 }
@@ -77,9 +77,7 @@ const overlay = <M>(h: HtmlBuilder<M>, inputs: PopoverInputs<M>): Html => {
 					h.div(
 						[
 							h.Attribute("aria-labelledby", triggerId(id)),
-							h.Class("react-aria-Popover"),
 							h.Attribute("data-popover", ""),
-							h.Attribute("data-rac", ""),
 							h.Attribute("data-trigger", "DialogTrigger"),
 							h.Attribute("dir", "ltr"),
 							h.Id(popoverId(id)),
@@ -95,7 +93,6 @@ const overlay = <M>(h: HtmlBuilder<M>, inputs: PopoverInputs<M>): Html => {
 								[
 									h.Attribute("aria-label", inputs.ariaLabel),
 									h.Class("rounded-lg"),
-									h.Attribute("data-rac", ""),
 									h.Id(dialogId(id)),
 									h.Role("dialog"),
 									h.Attribute("tabindex", "-1"),

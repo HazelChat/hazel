@@ -3,37 +3,36 @@ import { Option } from "effect"
 import { fromString } from "foldkit/url"
 import { describe, expect, test } from "vitest"
 import { init, Message, update } from "../main"
-import * as Toast from "../ui/toast"
 import { DEFAULT_SOUND_SETTINGS } from "../notification-sound"
 import { defaultThemePreference } from "../theme"
+import * as Toast from "../ui/toast"
 import * as Toaster from "./toaster"
-import { init as initToasts, push } from "./toaster"
 
-/** `RequestedToast` → the kit's `showRequest`; a sonner `id` updates its toast in place. */
+/** `RequestedToast` → `Toaster.push`; a request `id` updates its toast in place. */
+
+const available = {
+	intent: "info",
+	title: "Update",
+	description: null,
+	id: "update",
+	isSticky: true,
+	action: { label: "Install & Restart", key: "InstallUpdate" },
+} as const
 
 describe("root toaster", () => {
-	test("a request adds a toast with the kit's kind, title and description", () => {
-		const shown = push(initToasts(), { intent: "error", title: "Failed", description: "Try again" })
-		expect(shown.model.toaster.toasts).toHaveLength(1)
-		expect(shown.model.toaster.toasts[0]).toMatchObject({
-			kind: "error",
+	test("a request adds a toast with its kind, title and description", () => {
+		const shown = Toaster.push(Toaster.init(), {
+			intent: "error",
 			title: "Failed",
 			description: "Try again",
 		})
-	})
-
-	test("a toast with a known id replaces it (loading, then success)", () => {
-		const loading = push(initToasts(), {
-			intent: "loading",
-			title: "Saving...",
-			description: null,
-			id: "save",
+		expect(shown.model.entries).toHaveLength(1)
+		expect(shown.model.entries[0]?.variant).toBe("Error")
+		expect(shown.model.entries[0]?.payload).toMatchObject({
+			kind: "error",
+			title: "Failed",
+			maybeDescription: Option.some("Try again"),
 		})
-		const done = push(loading.model, { intent: "success", title: "Saved", description: null, id: "save" })
-		expect(done.model.toaster.toasts).toHaveLength(1)
-		expect(done.model.toaster.toasts[0]).toMatchObject({ kind: "success", title: "Saved" })
-		const other = push(done.model, { intent: "info", title: "Other", description: null })
-		expect(other.model.toaster.toasts.map((toast) => toast.title)).toEqual(["Other", "Saved"])
 	})
 
 	test("a page's RequestedToast goes through the root into the toaster", () => {
@@ -48,59 +47,90 @@ describe("root toaster", () => {
 						systemTheme: "light",
 						soundSettings: DEFAULT_SOUND_SETTINGS,
 						sessionStartMs: 0,
+						isMobile: false,
+						isCreateChannelHintDismissed: false,
 					},
 					url,
 				),
 		})
-		expect(booted.model.toasts.toaster.toasts).toMatchObject([
-			{ kind: "error", title: "Failed to link Discord account", description: "db_error" },
+		expect(booted.model.toasts.entries.map((entry) => entry.payload)).toMatchObject([
+			{
+				kind: "error",
+				title: "Failed to link Discord account",
+				maybeDescription: Option.some("A database error occurred. Please try again."),
+			},
 		])
 		// The kit's own Messages fold back into the slot through `GotToastsMessage`.
+		const entryId = booted.model.toasts.entries[0]!.id
 		const hovered = update(
 			booted.model,
-			Message.GotToastsMessage({ message: Toast.Message.HoveredToaster() }),
+			Message.GotToastsMessage({
+				message: Toaster.Message.GotToastMessage({
+					message: Toast.Message.HoveredEntry({ entryId }),
+				}),
+			}),
 		)
-		expect(hovered.model.toasts.toaster.isExpanded).toBe(true)
+		expect(hovered.model.toasts.entries[0]?.isHovered).toBe(true)
+	})
+
+	test("an action click dismisses the toast and reports the action", () => {
+		const shown = Toaster.push(Toaster.init(), available).model
+		const entryId = shown.entries[0]!.id
+		const clicked = Toaster.update(
+			shown,
+			Toaster.Message.ClickedAction({ entryId, action: "InstallUpdate" }),
+		)
+		expect(clicked.action).toBe("InstallUpdate")
+		expect(clicked.model.entries[0]?.animation.isShowing).toBe(false)
+	})
+
+	test("the kit's own Messages report no action", () => {
+		const shown = Toaster.push(Toaster.init(), available).model
+		const entryId = shown.entries[0]!.id
+		const dismissed = Toaster.update(
+			shown,
+			Toaster.Message.GotToastMessage({ message: Toast.Message.Dismissed({ entryId }) }),
+		)
+		expect(dismissed.action).toBeUndefined()
+		expect(dismissed.model.entries[0]?.animation.isShowing).toBe(false)
 	})
 })
 
-const available = {
-	intent: "info",
-	title: "Update",
-	description: null,
-	id: "update",
-	isSticky: true,
-	action: { label: "Install & Restart", key: "InstallUpdate" },
-} as const
-
 describe("update toast replacement", () => {
-	test("clears sticky lifetime and action when a failure replaces availability", () => {
+	test("a failure replaces availability in place, dropping the action and starting a timer", () => {
 		const initial = Toaster.push(Toaster.init(), available).model
 		const failed = Toaster.push(initial, {
 			intent: "error",
 			title: "Failed",
 			description: null,
 			id: "update",
-		}).model
-		expect(failed.toaster.toasts[0]).toMatchObject({
-			actionLabel: null,
-			duration: 4000,
-			isRemoved: false,
 		})
-		expect(failed.actionsById).toEqual({})
+		expect(failed.model.entries).toHaveLength(1)
+		expect(failed.model.entries[0]).toMatchObject({
+			id: initial.entries[0]!.id,
+			variant: "Error",
+			pendingDismissVersion: 1,
+			payload: { kind: "error", title: "Failed", maybeAction: Option.none() },
+		})
+		expect(Option.isSome(failed.model.entries[0]!.maybeDuration)).toBe(true)
+		expect(failed.commands?.map((command) => command.name)).toEqual(["WaitBeforeDismissal"])
 	})
-	test("creates a visible toast after its action dismissed the previous one", () => {
+
+	test("creates a new toast after its action dismissed the previous one", () => {
 		const initial = Toaster.push(Toaster.init(), available).model
-		const id = initial.idsByKey.update!
-		const clicked = Toaster.update(initial, Toaster.Message.ClickedAction({ id })).model
-		const downloading = Toaster.push(clicked, {
+		const entryId = initial.entries[0]!.id
+		const clicked = Toaster.update(
+			initial,
+			Toaster.Message.ClickedAction({ entryId, action: "InstallUpdate" }),
+		)
+		const downloading = Toaster.push(clicked.model, {
 			intent: "loading",
 			title: "Downloading",
 			description: null,
 			id: "update",
 		}).model
-		const nextId = downloading.idsByKey.update!
-		expect(nextId).not.toBe(id)
-		expect(downloading.toaster.toasts.find((toast) => toast.id === nextId)?.isRemoved).toBe(false)
+		expect(downloading.entries).toHaveLength(2)
+		expect(downloading.entries[1]?.id).not.toBe(entryId)
+		expect(downloading.entries[1]?.animation.isShowing).toBe(true)
 	})
 })

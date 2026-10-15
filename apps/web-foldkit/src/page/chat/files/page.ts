@@ -7,7 +7,8 @@ import { modifyFields } from "foldkit/struct"
 import * as Interaction from "../../../ui/aria/interaction"
 import { searchFieldIds } from "../../../ui/search-field"
 import * as Select from "../../../ui/select"
-import { FileFilterType, filterOptions } from "./derive"
+import { FileFilterType, filterOptions, isViewerImage, mediaOf } from "./derive"
+import { ViewerAction } from "../overlays"
 import { Breakpoint, FileAttachment } from "./queries"
 
 /** Files tab (`chat/$id/files/index.tsx`) and All Media page (`chat/$id/files/media.tsx`). */
@@ -23,15 +24,13 @@ export const Model = Schema.Struct({
 	view: FilesView,
 	/** Newest first, as the query returns them. */
 	attachments: Schema.Array(FileAttachment),
-	/** Clock of the last query result, for "Today" / "Yesterday". */
-	nowMs: Schema.Number,
 	searchQuery: Schema.String,
 	filterType: FileFilterType,
 	filter: Select.Model,
 	breakpoint: Breakpoint,
 	/** Media whose `<img>`/`<video>` fired `error`; legacy renders them as nothing. */
 	failedMediaIds: Schema.Array(AttachmentId),
-	/** The image the legacy `ImageViewerModal` would show. */
+	/** The image `ImageViewerModal` shows, among the channel's images. */
 	viewerImageId: Schema.NullOr(AttachmentId),
 	interaction: Interaction.Model,
 })
@@ -40,7 +39,7 @@ export type Model = typeof Model.Type
 // MESSAGE
 
 export const Message = defineMessageUnion({
-	UpdatedAttachments: { attachments: Schema.Array(FileAttachment), nowMs: Schema.Number },
+	UpdatedAttachments: { attachments: Schema.Array(FileAttachment) },
 	ResizedViewport: { breakpoint: Breakpoint },
 	UpdatedSearch: { value: Schema.String },
 	ClearedSearch: {},
@@ -53,27 +52,34 @@ export const Message = defineMessageUnion({
 	ClickedDownload: { attachmentId: AttachmentId },
 	CompletedDownloadAttachment: {},
 	CompletedOpenMediaTab: {},
+	ClosedImageViewer: {},
+	SelectedViewerImage: { index: Schema.Number },
+	ClickedViewerAction: { action: ViewerAction, url: Schema.String, fileName: Schema.String },
 })
 export type Message = typeof Message.Type
+
+/** The viewer's toolbar actions run where the channel's do (`ImageViewerModal` is shared). */
+export const OutMessage = defineMessageUnion({
+	RequestedViewerAction: { action: ViewerAction, url: Schema.String, fileName: Schema.String },
+})
+export type OutMessage = typeof OutMessage.Type
 
 // INIT
 
 export const SEARCH_FIELD_ID = "channel-files-search"
 export const FILTER_SELECT_ID = "channel-files-filter"
 
+/** The filter Select's options. */
+export const filterItems = filterOptions.map((option) => Select.item(option.id, option.label))
+
 export const init = (channelId: ChannelId, orgSlug: string, view: FilesView): Model => ({
 	channelId,
 	orgSlug,
 	view,
 	attachments: [],
-	nowMs: 0,
 	searchQuery: "",
 	filterType: "all",
-	filter: Select.init({
-		id: FILTER_SELECT_ID,
-		items: filterOptions.map((option) => Select.item(option.id, option.label)),
-		selectedKey: "all",
-	}),
+	filter: Select.init({ id: FILTER_SELECT_ID, selectedKey: "all" }),
 	breakpoint: "base",
 	failedMediaIds: [],
 	viewerImageId: null,
@@ -87,7 +93,6 @@ export const setView = (model: Model, view: FilesView): Model =>
 		: {
 				...init(model.channelId, model.orgSlug, view),
 				attachments: model.attachments,
-				nowMs: model.nowMs,
 				breakpoint: model.breakpoint,
 			}
 
@@ -130,7 +135,7 @@ const OpenMediaTab = Command.define("OpenMediaTab", {
 
 // UPDATE
 
-export type FilesReturn = Update.Return<Model, Message>
+export type FilesReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage>
 
 const foldInteraction = Update.foldChild({
 	update: Interaction.update,
@@ -167,8 +172,13 @@ const withAttachment = (
 
 export const update = (model: Model, message: Message): FilesReturn =>
 	Message.match<FilesReturn>(message, {
-		UpdatedAttachments: ({ attachments, nowMs }) => ({
-			model: modifyFields(model, { attachments: () => attachments, nowMs: () => nowMs }),
+		UpdatedAttachments: ({ attachments }) => ({
+			model: modifyFields(model, {
+				attachments: () => attachments,
+				// A deleted image closes the viewer.
+				viewerImageId: (id) =>
+					id !== null && attachments.some((attachment) => attachment.id === id) ? id : null,
+			}),
 		}),
 		ResizedViewport: ({ breakpoint }) => ({
 			model:
@@ -201,4 +211,19 @@ export const update = (model: Model, message: Message): FilesReturn =>
 			})),
 		CompletedDownloadAttachment: () => ({ model }),
 		CompletedOpenMediaTab: () => ({ model }),
+		ClosedImageViewer: () => ({ model: modifyFields(model, { viewerImageId: () => null }) }),
+		SelectedViewerImage: ({ index }) => {
+			const image = viewerImagesOf(model)[index]
+			return image === undefined
+				? { model }
+				: { model: modifyFields(model, { viewerImageId: () => image.id }) }
+		},
+		ClickedViewerAction: ({ action, url, fileName }) =>
+			model.viewerImageId === null
+				? { model }
+				: { model, outMessage: OutMessage.RequestedViewerAction({ action, url, fileName }) },
 	})
+
+/** The images the viewer pages through: every image of the channel, newest first. */
+export const viewerImagesOf = (model: Model): ReadonlyArray<FileAttachment> =>
+	mediaOf(model.attachments).filter(isViewerImage)

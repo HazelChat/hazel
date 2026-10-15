@@ -9,14 +9,8 @@ import {
 	isTweetUrl,
 	isYoutubeUrl,
 } from "~/components/link-preview.utils"
-import {
-	type CustomDescendant,
-	deserializeFromMarkdown,
-} from "~/components/chat/slate-editor/slate-markdown-serializer"
-
-// The serializer alone (no Prism, no DOM), so row derivation can run in `update` and in tests.
-const nodeString = (node: CustomDescendant): string =>
-	"text" in node ? node.text : "children" in node ? node.children.map(nodeString).join("") : ""
+// The parser alone (no Prism, no DOM), so row derivation can run in `update` and in tests.
+import { deserializeFromMarkdown } from "../../editor/markdown"
 
 /** `MessageContent.Provider`'s URL processing: which URLs embed, and the text left to display. */
 
@@ -35,8 +29,7 @@ const NONE: ReadonlyArray<string> = []
 const extractUrlsFromParagraphs = (content: string): ReadonlyArray<string> => {
 	const urls: string[] = []
 	for (const node of deserializeFromMarkdown(content))
-		if (!("text" in node) && node.type === "paragraph")
-			urls.push(...extractUrls(nodeString(node)))
+		if (node.type.name === "paragraph") urls.push(...extractUrls(node.textContent))
 	return [...new Set(urls)]
 }
 

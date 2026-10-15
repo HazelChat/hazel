@@ -1,7 +1,7 @@
 import { ChannelId, type NotificationId, OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import { eq } from "@tanstack/db"
-import { Duration, Option, Schema, Stream } from "effect"
-import { Dom, ManagedResource, Subscription } from "foldkit"
+import { Clock, Duration, Option, Schema, Stream } from "effect"
+import { Dom, Subscription } from "foldkit"
 import {
 	notificationCollection,
 	organizationCollection,
@@ -11,8 +11,8 @@ import { SESSION_REJECTED_EVENT } from "~/lib/access-token"
 import { liveQueryStream } from "../data/live-query"
 import { pageSubscriptions } from "../page/registry"
 import { SoundSettings } from "../notification-sound"
-import { wireNotificationSinks } from "./notification-sinks"
-import { type AppRoute, orgSlugOf } from "../route"
+import { type NotificationSinks, wireNotificationSinks } from "./notification-sinks"
+import { chatChannelIdOf, orgSlugOf } from "../route"
 import type { Member, Organization } from "../session"
 import * as ShellSubscription from "../shell/subscription"
 import * as CommandPalette from "../overlay/command-palette"
@@ -23,7 +23,17 @@ import { desktopMenuItems } from "../platform/desktop-menu"
 import * as Updates from "../platform/updates"
 import * as Toasts from "../overlay/toaster"
 import { Message } from "./message"
-import { type Model, pageHostOf, sharedOf } from "./model"
+import { authOf, currentUserOf, loadedOrgOf, memberOf, type Model, pageHostOf, sharedOf } from "./model"
+
+/** `useSidebar().isMobile`: the viewport the mobile layout is for. */
+export const MOBILE_QUERY = "(max-width: 767px)"
+
+/** How often the root clock ticks (legacy `presenceNowSignal` and the sidebar's presence dots). */
+const CLOCK_INTERVAL = Duration.seconds(30)
+
+/** The org shell is up: the session, its user and the route's organization have loaded. */
+const isShellReady = (model: Model): boolean =>
+	currentUserOf(model) !== null && Option.isSome(loadedOrgOf(model))
 
 const rootSubscriptions = Subscription.make<Model, Message>()((entry) => ({
 	systemTheme: Subscription.persistentEntry(
@@ -32,17 +42,32 @@ const rootSubscriptions = Subscription.make<Model, Message>()((entry) => ({
 			mapMatches: (isDark) => Message.ChangedSystemTheme({ theme: isDark ? "dark" : "light" }),
 		}),
 	),
-	// Legacy `presenceNowSignal`: wall clock for deriving stale presence.
-	presenceClock: Subscription.persistentEntry(
-		Stream.concat(Stream.succeed(undefined), Stream.tick("30 seconds")).pipe(
-			Stream.map(() => Message.TickedPresenceClock({ nowMs: Date.now() })),
-		),
+	// `useMediaQuery("(max-width: 767px)")` in `SidebarProvider`.
+	viewport: Subscription.persistentEntry(
+		Dom.streamFromMediaQuery({
+			query: MOBILE_QUERY,
+			mapMatches: (isMobile) => Message.ChangedViewport({ isMobile }),
+		}),
+	),
+	// The one wall clock (presence staleness, status expiry), ticking only while the org shell shows.
+	clock: entry(
+		{ isTicking: Schema.Boolean },
+		{
+			modelToDependencies: (model) => ({ isTicking: isShellReady(model) }),
+			dependenciesToStream: ({ isTicking }) =>
+				isTicking
+					? Stream.concat(Stream.succeed(undefined), Stream.tick(CLOCK_INTERVAL)).pipe(
+							Stream.mapEffect(() => Clock.currentTimeMillis),
+							Stream.map((nowMs) => Message.TickedClock({ nowMs })),
+						)
+					: Stream.empty,
+		},
 	),
 	// Every shape retries a refused token at once; one session check covers them all.
 	sessionRejected: entry(
 		{ isSignedIn: Schema.Boolean },
 		{
-			modelToDependencies: (model) => ({ isSignedIn: model.auth === "SignedIn" }),
+			modelToDependencies: (model) => ({ isSignedIn: authOf(model.session) === "SignedIn" }),
 			dependenciesToStream: ({ isSignedIn }) =>
 				isSignedIn
 					? Stream.fromEventListener(window, SESSION_REJECTED_EVENT).pipe(
@@ -95,8 +120,10 @@ const rootSubscriptions = Subscription.make<Model, Message>()((entry) => ({
 		{ organizationId: Schema.NullOr(OrganizationId), userId: Schema.NullOr(UserId) },
 		{
 			modelToDependencies: (model) => ({
-				organizationId: model.organization?.id ?? null,
-				userId: model.currentUser?.id ?? null,
+				organizationId: Option.getOrNull(
+					Option.map(loadedOrgOf(model), (org) => org.organization.id),
+				),
+				userId: currentUserOf(model)?.id ?? null,
 			}),
 			dependenciesToStream: ({ organizationId, userId }) =>
 				organizationId === null || userId === null
@@ -111,6 +138,7 @@ const rootSubscriptions = Subscription.make<Model, Message>()((entry) => ({
 							(rows) => {
 								const member = rows[0]
 								return Message.UpdatedMember({
+									organizationId,
 									member: member ? { id: member.id, role: member.role } : null,
 								})
 							},
@@ -119,14 +147,10 @@ const rootSubscriptions = Subscription.make<Model, Message>()((entry) => ({
 	),
 }))
 
-/** `currentChannelIdAtom`: the channel the chat routes show. */
-const currentChannelIdOf = (route: AppRoute): ChannelId | null =>
-	route._tag.startsWith("Chat") && "channelId" in route ? route.channelId : null
-
 const MAX_RECENT_NOTIFICATIONS = 250
 
 /** `NotificationSoundProvider` in `$orgSlug/layout.tsx`: sound and native notification sinks. */
-const notificationSubscriptions = Subscription.make<Model, Message>()((entry) => ({
+const notificationSubscriptions = Subscription.make<Model, Message, NotificationSinks>()((entry) => ({
 	notificationSinks: entry(
 		{
 			userId: Schema.NullOr(UserId),
@@ -136,9 +160,9 @@ const notificationSubscriptions = Subscription.make<Model, Message>()((entry) =>
 		},
 		{
 			modelToDependencies: (model) => ({
-				userId: orgSlugOf(model.route) === undefined ? null : (model.currentUser?.id ?? null),
+				userId: orgSlugOf(model.route) === undefined ? null : (currentUserOf(model)?.id ?? null),
 				settings: model.soundSettings,
-				currentChannelId: currentChannelIdOf(model.route),
+				currentChannelId: chatChannelIdOf(model.route),
 				sessionStartMs: model.sessionStartMs,
 			}),
 			dependenciesToStream: ({ userId, settings, currentChannelId, sessionStartMs }) =>
@@ -151,7 +175,7 @@ const notificationSubscriptions = Subscription.make<Model, Message>()((entry) =>
 	recentNotifications: entry(
 		{ memberId: Schema.NullOr(OrganizationMemberId) },
 		{
-			modelToDependencies: (model) => ({ memberId: model.member?.id ?? null }),
+			modelToDependencies: (model) => ({ memberId: memberOf(model)?.id ?? null }),
 			dependenciesToStream: ({ memberId }) =>
 				memberId === null
 					? Stream.empty
@@ -174,7 +198,7 @@ const overlaySubscriptions = Subscription.make<Model, Message>()((entry) => ({
 		{ isEnabled: Schema.Boolean },
 		{
 			modelToDependencies: (model) => ({
-				isEnabled: model.auth === "SignedIn" && orgSlugOf(model.route) !== undefined,
+				isEnabled: authOf(model.session) === "SignedIn" && orgSlugOf(model.route) !== undefined,
 			}),
 			dependenciesToStream: ({ isEnabled }) =>
 				isEnabled ? layoutHotkeys((actionId) => Message.PressedHotkey({ actionId })) : Stream.empty,
@@ -199,16 +223,16 @@ const shellSubscriptions = Subscription.lift(ShellSubscription.subscriptions)<Mo
 })
 
 /** `PresenceProvider` runs inside the loaded `$orgSlug` layout, once `user.me` answered. */
-const presenceUserIdOf = (model: Model): UserId | null => {
-	const orgSlug = orgSlugOf(model.route)
-	const isLoaded =
-		orgSlug !== undefined && model.orgLoad?.slug === orgSlug && model.orgLoad.status === "Found"
-	return isLoaded ? (model.currentUser?.id ?? null) : null
-}
+const presenceUserIdOf = (model: Model): UserId | null =>
+	isShellReady(model) ? (currentUserOf(model)?.id ?? null) : null
 
 const platformSubscriptions = Subscription.lift(Platform.subscriptions)<Model, Message>({
 	read: (model) =>
-		Option.some({ model: model.platform, userId: presenceUserIdOf(model), pathname: model.pathname }),
+		Option.some({
+			model: model.platform,
+			userId: presenceUserIdOf(model),
+			activeChannelId: chatChannelIdOf(model.route),
+		}),
 	toParentMessage: (message): Message => ({ _tag: "GotPlatformMessage", message }),
 })
 
@@ -224,7 +248,7 @@ const desktopMenuSubscriptions = Subscription.make<Model, Message>()(() => ({
 }))
 
 const toastSubscriptions = Subscription.lift(Toasts.subscriptions)<Model, Message>({
-	read: (model) => Option.some(model.toasts.toaster),
+	read: (model) => Option.some(model.toasts),
 	toParentMessage: (message): Message => ({ _tag: "GotToastsMessage", message }),
 })
 
@@ -246,9 +270,3 @@ export const subscriptions = Subscription.aggregate(
 	updateSubscriptions,
 	desktopMenuSubscriptions,
 )
-
-/** App-lifetime managed resources (the Rivet client). */
-export const managedResources = ManagedResource.lift(Platform.managedResources)<Model, Message>({
-	read: (model) => Option.some(model.platform),
-	toParentMessage: (message): Message => ({ _tag: "GotPlatformMessage", message }),
-})
