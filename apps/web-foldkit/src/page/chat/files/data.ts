@@ -9,7 +9,7 @@ import { type AttachmentQueryRow, type Breakpoint, type FileAttachment, toFileAt
 
 export const attachmentsStream = <Message>(
 	channelId: ChannelId,
-	toMessage: (attachments: ReadonlyArray<FileAttachment>, nowMs: number) => Message,
+	toMessage: (attachments: ReadonlyArray<FileAttachment>) => Message,
 ): Stream.Stream<Message> =>
 	liveQueryStream<AttachmentQueryRow, ReadonlyArray<AttachmentQueryRow>>(
 		(q) =>
@@ -27,10 +27,7 @@ export const attachmentsStream = <Message>(
 				)
 				.orderBy(({ attachments }) => attachments.uploadedAt, "desc"),
 		(rows) => rows,
-	).pipe(
-		// Legacy reads `new Date()` at render; the emit time is the closest pure equivalent.
-		Stream.map((rows) => toMessage(rows.map(toFileAttachment), Date.now())),
-	)
+	).pipe(Stream.map((rows) => toMessage(rows.map(toFileAttachment))))
 
 const queries: ReadonlyArray<readonly [Breakpoint, string]> = [
 	["xl", "(min-width: 1280px)"],

@@ -6,7 +6,16 @@ import type { ChannelInfo } from "./queries"
 
 /** `ChannelJoinBanner` and `TypingIndicator`. */
 
-export const joinBannerView = <M>(h: HtmlBuilder<M>, channel: ChannelInfo | null): Html =>
+export interface JoinBannerInputs<M> {
+	readonly isJoining: boolean
+	readonly onJoin: M
+}
+
+export const joinBannerView = <M>(
+	h: HtmlBuilder<M>,
+	channel: ChannelInfo | null,
+	inputs: JoinBannerInputs<M>,
+): Html =>
 	channel === null
 		? h.empty
 		: h.div(
@@ -39,7 +48,16 @@ export const joinBannerView = <M>(h: HtmlBuilder<M>, channel: ChannelInfo | null
 							),
 						],
 					),
-					button(h, { intent: "primary", size: "lg" }, ["Join #", channel.name]),
+					button(
+						h,
+						{
+							intent: "primary",
+							size: "lg",
+							onPress: inputs.onJoin,
+							isPending: inputs.isJoining,
+						},
+						["Join #", channel.name],
+					),
 				],
 			)
 
@@ -67,34 +85,41 @@ export const typingUsersOf = (
 
 const DOT = "inline-block size-1.5 animate-bounce rounded-full bg-muted-fg"
 
-export const typingIndicatorView = <M>(
-	h: HtmlBuilder<M>,
-	typingUsers: ReadonlyArray<Pick<UserInfo, "firstName">>,
-): Html => {
-	if (typingUsers.length === 0) return h.empty
+/** The typing users' first names, reusing `previous` when they did not change (the composer's memo reads it). */
+export const typingNamesOf = (previous: ReadonlyArray<string>, typingUsers: ReadonlyArray<UserInfo>) => {
+	const next = typingUsers.map((user) => user.firstName)
+	return next.length === previous.length && next.every((name, index) => name === previous[index])
+		? previous
+		: next
+}
+
+/** A polite live region that is always there, so screen readers announce who starts typing. */
+export const typingIndicatorView = <M>(h: HtmlBuilder<M>, firstNames: ReadonlyArray<string>): Html => {
 	const text =
-		typingUsers.length === 1
-			? `${typingUsers[0]!.firstName} is typing...`
-			: typingUsers.length === 2
-				? `${typingUsers[0]!.firstName} and ${typingUsers[1]!.firstName} are typing...`
-				: `${typingUsers[0]!.firstName} and ${typingUsers.length - 1} others are typing...`
+		firstNames.length === 1
+			? `${firstNames[0]} is typing...`
+			: firstNames.length === 2
+				? `${firstNames[0]} and ${firstNames[1]} are typing...`
+				: `${firstNames[0]} and ${firstNames.length - 1} others are typing...`
 	return h.div(
-		[h.Class("absolute bottom-full left-4 pb-1")],
-		[
-			h.div(
-				[h.Class("flex h-3 items-center gap-2 text-muted-fg text-xs")],
-				[
+		[h.Class("absolute bottom-full left-4 pb-1"), h.AriaLive("polite")],
+		firstNames.length === 0
+			? []
+			: [
 					h.div(
-						[h.Class("flex gap-1")],
+						[h.Class("flex h-3 items-center gap-2 text-muted-fg text-xs")],
 						[
-							h.span([h.Class(`${DOT} [animation-delay:-0.3s]`)]),
-							h.span([h.Class(`${DOT} [animation-delay:-0.15s]`)]),
-							h.span([h.Class(DOT)]),
+							h.div(
+								[h.Class("flex gap-1")],
+								[
+									h.span([h.Class(`${DOT} [animation-delay:-0.3s]`)]),
+									h.span([h.Class(`${DOT} [animation-delay:-0.15s]`)]),
+									h.span([h.Class(DOT)]),
+								],
+							),
+							h.span([], [text]),
 						],
 					),
-					h.span([], [text]),
 				],
-			),
-		],
 	)
 }

@@ -50,7 +50,7 @@ const headerView = <M>(context: FilesContext<M>, fileCount: number): Html => {
 
 /** `DocumentItem` of `channel-files-documents-list.tsx`. */
 const documentItem = <M>(context: FilesContext<M>, attachment: FileAttachment): Html => {
-	const { h, model, toParentMessage } = context
+	const { h, nowMs, toParentMessage } = context
 	const uploader = uploaderIdentity(attachment.uploader)
 	return h.keyed("div")(
 		attachment.id,
@@ -72,7 +72,7 @@ const documentItem = <M>(context: FilesContext<M>, attachment: FileAttachment): 
 						[
 							h.span([], [formatFileSize(attachment.fileSize)]),
 							h.span([h.AriaHidden(true)], ["·"]),
-							h.span([], [formatRelativeTime(attachment.uploadedAtMs, model.nowMs)]),
+							h.span([], [formatRelativeTime(attachment.uploadedAtMs, nowMs)]),
 						],
 					),
 				],
@@ -219,10 +219,17 @@ const mediaPageView = <M>(context: FilesContext<M>): Html => {
 	)
 }
 
-export const view = <M>(h: HtmlBuilder<M>, model: Model, toParentMessage: (message: Message) => M): Html => {
+/** `nowMs` is the shared clock, for "Today" / "Yesterday" (legacy reads `new Date()` at render). */
+export const view = <M>(
+	h: HtmlBuilder<M>,
+	model: Model,
+	toParentMessage: (message: Message) => M,
+	nowMs: number,
+): Html => {
 	const context: FilesContext<M> = {
 		h,
 		model,
+		nowMs,
 		toParentMessage,
 		wiring: {
 			model: model.interaction,
@@ -231,3 +238,5 @@ export const view = <M>(h: HtmlBuilder<M>, model: Model, toParentMessage: (messa
 	}
 	return model.view === "media" ? mediaPageView(context) : filesView(context)
 }
+
+export { imageViewerOverlay } from "./media-view"

@@ -5,7 +5,8 @@ import { AppRoute, hrefOf } from "../../../route"
 import type * as Interaction from "../../../ui/aria/interaction"
 import { button } from "../../../ui/button"
 import { isVideo, isViewerImage, mediaOf, visibleCountFor } from "./derive"
-import { Message, type Model } from "./page"
+import { imageViewerView } from "../../../chat/image-viewer"
+import { Message, type Model, viewerImagesOf } from "./page"
 import type { FileAttachment } from "./queries"
 
 /** Ports of `ChannelFilesMediaGrid` (one row plus "See all") and `MediaGalleryView` (masonry). */
@@ -13,6 +14,7 @@ import type { FileAttachment } from "./queries"
 export interface FilesContext<M> {
 	readonly h: HtmlBuilder<M>
 	readonly model: Model
+	readonly nowMs: number
 	readonly toParentMessage: (message: Message) => M
 	readonly wiring: Interaction.Wiring<M>
 }
@@ -158,7 +160,7 @@ const seeAllItem = <M>(
 	)
 }
 
-/** `ChannelFilesMediaGrid`; the image viewer modal is not ported (see `viewerImageId`). */
+/** `ChannelFilesMediaGrid`; an image opens `ImageViewerModal` (`imageViewerOverlay`). */
 export const mediaGridView = <M>(
 	context: FilesContext<M>,
 	attachments: ReadonlyArray<FileAttachment>,
@@ -225,4 +227,36 @@ export const mediaGalleryView = <M>(context: FilesContext<M>): Html => {
 			),
 		],
 	)
+}
+
+/** `ImageViewerModal` over the channel's images, open on `viewerImageId`. */
+export const imageViewerOverlay = <M>(
+	h: HtmlBuilder<M>,
+	model: Model,
+	toParentMessage: (message: Message) => M,
+): Html => {
+	const images = viewerImagesOf(model)
+	const index = images.findIndex((image) => image.id === model.viewerImageId)
+	const image = images[index]
+	if (image === undefined) return h.empty
+	const uploader = image.uploader
+	return imageViewerView(h, {
+		images,
+		index,
+		author:
+			uploader === null
+				? null
+				: {
+						name: `${uploader.firstName} ${uploader.lastName}`,
+						avatarUrl: uploader.avatarUrl,
+						seed: `${uploader.firstName} ${uploader.lastName}`,
+					},
+		createdAtMs: image.uploadedAtMs,
+		toClose: () => toParentMessage(Message.ClosedImageViewer()),
+		toSelect: (selected) => toParentMessage(Message.SelectedViewerImage({ index: selected })),
+		toAction: (action, selected) =>
+			toParentMessage(
+				Message.ClickedViewerAction({ action, url: selected.url, fileName: selected.fileName }),
+			),
+	})
 }

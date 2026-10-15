@@ -3,65 +3,71 @@ import { contentStyles, rootStyles } from "~/components/ui/split-panel/split-pan
 import { isImageAttachment } from "../../../chat/attachments"
 import { imageViewerView } from "../../../chat/image-viewer"
 import { dateDividerView, messageRowView, type RowContext } from "../../../chat/message/row"
-import * as MessageList from "../../../mount/message-list"
-import { joinBannerView, typingIndicatorView, typingUsersOf } from "../banners"
-import { authorIdentity } from "../derive"
-import * as FilesView from "../files/view"
-import { mobileMenuButton } from "../../../shell/mobile"
-import { chatHeaderView } from "../header"
-import { pinnedPopoverView } from "../pinned"
-import { messageToolbarOverlay, reactionModalView, trackHoverAttribute } from "../overlay-views"
-import { attachmentInfoFrom, composerAreaView, replyPreviewOf } from "../composer-view"
 import type * as Draft from "../../../composer/draft"
 import { draftView } from "../../../composer/draft-view"
+import * as MessageList from "../../../mount/message-list"
+import { mobileMenuButton } from "../../../shell/mobile"
+import { joinBannerView, typingIndicatorView } from "../banners"
+import { attachmentInfoFrom, composerAreaView, replyPreviewOf } from "../composer-view"
+import { authorIdentity } from "../derive"
+import * as FilesPage from "../files/page"
+import * as FilesView from "../files/view"
+import { chatHeaderView } from "../header"
+import { messageToolbarOverlay, reactionModalView, trackHoverAttribute } from "../overlay-views"
 import * as Overlays from "../overlays"
-import { deriveContextOf, isMemberOf, Message, type Model } from "./page"
+import { pinnedPopoverView } from "../pinned"
 import { idleRowContext, rowContextFor } from "../row-context"
-import type { DisplayRow } from "../rows"
+import type { DisplayRow, MessageRow } from "../rows"
 import { chatTabBarView } from "../tab-bar"
 import { threadPanelView } from "../thread-panel"
+import { deriveContextOf, isMemberOf, Message, type Model, routeTabOf, type ThreadPanel } from "./page"
 
 /** The channel route's content: header, tab bar, message list and composer (desktop). */
 
-/** One memo slot per rendered row; slots of rows that scroll away are dropped. */
-const rowSlots = new Map<string, ReturnType<typeof createLazy>>()
-const renderedThisFrame = new Set<string>()
-const MAX_IDLE_SLOTS = 200
+type H = HtmlBuilder<Message>
 
-const rowView = <M>(
+// The page's mappers, built once, so the lazy views that take them keep their memo.
+
+const toSelf = (message: Message) => message
+const toListMessage = (message: MessageList.Message) => Message.GotListMessage({ message })
+const toDraftMessage = (message: Draft.Message) => Message.GotDraftMessage({ message })
+const toThreadDraftMessage = (message: Draft.Message) => Message.GotThreadDraftMessage({ message })
+const toFilesMessage = (message: FilesPage.Message) => Message.GotFilesMessage({ message })
+const toOverlay = (message: Overlays.Message) => Message.GotOverlaysMessage({ message })
+const toPinnedMessage = (message: Parameters<typeof Overlays.Message.GotPinnedMessage>[0]["message"]) =>
+	toOverlay(Overlays.Message.GotPinnedMessage({ message }))
+
+const rowView = (
 	row: DisplayRow,
 	isStuck: boolean,
 	isHovered: boolean,
-	context: RowContext<M>,
-	h: HtmlBuilder<M>,
+	context: RowContext<Message>,
+	h: H,
 ): Html =>
 	row._tag === "DateHeader"
 		? dateDividerView(h, row.label, isStuck)
 		: messageRowView(h, row, context, isHovered)
 
-const memoRow = <M>(
-	h: HtmlBuilder<M>,
+// One memo slot per row object, a pure view memo: a row derived again gets a fresh slot and the old
+// one goes with the old row (rows keep their identity while nothing they show changes).
+const rowSlots = new WeakMap<DisplayRow, ReturnType<typeof createLazy>>()
+
+const memoRow = (
+	h: H,
 	row: DisplayRow,
 	isStuck: boolean,
 	isHovered: boolean,
-	context: RowContext<M>,
+	context: RowContext<Message>,
 ): Html => {
-	let slot = rowSlots.get(row.key)
-	// createKeyedLazy never evicts and message rows are unbounded, so slots live here and pruneRowSlots drops them.
+	let slot = rowSlots.get(row)
+	// createKeyedLazy never evicts and message rows are unbounded, so slots live with their row.
 	// oxlint-disable-next-line foldkit/lazy-view-stable-references
-	if (slot === undefined) rowSlots.set(row.key, (slot = createLazy()))
-	renderedThisFrame.add(row.key)
+	if (slot === undefined) rowSlots.set(row, (slot = createLazy()))
 	return slot(rowView, [row, isStuck, isHovered, context, h]) ?? h.div([])
 }
 
-const pruneRowSlots = () => {
-	if (rowSlots.size > renderedThisFrame.size + MAX_IDLE_SLOTS)
-		for (const key of rowSlots.keys()) if (!renderedThisFrame.has(key)) rowSlots.delete(key)
-	renderedThisFrame.clear()
-}
-
 /** `MessageList`'s empty state. */
-const emptyStateView = <M>(h: HtmlBuilder<M>): Html =>
+const emptyStateView = (h: H): Html =>
 	h.div(
 		[h.Class("flex size-full flex-col items-center justify-center p-4 sm:p-8")],
 		[
@@ -109,22 +115,17 @@ const stableInput = (isEqual: (a: Model, b: Model) => boolean) => {
 const listInputOf = stableInput(isListInputEqual)
 const lazyList = createLazy()
 
-const messageListView = <M>(
-	h: HtmlBuilder<M>,
-	model: Model,
-	toParentMessage: (message: Message) => M,
-	nowMs: number,
-): Html => lazyList(listView, [listInputOf(model), toParentMessage, nowMs, h]) ?? h.empty
+/** The presence clock only matters to an open profile popover; otherwise it is left out of the memo. */
+const popoverClockOf = (model: Model, nowMs: number) => (model.overlays.open._tag === "Popover" ? nowMs : 0)
 
-const listView = <M>(
-	model: Model,
-	toParentMessage: (message: Message) => M,
-	nowMs: number,
-	h: HtmlBuilder<M>,
-): Html => {
+const messageListView = (h: H, model: Model, nowMs: number): Html =>
+	lazyList(listView, [listInputOf(model), popoverClockOf(model, nowMs), h]) ?? h.empty
+
+const listView = (model: Model, nowMs: number, h: H): Html => {
 	if (!model.hasLoadedMessages) return h.div([])
 	if (model.messages.length === 0) return emptyStateView(h)
-	const idle = idleRowContext(h, model, toParentMessage)
+	const idle = idleRowContext(h, model)
+	const hovered = Overlays.hoveredMessageIdOf(model.overlays)
 	const list = MessageList.view(h, model.list, {
 		items: model.rows,
 		itemToKey: (row) => row.key,
@@ -133,13 +134,12 @@ const listView = <M>(
 				h,
 				row,
 				isStuck,
-				row.key === model.overlays.hoveredMessageId,
-				row._tag === "MessageRow" ? rowContextFor(h, model, row, toParentMessage, idle, nowMs) : idle,
+				row.key === hovered,
+				row._tag === "MessageRow" ? rowContextFor(h, model, row, idle, nowMs) : idle,
 			),
 		isStickyHeader: (row) => row._tag === "DateHeader",
-		toParentMessage: (message) => toParentMessage(Message.GotListMessage({ message })),
+		toParentMessage: toListMessage,
 	})
-	pruneRowSlots()
 	// Keyed: the not-yet-loaded placeholder is also a div, and a reused element never runs OnMount.
 	return h.keyed("div")(
 		"message-list-container",
@@ -148,7 +148,7 @@ const listView = <M>(
 				"isolate flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-2 transition-opacity duration-200",
 			),
 			h.Attribute("style", "overflow-anchor: auto; scroll-behavior: auto; opacity: 1;"),
-			trackHoverAttribute(h, toParentMessage),
+			trackHoverAttribute(h),
 		],
 		[
 			// The legacy hover highlight (injected `#message-<id>` CSS) is a class on the hovered row:
@@ -158,17 +158,19 @@ const listView = <M>(
 	)
 }
 
+/** The row an image viewer opened from: a channel row, or a reply in the open thread. */
+const viewerRowOf = (model: Model, messageId: string): MessageRow | undefined => {
+	const row = model.rows.find((candidate) => candidate.key === messageId)
+	if (row !== undefined) return row._tag === "MessageRow" ? row : undefined
+	return model.threadPanel?.rows.find((candidate) => candidate.key === messageId)
+}
+
 /** `ImageViewerModal` for the message whose attachment was clicked. */
-const imageViewerOverlay = <M>(
-	h: HtmlBuilder<M>,
-	model: Model,
-	toParentMessage: (message: Message) => M,
-): Html => {
-	const viewer = model.overlays.imageViewer
+const imageViewerOverlay = (h: H, model: Model): Html => {
+	const viewer = Overlays.imageViewerOf(model.overlays)
 	if (viewer === null) return h.empty
-	const row = model.rows.find((candidate) => candidate.key === viewer.messageId)
-	if (row === undefined || row._tag !== "MessageRow") return h.empty
-	const overlays = (message: Overlays.Message) => toParentMessage(Message.GotOverlaysMessage({ message }))
+	const row = viewerRowOf(model, viewer.messageId)
+	if (row === undefined) return h.empty
 	return imageViewerView(h, {
 		images:
 			viewer.urlImages === null
@@ -188,90 +190,60 @@ const imageViewerOverlay = <M>(
 				}
 			: null,
 		createdAtMs: row.message.createdAtMs,
-		toClose: () => overlays(Overlays.Message.ClosedImageViewer()),
-		toSelect: (index) => overlays(Overlays.Message.SelectedViewerImage({ index })),
+		toClose: () => toOverlay(Overlays.Message.ClosedImageViewer()),
+		toSelect: (index) => toOverlay(Overlays.Message.SelectedViewerImage({ index })),
 		toAction: (action, image) =>
-			overlays(Overlays.Message.ClickedViewerAction({ action, url: image.url, fileName: image.fileName })),
+			toOverlay(
+				Overlays.Message.ClickedViewerAction({ action, url: image.url, fileName: image.fileName }),
+			),
 	})
 }
 
 /** `$id/index.tsx`: the join banner for non-members, else the list and the composer. */
-const messagesOutlet = <M>(
-	h: HtmlBuilder<M>,
-	model: Model,
-	toParentMessage: (message: Message) => M,
-	nowMs: number,
-) => {
-	const isMember = isMemberOf(model)
-	if (isMember === false) return [joinBannerView(h, model.channel)]
-	const typingUsers = typingUsersOf(
-		model.typing,
-		model.members,
-		model.lookups.users,
-		model.currentUserId,
-		model.typingNowMs,
-	)
+const messagesOutlet = (h: H, model: Model, nowMs: number) => {
+	if (isMemberOf(model) === false)
+		return [
+			joinBannerView(h, model.channel, {
+				isJoining: model.isJoining,
+				onJoin: Message.ClickedJoinChannel(),
+			}),
+		]
 	// Passed to the lazy composer as strings, so an unchanged reply keeps its memo.
 	const reply = replyPreviewOf(model, model.draft)
 	return [
-		h.div(
-			[h.Class("flex min-h-0 flex-1 flex-col overflow-hidden")],
-			[messageListView(h, model, toParentMessage, nowMs)],
-		),
+		h.div([h.Class("flex min-h-0 flex-1 flex-col overflow-hidden")], [messageListView(h, model, nowMs)]),
 		lazyComposer(composerView, [
-			typingUsers.length === 0 ? null : typingUsers.map((user) => user.firstName).join(),
+			model.typingNames,
 			model.draft,
 			reply?.authorName ?? null,
 			reply?.firstLine ?? null,
 			model.lookups.attachments,
-			toParentMessage,
 			h,
 		]) ?? h.empty,
-		imageViewerOverlay(h, model, toParentMessage),
-		lazyToolbar(messageToolbarOverlay, [h, toolbarInputOf(model), toParentMessage]) ?? h.empty,
-		reactionModalView(h, model, toParentMessage),
+		imageViewerOverlay(h, model),
+		lazyToolbar(messageToolbarOverlay, [h, toolbarInputOf(model)]) ?? h.empty,
+		reactionModalView(h, model),
 	]
 }
 
-const composerView = <M>(
-	typingKey: string | null,
+const composerView = (
+	typingNames: ReadonlyArray<string>,
 	draft: Draft.Model,
 	replyAuthorName: string | null,
 	replyFirstLine: string | null,
 	attachments: Model["lookups"]["attachments"],
-	toParentMessage: (message: Message) => M,
-	h: HtmlBuilder<M>,
+	h: H,
 ) =>
-	composerAreaView(
-		h,
-		typingKey === null
-			? null
-			: typingIndicatorView(
-					h,
-					typingKey.split(",").map((firstName) => ({ firstName })),
-				),
-		draft,
-		{
-			toMessage: toDraftMessage(toParentMessage),
-			replyPreview:
-				replyAuthorName === null || replyFirstLine === null
-					? null
-					: { authorName: replyAuthorName, firstLine: replyFirstLine },
-			attachmentInfo: attachmentInfoFrom(attachments),
-		},
-	)
+	composerAreaView(h, typingIndicatorView(h, typingNames), draft, {
+		toMessage: toDraftMessage,
+		replyPreview:
+			replyAuthorName === null || replyFirstLine === null
+				? null
+				: { authorName: replyAuthorName, firstLine: replyFirstLine },
+		attachmentInfo: attachmentInfoFrom(attachments),
+	})
 
-/** One mapping function per parent mapping, so the composer's lazy arguments stay equal. */
-const draftMappers = new WeakMap<object, (message: Draft.Message) => unknown>()
-const toDraftMessage = <M>(toParentMessage: (message: Message) => M): ((message: Draft.Message) => M) => {
-	const cached = draftMappers.get(toParentMessage)
-	if (cached) return cached as (message: Draft.Message) => M
-	const mapper = (message: Draft.Message) => toParentMessage(Message.GotDraftMessage({ message }))
-	draftMappers.set(toParentMessage, mapper)
-	return mapper
-}
-
-const headerView = <M>(
+const headerView = (
 	channel: Model["channel"],
 	parentChannel: Model["parentChannel"],
 	orgSlug: Model["orgSlug"],
@@ -281,14 +253,12 @@ const headerView = <M>(
 	pinnedPopover: Model["overlays"]["pinned"],
 	pins: Model["pinned"],
 	isMobile: boolean,
-	toParentMessage: (message: Message) => M,
-	h: HtmlBuilder<M>,
+	h: H,
 ): Html => {
-	const model = { lookups, members, currentUserId }
-	const users = new Map(model.lookups.users.map((user) => [user.id, user]))
-	const botNames = new Map(model.lookups.bots.map((bot) => [bot.userId, bot.name]))
-	const others = (model.members ?? []).filter((member) => member.userId !== model.currentUserId)
-	const currentMember = (model.members ?? []).find((member) => member.userId === model.currentUserId)
+	const users = new Map(lookups.users.map((user) => [user.id, user]))
+	const botNames = new Map(lookups.bots.map((bot) => [bot.userId, bot.name]))
+	const others = (members ?? []).filter((member) => member.userId !== currentUserId)
+	const currentMember = (members ?? []).find((member) => member.userId === currentUserId)
 	return chatHeaderView(h, {
 		channel,
 		parentChannel,
@@ -303,15 +273,11 @@ const headerView = <M>(
 		mobileMenu: (className) =>
 			isMobile
 				? mobileMenuButton(h, {
-						onPress: h.OnClick(toParentMessage(Message.ClickedMobileMenu())),
+						onPress: h.OnClick(Message.ClickedMobileMenu()),
 						...(className === undefined ? {} : { className }),
 					})
 				: h.empty,
-		pinnedTrigger: pinnedPopoverView(h, pinnedPopover, pins, (message) =>
-			toParentMessage(
-				Message.GotOverlaysMessage({ message: Overlays.Message.GotPinnedMessage({ message }) }),
-			),
-		),
+		pinnedTrigger: pinnedPopoverView(h, pinnedPopover, pins, toPinnedMessage),
 	})
 }
 
@@ -330,19 +296,20 @@ const lazyToolbar = createLazy()
 const lazyHeader = createLazy()
 const lazyTabBar = createLazy()
 const lazyComposer = createLazy()
+const lazyThreadPanel = createLazy()
+
+export interface ViewOptions {
+	readonly isMobile?: boolean
+	/** `Shared.nowMs`, the presence clock the profile popover and the Files dates read. */
+	readonly nowMs?: number
+}
 
 /** `SplitPanelRoot` > `SplitPanelContent` with the channel's current tab inside. */
-export const view = <M>(
-	h: HtmlBuilder<M>,
-	model: Model,
-	toParentMessage: (message: Message) => M,
-	isMobile = false,
-	/** `Shared.nowMs`, the presence clock the profile popover reads. */
-	nowMs = 0,
-): Html =>
+export const view = (h: H, model: Model, options: ViewOptions = {}): Html => {
+	const nowMs = options.nowMs ?? 0
 	// Keyed by channel like React's `key={id}`: Mounts start on insert only, so a patched-in-place
 	// page would keep the previous channel's list observer and never measure the new viewport.
-	h.keyed("div")(
+	return h.keyed("div")(
 		model.channelId,
 		[h.Class(rootStyles({ className: "h-[calc(100dvh-4rem)] md:h-dvh" }))],
 		[
@@ -358,51 +325,61 @@ export const view = <M>(
 						model.currentUserId,
 						model.overlays.pinned,
 						model.pinned,
-						isMobile,
-						toParentMessage,
+						options.isMobile ?? false,
 						h,
 					]) ?? h.empty,
-					lazyTabBar(chatTabBarView, [model.tab, toParentMessage, h]) ?? h.empty,
-					...(model.tab === "messages" || model.files === null
-						? messagesOutlet(h, model, toParentMessage, nowMs)
-						: [
-								FilesView.view(h, model.files, (message) =>
-									toParentMessage(Message.GotFilesMessage({ message })),
-								),
-							]),
+					lazyTabBar(chatTabBarView, [routeTabOf(model.tab), toSelf, h]) ?? h.empty,
+					...(model.tab._tag === "Files"
+						? [
+								FilesView.view(h, model.tab.files, toFilesMessage, nowMs),
+								FilesView.imageViewerOverlay(h, model.tab.files, toFilesMessage),
+							]
+						: messagesOutlet(h, model, nowMs)),
 				],
 			),
-			threadPanelOverlay(h, model, toParentMessage),
+			model.threadPanel === null
+				? h.empty
+				: (lazyThreadPanel(threadPanelOverlay, [
+						model.threadPanel,
+						model.lookups,
+						model.messages,
+						model.currentUserId,
+						idleRowContext(h, model),
+						h,
+					]) ?? h.empty),
 		],
 	)
+}
 
 /** The `SplitPanel` beside the channel while a thread is open. */
-const threadPanelOverlay = <M>(
-	h: HtmlBuilder<M>,
-	model: Model,
-	toParentMessage: (message: Message) => M,
+const threadPanelOverlay = (
+	panel: ThreadPanel,
+	lookups: Model["lookups"],
+	messages: Model["messages"],
+	currentUserId: Model["currentUserId"],
+	rowContext: RowContext<Message>,
+	h: H,
 ): Html => {
-	const thread = model.overlays.thread
-	if (thread === null) return h.empty
-	const name = model.lookups.threadChannels.find((channel) => channel.id === thread.threadChannelId)?.name
+	const context = deriveContextOf({ lookups, currentUserId, unfurls: {}, liveStates: {} })
+	const name = lookups.threadChannels.find((channel) => channel.id === panel.threadChannelId)?.name
 	return threadPanelView(h, {
 		threadName: name || "Thread",
-		original: model.messages.find((message) => message.id === thread.messageId) ?? null,
-		messages: model.threadMessages,
-		context: deriveContextOf(model),
-		rowContext: idleRowContext(h, model, toParentMessage),
-		onClose: toParentMessage(Message.GotOverlaysMessage({ message: Overlays.Message.ClosedThread() })),
-		onGenerateName: toParentMessage(Message.ClickedGenerateThreadName()),
-		onRename: toParentMessage(Message.ClickedRenameThread()),
-		isGeneratingName: model.isGeneratingThreadName,
-		isCreating: model.pendingThreadChannelId === thread.threadChannelId,
-		composer:
-			model.threadDraft === null
-				? h.empty
-				: draftView(h, model.threadDraft, {
-						toMessage: (message) => toParentMessage(Message.GotThreadDraftMessage({ message })),
-						replyPreview: replyPreviewOf(model, model.threadDraft),
-						attachmentInfo: attachmentInfoFrom(model.lookups.attachments),
-					}),
+		original: messages.find((message) => message.id === panel.messageId) ?? null,
+		rows: panel.rows,
+		context,
+		rowContext,
+		onClose: Message.ClickedCloseThread(),
+		onGenerateName: Message.ClickedGenerateThreadName(),
+		onRename: Message.ClickedRenameThread(),
+		isGeneratingName: panel.isNaming,
+		isCreating: panel.creation === "Creating",
+		composer: draftView(h, panel.draft, {
+			toMessage: toThreadDraftMessage,
+			replyPreview: replyPreviewOf(
+				{ lookups, currentUserId, messages, threadPanel: panel },
+				panel.draft,
+			),
+			attachmentInfo: attachmentInfoFrom(lookups.attachments),
+		}),
 	})
 }

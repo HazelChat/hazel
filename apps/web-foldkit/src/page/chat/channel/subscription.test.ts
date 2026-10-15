@@ -2,7 +2,16 @@ import { ChannelId, TypingIndicatorId } from "@hazel/schema"
 import { Effect, Fiber, Schema, Stream } from "effect"
 import { describe, expect, test, vi } from "vitest"
 import { chatMessageOf, liveEmbeds } from "../../../test/chat-messages"
-import { adaMemberId, adaMessageId, loadedModel, messages, shared, updateWithShared } from "./fixtures.test-support"
+import {
+	adaMemberId,
+	adaMessageId,
+	loadedMessages,
+	loadedModel,
+	messages,
+	shared,
+	updateWithShared,
+} from "./fixtures.test-support"
+import { setTab } from "./page"
 import { Message, type Model } from "./model"
 import { indicatorIdsOf, subscriptions, type TypingCleanup, typingCleanupStream } from "./subscription"
 
@@ -11,7 +20,9 @@ import { indicatorIdsOf, subscriptions, type TypingCleanup, typingCleanupStream 
 // The Files tab's `ui/aria/interaction` and ProseMirror's view read `document` at import; node has none.
 vi.hoisted(() => {
 	if (!("document" in globalThis))
-		Object.assign(globalThis, { document: Object.assign(new EventTarget(), { documentElement: { style: {} } }) })
+		Object.assign(globalThis, {
+			document: Object.assign(new EventTarget(), { documentElement: { style: {} } }),
+		})
 })
 
 const input = (model: Model) => ({ model, shared })
@@ -43,9 +54,11 @@ describe("channel subscription gates", () => {
 
 	test("an AI reply in the window opens its actor connection; finished ones never do", () => {
 		const live = chatMessageOf(10, { embeds: liveEmbeds, hasEmbeds: true })
-		const model = updateWithShared(loadedModel(), Message.UpdatedMessages({ messages: [live, ...messages] })).model
-		expect(subscriptions.chatLiveReplies.modelToDependencies(input(model))).toEqual({ messageIds: [live.id] })
-		const idle = updateWithShared(loadedModel(), Message.UpdatedMessages({ messages })).model
+		const model = updateWithShared(loadedModel(), loadedMessages([live, ...messages])).model
+		expect(subscriptions.chatLiveReplies.modelToDependencies(input(model))).toEqual({
+			messageIds: [live.id],
+		})
+		const idle = updateWithShared(loadedModel(), loadedMessages(messages)).model
 		expect(subscriptions.chatLiveReplies.modelToDependencies(input(idle))).toEqual({ messageIds: [] })
 	})
 
@@ -53,23 +66,30 @@ describe("channel subscription gates", () => {
 		const { keepAliveEquivalence } = subscriptions.chatLiveReplies
 		const first = chatMessageOf(10, { embeds: liveEmbeds, hasEmbeds: true })
 		const second = chatMessageOf(11, { embeds: liveEmbeds, hasEmbeds: true })
-		expect(keepAliveEquivalence({ messageIds: [first.id] }, { messageIds: [first.id, second.id] })).toBe(true)
+		expect(keepAliveEquivalence({ messageIds: [first.id] }, { messageIds: [first.id, second.id] })).toBe(
+			true,
+		)
 		expect(keepAliveEquivalence({ messageIds: [first.id] }, { messageIds: [] })).toBe(false)
 	})
 
 	test("global typing is off on the Files tab", () => {
-		const files: Model = { ...loadedModel(), tab: "files" }
+		const files = setTab(loadedModel(), "files")
 		expect(subscriptions.globalTyping.modelToDependencies(input(files))).toEqual({ isActive: false })
-		expect(subscriptions.globalTyping.modelToDependencies(input(loadedModel()))).toEqual({ isActive: true })
+		expect(subscriptions.globalTyping.modelToDependencies(input(loadedModel()))).toEqual({
+			isActive: true,
+		})
 	})
 
 	test("an AI reply streaming in the open thread panel opens its actor connection", () => {
 		const live = chatMessageOf(20, { channelId: threadChannelId, embeds: liveEmbeds, hasEmbeds: true })
-		const opened: Model = {
-			...loadedModel(),
-			overlays: { ...loadedModel().overlays, thread: { threadChannelId, messageId: adaMessageId } },
-		}
-		const model = updateWithShared(opened, Message.UpdatedThreadPanelMessages({ messages: [live] })).model
+		const opened = updateWithShared(
+			loadedModel(),
+			Message.ClickedThreadPreview({ threadChannelId, messageId: adaMessageId }),
+		).model
+		const model = updateWithShared(
+			opened,
+			Message.UpdatedThreadPanelMessages({ threadChannelId, messages: [live] }),
+		).model
 		expect(subscriptions.chatLiveReplies.modelToDependencies(input(model)).messageIds).toContain(live.id)
 	})
 })
@@ -84,10 +104,13 @@ describe("typing cleanup on leaving the page", () => {
 		Effect.runPromise(
 			Effect.gen(function* () {
 				const deleted: Array<TypingIndicatorId> = []
-				const fiber = yield* typingCleanupStream(own, () => latest, (id) =>
-					Effect.sync(() => {
-						deleted.push(id)
-					}),
+				const fiber = yield* typingCleanupStream(
+					own,
+					() => latest,
+					(id) =>
+						Effect.sync(() => {
+							deleted.push(id)
+						}),
 				).pipe(Stream.runDrain, Effect.forkChild)
 				yield* Effect.yieldNow
 				yield* Fiber.interrupt(fiber)
@@ -97,7 +120,10 @@ describe("typing cleanup on leaving the page", () => {
 
 	test("the drafts' indicators are the dependencies", () => {
 		const model = loadedModel()
-		const typing: Model = { ...model, draft: { ...model.draft, typing: { ...model.draft.typing, indicatorId } } }
+		const typing: Model = {
+			...model,
+			draft: { ...model.draft, typing: { ...model.draft.typing, indicatorId } },
+		}
 		expect(indicatorIdsOf(model)).toEqual([])
 		expect(subscriptions.typingCleanup.modelToDependencies(input(typing))).toEqual(own)
 	})

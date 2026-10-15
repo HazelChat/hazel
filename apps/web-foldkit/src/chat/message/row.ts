@@ -9,6 +9,7 @@ import { messageEmbedsView } from "../embeds"
 import { liveView } from "../embeds/live-view"
 import { gifView, linkPreviewView, tweetView, youtubeView } from "../embeds/url-embeds"
 import { markdownView } from "../markdown/markdown-view"
+import { tweetOf } from "../unfurl"
 import { processMessageUrls } from "./content"
 import { formatTime, headerView, replySectionView, threadPreviewView } from "./parts"
 import { reactionButton, statusEmojiView, type TooltipContext } from "./tooltips"
@@ -84,19 +85,34 @@ export const avatarButton = <M>(
 	)
 
 /** One URL embed; tweet photos and GIFs open the image viewer. */
-const urlEmbedView = <M>(h: HtmlBuilder<M>, row: MessageRow, embed: UrlEmbed, context: RowContext<M>): Html => {
+const urlEmbedView = <M>(
+	h: HtmlBuilder<M>,
+	row: MessageRow,
+	embed: UrlEmbed,
+	context: RowContext<M>,
+): Html => {
 	const messageId = row.message.id
 	return UrlEmbed.match<Html>(embed, {
 		Tweet: ({ unfurl }) => {
-			const tweet = unfurl?._tag === "LoadedTweet" ? unfurl.tweet : null
-			const photos = tweet?.photos?.map((photo) => ({ url: photo.url, alt: tweet.text || "Tweet image" })) ?? []
+			const tweet = tweetOf(unfurl)
+			const photos =
+				tweet?.photos?.map((photo) => ({ url: photo.url, alt: tweet.text || "Tweet image" })) ?? []
 			// Legacy only mounts the viewer for a message with an author.
 			const canOpen = photos.length > 0 && row.message.author !== null
-			return tweetView(h, unfurl, canOpen ? (index) => context.toOpenEmbedImage(messageId, photos, index) : null)
+			return tweetView(
+				h,
+				unfurl,
+				canOpen ? (index) => context.toOpenEmbedImage(messageId, photos, index) : null,
+			)
 		},
 		Youtube: ({ embedUrl }) => youtubeView(h, embedUrl),
 		Gif: ({ mediaUrl, isKlipy }) =>
-			gifView(h, mediaUrl, isKlipy, context.toOpenEmbedImage(messageId, [{ url: mediaUrl, alt: "GIF" }], 0)),
+			gifView(
+				h,
+				mediaUrl,
+				isKlipy,
+				context.toOpenEmbedImage(messageId, [{ url: mediaUrl, alt: "GIF" }], 0),
+			),
 		LinkPreview: ({ url, unfurl }) => linkPreviewView(h, url, unfurl),
 	})
 }
@@ -108,7 +124,11 @@ const contentView = <M>(h: HtmlBuilder<M>, row: MessageRow, context: RowContext<
 	return [
 		row.live === null && displayContent ? markdownView(h, displayContent, row.refs) : h.empty,
 		...row.urlEmbeds.map((embed) => urlEmbedView(h, row, embed, context)),
-		messageEmbedsView(h, message.embeds, row.live === null ? h.empty : liveView(h, row.live.state, row.live.loading)),
+		messageEmbedsView(
+			h,
+			message.embeds,
+			row.live === null ? h.empty : liveView(h, row.live.state, row.live.loading),
+		),
 	]
 }
 
