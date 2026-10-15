@@ -1,7 +1,4 @@
-import { Option } from "effect"
-import { Subscription, Update } from "foldkit"
 import type { Html, HtmlBuilder } from "foldkit/html"
-import * as Interaction from "../../ui/aria/interaction"
 import {
 	sectionHeaderGroup,
 	sectionHeaderHeading,
@@ -9,7 +6,6 @@ import {
 	sectionHeaderSubheading,
 } from "../../ui/section-header"
 import { sectionLabelRoot } from "../../ui/section-label"
-import type { PageSubscriptionInput } from "../contract"
 
 /** Markup every my-settings page repeats, ported from the legacy route components. */
 
@@ -38,20 +34,3 @@ export const settingsRow = <Message>(
 /** `<hr className="h-px w-full border-none bg-border" />` */
 export const divider = <Message>(h: HtmlBuilder<Message>): Html =>
 	h.hr([h.Class("h-px w-full border-none bg-border")])
-
-/** The interaction Submodel wiring (hover, press, focus-visible) a page embeds once. */
-export const embedInteraction = <Model extends { readonly interaction: Interaction.Model }, Message>(
-	toParentMessage: (message: Interaction.Message) => Message,
-) => ({
-	fold: Update.foldChild({
-		update: Interaction.update,
-		read: (model: Model) => Option.some(model.interaction),
-		write: (model: Model, interaction: Interaction.Model): Model => ({ ...model, interaction }),
-		toParentMessage,
-	}),
-	subscriptions: Subscription.lift(Interaction.subscriptions)<PageSubscriptionInput<Model>, Message>({
-		read: (input) => Option.some(input.model.interaction),
-		toParentMessage,
-	}),
-	wiring: (model: Model): Interaction.Wiring<Message> => ({ model: model.interaction, toParentMessage }),
-})
