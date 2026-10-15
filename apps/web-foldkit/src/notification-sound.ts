@@ -39,7 +39,11 @@ const minutesOfDay = (time: string): number => {
 }
 
 /** Whether `nowMs` (local time) falls in the user's quiet hours; a window may span midnight. */
-export const isInQuietHours = (quietHoursStart: string | null, quietHoursEnd: string | null, nowMs: number): boolean => {
+export const isInQuietHours = (
+	quietHoursStart: string | null,
+	quietHoursEnd: string | null,
+	nowMs: number,
+): boolean => {
 	if (!quietHoursStart || !quietHoursEnd) return false
 	const now = new Date(nowMs)
 	const current = now.getHours() * 60 + now.getMinutes()
@@ -58,5 +62,11 @@ export interface SoundMuteInputs {
 }
 
 /** Sounds are muted when disabled, in do not disturb, or during quiet hours. */
-export const isSoundMuted = ({ settings, doNotDisturb, quietHoursStart, quietHoursEnd, nowMs }: SoundMuteInputs) =>
+export const isSoundMuted = ({
+	settings,
+	doNotDisturb,
+	quietHoursStart,
+	quietHoursEnd,
+	nowMs,
+}: SoundMuteInputs) =>
 	!settings?.enabled || doNotDisturb || isInQuietHours(quietHoursStart, quietHoursEnd, nowMs)

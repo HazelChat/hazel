@@ -17,7 +17,13 @@ describe("text leaves", () => {
 	test("links keep their url and text", () => {
 		expect(textLeaves("see [docs](https://hazel.sh)")).toEqual([
 			{ text: "see " },
-			{ text: "[docs](https://hazel.sh)", type: "link", isMarker: false, url: "https://hazel.sh", linkText: "docs" },
+			{
+				text: "[docs](https://hazel.sh)",
+				type: "link",
+				isMarker: false,
+				url: "https://hazel.sh",
+				linkText: "docs",
+			},
 		])
 	})
 

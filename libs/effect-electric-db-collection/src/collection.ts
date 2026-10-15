@@ -6,7 +6,7 @@ import type { ElectricCollectionUtils, Txid } from "@tanstack/electric-db-collec
 import { electricCollectionOptions } from "@tanstack/electric-db-collection"
 import { createCollection as tanstackCreateCollection } from "@tanstack/db"
 import { Effect, type ManagedRuntime, Schema } from "effect"
-import { AwaitTxIdError, InvalidTxIdError, MaxRetriesExceededError, TxIdTimeoutError } from "./errors"
+import { AwaitTxIdError, InvalidTxIdError, TxIdTimeoutError } from "./errors"
 import { convertDeleteHandler, convertInsertHandler, convertUpdateHandler } from "./handlers"
 import type { BackoffConfig, EffectElectricCollectionConfig } from "./types"
 

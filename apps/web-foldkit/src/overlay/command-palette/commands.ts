@@ -92,8 +92,9 @@ export const TrackRecentChannel = Command.define("TrackRecentChannel", {
 					MAX_RECENT_CHANNELS,
 				),
 			),
-			Effect.flatMap((channels) => Effect.sync(() => localStorage.setItem(RECENT_CHANNELS_KEY, JSON.stringify(channels)))),
-			Effect.ignoreCause,
+			// Best effort: a full or blocked localStorage only loses the recent list.
+			Effect.flatMap((channels) => Effect.try(() => localStorage.setItem(RECENT_CHANNELS_KEY, JSON.stringify(channels)))),
+			Effect.ignore,
 			Effect.as(Message.CompletedTrackRecentChannel()),
 		),
 })

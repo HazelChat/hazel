@@ -83,6 +83,19 @@ describe("session token exchange", () => {
 		stop()
 	})
 
+	it("treats a body that is not a token as an unanswered exchange", async () => {
+		vi.useFakeTimers()
+		const { seen, stop } = rejections()
+		const fetch = vi.fn<typeof globalThis.fetch>(async () => Response.json({ token: 42 }))
+		vi.stubGlobal("fetch", fetch)
+		const token = readAccessToken()
+		await vi.runAllTimersAsync()
+		expect(await token).toBe("unavailable")
+		expect(fetch).toHaveBeenCalledTimes(3)
+		expect(seen).not.toHaveBeenCalled()
+		stop()
+	})
+
 	it("reports a refused session once, without retrying", async () => {
 		const { seen, stop } = rejections()
 		const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response(null, { status: 401 }))

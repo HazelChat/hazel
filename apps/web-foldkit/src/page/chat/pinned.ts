@@ -1,5 +1,5 @@
 import type { Html, HtmlBuilder } from "foldkit/html"
-import { format } from "~/lib/date-fns-shared"
+import { format } from "date-fns"
 import { IconClose, IconPin } from "../../icons"
 import { avatar } from "../../ui/avatar"
 import * as Popover from "../../ui/popover"

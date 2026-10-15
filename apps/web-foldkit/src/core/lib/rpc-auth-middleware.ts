@@ -5,12 +5,23 @@
 import { FetchHttpClient, Headers } from "effect/http"
 import { RpcMiddleware } from "effect/rpc"
 import { AuthMiddleware } from "@hazel/domain/rpc"
+import { SessionLoadError } from "@hazel/domain/errors"
 import { Effect, Layer } from "effect"
-import { sessionAuthorization } from "./session-bearer"
+import { sessionAuthorizationEffect } from "./session-bearer"
 
 export const AuthMiddlewareClientLive = RpcMiddleware.layerClient(AuthMiddleware, ({ request, next }) =>
 	Effect.gen(function* () {
-		const authorization = yield* Effect.promise(sessionAuthorization)
+		const authorization = yield* sessionAuthorizationEffect.pipe(
+			// An unreadable desktop session is the auth middleware's own "could not load the session".
+			Effect.catchTag("SessionBearerError", () =>
+				Effect.fail(
+					new SessionLoadError({
+						message: "Could not read the desktop session",
+						detail: "The session store did not answer",
+					}),
+				),
+			),
+		)
 		return yield* next(
 			authorization === null
 				? request

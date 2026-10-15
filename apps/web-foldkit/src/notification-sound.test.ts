@@ -55,7 +55,9 @@ describe("quiet hours", () => {
 			nowMs: at("12:00"),
 		}
 		expect(isSoundMuted(inputs)).toBe(false)
-		expect(isSoundMuted({ ...inputs, settings: { ...DEFAULT_SOUND_SETTINGS, enabled: false } })).toBe(true)
+		expect(isSoundMuted({ ...inputs, settings: { ...DEFAULT_SOUND_SETTINGS, enabled: false } })).toBe(
+			true,
+		)
 		expect(isSoundMuted({ ...inputs, doNotDisturb: true })).toBe(true)
 		expect(isSoundMuted({ ...inputs, nowMs: at("23:00") })).toBe(true)
 	})

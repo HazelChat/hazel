@@ -7,7 +7,7 @@ import {
 	OrganizationId,
 	UserId,
 } from "@hazel/schema"
-import { Cause, Effect, Schema } from "effect"
+import { Effect, Schema } from "effect"
 import { Command, File } from "foldkit"
 import { defineMessageUnion } from "foldkit/message"
 import { editMessageAction, sendMessageAction } from "~/db/actions"

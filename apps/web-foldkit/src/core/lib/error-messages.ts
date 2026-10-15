@@ -204,7 +204,10 @@ export interface UserErrorMessage {
 
 const COMMON_MESSAGES: { readonly [R in CommonReason]: UserErrorMessage } = {
 	Offline: { title: "Connection lost", description: "Check your internet connection and try again." },
-	Timeout: { title: "Request timed out", description: "The server is taking too long to respond. Please try again." },
+	Timeout: {
+		title: "Request timed out",
+		description: "The server is taking too long to respond. Please try again.",
+	},
 	SignedOut: { title: "Your session has expired", description: "Please sign in again to continue." },
 	RateLimited: { title: "Rate limit exceeded", description: "Please wait before trying again." },
 	Unavailable: { title: "Service temporarily unavailable", description: "Please try again in a moment." },
@@ -231,4 +234,4 @@ export const failureMessage = <Reason extends string>(
 ): UserErrorMessage =>
 	isCommonReason(reason)
 		? commonMessage(reason)
-		: (specific as Record<string, UserErrorMessage>)[reason] ?? DEFAULT_ERROR_MESSAGE
+		: ((specific as Record<string, UserErrorMessage>)[reason] ?? DEFAULT_ERROR_MESSAGE)

@@ -3,9 +3,13 @@
  * (the Electric proxy and the Rivet actors). The backend exchanges the HttpOnly session
  * cookie for an ES256 JWT at `POST /auth/token`; those hosts verify it against the API's
  * JWKS. Requests to the API itself authenticate with the cookie and need no token.
+ *
+ * The exchange is an Effect; the exports stay Promise functions because their callers are fetch
+ * wrappers outside any runtime (Electric's `fetchClient`, the Rivet connection).
  */
 
-import { sessionAuthorization } from "./session-bearer"
+import { Duration, Effect, Schedule, Schema } from "effect"
+import { sessionAuthorizationEffect } from "./session-bearer"
 
 interface CachedToken {
 	readonly token: string
@@ -31,57 +35,70 @@ let pending: Promise<AccessTokenResult> | null = null
  */
 export type AccessTokenResult = string | null | "unavailable"
 
-const backendUrl = () => import.meta.env.VITE_BACKEND_URL || "http://localhost:3003"
+/** The API could not answer the exchange: unreachable, a 5xx, or a body that isn't a token. */
+export class TokenExchangeError extends Schema.TaggedError<TokenExchangeError>()("TokenExchangeError", {
+	reason: Schema.Literals(["Unreachable", "ServerError", "BadResponse"]),
+	cause: Schema.optional(Schema.Defect()),
+}) {}
 
-const isTokenResponse = (value: unknown): value is { token: string; expiresIn: number } =>
-	typeof value === "object" &&
-	value !== null &&
-	"token" in value &&
-	typeof value.token === "string" &&
-	"expiresIn" in value &&
-	typeof value.expiresIn === "number"
+const TokenResponse = Schema.Struct({ token: Schema.String, expiresIn: Schema.Number })
+const decodeTokenResponse = Schema.decodeUnknownEffect(TokenResponse)
+
+const backendUrl = () => import.meta.env.VITE_BACKEND_URL || "http://localhost:3003"
 
 /** Attempts per exchange: a network error or 5xx right after sign-in is usually momentary. */
 const EXCHANGE_ATTEMPTS = 3
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+const unreachable = (cause: unknown) => new TokenExchangeError({ reason: "Unreachable", cause })
 
-/** `null` means the API answered and there is no session; `"unavailable"` means it could not answer. */
-const exchangeOnce = async (startedGeneration: number): Promise<AccessTokenResult> => {
-	try {
-		const authorization = await sessionAuthorization()
-		const response = await fetch(`${backendUrl()}/auth/token`, {
-			method: "POST",
-			// The desktop app's session is a bearer; a browser's is the API's cookie.
-			...(authorization === null
-				? { credentials: "include" as const, headers: { "x-effect-auth-csrf": "1" } }
-				: { credentials: "omit" as const, headers: { authorization } }),
+/** A token, or `null` when the API answered and there is no session (or sign-out superseded this exchange). */
+const exchangeOnce = (startedGeneration: number): Effect.Effect<string | null, TokenExchangeError> =>
+	Effect.gen(function* () {
+		const authorization = yield* sessionAuthorizationEffect.pipe(Effect.mapError(unreachable))
+		const response = yield* Effect.tryPromise({
+			try: () =>
+				fetch(`${backendUrl()}/auth/token`, {
+					method: "POST",
+					// The desktop app's session is a bearer; a browser's is the API's cookie.
+					...(authorization === null
+						? { credentials: "include" as const, headers: { "x-effect-auth-csrf": "1" } }
+						: { credentials: "omit" as const, headers: { authorization } }),
+				}),
+			catch: unreachable,
 		})
 		if (startedGeneration !== generation) return null
-		if (response.status >= 500) return "unavailable"
+		if (response.status >= 500) return yield* new TokenExchangeError({ reason: "ServerError" })
 		if (!response.ok) {
 			cached = null
 			if (response.status === 401) window.dispatchEvent(new Event(SESSION_REJECTED_EVENT))
 			return null
 		}
-		const body: unknown = await response.json()
-		if (startedGeneration !== generation || !isTokenResponse(body)) return null
+		const body = yield* Effect.tryPromise({
+			try: () => response.json(),
+			catch: (cause) => new TokenExchangeError({ reason: "BadResponse", cause }),
+		}).pipe(
+			Effect.flatMap(decodeTokenResponse),
+			Effect.catchTag("SchemaError", (cause) =>
+				Effect.fail(new TokenExchangeError({ reason: "BadResponse", cause })),
+			),
+		)
+		if (startedGeneration !== generation) return null
 		cached = { token: body.token, expiresAtMs: Date.now() + body.expiresIn * 1000 }
 		return body.token
-	} catch {
-		return "unavailable"
-	}
-}
+	})
 
-const exchange = async (startedGeneration: number): Promise<AccessTokenResult> => {
-	for (let attempt = 1; ; attempt++) {
-		const result = await exchangeOnce(startedGeneration)
-		if (result !== "unavailable") return result
-		if (startedGeneration !== generation) return null
-		if (attempt >= EXCHANGE_ATTEMPTS) return "unavailable"
-		await sleep(250 * 2 ** attempt)
-	}
-}
+/** Retries an exchange the API did not answer (500ms, then 1s), unless sign-out superseded it. */
+const exchange = (startedGeneration: number): Effect.Effect<AccessTokenResult> =>
+	exchangeOnce(startedGeneration).pipe(
+		Effect.retry({
+			schedule: Schedule.exponential(Duration.millis(500)),
+			times: EXCHANGE_ATTEMPTS - 1,
+			while: () => startedGeneration === generation,
+		}),
+		Effect.catchTag("TokenExchangeError", () =>
+			Effect.succeed<AccessTokenResult>(startedGeneration === generation ? "unavailable" : null),
+		),
+	)
 
 /**
  * The current access token, exchanged again shortly before it expires. Tells a refused session
@@ -91,7 +108,7 @@ export const readAccessToken = async (): Promise<AccessTokenResult> => {
 	if (typeof window === "undefined") return null
 	if (cached !== null && cached.expiresAtMs - Date.now() > RENEW_BEFORE_MS) return cached.token
 	if (pending === null) {
-		const request = exchange(generation).finally(() => {
+		const request = Effect.runPromise(exchange(generation)).finally(() => {
 			if (pending === request) pending = null
 		})
 		pending = request

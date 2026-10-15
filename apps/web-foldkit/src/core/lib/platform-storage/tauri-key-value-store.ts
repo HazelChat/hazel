@@ -43,7 +43,10 @@ export const layerTauriStore: Layer.Layer<KeyValueStore.KeyValueStore> = Layer.e
 		const withStore = <A>(method: string, key: string, run: (store: Store) => Promise<A>) =>
 			getStore.pipe(
 				Effect.flatMap((store) =>
-					Effect.tryPromise({ try: () => run(store), catch: (cause) => storeError(method, key, cause) }),
+					Effect.tryPromise({
+						try: () => run(store),
+						catch: (cause) => storeError(method, key, cause),
+					}),
 				),
 			)
 

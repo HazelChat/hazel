@@ -60,7 +60,9 @@ export function decorateMarkdown(text: string): ReadonlyArray<MarkdownRange> {
 
 	for (const match of text.matchAll(URL_PATTERN)) {
 		const index = match.index
-		const insideLink = ranges.some((range) => range.type === "link" && index >= range.start && index < range.end)
+		const insideLink = ranges.some(
+			(range) => range.type === "link" && index >= range.start && index < range.end,
+		)
 		if (insideLink) continue
 		const url = match[0]
 		ranges.push({
@@ -78,7 +80,8 @@ export function decorateMarkdown(text: string): ReadonlyArray<MarkdownRange> {
 			if (!openMarker || !content || !closeMarker) continue
 			const index = match.index
 			const overlapsLink = ranges.some(
-				(range) => range.type === "link" && index < range.end && index + fullMatch.length > range.start,
+				(range) =>
+					range.type === "link" && index < range.end && index + fullMatch.length > range.start,
 			)
 			if (overlapsLink) continue
 			const contentStart = index + openMarker.length
@@ -159,7 +162,10 @@ export function decorateEmoji(text: string): ReadonlyArray<EmojiRange> {
 }
 
 /** Slate's `Text.decorations`: split the text at range edges and `Object.assign` each range in order. */
-export function splitLeaves(text: string, ranges: ReadonlyArray<MarkdownRange | EmojiRange>): ReadonlyArray<Leaf> {
+export function splitLeaves(
+	text: string,
+	ranges: ReadonlyArray<MarkdownRange | EmojiRange>,
+): ReadonlyArray<Leaf> {
 	type Mutable = { text: string; props: LeafProps }
 	let leaves: Array<Mutable> = [{ text, props: {} }]
 	for (const { start: decorationStart, end: decorationEnd, ...props } of ranges) {

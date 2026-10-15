@@ -1,5 +1,5 @@
 import type { Html, HtmlBuilder } from "foldkit/html"
-import { formatDistanceToNow } from "~/lib/date-fns-shared"
+import { formatDistanceToNow } from "date-fns"
 import { cx } from "~/utils/cx"
 import { IconDiscord, IconPin } from "../../icons"
 import { avatar } from "../../ui/avatar"

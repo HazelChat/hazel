@@ -52,7 +52,8 @@ const externalLink = <M>(h: HtmlBuilder<M>, url: string, content: Html | string)
 /** `MarkdownLeaf` in viewer mode. */
 const leafView = <M>(h: HtmlBuilder<M>, leaf: ViewerLeaf, content: Html): Html => {
 	const leafAttribute = h.Attribute("data-slate-leaf", "true")
-	if (leaf.tokenClass !== undefined) return h.span([leafAttribute, h.Attribute("class", leaf.tokenClass)], [content])
+	if (leaf.tokenClass !== undefined)
+		return h.span([leafAttribute, h.Attribute("class", leaf.tokenClass)], [content])
 	if (leaf.type === "emoji" && leaf.shortcode)
 		return h.span([leafAttribute, h.Attribute("role", "button"), h.Attribute("tabindex", "0")], [content])
 	if (leaf.type === "link" && leaf.url !== undefined && leaf.linkText !== undefined)

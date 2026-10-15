@@ -26,8 +26,12 @@ const Failed = (reason: string) => ({ _tag: "Failed" as const, reason })
 
 describe("catchCommon", () => {
 	test("a common error becomes its reason", async () => {
-		expect(await Effect.runPromise(Effect.fail(offline).pipe(catchCommon(Failed)))).toEqual(Failed("Offline"))
-		expect(await Effect.runPromise(Effect.fail(rpcOffline).pipe(catchCommon(Failed)))).toEqual(Failed("Offline"))
+		expect(await Effect.runPromise(Effect.fail(offline).pipe(catchCommon(Failed)))).toEqual(
+			Failed("Offline"),
+		)
+		expect(await Effect.runPromise(Effect.fail(rpcOffline).pipe(catchCommon(Failed)))).toEqual(
+			Failed("Offline"),
+		)
 		expect(await Effect.runPromise(Effect.fail(unauthorized).pipe(catchCommon(Failed)))).toEqual(
 			Failed("SignedOut"),
 		)
@@ -92,9 +96,11 @@ describe("failure toasts", () => {
 	})
 
 	test("a handler function builds the message from the typed error", () => {
-		expect(failureToast(unhandled, "exitToast", { ChannelNotFoundError: (error) => ({ title: error._tag }) })).toEqual(
-			errorToast("ChannelNotFoundError"),
-		)
+		expect(
+			failureToast(unhandled, "exitToast", {
+				ChannelNotFoundError: (error) => ({ title: error._tag }),
+			}),
+		).toEqual(errorToast("ChannelNotFoundError"))
 	})
 
 	test("an unknown error never shows its own message", () => {
@@ -105,7 +111,9 @@ describe("failure toasts", () => {
 
 	test("a common error gets the shared copy", () => {
 		const copy = commonMessage("SignedOut")
-		expect(failureToast(Cause.fail(unauthorized), "friendly")).toEqual(errorToast(copy.title, copy.description))
+		expect(failureToast(Cause.fail(unauthorized), "friendly")).toEqual(
+			errorToast(copy.title, copy.description),
+		)
 		const offlineCopy = commonMessage("Offline")
 		expect(failureToast(Cause.fail(offline), "exitToast")).toEqual(
 			errorToast(offlineCopy.title, offlineCopy.description),
@@ -115,7 +123,9 @@ describe("failure toasts", () => {
 	test("a defect never shows its message", () => {
 		const toast = failureToast(Cause.die(new Error("boom")), "friendly")
 		expect(toast.title).not.toContain("boom")
-		expect(toast).toEqual(errorToast(commonMessage("Unexpected").title, commonMessage("Unexpected").description))
+		expect(toast).toEqual(
+			errorToast(commonMessage("Unexpected").title, commonMessage("Unexpected").description),
+		)
 	})
 
 	test("success and error toasts default to no description", () => {

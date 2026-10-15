@@ -2,7 +2,13 @@ import type { Collection, Transaction } from "@tanstack/db"
 import { createTransaction } from "@tanstack/db"
 import type { Txid } from "@tanstack/electric-db-collection"
 import { type Cause, Effect, Exit } from "effect"
-import { type AwaitTxIdError, type InvalidTxIdError, OptimisticActionError, SyncError, type TxIdTimeoutError } from "./errors"
+import {
+	type AwaitTxIdError,
+	type InvalidTxIdError,
+	OptimisticActionError,
+	SyncError,
+	type TxIdTimeoutError,
+} from "./errors"
 
 /**
  * Collection with Effect-native utilities.
@@ -200,8 +206,15 @@ export function optimisticAction<
 				mutationFn: async (params) => {
 					const exit = await Effect.runPromiseExit(
 						Effect.gen(function* () {
-							mutationResult = yield* mutate(variables, { mutateResult, transaction: params.transaction })
-							yield* syncAllCollections(normalizedCollections, mutationResult.transactionId, syncTimeout)
+							mutationResult = yield* mutate(variables, {
+								mutateResult,
+								transaction: params.transaction,
+							})
+							yield* syncAllCollections(
+								normalizedCollections,
+								mutationResult.transactionId,
+								syncTimeout,
+							)
 							return mutationResult.data
 						}).pipe(Effect.provideContext(context)),
 					)
@@ -219,7 +232,8 @@ export function optimisticAction<
 			const persisted = yield* Effect.exit(
 				Effect.tryPromise({
 					try: () => transaction.isPersisted.promise,
-					catch: (cause) => new OptimisticActionError({ message: "Optimistic action failed", cause }),
+					catch: (cause) =>
+						new OptimisticActionError({ message: "Optimistic action failed", cause }),
 				}),
 			)
 
@@ -229,7 +243,9 @@ export function optimisticAction<
 					// Best effort: the failure below is what the caller needs to see.
 					yield* Effect.ignore(Effect.try(() => transaction.rollback()))
 				}
-				return yield* failure === undefined ? Effect.failCause(persisted.cause) : Effect.failCause(failure)
+				return yield* failure === undefined
+					? Effect.failCause(persisted.cause)
+					: Effect.failCause(failure)
 			}
 
 			return {

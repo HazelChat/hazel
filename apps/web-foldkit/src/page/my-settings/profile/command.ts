@@ -2,7 +2,7 @@ import { UserId } from "@hazel/schema"
 import { Effect, Schema } from "effect"
 import { Command } from "foldkit"
 import { File } from "foldkit/file"
-import { calculateInitialCrop, cropImage } from "~/utils/image-crop"
+import { calculateInitialCrop, cropImage, loadImage } from "~/utils/image-crop"
 import { detectBrowserTimezone } from "~/utils/timezone"
 import { publicUrlOf, uploadFile } from "../../settings/upload"
 import { updateUser } from "../user"
@@ -26,14 +26,6 @@ export const OpenFilePicker = Command.define("OpenFilePicker", {
 		return Message.CompletedOpenFilePicker()
 	}),
 })
-
-const loadImage = (src: string) =>
-	Effect.callback<HTMLImageElement, Error>((resume) => {
-		const image = new Image()
-		image.onload = () => resume(Effect.succeed(image))
-		image.onerror = () => resume(Effect.fail(new Error("Failed to load image")))
-		image.src = src
-	})
 
 /** `AvatarCropModal`'s effect: an object URL for the file, then the largest centered square. */
 export const LoadCropImage = Command.define("LoadCropImage", {
@@ -79,7 +71,7 @@ export const CropAvatarImage = Command.define("CropAvatarImage", {
 	messages: [Message.CompletedCropImage],
 	execute: ({ src, crop }) =>
 		loadImage(src).pipe(
-			Effect.flatMap((image) => Effect.tryPromise(() => cropImage(image, crop, OUTPUT_SIZE))),
+			Effect.flatMap((image) => cropImage(image, crop, OUTPUT_SIZE)),
 			Effect.map((blob) => Message.CompletedCropImage({ blob })),
 			Effect.catch(() => Effect.succeed(Message.CompletedCropImage({ blob: null }))),
 		),

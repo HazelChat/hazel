@@ -1,3 +1,5 @@
+import { Effect, Schema } from "effect"
+
 /**
  * Image cropping utilities using native Canvas API
  */
@@ -8,50 +10,60 @@ export interface CropRect {
 	size: number // width and height (square)
 }
 
+/** The image would not load, or the canvas could not crop it (no 2D context, or it would not encode). */
+export class CropError extends Schema.TaggedError<CropError>()("CropError", {
+	reason: Schema.Literals(["LoadFailed", "NoCanvasContext", "EncodeFailed"]),
+}) {}
+
+/** Loads an image element from a (blob) URL. */
+export const loadImage = (src: string): Effect.Effect<HTMLImageElement, CropError> =>
+	Effect.callback<HTMLImageElement, CropError>((resume) => {
+		const image = new Image()
+		image.onload = () => resume(Effect.succeed(image))
+		image.onerror = () => resume(Effect.fail(new CropError({ reason: "LoadFailed" })))
+		image.src = src
+	})
+
 /**
- * Crops an image to the specified rectangle and outputs at target dimensions
+ * Crops an image to the specified rectangle and outputs at target dimensions (WebP)
  */
-export async function cropImage(
+export const cropImage = (
 	image: HTMLImageElement,
 	cropRect: CropRect,
 	outputSize: number,
-): Promise<Blob> {
-	const canvas = document.createElement("canvas")
-	canvas.width = outputSize
-	canvas.height = outputSize
+): Effect.Effect<Blob, CropError> =>
+	Effect.suspend(() => {
+		const canvas = document.createElement("canvas")
+		canvas.width = outputSize
+		canvas.height = outputSize
 
-	const ctx = canvas.getContext("2d")
-	if (!ctx) {
-		throw new Error("Could not get canvas context")
-	}
+		const ctx = canvas.getContext("2d")
+		if (!ctx) return Effect.fail(new CropError({ reason: "NoCanvasContext" }))
 
-	// Draw the cropped portion scaled to output size
-	ctx.drawImage(
-		image,
-		cropRect.x, // source x
-		cropRect.y, // source y
-		cropRect.size, // source width
-		cropRect.size, // source height
-		0, // dest x
-		0, // dest y
-		outputSize, // dest width
-		outputSize, // dest height
-	)
-
-	return new Promise((resolve, reject) => {
-		canvas.toBlob(
-			(blob) => {
-				if (blob) {
-					resolve(blob)
-				} else {
-					reject(new Error("Failed to create blob from canvas"))
-				}
-			},
-			"image/webp",
-			0.9, // Quality
+		// Draw the cropped portion scaled to output size
+		ctx.drawImage(
+			image,
+			cropRect.x, // source x
+			cropRect.y, // source y
+			cropRect.size, // source width
+			cropRect.size, // source height
+			0, // dest x
+			0, // dest y
+			outputSize, // dest width
+			outputSize, // dest height
 		)
+
+		return Effect.callback<Blob, CropError>((resume) => {
+			canvas.toBlob(
+				(blob) =>
+					resume(
+						blob ? Effect.succeed(blob) : Effect.fail(new CropError({ reason: "EncodeFailed" })),
+					),
+				"image/webp",
+				0.9, // Quality
+			)
+		})
 	})
-}
 
 /**
  * Calculates the initial crop rectangle (largest centered square)
