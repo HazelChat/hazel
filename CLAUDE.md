@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a monorepo with the following structure:
 
 - `apps/web-foldkit/` - Web frontend built with Foldkit (Effect-based Elm architecture), Vite and TailwindCSS. Also the desktop app's webview
-- `apps/backendv2/` - Backend API using Bun runtime and Effect-TS
+- `apps/backend/` - Backend API and RPC (Effect-TS); runs on Bun locally and as a Cloudflare Worker
 - `apps/cluster/` - Effect Cluster service for distributed workflows and background jobs
 - `packages/db/` - Shared database package: effect-orm table definitions, the `Database` service, and migrations
 - `packages/domain/` - Shared domain types, RPC contracts, and cluster definitions
@@ -80,10 +80,12 @@ When working with Effect, Effect Atom, or TanStack DB, refer to these directorie
 - `bun run typecheck` - TypeScript checking without emitting files
 - `bun run test` - Run the app's Vitest suite
 
-### Backend (apps/backendv2)
+### Backend (apps/backend)
 
 - `bun run dev` - Start backend with hot reload using Bun (DO NOT USE - already running)
-- `bun run typecheck` - TypeScript checking
+- `bun run typecheck` - TypeScript checking (Bun entry and the Worker's `tsconfig.worker.json`)
+- `bun run test` - Run the backend's Vitest suite (Postgres-backed tests start a Docker container; set `AUTH_TEST_DATABASE_URL` to use an existing database)
+- `bun run test:sync` / `bun run test:policies` - Chat-sync and outbox, or policy, tests only
 
 ### Cluster (apps/cluster)
 
@@ -115,7 +117,7 @@ When working with Effect, Effect Atom, or TanStack DB, refer to these directorie
 - **Runtime**: Bun
 - **Framework**: Effect-TS for functional programming
 - **Database**: PostgreSQL with effect-orm (`@maple-dev/effect-orm`) over `@effect/sql-pg`
-- **Auth**: Clerk (`@clerk/backend` JWT verification + webhook sync)
+- **Auth**: Hazel auth (`@hazel/auth`, on `@yielded/auth`): GitHub/Google sign-in, passkeys, cookie sessions; Clerk is only used to verify Maple's OAuth tokens (`services/oauth-bearer-auth.ts`)
 - **API**: RPC-style endpoints via Effect Http Api
 
 ### Cluster Service
@@ -212,7 +214,7 @@ yield *
 
 - Backend follows Effect-TS patterns for error handling and dependency injection
 - Real-time features implemented via Cloudflare Realtimekit
-- Authentication handled by Clerk; backend verifies Clerk-issued JWTs and syncs users/orgs via webhook
+- Authentication handled by Hazel auth (`packages/auth`); the RPC and HttpApi middlewares resolve the session cookie, a session bearer credential (native clients) or a bot token to `CurrentUser`
 - Shared database package ensures type safety between frontend and backend
 - Domain package (`packages/domain/`) contains shared contracts:
     - RPC definitions for client-server communication

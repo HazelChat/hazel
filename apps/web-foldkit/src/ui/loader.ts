@@ -101,8 +101,6 @@ export const loader = <Message>(
 			h.AriaLabel(options.ariaLabel ?? "Pending..."),
 			h.AriaValuemax(100),
 			h.AriaValuemin(0),
-			h.Class("react-aria-ProgressBar"),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-slot", "loader"),
 			h.Role("progressbar"),
 		],

@@ -16,9 +16,6 @@ export interface EnvValue {
 
 /** Existing configuration extracted from .env files */
 export interface ExistingConfig {
-	clerkSecretKey?: EnvValue
-	clerkPublishableKey?: EnvValue
-	clerkWebhookSecret?: EnvValue
 	encryptionKey?: EnvValue
 	linear?: {
 		clientId: EnvValue
@@ -46,16 +43,6 @@ const getEnvValue = (result: EnvReadResult, key: string): EnvValue | undefined =
 /** Extract existing configuration from env read result */
 export const extractExistingConfig = (result: EnvReadResult): ExistingConfig => {
 	const config: ExistingConfig = {}
-
-	// Clerk
-	const clerkSecretKey = getEnvValue(result, "CLERK_SECRET_KEY")
-	if (clerkSecretKey) config.clerkSecretKey = clerkSecretKey
-
-	const clerkPublishableKey = getEnvValue(result, "CLERK_PUBLISHABLE_KEY")
-	if (clerkPublishableKey) config.clerkPublishableKey = clerkPublishableKey
-
-	const clerkWebhookSecret = getEnvValue(result, "CLERK_WEBHOOK_SECRET")
-	if (clerkWebhookSecret) config.clerkWebhookSecret = clerkWebhookSecret
 
 	const encryptionKey = getEnvValue(result, "INTEGRATION_ENCRYPTION_KEY")
 	if (encryptionKey) config.encryptionKey = encryptionKey
@@ -122,9 +109,6 @@ export const getLocalMinioConfig = (): S3Config => ({
 })
 
 export interface Config {
-	clerkSecretKey: string
-	clerkPublishableKey: string
-	clerkWebhookSecret: string
 	secrets: {
 		encryptionKey: string
 	}
@@ -149,7 +133,6 @@ export const ENV_TEMPLATES = {
 		VITE_BACKEND_URL: "https://localhost:3004",
 		VITE_CLUSTER_URL: "http://localhost:3020",
 		VITE_ELECTRIC_URL: "https://localhost:5133/v1/shape",
-		VITE_CLERK_PUBLISHABLE_KEY: config.clerkPublishableKey,
 		VITE_R2_PUBLIC_URL: config.s3PublicUrl ?? "",
 	}),
 
@@ -172,11 +155,6 @@ export const ENV_TEMPLATES = {
 
 			// Electric
 			ELECTRIC_URL: "http://localhost:3333",
-
-			// Clerk
-			CLERK_SECRET_KEY: config.clerkSecretKey,
-			CLERK_PUBLISHABLE_KEY: config.clerkPublishableKey,
-			CLERK_WEBHOOK_SECRET: config.clerkWebhookSecret,
 
 			// Encryption
 			INTEGRATION_ENCRYPTION_KEY: config.secrets.encryptionKey,
@@ -221,7 +199,6 @@ export const ENV_TEMPLATES = {
 		DATABASE_URL: "postgresql://user:password@localhost:5432/app",
 		IS_DEV: "true",
 		ELECTRIC_URL: "http://localhost:3333",
-		CLERK_SECRET_KEY: config.clerkSecretKey,
 		ALLOWED_ORIGIN: "http://localhost:3000",
 	}),
 

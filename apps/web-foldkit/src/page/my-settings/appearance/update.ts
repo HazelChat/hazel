@@ -26,12 +26,10 @@ export const toGrayPaletteMessage = (message: Select.Message) => Message.GotGray
 const isGrayPalette = (key: string): key is Theme.GrayPalette =>
 	GRAY_PALETTES.some((palette) => palette === key)
 
+export const GRAY_PALETTE_ITEMS = GRAY_PALETTES.map((palette) => Select.item(palette, GRAY_PALETTE_LABELS[palette]))
+
 const grayPaletteSelect = (selected: Theme.GrayPalette) =>
-	Select.init({
-		id: "gray-palette",
-		items: GRAY_PALETTES.map((palette) => Select.item(palette, GRAY_PALETTE_LABELS[palette])),
-		selectedKey: selected,
-	})
+	Select.init({ id: "gray-palette", selectedKey: selected })
 
 /** The gray palette Select follows `Shared.theme`, whoever changed it. */
 const withGrayPalette = (model: Model, shared: Shared): Model =>

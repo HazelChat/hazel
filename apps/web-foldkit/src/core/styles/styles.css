@@ -3,8 +3,6 @@
 
 @import "./theme.css";
 
-@plugin 'tailwindcss-react-aria-components';
-
 /*
 If you want to use the typography plugin, uncomment the line below.
 */

@@ -4,7 +4,7 @@ import { Route } from "foldkit"
 import * as Url from "foldkit/url"
 import { defineRouteUnion, literal, query, schemaSegment, slash, string } from "foldkit/route"
 
-/** Flat route union mirroring the 39 legacy TanStack routes (`apps/web/src/routes`), plus NotFound. */
+/** Flat route union mirroring the 39 legacy TanStack routes, plus NotFound. */
 export const AppRoute = defineRouteUnion({
 	Root: {},
 	SignIn: { redirectUrl: Schema.Option(Schema.String) },

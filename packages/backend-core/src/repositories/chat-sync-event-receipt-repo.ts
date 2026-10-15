@@ -100,6 +100,20 @@ export class ChatSyncEventReceiptRepo extends Context.Service<ChatSyncEventRecei
 				)
 			}
 
+			/** Drops a claim so the same delivery can be claimed again (after a retryable failure). */
+			const releaseByDedupeKey = (params: {
+				syncConnectionId: SyncConnectionId
+				source: ChatSyncEventReceipt.ChatSyncReceiptSource
+				dedupeKey: string
+			}) =>
+				db.run(
+					PG.deleteFrom(schema.chatSyncEventReceiptsTable).where(($) => [
+						$.syncConnectionId.eq(params.syncConnectionId),
+						$.source.eq(params.source),
+						$.dedupeKey.eq(params.dedupeKey),
+					]),
+				)
+
 			const findRecentByConnection = (syncConnectionId: SyncConnectionId, processedAfter: Date) =>
 				db.run(
 					PG.from(schema.chatSyncEventReceiptsTable)
@@ -126,6 +140,7 @@ export class ChatSyncEventReceiptRepo extends Context.Service<ChatSyncEventRecei
 				findByDedupeKey,
 				claimByDedupeKey,
 				updateByDedupeKey,
+				releaseByDedupeKey,
 				findRecentByConnection,
 				markFailed,
 			}

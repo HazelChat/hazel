@@ -25,12 +25,11 @@ export const apiEnv = ({ stage, urls }: HazelStackContext) =>
 		// Sender of invitation emails; its domain must be onboarded to Cloudflare Email Sending.
 		optionalPlain("INVITE_EMAIL_FROM"),
 
-		// Auth (Clerk)
-		requireSecretEntry("CLERK_SECRET_KEY"),
-		requirePlainEntry("CLERK_PUBLISHABLE_KEY"),
-		optionalSecret("CLERK_WEBHOOK_SECRET"),
+		// Maple's OAuth tokens are still Clerk-issued (services/oauth-bearer-auth.ts); API v1 answers
+		// 503 without this key.
+		optionalSecret("CLERK_SECRET_KEY"),
 
-		// Auth (Hazel, replacing Clerk): off until AUTH_GITHUB_CLIENT_ID is set. Keys come from
+		// Auth (Hazel sign-in): off until AUTH_GITHUB_CLIENT_ID is set. Keys come from
 		// `bun run --cwd packages/auth generate-keys`.
 		optionalPlain("AUTH_GITHUB_CLIENT_ID"),
 		optionalSecret("AUTH_GITHUB_CLIENT_SECRET"),

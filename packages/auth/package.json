@@ -6,7 +6,6 @@
 	"main": "src/index.ts",
 	"exports": {
 		".": "./src/index.ts",
-		"./backend": "./src/consumers/backend-auth.ts",
 		"./proxy": "./src/consumers/proxy-auth.ts",
 		"./access-token": "./src/yielded/access-token.ts",
 		"./desktop": "./src/yielded/desktop-client.ts",
@@ -19,7 +18,6 @@
 		"generate-keys": "bun scripts/generate-keys.ts"
 	},
 	"dependencies": {
-		"@clerk/backend": "^3.3.0",
 		"@effect/sql-pg": "catalog:effect",
 		"@hazel/db": "workspace:*",
 		"@hazel/domain": "workspace:*",

@@ -79,7 +79,6 @@ const sheetOverlay = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder<Messa
 				[
 					h.Class(sheetOverlayClassName(false, false, viewInputs.isBlurred ?? false)),
 					h.Attribute("data-modal-overlay", ""),
-					h.Attribute("data-rac", ""),
 					...Object.entries(viewInputs.overlayAttributes ?? {}).map(([name, value]) =>
 						h.Attribute(name, value),
 					),
@@ -97,7 +96,6 @@ const sheetOverlay = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder<Messa
 								}),
 							),
 							h.Attribute("data-modal-content", model.id),
-							h.Attribute("data-rac", ""),
 						],
 						[
 							...(isDismissable ? [dismissButton(h, Message.ClickedClose())] : []),

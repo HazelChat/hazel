@@ -10,6 +10,7 @@ import { PageOutMessage } from "../../out-message"
 import { Message } from "./message"
 import type { Invitation } from "./model"
 import { FetchInvitations, init, REVOKE_KEY, RevokeInvitation, update } from "./update"
+import { rowMenuEntries } from "./update"
 
 const inv1 = Schema.decodeSync(InvitationId)(uuid(11))
 const inv2 = Schema.decodeSync(InvitationId)(uuid(12))
@@ -29,11 +30,13 @@ const rowMenu = (invitationId: InvitationId, child: Menu.Message) =>
 const openMenu = (invitationId: InvitationId) =>
 	message(rowMenu(invitationId, Menu.Message.PressedTrigger({ pointerType: "mouse" })))
 const pickRevoke = (invitationId: InvitationId) =>
-	message(rowMenu(invitationId, Menu.Message.ClickedItem({ key: REVOKE_KEY })))
+	message(rowMenu(invitationId, Menu.Message.ClickedItem({ key: REVOKE_KEY, entries: rowMenuEntries(false) })))
 const revokeDisabled = (invitationId: InvitationId) =>
 	model<typeof loaded>((current) => {
-		const row = current.menus.find((candidate) => candidate.invitationId === invitationId)
-		expect(row?.menu.entries).toEqual([Menu.item(REVOKE_KEY, { intent: "Danger", isDisabled: true })])
+		expect(current.revokingId).toBe(invitationId)
+		expect(rowMenuEntries(current.revokingId === invitationId)).toEqual([
+			Menu.item(REVOKE_KEY, { intent: "Danger", isDisabled: true }),
+		])
 	})
 
 describe("fetch", () => {
@@ -122,7 +125,7 @@ describe("revoke", () => {
 			),
 			model((current) => {
 				expect(current.revokingId).toBeNull()
-				expect(current.menus[0]?.menu.entries).toEqual([
+				expect(rowMenuEntries(current.revokingId !== null)).toEqual([
 					Menu.item(REVOKE_KEY, { intent: "Danger", isDisabled: false }),
 				])
 			}),

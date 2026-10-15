@@ -122,7 +122,6 @@ const mentionView = <M>(h: HtmlBuilder<M>, element: ProseMirrorNode, refs: Markd
 					"inline-block cursor-pointer rounded bg-primary/10 px-1 py-0.5 align-baseline font-medium text-primary outline-hidden transition-colors hover:bg-primary/20",
 				),
 			),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-react-aria-pressable", "true"),
 			node,
 			h.Attribute("tabindex", "0"),

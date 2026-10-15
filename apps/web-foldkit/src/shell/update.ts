@@ -41,8 +41,10 @@ export interface Context {
 
 export const init = (options: { readonly isCreateChannelHintDismissed: boolean }): Model => ({
 	channelsSidebar: ChannelsSidebar.init(options),
-	userMenu: Menu.init({ id: USER_MENU_ID, entries: [], placement: "bottom right" }),
-	orgSwitcher: Menu.init({ id: ORG_SWITCHER_ID, entries: [] }),
+	userMenu: Menu.init({ id: USER_MENU_ID, placement: "bottom right" }),
+	orgSwitcher: Menu.init({ id: ORG_SWITCHER_ID }),
+	userMenuEntries: [],
+	orgSwitcherEntries: [],
 	userOrganizations: [],
 	userStatus: null,
 	notifications: Notifications.init(),
@@ -64,20 +66,18 @@ const withMenuEntries = (model: Model, context: Context): Model => {
 	// The menus only render inside the org shell, which waits for `user.me`.
 	if (orgSlug === null) return model
 	return modifyFields(model, {
-		userMenu: (menu) =>
-			currentUserId === null ? menu : Menu.reflectEntries(menu, userMenuEntries(orgSlug, currentUserId)),
+		userMenuEntries: (entries) => (currentUserId === null ? entries : userMenuEntries(orgSlug, currentUserId)),
+		orgSwitcherEntries: () =>
+			orgSwitcherEntries({
+				orgSlug,
+				isChat: context.isChatSection,
+				isMobile,
+				canCreateChannel: context.canCreateChannel,
+				organizations: model.userOrganizations,
+			}),
 		orgSwitcher: (menu) =>
 			modifyFields(
-				Menu.reflectEntries(
-					menu,
-					orgSwitcherEntries({
-						orgSlug,
-						isChat: context.isChatSection,
-						isMobile,
-						canCreateChannel: context.canCreateChannel,
-						organizations: model.userOrganizations,
-					}),
-				),
+				menu,
 				// Mobile shows `SwitchServerMenu` alone: a single-selection list with the current org checked.
 				{
 					selectionMode: () => (isMobile ? "Single" : "None"),

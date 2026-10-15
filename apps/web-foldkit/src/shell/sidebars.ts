@@ -89,7 +89,14 @@ export const settingsSidebar = <Message>(
 	const item = navList(h)
 
 	return sidebarStatic(h, "flex flex-1", [
-		orgSwitcherHeader(h, chrome.orgSwitcher, context, chrome.organizations, chrome.toOrgSwitcherMessage),
+		orgSwitcherHeader(
+			h,
+			chrome.orgSwitcher,
+			chrome.orgSwitcherEntries,
+			context,
+			chrome.organizations,
+			chrome.toOrgSwitcherMessage,
+		),
 		sidebarContent(h, { state: "expanded" }, [
 			sidebarSectionGroup(h, [
 				sectionTitle(h, "Settings"),
@@ -140,6 +147,7 @@ export const settingsSidebar = <Message>(
 		userMenuFooter(
 			h,
 			chrome.userMenu,
+			chrome.userMenuEntries,
 			context,
 			chrome.toUserMenuMessage,
 			chrome.userStatus,
@@ -163,7 +171,14 @@ export const mySettingsSidebar = <Message>(
 	const { route } = context
 	const item = navList(h)
 	return sidebarStatic(h, "flex flex-1", [
-		orgSwitcherHeader(h, chrome.orgSwitcher, context, chrome.organizations, chrome.toOrgSwitcherMessage),
+		orgSwitcherHeader(
+			h,
+			chrome.orgSwitcher,
+			chrome.orgSwitcherEntries,
+			context,
+			chrome.organizations,
+			chrome.toOrgSwitcherMessage,
+		),
 		sidebarContent(h, { state: "expanded" }, [
 			sidebarSectionGroup(h, [
 				sectionTitle(h, "My Settings"),
@@ -186,6 +201,7 @@ export const mySettingsSidebar = <Message>(
 		userMenuFooter(
 			h,
 			chrome.userMenu,
+			chrome.userMenuEntries,
 			context,
 			chrome.toUserMenuMessage,
 			chrome.userStatus,
@@ -248,6 +264,7 @@ export const notificationsSidebar = <Message>(
 		userMenuFooter(
 			h,
 			chrome.userMenu,
+			chrome.userMenuEntries,
 			context,
 			chrome.toUserMenuMessage,
 			chrome.userStatus,

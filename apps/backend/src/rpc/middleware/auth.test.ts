@@ -3,17 +3,16 @@ import { Headers } from "effect/http"
 import type { SuccessValue } from "effect/rpc/RpcMiddleware"
 import { BotRepo, UserRepo } from "@hazel/backend-core"
 import { CurrentUser, InvalidBearerTokenError, type CurrentUser as CurrentUserNamespace } from "@hazel/domain"
+import { Database } from "@hazel/db"
 import type { UserId } from "@hazel/schema"
 import { Effect, Layer, Option, Ref, Result, Context } from "effect"
 import { AuthMiddleware, AuthMiddlewareLive } from "./auth.ts"
 import { HazelSession } from "../../services/hazel-session.ts"
-import { SessionManager } from "../../services/session-manager.ts"
 import { serviceShape } from "../../test/effect-helpers"
 
 const USER_ID = "00000000-0000-4000-8000-000000000001" as UserId
 const BOT_USER_ID = "00000000-0000-4000-8000-000000000002" as UserId
 
-type SessionManagerShape = Context.Service.Shape<typeof SessionManager>
 type BotRepoShape = Context.Service.Shape<typeof BotRepo>
 type UserRepoShape = Context.Service.Shape<typeof UserRepo>
 type EffectSuccess<T> = T extends Effect.Effect<infer A, any, any> ? A : never
@@ -65,14 +64,6 @@ const invokeMiddleware = (headers: Headers.Headers) =>
 		)
 		return yield* Ref.get(currentUserRef)
 	})
-
-const makeSessionManagerLayer = (currentUser: CurrentUserNamespace.Schema) =>
-	Layer.succeed(
-		SessionManager,
-		serviceShape<typeof SessionManager>({
-			authenticateWithBearer: () => Effect.succeed(currentUser),
-		}),
-	)
 
 type HazelSessionShape = Context.Service.Shape<typeof HazelSession>
 
@@ -143,7 +134,6 @@ const USER_RECORD: UserRecord = {
 const runAuth = (
 	headers: Headers.Headers,
 	overrides: {
-		sessionManager?: ReturnType<typeof makeSessionManagerLayer>
 		hazelSession?: ReturnType<typeof makeHazelSessionLayer>
 		botRepo?: ReturnType<typeof makeBotRepoLayer>
 		userRepo?: ReturnType<typeof makeUserRepoLayer>
@@ -153,7 +143,6 @@ const runAuth = (
 		Effect.scoped(
 			invokeMiddleware(headers).pipe(
 				Effect.provide(AuthMiddlewareLive),
-				Effect.provide(overrides.sessionManager ?? makeSessionManagerLayer(makeCurrentUser())),
 				Effect.provide(overrides.hazelSession ?? makeHazelSessionLayer()),
 				Effect.provide(
 					overrides.botRepo ?? makeBotRepoLayer(() => Effect.succeed(Option.none<BotRecord>())),
@@ -167,19 +156,32 @@ const runAuth = (
 	)
 
 describe("AuthMiddlewareLive", () => {
-	it("authenticates JWT bearer tokens through SessionManager", async () => {
-		const currentUser = makeCurrentUser({ email: "jwt@example.com" })
+	it("rejects a JWT-shaped bearer that is neither a session nor a bot token", async () => {
 		const result = await runAuth(Headers.fromInput({ authorization: "Bearer a.b.c" }), {
-			sessionManager: makeSessionManagerLayer(currentUser),
+			hazelSession: makeHazelSessionLayer({ enabled: true }),
 		})
 
-		expect(Result.isSuccess(result)).toBe(true)
-		if (Result.isSuccess(result)) {
-			expect(Option.isSome(result.success)).toBe(true)
-			if (Option.isSome(result.success)) {
-				expect(result.success.value).toEqual(currentUser)
-			}
-		}
+		expect(
+			Result.isFailure(result) && ("_tag" in result.failure ? result.failure._tag : "unhandled"),
+		).toBe("InvalidBearerTokenError")
+	})
+
+	it("reports a database failure during bot token lookup as SessionLoadError, not a 401", async () => {
+		const result = await runAuth(Headers.fromInput({ authorization: "Bearer hzl_bot_abc" }), {
+			botRepo: makeBotRepoLayer(() =>
+				Effect.fail(
+					new Database.DatabaseError({
+						type: "connection_error",
+						message: "connection refused",
+						cause: null,
+					}),
+				),
+			),
+		})
+
+		expect(
+			Result.isFailure(result) && ("_tag" in result.failure ? result.failure._tag : "unhandled"),
+		).toBe("SessionLoadError")
 	})
 
 	it("fails when no bearer token is provided", async () => {
@@ -266,8 +268,11 @@ describe("AuthMiddlewareLive", () => {
 			enabled: true,
 			fromCookie: () =>
 				Effect.fail(new InvalidBearerTokenError({ message: "expired", detail: "expired" })),
+			verify: () => Effect.succeed(Option.some(makeCurrentUser())),
 		})
-		const valid = await runAuth(Headers.fromInput({ authorization: "Bearer a.b.c" }), { hazelSession })
+		const valid = await runAuth(Headers.fromInput({ authorization: "Bearer session-credential" }), {
+			hazelSession,
+		})
 		expect(Result.isSuccess(valid)).toBe(true)
 		const cookieOnly = await runAuth(Headers.fromInput({}), { hazelSession })
 		expect(

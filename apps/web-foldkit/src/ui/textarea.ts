@@ -38,7 +38,6 @@ export const textarea = <Message>(
 		[
 			h.textarea([
 				h.Class(twMerge(twMerge(twJoin(textareaStyles)), options.className)),
-				h.DataAttribute("rac", ""),
 				h.Attribute("style", ""),
 				...(options.placeholder === undefined ? [] : [h.Placeholder(options.placeholder)]),
 				...(isDisabled ? [h.Disabled(true), h.DataAttribute("disabled", "true")] : []),

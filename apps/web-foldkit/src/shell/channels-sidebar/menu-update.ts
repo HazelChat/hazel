@@ -17,7 +17,6 @@ import {
 	decodeSectionMenuKey,
 	type RowMenuKey,
 	sectionIdOfKey,
-	sectionMenuEntries,
 	sectionMenuId,
 } from "./menus"
 import { Message, type Model, OpenMenu, type SectionAction } from "./model"
@@ -75,14 +74,12 @@ export const openRowMenu = (openMenu: Model["openMenu"], channelId: ChannelId): 
 	openMenu !== null && isRowMenuOf(channelId)(openMenu) ? openMenu.menu : null
 
 export const rowMenuOf = (model: Model, channelId: ChannelId): Menu.Model =>
-	openRowMenu(model.openMenu, channelId) ??
-	closedRowMenu(channelId, model.sections, canOn(model, "channel.delete"))
+	openRowMenu(model.openMenu, channelId) ?? closedRowMenu(channelId)
 
-export const sectionMenuOf = (model: Model, sectionKey: string): Menu.Model => {
-	if (model.openMenu !== null && isSectionMenuOf(sectionKey)(model.openMenu)) return model.openMenu.menu
-	const { actions, isEditable } = sectionActionsOf(model, sectionKey)
-	return closedMenu(sectionMenuId(sectionKey), sectionMenuEntries(actions, isEditable))
-}
+export const sectionMenuOf = (model: Model, sectionKey: string): Menu.Model =>
+	model.openMenu !== null && isSectionMenuOf(sectionKey)(model.openMenu)
+		? model.openMenu.menu
+		: closedMenu(sectionMenuId(sectionKey))
 
 /** Folds a Menu step; the menu is kept only while open. */
 const foldMenu = (

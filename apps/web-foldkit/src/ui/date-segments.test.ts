@@ -1,7 +1,16 @@
 import { Array } from "effect"
 import { Command, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
-import { AnnounceSegmentValue, FocusSegment, init, Message, type Model, update } from "./date-segments"
+import {
+	AnnounceSegmentValue,
+	FocusSegment,
+	formattersFor,
+	init,
+	Message,
+	type Model,
+	segmentOrder,
+	update,
+} from "./date-segments"
 
 /**
  * useDateSegment typing: auto-advance never depends on the focus move having run. Story resolves
@@ -59,5 +68,19 @@ describe("date segments", () => {
 				expect([current.activeSegment, current.pendingFocusMoves]).toEqual(["year", 0])
 			}),
 		)
+	})
+})
+
+describe("date segments locale", () => {
+	test("the locale is fixed in the Model at init and lays the segments out", () => {
+		const british = init({ id: "start", kind: "date", today: "2026-10-09", locale: "en-GB" })
+		expect(british.locale).toBe("en-GB")
+		expect(segmentOrder(british.kind, british.locale)).toEqual(["day", "month", "year"])
+		expect(empty.locale).toBe("en-US")
+		expect(segmentOrder(empty.kind, empty.locale)).toEqual(["month", "day", "year"])
+	})
+
+	test("formatters are built once per locale", () => {
+		expect(formattersFor("en-GB")).toBe(formattersFor("en-GB"))
 	})
 })

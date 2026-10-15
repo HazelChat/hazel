@@ -13,12 +13,6 @@ export const toDate = (date: CalendarDate): Date => new Date(`${date}T00:00:00.0
 export const fromDate = (date: Date): CalendarDate =>
 	`${pad(date.getUTCFullYear(), 4)}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`
 
-/** `today(getLocalTimeZone())`. */
-// The default mirrors React Aria's today(); only the gallery entries rely on it, when seeding their init.
-// oxlint-disable-next-line foldkit/no-impure-call-at-decision-time
-export const today = (now: Date = new Date()): CalendarDate =>
-	`${pad(now.getFullYear(), 4)}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-
 export const parts = (date: CalendarDate) => {
 	const value = toDate(date)
 	return { year: value.getUTCFullYear(), month: value.getUTCMonth() + 1, day: value.getUTCDate() }
@@ -79,33 +73,19 @@ const fullDate = formatter({ weekday: "long", month: "long", day: "numeric", yea
 
 /** The cell's accessible date, "Thursday, March 12, 2026". */
 export const formatFull = (date: CalendarDate) => fullDate.format(toDate(date))
-export const formatMonthYear = (date: CalendarDate) =>
-	formatter({ month: "long", year: "numeric" }).format(toDate(date))
-export const formatShortMonth = (date: CalendarDate) => formatter({ month: "short" }).format(toDate(date))
-export const formatYear = (date: CalendarDate) => formatter({ year: "numeric" }).format(toDate(date))
-export const formatDay = (date: CalendarDate) => formatter({ day: "numeric" }).format(toDate(date))
+const monthYear = formatter({ month: "long", year: "numeric" })
+const shortMonth = formatter({ month: "short" })
+const year = formatter({ year: "numeric" })
+const day = formatter({ day: "numeric" })
+export const formatMonthYear = (date: CalendarDate) => monthYear.format(toDate(date))
+export const formatShortMonth = (date: CalendarDate) => shortMonth.format(toDate(date))
+export const formatYear = (date: CalendarDate) => year.format(toDate(date))
+export const formatDay = (date: CalendarDate) => day.format(toDate(date))
+
+const narrowWeekday = formatter({ weekday: "narrow" })
+const weekdays: ReadonlyArray<string> = Array.from({ length: 7 }, (_, index) =>
+	narrowWeekday.format(new Date(Date.UTC(2026, 2, 1 + index))),
+)
 
 /** useCalendarGrid's narrow weekday names, Sunday first. */
-export const weekdayNames = (): ReadonlyArray<string> => {
-	const narrow = formatter({ weekday: "narrow" })
-	return Array.from({ length: 7 }, (_, index) => narrow.format(new Date(Date.UTC(2026, 2, 1 + index))))
-}
-
-/** React Aria's `formatRange`: Intl's range parts joined by "to" instead of the shared literal. */
-export const formatRange = (start: CalendarDate, end: CalendarDate): string => {
-	const rangeParts = fullDate.formatRangeToParts(toDate(start), toDate(end))
-	let separator = -1
-	for (const [index, part] of rangeParts.entries()) {
-		if (part.source === "shared" && part.type === "literal") separator = index
-		else if (part.source === "endRange") break
-	}
-	const startText = rangeParts
-		.slice(0, Math.max(separator, 0))
-		.map((part) => part.value)
-		.join("")
-	const endText = rangeParts
-		.slice(separator + 1)
-		.map((part) => part.value)
-		.join("")
-	return `${startText} to ${endText}`
-}
+export const weekdayNames = (): ReadonlyArray<string> => weekdays

@@ -28,13 +28,17 @@ import type {
 	UserId,
 } from "@hazel/schema"
 import { Discord } from "@hazel/integrations"
-import { Effect, Layer } from "effect"
+import { Effect, Layer, Result } from "effect"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { createChatSyncDbHarness, type ChatSyncDbHarness } from "../../test/chat-sync-db-harness"
 import { recordChatSyncDiagnostic } from "../../test/chat-sync-test-diagnostics"
 import { ChannelAccessSyncService } from "../channel-access-sync"
 import { IntegrationBotService } from "../integrations/integration-bot-service"
-import { ChatSyncProviderRegistry, type ChatSyncProviderAdapter } from "./chat-sync-provider-registry"
+import {
+	ChatSyncProviderApiError,
+	ChatSyncProviderRegistry,
+	type ChatSyncProviderAdapter,
+} from "./chat-sync-provider-registry"
 import { ChatSyncCoreWorker, ChatSyncCoreWorkerMake } from "./chat-sync-core-worker"
 
 type SeedContext = {
@@ -514,6 +518,97 @@ describe("ChatSyncCoreWorker integration", () => {
 				).toBe(true)
 			}),
 		)
+	})
+
+	it("fails a retryable delivery and releases its receipt so the outbox retry delivers it", async () => {
+		const ctx = await insertBaseContext(harness)
+		const recorder = makeAdapterRecorder()
+		let attempts = 0
+		const flakyAdapter: ChatSyncProviderAdapter = {
+			...recorder.adapter,
+			createMessage: (params) => {
+				attempts += 1
+				return attempts === 1
+					? Effect.fail(
+							new ChatSyncProviderApiError({
+								provider: "discord",
+								message: "unavailable",
+								status: 503,
+							}),
+						)
+					: recorder.adapter.createMessage(params)
+			},
+		}
+		const workerLayer = makeWorkerLayer(harness, {
+			botUserId: ctx.botUserId,
+			providerAdapter: flakyAdapter,
+		})
+		const syncConnectionId = await insertConnection(harness, {
+			organizationId: ctx.organizationId,
+			createdBy: ctx.authorUserId,
+		})
+		await insertLink(harness, {
+			syncConnectionId,
+			hazelChannelId: ctx.channelId,
+			externalChannelId: "11111111111111111" as ExternalChannelId,
+		})
+		const messageId = await insertMessage(harness, {
+			channelId: ctx.channelId,
+			authorId: ctx.authorUserId,
+			content: "retry me",
+		})
+		const deliver = Effect.gen(function* () {
+			const w = yield* ChatSyncCoreWorker
+			return yield* w.syncHazelMessageCreateToAllConnections("discord", messageId, "outbox-key")
+		}).pipe(Effect.provide(workerLayer))
+
+		const first = await runEffect(Effect.result(deliver))
+		expect(Result.isFailure(first)).toBe(true)
+
+		const second = await runEffect(deliver)
+		expect(second.synced).toBe(1)
+		expect(recorder.calls.createMessage).toHaveLength(1)
+	})
+
+	it("does not fail the delivery for a non-retryable provider error", async () => {
+		const ctx = await insertBaseContext(harness)
+		const recorder = makeAdapterRecorder()
+		const workerLayer = makeWorkerLayer(harness, {
+			botUserId: ctx.botUserId,
+			providerAdapter: {
+				...recorder.adapter,
+				createMessage: () =>
+					Effect.fail(
+						new ChatSyncProviderApiError({
+							provider: "discord",
+							message: "forbidden",
+							status: 403,
+						}),
+					),
+			},
+		})
+		const syncConnectionId = await insertConnection(harness, {
+			organizationId: ctx.organizationId,
+			createdBy: ctx.authorUserId,
+		})
+		await insertLink(harness, {
+			syncConnectionId,
+			hazelChannelId: ctx.channelId,
+			externalChannelId: "11111111111111111" as ExternalChannelId,
+		})
+		const messageId = await insertMessage(harness, {
+			channelId: ctx.channelId,
+			authorId: ctx.authorUserId,
+			content: "no retry",
+		})
+
+		const result = await runEffect(
+			Effect.gen(function* () {
+				const w = yield* ChatSyncCoreWorker
+				return yield* w.syncHazelMessageCreateToAllConnections("discord", messageId, "outbox-key")
+			}).pipe(Effect.provide(workerLayer)),
+		)
+		expect(result.failed).toBe(1)
 	})
 
 	it("syncs Hazel reactions and ignores delete while reaction still exists", async () => {

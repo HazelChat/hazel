@@ -22,7 +22,7 @@ import {
 	updateRowMenu,
 	updateSectionMenu,
 } from "./channels-sidebar/menu-update"
-import { sectionMenuView } from "./channels-sidebar/menus"
+import { sectionActionLabel, sectionMenuEntries, sectionMenuView } from "./channels-sidebar/menus"
 import { dragDescription, sectionPlusButton } from "./channels-sidebar/tree"
 import { sectionGroupContent } from "./channels-sidebar/view"
 
@@ -183,6 +183,8 @@ const ScrollActiveIntoView = Mount.define("ScrollActiveIntoView", {
 export interface SidebarChrome<ParentMessage> {
 	readonly userMenu: Menu.Model
 	readonly orgSwitcher: Menu.Model
+	readonly userMenuEntries: ReadonlyArray<Menu.Entry>
+	readonly orgSwitcherEntries: ReadonlyArray<Menu.Entry>
 	readonly organizations: ReadonlyArray<SwitcherOrg>
 	readonly userStatus: UserStatus | null
 	/** The status's "Until ..." label at the root's clock (a string, so the memo stays cheap). */
@@ -220,6 +222,8 @@ const sidebarBody = <ParentMessage>(
 	toParentMessage: (message: Message) => ParentMessage,
 	userMenu: Menu.Model,
 	orgSwitcher: Menu.Model,
+	userMenuEntries: ReadonlyArray<Menu.Entry>,
+	orgSwitcherEntries: ReadonlyArray<Menu.Entry>,
 	organizations: ReadonlyArray<SwitcherOrg>,
 	userStatus: UserStatus | null,
 	statusExpiration: string | null,
@@ -238,7 +242,7 @@ const sidebarBody = <ParentMessage>(
 		appVersion,
 	}
 	return sidebarStatic(h, "flex flex-1", [
-		orgSwitcherHeader(h, orgSwitcher, shell, organizations, toOrgSwitcherMessage),
+		orgSwitcherHeader(h, orgSwitcher, orgSwitcherEntries, shell, organizations, toOrgSwitcherMessage),
 		sidebarContent(h, { state: "expanded" }, [
 			sidebarSectionGroup(
 				h,
@@ -257,7 +261,7 @@ const sidebarBody = <ParentMessage>(
 				}),
 			),
 		]),
-		userMenuFooter(h, userMenu, shell, toUserMenuMessage, userStatus, statusExpiration),
+		userMenuFooter(h, userMenu, userMenuEntries, shell, toUserMenuMessage, userStatus, statusExpiration),
 		dragDescription(h),
 	])
 }
@@ -272,9 +276,12 @@ const sectionActionView = <ParentMessage>(
 	const { actions, isEditable } = sectionActionsOf(model, sectionKey)
 	const [only] = actions
 	return only !== undefined && actions.length === 1 && !isEditable
-		? sectionPlusButton(h, [h.OnClick(toParentMessage(Message.ClickedSectionAction({ action: only })))])
+		? sectionPlusButton(h, sectionActionLabel(only), [
+				h.OnClick(toParentMessage(Message.ClickedSectionAction({ action: only }))),
+			])
 		: sectionMenuView(h, {
 				menu: sectionMenuOf(model, sectionKey),
+				entries: sectionMenuEntries(actions, isEditable),
 				toMessage: (message) =>
 					toParentMessage(Message.GotSectionMenuMessage({ sectionId: sectionKey, message })),
 			})
@@ -301,6 +308,8 @@ export const view = <ParentMessage>(
 		toParentMessage,
 		chrome.userMenu,
 		chrome.orgSwitcher,
+		chrome.userMenuEntries,
+		chrome.orgSwitcherEntries,
 		chrome.organizations,
 		chrome.userStatus,
 		chrome.statusExpiration,

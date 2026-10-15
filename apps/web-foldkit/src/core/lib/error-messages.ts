@@ -1,6 +1,5 @@
 import type { RateLimitExceededError } from "@hazel/domain"
 import type {
-	ClerkUserFetchError,
 	InternalServerError,
 	InvalidBearerTokenError,
 	InvalidJwtPayloadError,
@@ -64,7 +63,6 @@ export type CommonError =
 	| SessionLoadError
 	| InvalidJwtPayloadError
 	| InvalidBearerTokenError
-	| ClerkUserFetchError
 	// Server catch-alls
 	| InternalServerError
 	| WorkflowServiceUnavailableError
@@ -128,7 +126,6 @@ export const commonReasonOf = (error: CommonError): CommonReason =>
 		InvalidJwtPayloadError: signedOut,
 		InvalidBearerTokenError: signedOut,
 		SessionLoadError: unavailable,
-		ClerkUserFetchError: unavailable,
 		WorkflowServiceUnavailableError: unavailable,
 		CollectionSyncEffectError: unavailable,
 		RateLimitExceededError: (): CommonReason => "RateLimited",
@@ -158,7 +155,6 @@ const commonTags: ReadonlySet<string> = new Set<CommonError["_tag"]>([
 	"InvalidJwtPayloadError",
 	"InvalidBearerTokenError",
 	"SessionLoadError",
-	"ClerkUserFetchError",
 	"WorkflowServiceUnavailableError",
 	"CollectionSyncEffectError",
 	"RateLimitExceededError",

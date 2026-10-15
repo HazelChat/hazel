@@ -1,4 +1,3 @@
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const progressBarStyles = {
 	root: [
 		"w-full",
@@ -10,8 +9,6 @@ export const progressBarStyles = {
 		"[&>[data-slot=progress-bar-track]+[slot=errorMessage]]:mt-2",
 		"*:data-[slot=progress-bar-header]:font-medium",
 	],
-	header: "flex items-center justify-between",
-	value: "text-base/6 sm:text-sm/6",
 	track: "relative block w-full",
 	keyframes: `
         @keyframes progress-slide {

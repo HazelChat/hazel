@@ -12,7 +12,7 @@ import { PageOutMessage, requestedOrgNavigation } from "../out-message"
 import { CopyEmail, CreateDm, FocusSearch } from "./commands"
 import { findExistingDmChannel } from "./dm"
 import { Message } from "./message"
-import { type DirectoryMember, DmRequest, type DmRow, menuEntries, menuIdOf, type Model } from "./model"
+import { type DirectoryMember, DmRequest, type DmRow, menuIdOf, type Model } from "./model"
 
 type Return = PageReturn<Model, Message>
 
@@ -43,7 +43,7 @@ const reconcileMenus = (model: Model, members: ReadonlyArray<DirectoryMember>): 
 		members.map((member) => [
 			member.id,
 			model.menus[member.id] ??
-				Menu.init({ id: menuIdOf(member.id), entries: menuEntries, placement: "bottom end" }),
+				Menu.init({ id: menuIdOf(member.id), placement: "bottom end" }),
 		]),
 	)
 

@@ -117,7 +117,7 @@ export const mobileMenuButton = <Message>(
 			intent: "plain",
 			size: "sq-xs",
 			className: twMerge("-ml-1 md:hidden", options.className),
-			attributes: [options.onPress],
+			attributes: [h.AriaLabel("Open sidebar"), options.onPress],
 		},
 		[IconMenu(h, { className: "size-5" })],
 	)
@@ -149,7 +149,7 @@ export const mobileSidebarSheet = <Message>(
 			restoresFocusToPrevious: true,
 			overlayAttributes: { "data-slot": "sidebar", "data-intent": "default" },
 			className:
-				"w-(--sidebar-width) entering:blur-in exiting:blur-out [--sidebar-width:18rem] has-data-[slot=calendar]:[--sidebar-width:23rem]",
+				"w-(--sidebar-width) data-entering:blur-in data-exiting:blur-out [--sidebar-width:18rem] has-data-[slot=calendar]:[--sidebar-width:23rem]",
 		},
 		toParentMessage: options.toMessage,
 	})

@@ -1,7 +1,6 @@
 import { twJoin } from "tailwind-merge"
 import { tv } from "tailwind-variants"
 
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const dropdownSectionStyles = tv({
 	slots: {
 		section: "col-span-full grid grid-cols-[auto_1fr]",
@@ -25,21 +24,21 @@ export const dropdownItemStyles = tv({
 		"has-[[slot=description]]:*:data-[slot=icon]:h-lh has-[[slot=description]]:[&_[data-slot='icon']:not([class*='w-'])]:w-5 sm:has-[[slot=description]]:[&_[data-slot='icon']:not([class*='w-'])]:w-4",
 		"[&>[slot=label]+[data-slot=icon]]:absolute [&>[slot=label]+[data-slot=icon]]:right-1",
 		// force color adjust
-		"forced-color-adjust-none forced-colors:focus:bg-[Highlight] forced-colors:focus:text-[HighlightText] forced-colors:focus:*:data-[slot=icon]:text-[HighlightText]",
+		"forced-color-adjust-none forced-colors:data-focused:bg-[Highlight] forced-colors:data-focused:text-[HighlightText] forced-colors:data-focused:*:data-[slot=icon]:text-[HighlightText]",
 	],
 	variants: {
 		intent: {
 			danger: [
-				"text-danger-subtle-fg focus:text-danger-subtle-fg [&_[data-slot='icon']:not([class*='text-'])]:text-danger-subtle-fg/70",
-				"*:[[slot=description]]:text-danger-subtle-fg/80 focus:*:[[slot=description]]:text-danger-subtle-fg focus:*:[[slot=label]]:text-danger-subtle-fg",
-				"focus:bg-danger-subtle focus:text-danger-subtle-fg forced-colors:focus:text-[Mark] focus:[&_[data-slot='icon']:not([class*='text-'])]:text-danger-subtle-fg",
-				"*:data-[slot=keyboard]:text-danger-subtle-fg/70 focus:*:data-[slot=keyboard]:text-danger-subtle-fg",
+				"text-danger-subtle-fg data-focused:text-danger-subtle-fg [&_[data-slot='icon']:not([class*='text-'])]:text-danger-subtle-fg/70",
+				"*:[[slot=description]]:text-danger-subtle-fg/80 data-focused:*:[[slot=description]]:text-danger-subtle-fg data-focused:*:[[slot=label]]:text-danger-subtle-fg",
+				"data-focused:bg-danger-subtle data-focused:text-danger-subtle-fg forced-colors:data-focused:text-[Mark] data-focused:[&_[data-slot='icon']:not([class*='text-'])]:text-danger-subtle-fg",
+				"*:data-[slot=keyboard]:text-danger-subtle-fg/70 data-focused:*:data-[slot=keyboard]:text-danger-subtle-fg",
 			],
 			warning: [
-				"text-warning-subtle-fg focus:text-warning-subtle-fg [&_[data-slot='icon']:not([class*='text-'])]:text-warning-subtle-fg/70",
-				"*:[[slot=description]]:text-warning-subtle-fg/80 focus:*:[[slot=description]]:text-warning-subtle-fg focus:*:[[slot=label]]:text-warning-subtle-fg",
-				"focus:bg-warning-subtle focus:text-warning-subtle-fg focus:[&_[data-slot='icon']:not([class*='text-'])]:text-warning-subtle-fg",
-				"*:data-[slot=keyboard]:text-warning-subtle-fg/70 focus:*:data-[slot=keyboard]:text-warning-subtle-fg",
+				"text-warning-subtle-fg data-focused:text-warning-subtle-fg [&_[data-slot='icon']:not([class*='text-'])]:text-warning-subtle-fg/70",
+				"*:[[slot=description]]:text-warning-subtle-fg/80 data-focused:*:[[slot=description]]:text-warning-subtle-fg data-focused:*:[[slot=label]]:text-warning-subtle-fg",
+				"data-focused:bg-warning-subtle data-focused:text-warning-subtle-fg data-focused:[&_[data-slot='icon']:not([class*='text-'])]:text-warning-subtle-fg",
+				"*:data-[slot=keyboard]:text-warning-subtle-fg/70 data-focused:*:data-[slot=keyboard]:text-warning-subtle-fg",
 			],
 		},
 		isDisabled: {
@@ -80,4 +79,4 @@ export const dropdownLabelBase = "col-start-2"
 export const dropdownDescriptionBase = "col-start-2 font-normal text-muted-fg text-sm"
 export const dropdownSeparatorBase = "col-span-full -mx-1 h-px bg-fg/10"
 export const dropdownKeyboardBase =
-	"absolute right-2 pl-2 group-hover:text-primary-fg group-focus:text-primary-fg"
+	"absolute right-2 pl-2 group-hover:text-primary-fg group-data-focused:text-primary-fg"

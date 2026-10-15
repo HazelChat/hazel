@@ -38,6 +38,13 @@ export const Model = Schema.Struct({
 	channelsSidebar: ChannelsSidebar.Model,
 	userMenu: Menu.Model,
 	orgSwitcher: Menu.Model,
+	/**
+	 * The menus' structure, which the views pass to the menus. Kept here (not rebuilt per render) so the
+	 * memoized sidebars see a stable reference; rebuilt where an input changes (`informContext`, the
+	 * user's organizations).
+	 */
+	userMenuEntries: Schema.Array(Menu.Entry),
+	orgSwitcherEntries: Schema.Array(Menu.Entry),
 	userOrganizations: Schema.Array(SwitcherOrg),
 	userStatus: Schema.NullOr(UserStatus),
 	/** Unread notification ids and the optimistic "Mark all as read" state. */

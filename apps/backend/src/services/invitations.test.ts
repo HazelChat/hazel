@@ -228,4 +228,30 @@ describe("invitations", () => {
 		expect(Option.isNone(result.accepted)).toBe(true)
 		expect(Option.getOrNull(result.pending)?.status).toBe("pending")
 	})
+
+	it("inviting into a deleted organization fails with OrganizationNotFoundError, not a 500", async () => {
+		const deletedOrgId = Schema.decodeSync(OrganizationId)(id(2))
+		await harness.run(
+			Effect.gen(function* () {
+				const db = yield* Database.Database
+				yield* db.execute(
+					Database.sql.raw(
+						`INSERT INTO organizations (id, name, slug, "isPublic", "createdAt", "updatedAt", "deletedAt")
+						VALUES ('${deletedOrgId}', 'Gone Labs', 'gone-labs', false, NOW(), NOW(), NOW())`,
+					),
+				)
+				yield* db.execute(
+					Database.sql.raw(
+						`INSERT INTO organization_members (id, "organizationId", "userId", role, "joinedAt", "createdAt")
+						VALUES ('${id(22)}', '${deletedOrgId}', '${owner}', 'owner', NOW(), NOW())`,
+					),
+				)
+			}),
+		)
+
+		const exit = await run(owner, "organization-members:write", (invitations) =>
+			invitations.create({ organizationId: deletedOrgId, emails: ["late@hazel.test"], role: "member" }),
+		)
+		expect(failureTag(exit)).toEqual(["OrganizationNotFoundError"])
+	})
 })

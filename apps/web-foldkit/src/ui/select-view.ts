@@ -104,6 +104,8 @@ const FocusTriggerOnPress = Mount.define("FocusSelectTriggerOnPress", {
 // VIEW
 
 export type ViewInputs = Readonly<{
+	/** The options, owned by the parent. */
+	items: ReadonlyArray<Item>
 	/** The `Label` inside the Select; omit it and pass `ariaLabel` for an unlabelled Select. */
 	label?: string
 	ariaLabel?: string
@@ -134,7 +136,7 @@ const optionLabel = <M>(h: HtmlBuilder<M>, label: string, id?: string): Html =>
 export const view = Submodel.defineView<Model, Message, ViewInputs>((model, viewInputs, h) => {
 	const isOpen = model.popup._tag === "Open"
 	const selectedItem = Option.flatMap(model.selectedKey, (key) =>
-		Array.findFirst(model.items, (candidate) => candidate.key === key),
+		Array.findFirst(viewInputs.items, (candidate) => candidate.key === key),
 	)
 	const flag = (name: string, isOn: boolean) => (isOn ? [h.Attribute(name, "true")] : [])
 
@@ -144,7 +146,6 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 			...flag("data-disabled", model.isDisabled),
 			...flag("data-focused", isOpen || model.isTriggerFocused),
 			...flag("data-open", isOpen),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-slot", "control"),
 			...(viewInputs.style === undefined ? [] : [h.Attribute("style", viewInputs.style)]),
 		],
@@ -204,7 +205,7 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 									["Enter", " ", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"],
 									key,
 								)
-									? Option.some(Message.PressedTriggerKey({ key }))
+									? Option.some(Message.PressedTriggerKey({ key, items: viewInputs.items }))
 									: Option.none(),
 							),
 						],
@@ -218,7 +219,6 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 													[
 														h.Class(selectValueClassName),
 														h.Attribute("data-placeholder", "true"),
-														h.Attribute("data-rac", ""),
 														h.Attribute("data-slot", "select-value"),
 														h.Id(valueId(model.id)),
 													],
@@ -228,7 +228,6 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 												h.span(
 													[
 														h.Class(selectValueClassName),
-														h.Attribute("data-rac", ""),
 														h.Attribute("data-slot", "select-value"),
 														h.Id(valueId(model.id)),
 													],
@@ -278,7 +277,7 @@ const hiddenSelect = (model: Model, viewInputs: ViewInputs, h: HtmlBuilder<Messa
 						[
 							h.option([]),
 							// Keyed by label so a relabelled option is replaced and Chrome re-measures the select, as React does on every commit.
-							...Array.map(model.items, (candidate) =>
+							...Array.map(viewInputs.items, (candidate) =>
 								h.option(
 									[
 										h.Key(`${candidate.key}:${candidate.label}`),
@@ -332,7 +331,6 @@ const selectPopover = (model: Model, open: Open, viewInputs: ViewInputs, h: Html
 								),
 							),
 							h.Attribute("data-popover", ""),
-							h.Attribute("data-rac", ""),
 							h.Attribute("data-select-popover", model.id),
 							h.Attribute("data-trigger", "Select"),
 							h.Attribute("dir", "ltr"),
@@ -348,6 +346,7 @@ const selectPopover = (model: Model, open: Open, viewInputs: ViewInputs, h: Html
 													modifiers.ctrlKey ||
 													modifiers.metaKey ||
 													modifiers.altKey,
+												items: viewInputs.items,
 											}),
 										),
 							),
@@ -383,12 +382,11 @@ const listbox = (model: Model, open: Open, viewInputs: ViewInputs, h: HtmlBuilde
 			h.Class(twMerge(twMerge(selectListBoxBase), viewInputs.listBoxClassName)),
 			h.Attribute("data-layout", "stack"),
 			h.Attribute("data-orientation", "vertical"),
-			h.Attribute("data-rac", ""),
 			h.Id(listboxId(model.id)),
 			h.Role("listbox"),
 			h.Attribute("tabindex", Option.isSome(open.focusedKey) ? "-1" : "0"),
 		],
-		Array.map(model.items, (candidate) => option(model, open, candidate, h, viewInputs.renderOption)),
+		Array.map(viewInputs.items, (candidate) => option(model, open, candidate, h, viewInputs)),
 	)
 
 const option = (
@@ -396,8 +394,9 @@ const option = (
 	open: Open,
 	candidate: Item,
 	h: HtmlBuilder<Message>,
-	renderOption: ViewInputs["renderOption"],
+	viewInputs: ViewInputs,
 ): Html => {
+	const { renderOption, items } = viewInputs
 	const { key } = candidate
 	const isSelected = Option.contains(model.selectedKey, key)
 	const isFocused = Option.contains(open.focusedKey, key)
@@ -417,16 +416,15 @@ const option = (
 			...flag("data-focused", isFocused),
 			...flag("data-hovered", isHovered),
 			h.Attribute("data-key", key),
-			h.Attribute("data-rac", ""),
 			h.Attribute("data-react-aria-pressable", "true"),
 			...flag("data-selected", isSelected),
 			h.Attribute("data-selection-mode", "single"),
 			h.Id(optionId(model.id, key)),
 			h.Role("option"),
 			...(candidate.isDisabled ? [] : [h.Attribute("tabindex", isFocused ? "0" : "-1")]),
-			h.OnMouseEnter(Message.HoveredOption({ key })),
+			h.OnMouseEnter(Message.HoveredOption({ key, items })),
 			h.OnMouseLeave(Message.UnhoveredOption({ key })),
-			h.OnClick(Message.ClickedOption({ key })),
+			h.OnClick(Message.ClickedOption({ key, items })),
 		],
 		[
 			...(isSelected
