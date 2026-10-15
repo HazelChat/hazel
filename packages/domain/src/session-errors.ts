@@ -72,4 +72,3 @@ export class SessionRefreshError extends Schema.TaggedError<SessionRefreshError>
 	},
 	{ httpApiStatus: 401 },
 ) {}
-

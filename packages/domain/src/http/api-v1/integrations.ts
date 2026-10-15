@@ -100,53 +100,40 @@ export class IntegrationsApiGroup extends HttpApiGroup.make("api-v1-integrations
 		HttpApiEndpoint.get("listOrganizations", "/organizations", {
 			success: ApiV1OrganizationsListResponse,
 			error: [UnauthorizedError, SessionLoadError, InternalServerError],
-		})
-			.annotateMerge(
-				OpenApi.annotations({
-					title: "List Organizations",
-					description:
-						"List the organizations the OAuth user is a member of. Used by integrations to render a workspace picker.",
-					summary: "List organizations",
-				}),
-			),
+		}).annotateMerge(
+			OpenApi.annotations({
+				title: "List Organizations",
+				description:
+					"List the organizations the OAuth user is a member of. Used by integrations to render a workspace picker.",
+				summary: "List organizations",
+			}),
+		),
 	)
 	.add(
 		HttpApiEndpoint.get("listChannels", "/organizations/:organizationId/channels", {
 			params: { organizationId: OrganizationId },
 			success: ApiV1ChannelsListResponse,
-			error: [
-				UnauthorizedError,
-				SessionLoadError,
-				ApiV1OrganizationNotFoundError,
-				InternalServerError,
-			],
-		})
-			.annotateMerge(
-				OpenApi.annotations({
-					title: "List Channels",
-					description: "List the channels in an organization the OAuth user is a member of.",
-					summary: "List channels",
-				}),
-			),
+			error: [UnauthorizedError, SessionLoadError, ApiV1OrganizationNotFoundError, InternalServerError],
+		}).annotateMerge(
+			OpenApi.annotations({
+				title: "List Channels",
+				description: "List the channels in an organization the OAuth user is a member of.",
+				summary: "List channels",
+			}),
+		),
 	)
 	.add(
 		HttpApiEndpoint.post("createChannelWebhook", "/channel-webhooks", {
 			payload: ApiV1CreateChannelWebhookRequest,
 			success: ApiV1ChannelWebhookCreatedResponse,
-			error: [
-				UnauthorizedError,
-				SessionLoadError,
-				ApiV1ChannelNotFoundError,
-				InternalServerError,
-			],
-		})
-			.annotateMerge(
-				OpenApi.annotations({
-					title: "Create Channel Webhook",
-					description:
-						"Provision an inbound webhook bound to a channel. Returns a `webhookUrl` integrations should POST to for delivery (uses the same path as the manual webhook flow).",
-					summary: "Create channel webhook",
-				}),
-			),
+			error: [UnauthorizedError, SessionLoadError, ApiV1ChannelNotFoundError, InternalServerError],
+		}).annotateMerge(
+			OpenApi.annotations({
+				title: "Create Channel Webhook",
+				description:
+					"Provision an inbound webhook bound to a channel. Returns a `webhookUrl` integrations should POST to for delivery (uses the same path as the manual webhook flow).",
+				summary: "Create channel webhook",
+			}),
+		),
 	)
 	.prefix("/api/v1") {}

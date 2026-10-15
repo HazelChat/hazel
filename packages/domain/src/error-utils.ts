@@ -47,7 +47,9 @@ export const refailUnauthorized = (entity: string, action: string) => {
 						Effect.fail(
 							new UnauthorizedError({
 								// Convert PermissionError to UnauthorizedError with scope info
-								message: PermissionError.is(e) ? e.message : `You can't ${action} this ${entity}`,
+								message: PermissionError.is(e)
+									? e.message
+									: `You can't ${action} this ${entity}`,
 								detail: `You are not authorized to perform ${action} on ${entity} for ${actor.id}`,
 							}),
 						),

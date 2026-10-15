@@ -1,10 +1,5 @@
 import type { OrganizationId } from "@hazel/schema"
-import {
-	ChannelMemberRepo,
-	ChannelRepo,
-	OrganizationMemberRepo,
-	OrganizationRepo,
-} from "@hazel/backend-core"
+import { ChannelMemberRepo, ChannelRepo, OrganizationMemberRepo, OrganizationRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
 import {
@@ -157,9 +152,15 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							})
 
 							// Setup default channels for the organization
-							yield* organizationRepo.setupDefaultChannels(createdOrganization.id, currentUser.id)
+							yield* organizationRepo.setupDefaultChannels(
+								createdOrganization.id,
+								currentUser.id,
+							)
 
-							yield* channelAccessSync.syncUserInOrganization(currentUser.id, createdOrganization.id)
+							yield* channelAccessSync.syncUserInOrganization(
+								currentUser.id,
+								createdOrganization.id,
+							)
 
 							const txid = yield* generateTransactionId()
 

@@ -1,6 +1,11 @@
 import { Headers } from "effect/http"
 import { BotRepo, UserRepo } from "@hazel/backend-core"
-import { CurrentUser, InvalidBearerTokenError, SessionLoadError, SessionNotProvidedError } from "@hazel/domain"
+import {
+	CurrentUser,
+	InvalidBearerTokenError,
+	SessionLoadError,
+	SessionNotProvidedError,
+} from "@hazel/domain"
 import { Cause, Effect, Layer, Option } from "effect"
 import { AuthMiddleware } from "@hazel/domain/rpc"
 import { type ApiScope, CurrentBotScopes } from "@hazel/domain/scopes"

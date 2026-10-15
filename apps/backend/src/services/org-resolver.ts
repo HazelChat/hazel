@@ -47,8 +47,7 @@ export class OrgResolver extends Context.Service<OrgResolver>()("OrgResolver", {
 		) =>
 			Effect.gen(function* () {
 				const actor = yield* CurrentUser.Context
-				const member = yield* organizationMemberRepo
-					.findByOrgAndUser(organizationId, actor.id)
+				const member = yield* organizationMemberRepo.findByOrgAndUser(organizationId, actor.id)
 
 				if (Option.isNone(member)) {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
@@ -72,8 +71,7 @@ export class OrgResolver extends Context.Service<OrgResolver>()("OrgResolver", {
 		) =>
 			Effect.gen(function* () {
 				const actor = yield* CurrentUser.Context
-				const member = yield* organizationMemberRepo
-					.findByOrgAndUser(organizationId, actor.id)
+				const member = yield* organizationMemberRepo.findByOrgAndUser(organizationId, actor.id)
 
 				if (Option.isNone(member)) {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
@@ -95,8 +93,7 @@ export class OrgResolver extends Context.Service<OrgResolver>()("OrgResolver", {
 		) =>
 			Effect.gen(function* () {
 				const actor = yield* CurrentUser.Context
-				const member = yield* organizationMemberRepo
-					.findByOrgAndUser(organizationId, actor.id)
+				const member = yield* organizationMemberRepo.findByOrgAndUser(organizationId, actor.id)
 
 				if (Option.isNone(member) || member.value.role !== "owner") {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
@@ -147,8 +144,7 @@ export class OrgResolver extends Context.Service<OrgResolver>()("OrgResolver", {
 				}
 
 				const ch = channel.value
-				const orgMember = yield* organizationMemberRepo
-					.findByOrgAndUser(ch.organizationId, actor.id)
+				const orgMember = yield* organizationMemberRepo.findByOrgAndUser(ch.organizationId, actor.id)
 
 				if (Option.isNone(orgMember)) {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
@@ -204,14 +200,18 @@ export class OrgResolver extends Context.Service<OrgResolver>()("OrgResolver", {
 					if (isAdminOrOwner(orgMember.role as OrganizationRole)) {
 						return true
 					}
-					const membership = yield* channelMemberRepo
-						.findByChannelAndUser(channel.id as ChannelId, actor.id)
+					const membership = yield* channelMemberRepo.findByChannelAndUser(
+						channel.id as ChannelId,
+						actor.id,
+					)
 					return Option.isSome(membership)
 				}
 
 				if (channel.type === "direct" || channel.type === "single") {
-					const membership = yield* channelMemberRepo
-						.findByChannelAndUser(channel.id as ChannelId, actor.id)
+					const membership = yield* channelMemberRepo.findByChannelAndUser(
+						channel.id as ChannelId,
+						actor.id,
+					)
 					return Option.isSome(membership)
 				}
 
@@ -219,8 +219,7 @@ export class OrgResolver extends Context.Service<OrgResolver>()("OrgResolver", {
 					if (!channel.parentChannelId) {
 						return false
 					}
-					const parentChannel = yield* channelRepo
-						.findById(channel.parentChannelId as ChannelId)
+					const parentChannel = yield* channelRepo.findById(channel.parentChannelId as ChannelId)
 
 					if (Option.isNone(parentChannel)) {
 						return false

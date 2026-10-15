@@ -159,7 +159,9 @@ describe("OrgResolver", () => {
 				use((r) => r.requireScope(TEST_ORG_ID, "organizations:read", "Organization", "read")),
 				layer,
 			)
-			expect(Result.isFailure(result) && (result.failure as { _tag: string })._tag).toBe("DatabaseError")
+			expect(Result.isFailure(result) && (result.failure as { _tag: string })._tag).toBe(
+				"DatabaseError",
+			)
 		})
 	})
 

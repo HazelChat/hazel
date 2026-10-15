@@ -61,7 +61,12 @@ export class OAuthRedemptionPendingError extends Schema.TaggedError<OAuthRedempt
  */
 export const attachCause = (error: Error, cause: unknown) => {
 	if (cause === undefined) return
-	Object.defineProperty(error, "cause", { value: cause, enumerable: false, writable: true, configurable: true })
+	Object.defineProperty(error, "cause", {
+		value: cause,
+		enumerable: false,
+		writable: true,
+		configurable: true,
+	})
 }
 
 /**

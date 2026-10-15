@@ -161,9 +161,9 @@ describe("AuthMiddlewareLive", () => {
 			hazelSession: makeHazelSessionLayer({ enabled: true }),
 		})
 
-		expect(Result.isFailure(result) && ("_tag" in result.failure ? result.failure._tag : "unhandled")).toBe(
-			"InvalidBearerTokenError",
-		)
+		expect(
+			Result.isFailure(result) && ("_tag" in result.failure ? result.failure._tag : "unhandled"),
+		).toBe("InvalidBearerTokenError")
 	})
 
 	it("reports a database failure during bot token lookup as SessionLoadError, not a 401", async () => {
@@ -179,9 +179,9 @@ describe("AuthMiddlewareLive", () => {
 			),
 		})
 
-		expect(Result.isFailure(result) && ("_tag" in result.failure ? result.failure._tag : "unhandled")).toBe(
-			"SessionLoadError",
-		)
+		expect(
+			Result.isFailure(result) && ("_tag" in result.failure ? result.failure._tag : "unhandled"),
+		).toBe("SessionLoadError")
 	})
 
 	it("fails when no bearer token is provided", async () => {

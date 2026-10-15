@@ -403,9 +403,7 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (
 		},
 	).pipe(
 		Effect.catchTag("HttpBodyError", (e) =>
-			Effect.fail(
-				new InternalServerError({ message: "Failed to serialize response", cause: e }),
-			),
+			Effect.fail(new InternalServerError({ message: "Failed to serialize response", cause: e })),
 		),
 	)
 })
@@ -1209,9 +1207,7 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 		.handle("getOAuthUrl", ({ params, query }) =>
 			handleGetOAuthUrl(params, query).pipe(
 				Effect.catchTag("ConfigError", (err) =>
-					Effect.fail(
-						new InternalServerError({ message: "Missing configuration", cause: err }),
-					),
+					Effect.fail(new InternalServerError({ message: "Missing configuration", cause: err })),
 				),
 			),
 		)
@@ -1226,9 +1222,7 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 					),
 				),
 				Effect.catchTag("ConfigError", (err) =>
-					Effect.fail(
-						new InternalServerError({ message: "Missing configuration", cause: err }),
-					),
+					Effect.fail(new InternalServerError({ message: "Missing configuration", cause: err })),
 				),
 			),
 		)

@@ -30,7 +30,11 @@ export const AuthorizationLive = Layer.effect(
 					// Hazel session credential (native clients)
 					const sessionUser = token === "" ? Option.none() : yield* hazelSession.verify(token)
 					if (Option.isSome(sessionUser)) {
-						return yield* Effect.provideService(httpEffect, CurrentUser.Context, sessionUser.value)
+						return yield* Effect.provideService(
+							httpEffect,
+							CurrentUser.Context,
+							sessionUser.value,
+						)
 					}
 
 					return yield* Effect.fail(
