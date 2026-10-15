@@ -5,7 +5,6 @@ import { toastStyles } from "~/components/ui/toast.styles"
 import { IconClose } from "../icons"
 import type { Action, Entry, Kind } from "./toast"
 // Pending-button announcements; every root renders the toaster, so they load with it.
-import "./aria/pending-announcement"
 
 /** One toast's card, drawn inside the kit's entry `<div>`: icon, title, description, action, close. */
 

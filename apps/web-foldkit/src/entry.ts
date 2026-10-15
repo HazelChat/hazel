@@ -11,6 +11,7 @@ import { desktopSessionBearer } from "./platform/desktop-auth"
 import { Flags, flags, init, Message, Model, subscriptions, update, view } from "./main"
 import { NotificationSinks } from "./app/notification-sinks"
 import { ResourcesLive } from "./rpc"
+import * as PendingAnnouncement from "./ui/aria/pending-announcement"
 
 const container = document.getElementById("app")!
 
@@ -24,7 +25,7 @@ const startApplication = () =>
 			view,
 			subscriptions,
 			// The sinks own audio and native notifications, so they are built here, in the browser only.
-			resources: Layer.merge(ResourcesLive, NotificationSinks.layer),
+			resources: Layer.mergeAll(ResourcesLive, NotificationSinks.layer, PendingAnnouncement.layer),
 			container,
 			routing: {
 				onUrlRequest: (request) => Message.ClickedLink({ request }),

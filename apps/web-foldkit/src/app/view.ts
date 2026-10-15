@@ -33,7 +33,7 @@ import { mySettingsSidebar, notificationsSidebar, settingsSidebar } from "../she
 import type * as Menu from "../ui/menu"
 import type * as ModalKit from "../ui/modal"
 import { Message } from "./message"
-import { type Model, OrgState, resolvedThemeOf, Session, sharedOf } from "./model"
+import { type Model, OrgState, Session, sharedOf } from "./model"
 
 // Module-level and built as literals: memoized shell views compare them by reference, and
 // wrapper constructors would re-validate large payloads (sidebar rows, message pages) per dispatch.
