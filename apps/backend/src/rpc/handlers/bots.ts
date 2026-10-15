@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto"
 import { BotCommandRepo, BotInstallationRepo, BotRepo, UserRepo } from "@hazel/backend-core"
 import { Database, PG, schema } from "@hazel/db"
-import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
+import { ActiveOrganizationRequiredError, CurrentUser, withRemapDbErrors } from "@hazel/domain"
 import type { BotId, BotInstallationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import {
 	BotAlreadyInstalledError,
@@ -46,7 +46,9 @@ export const BotRpcLive = BotRpcs.toLayer(
 					yield* checkBotOperationRateLimit(currentUser.id)
 
 					if (!currentUser.organizationId) {
-						return yield* Effect.die(new Error("User must belong to an organization"))
+						return yield* Effect.fail(
+							new ActiveOrganizationRequiredError({ message: "Select an organization first" }),
+						)
 					}
 
 					const organizationId = currentUser.organizationId
@@ -381,7 +383,9 @@ export const BotRpcLive = BotRpcs.toLayer(
 					yield* checkBotOperationRateLimit(currentUser.id)
 
 					if (!currentUser.organizationId) {
-						return yield* Effect.die(new Error("User must belong to an organization"))
+						return yield* Effect.fail(
+							new ActiveOrganizationRequiredError({ message: "Select an organization first" }),
+						)
 					}
 
 					const organizationId = currentUser.organizationId
@@ -459,7 +463,9 @@ export const BotRpcLive = BotRpcs.toLayer(
 					yield* checkBotOperationRateLimit(currentUser.id)
 
 					if (!currentUser.organizationId) {
-						return yield* Effect.die(new Error("User must belong to an organization"))
+						return yield* Effect.fail(
+							new ActiveOrganizationRequiredError({ message: "Select an organization first" }),
+						)
 					}
 
 					const organizationId = currentUser.organizationId
@@ -526,7 +532,9 @@ export const BotRpcLive = BotRpcs.toLayer(
 					yield* checkBotOperationRateLimit(currentUser.id)
 
 					if (!currentUser.organizationId) {
-						return yield* Effect.die(new Error("User must belong to an organization"))
+						return yield* Effect.fail(
+							new ActiveOrganizationRequiredError({ message: "Select an organization first" }),
+						)
 					}
 
 					const organizationId = currentUser.organizationId

@@ -17,7 +17,9 @@ import {
 	withRemapDbErrors,
 } from "@hazel/domain"
 import {
+	ChannelNotFoundError,
 	ConnectChannelAlreadySharedError,
+	ConnectConversationNotFoundError,
 	ConnectConversationResponse,
 	ConnectInviteInvalidStateError,
 	ConnectInviteListResponse,
@@ -36,8 +38,8 @@ import { ChannelAccessSyncService } from "../../services/channel-access-sync"
 import { ConnectConversationService } from "../../services/connect-conversation-service"
 import { OrgResolver } from "../../services/org-resolver"
 
-const isUniqueViolation = (error: any, constraintName: string) =>
-	error?.type === "unique_violation" && error?.constraint === constraintName
+const isUniqueViolation = (error: Database.DatabaseError, constraintName: string) =>
+	error.type === "unique_violation" && error.constraint === constraintName
 
 export const resolveGuestOrganizationForInviteCreate = ({
 	providedOrgId,
@@ -132,32 +134,32 @@ export const assertGuestMemberAddsAllowed = (
 			)
 		: Effect.void
 
-export const remapGuestMountInsertConflict = ({
+export const remapGuestMountInsertConflict = <E, R>({
 	error,
 	guestOrganizationId,
 	findExistingMount,
 }: {
-	error: any
+	error: Database.DatabaseError
 	guestOrganizationId: OrganizationId
-	findExistingMount: () => Effect.Effect<Option.Option<{ channelId: ChannelId }>, any, any>
-}) => {
+	findExistingMount: () => Effect.Effect<Option.Option<{ channelId: ChannelId }>, E, R>
+}): Effect.Effect<never, Database.DatabaseError | ConnectChannelAlreadySharedError | E, R> => {
 	if (!isUniqueViolation(error, "connect_conv_channels_conversation_org_unique")) {
 		return Effect.fail(error)
 	}
 
 	return findExistingMount().pipe(
-		Effect.flatMap(
-			Option.match({
-				onNone: () => Effect.fail(error),
-				onSome: (existingMount) =>
-					Effect.fail(
+		Effect.flatMap((existingMount) =>
+			Effect.fail(
+				Option.match(existingMount, {
+					onNone: (): Database.DatabaseError | ConnectChannelAlreadySharedError => error,
+					onSome: (mount) =>
 						new ConnectChannelAlreadySharedError({
-							channelId: existingMount.channelId,
+							channelId: mount.channelId,
 							organizationId: guestOrganizationId,
 							message: "This workspace is already connected to the conversation",
 						}),
-					),
-			}),
+				}),
+			),
 		),
 	)
 }
@@ -247,12 +249,7 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							const currentUser = yield* CurrentUser.Context
 							const channelOption = yield* channelRepo.findById(channelId)
 							if (Option.isNone(channelOption)) {
-								return yield* Effect.fail(
-									new InternalServerError({
-										message: "Channel not found while creating Hazel Connect invite",
-										detail: `channelId=${channelId}`,
-									}),
-								)
+								return yield* Effect.fail(new ChannelNotFoundError({ channelId: channelId }))
 							}
 							const channel = channelOption.value
 							yield* requireAdminOrOwner(channel.organizationId)
@@ -346,10 +343,7 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							const hostChannelOption = yield* channelRepo.findById(invite.hostChannelId)
 							if (Option.isNone(hostChannelOption)) {
 								return yield* Effect.fail(
-									new InternalServerError({
-										message: "Host channel missing while accepting Hazel Connect invite",
-										detail: `hostChannelId=${invite.hostChannelId}`,
-									}),
+									new ChannelNotFoundError({ channelId: invite.hostChannelId }),
 								)
 							}
 							const hostChannel = hostChannelOption.value
@@ -452,17 +446,18 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							// Sync all channels in the conversation so cross-org users get access
 							yield* channelAccessSync.syncConversation(invite.conversationId)
 
-							const conversation = yield* connectConversationRepo
-								.findById(invite.conversationId)
-								.pipe(
-									Effect.map((result) =>
-										Option.getOrElse(result, () => {
-											throw new Error(
-												"Connect conversation disappeared during acceptance",
-											)
-										}),
-									),
+							const conversationOption = yield* connectConversationRepo.findById(
+								invite.conversationId,
+							)
+							if (Option.isNone(conversationOption)) {
+								return yield* Effect.fail(
+									new ConnectConversationNotFoundError({
+										conversationId: invite.conversationId,
+										message: "Hazel Connect conversation disappeared during acceptance",
+									}),
 								)
+							}
+							const conversation = conversationOption.value
 							const txid = yield* generateTransactionId()
 							return new ConnectConversationResponse({
 								data: conversation,
@@ -575,9 +570,9 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							const conversationOption = yield* connectConversationRepo.findById(conversationId)
 							if (Option.isNone(conversationOption)) {
 								return yield* Effect.fail(
-									new InternalServerError({
+									new ConnectConversationNotFoundError({
+										conversationId,
 										message: "Hazel Connect conversation not found",
-										detail: `conversationId=${conversationId}`,
 									}),
 								)
 							}
@@ -614,12 +609,7 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							const currentUser = yield* CurrentUser.Context
 							const channelOption = yield* channelRepo.findById(channelId)
 							if (Option.isNone(channelOption)) {
-								return yield* Effect.fail(
-									new InternalServerError({
-										message: "Channel not found while adding connect participant",
-										detail: `channelId=${channelId}`,
-									}),
-								)
+								return yield* Effect.fail(new ChannelNotFoundError({ channelId: channelId }))
 							}
 							const channel = channelOption.value
 							yield* orgResolver.fromChannel(
@@ -633,9 +623,8 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 								yield* connectConversationService.getConversationIdForChannel(channelId)
 							if (!conversationId) {
 								return yield* Effect.fail(
-									new InternalServerError({
-										message: "No conversation available for channel",
-										detail: `channelId=${channelId}`,
+									new ConnectConversationNotFoundError({
+										message: "This channel is not shared through Hazel Connect",
 									}),
 								)
 							}
@@ -683,15 +672,18 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							// Sync all channels so the new participant gets access across the conversation
 							yield* channelAccessSync.syncConversation(conversationId)
 
-							const participant = yield* connectParticipantRepo
-								.findByChannelAndUser(channelId, userId)
-								.pipe(
-									Effect.map((result) =>
-										Option.getOrElse(result, () => {
-											throw new Error("Connect participant missing after upsert")
-										}),
-									),
+							const participantOption = yield* connectParticipantRepo.findByChannelAndUser(
+								channelId,
+								userId,
+							)
+							if (Option.isNone(participantOption)) {
+								return yield* Effect.fail(
+									new InternalServerError({
+										message: "Connect participant missing after upsert",
+									}),
 								)
+							}
+							const participant = participantOption.value
 							const txid = yield* generateTransactionId()
 							return new ConnectParticipantResponse({ data: participant, transactionId: txid })
 						}),
@@ -704,12 +696,7 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 						Effect.gen(function* () {
 							const channelOption = yield* channelRepo.findById(channelId)
 							if (Option.isNone(channelOption)) {
-								return yield* Effect.fail(
-									new InternalServerError({
-										message: "Channel not found while removing connect participant",
-										detail: `channelId=${channelId}`,
-									}),
-								)
+								return yield* Effect.fail(new ChannelNotFoundError({ channelId: channelId }))
 							}
 							const channel = channelOption.value
 							yield* orgResolver.fromChannel(
@@ -758,9 +745,9 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							const conversationOption = yield* connectConversationRepo.findById(conversationId)
 							if (Option.isNone(conversationOption)) {
 								return yield* Effect.fail(
-									new InternalServerError({
+									new ConnectConversationNotFoundError({
+										conversationId,
 										message: "Hazel Connect conversation not found",
-										detail: `conversationId=${conversationId}`,
 									}),
 								)
 							}

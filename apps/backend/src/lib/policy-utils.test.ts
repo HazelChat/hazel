@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest"
-import { UnauthorizedError } from "@hazel/domain"
+import { InternalServerError, UnauthorizedError } from "@hazel/domain"
 import { Effect, Result } from "effect"
 import { makePolicy, withPolicyUnauthorized } from "./policy-utils.ts"
 import { makeActor } from "../policies/policy-test-helpers.ts"
@@ -37,7 +37,7 @@ describe("policy-utils", () => {
 		it("maps non-unauthorized errors to UnauthorizedError", async () => {
 			const authorize = makePolicy("Widget")
 			const result = await Effect.runPromise(
-				authorize("read", () => Effect.fail({ _tag: "DatabaseError" as const })).pipe(
+				authorize("read", () => Effect.fail({ _tag: "EntityNotFound" as const })).pipe(
 					Effect.provideService(CurrentUser.Context, makeActor()),
 					Effect.result,
 				),
@@ -46,6 +46,21 @@ describe("policy-utils", () => {
 			expect(Result.isFailure(result)).toBe(true)
 			if (Result.isFailure(result)) {
 				expect(UnauthorizedError.is(result.failure)).toBe(true)
+			}
+		})
+
+		it("maps database failures to InternalServerError, never a 401", async () => {
+			const authorize = makePolicy("Widget")
+			const result = await Effect.runPromise(
+				authorize("read", () => Effect.fail({ _tag: "DatabaseError" as const })).pipe(
+					Effect.provideService(CurrentUser.Context, makeActor()),
+					Effect.result,
+				),
+			)
+
+			expect(Result.isFailure(result)).toBe(true)
+			if (Result.isFailure(result)) {
+				expect(InternalServerError.is(result.failure)).toBe(true)
 			}
 		})
 	})

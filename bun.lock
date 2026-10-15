@@ -392,7 +392,6 @@
       "name": "@hazel/auth",
       "version": "0.0.0",
       "dependencies": {
-        "@clerk/backend": "^3.3.0",
         "@effect/sql-pg": "catalog:effect",
         "@hazel/db": "workspace:*",
         "@hazel/domain": "workspace:*",
@@ -418,7 +417,6 @@
       "name": "@hazel/backend-core",
       "version": "0.0.0",
       "dependencies": {
-        "@clerk/backend": "^3.3.0",
         "@hazel/db": "workspace:*",
         "@hazel/domain": "workspace:*",
         "@hazel/schema": "workspace:*",
@@ -548,7 +546,6 @@
         "hazel-setup": "./src/index.ts",
       },
       "dependencies": {
-        "@clerk/backend": "^3.3.0",
         "@effect/platform-bun": "catalog:effect",
         "@hazel/db": "workspace:*",
         "@hazel/schema": "workspace:*",
