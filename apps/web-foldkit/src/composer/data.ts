@@ -7,20 +7,25 @@ import {
 	userCollection,
 	userPresenceStatusCollection,
 } from "~/db/collections"
-import type { ChannelMemberId } from "@hazel/schema"
+import type { BotCommandId, BotId, ChannelId, ChannelMemberId, OrganizationId, UserId } from "@hazel/schema"
 import { liveQueryStream } from "../data/live-query"
-import type { BotCommand, MentionableBot, MentionMember, PresenceStatus } from "./composer"
+import type { BotCommand, MentionableBot, MentionMember, Presence } from "./composer"
 
 /** Channel members for mention autocomplete: the exact query `useMentionOptions` runs. */
 export const mentionMembersStream = <Message>(
-	channelId: string,
+	channelId: ChannelId,
 	toMessage: (members: ReadonlyArray<MentionMember>) => Message,
 ) =>
-	liveQueryStream<{ user?: { id: string; firstName: string; lastName: string; avatarUrl?: string | null } }, Message>(
+	liveQueryStream<
+		{ user?: { id: UserId; firstName: string; lastName: string; avatarUrl?: string | null } },
+		Message
+	>(
 		(q) =>
 			q
 				.from({ channelMember: channelMemberCollection })
-				.innerJoin({ user: userCollection }, ({ channelMember, user }) => eq(channelMember.userId, user.id))
+				.innerJoin({ user: userCollection }, ({ channelMember, user }) =>
+					eq(channelMember.userId, user.id),
+				)
 				.where(({ channelMember }) => eq(channelMember.channelId, channelId))
 				.limit(100)
 				.orderBy(({ channelMember }) => channelMember.joinedAt, "desc")
@@ -43,21 +48,19 @@ export const mentionMembersStream = <Message>(
 	)
 
 /** Every presence row, as `useMentionOptions` reads it. */
-export const presenceStream = <Message>(
-	toMessage: (presence: ReadonlyArray<{ userId: string; status: PresenceStatus }>) => Message,
-) =>
-	liveQueryStream<{ userId: string; status: PresenceStatus }, Message>(
+export const presenceStream = <Message>(toMessage: (presence: ReadonlyArray<Presence>) => Message) =>
+	liveQueryStream<Presence, Message>(
 		(q) => q.from({ presence: userPresenceStatusCollection }).select(({ presence }) => presence),
 		(rows) => toMessage(rows.map((row) => ({ userId: row.userId, status: row.status }))),
 	)
 
 /** `useMentionOptions`' mentionable bots installed in the organization. */
 export const mentionableBotsStream = <Message>(
-	organizationId: string,
+	organizationId: OrganizationId,
 	toMessage: (bots: ReadonlyArray<MentionableBot>) => Message,
 ) =>
 	liveQueryStream<
-		{ userId: string; name: string; description?: string | null; user?: { avatarUrl?: string | null } },
+		{ userId: UserId; name: string; description?: string | null; user?: { avatarUrl?: string | null } },
 		Message
 	>(
 		(q) =>
@@ -66,7 +69,11 @@ export const mentionableBotsStream = <Message>(
 				.innerJoin({ bot: botCollection }, ({ installation, bot }) => eq(installation.botId, bot.id))
 				.innerJoin({ user: userCollection }, ({ bot, user }) => eq(bot.userId, user.id))
 				.where(({ installation, bot }) =>
-					and(eq(installation.organizationId, organizationId), eq(bot.mentionable, true), isNull(bot.deletedAt)),
+					and(
+						eq(installation.organizationId, organizationId),
+						eq(bot.mentionable, true),
+						isNull(bot.deletedAt),
+					),
 				)
 				.select(({ bot, user }) => ({ ...bot, user })),
 		(rows) =>
@@ -81,7 +88,7 @@ export const mentionableBotsStream = <Message>(
 	)
 
 interface BotCommandRow {
-	readonly id: string
+	readonly id: BotCommandId
 	readonly name: string
 	readonly description: string
 	readonly arguments: ReadonlyArray<{
@@ -91,14 +98,14 @@ interface BotCommandRow {
 		readonly placeholder?: string | null
 		readonly type: string
 	}> | null
-	readonly botId: string
+	readonly botId: BotId
 	readonly botName: string
 	readonly avatarUrl?: string | null
 }
 
 /** `useBotCommands`: enabled commands of the organization's installed bots. */
 export const botCommandsStream = <Message>(
-	organizationId: string,
+	organizationId: OrganizationId,
 	toMessage: (commands: ReadonlyArray<BotCommand>) => Message,
 ) =>
 	liveQueryStream<BotCommandRow, Message>(
@@ -111,7 +118,11 @@ export const botCommandsStream = <Message>(
 				)
 				.innerJoin({ user: userCollection }, ({ bot, user }) => eq(bot.userId, user.id))
 				.where(({ command, installation, bot }) =>
-					and(eq(installation.organizationId, organizationId), eq(command.isEnabled, true), isNull(bot.deletedAt)),
+					and(
+						eq(installation.organizationId, organizationId),
+						eq(command.isEnabled, true),
+						isNull(bot.deletedAt),
+					),
 				)
 				.select(({ command, bot, user }) => ({
 					id: command.id,
@@ -143,8 +154,8 @@ export const botCommandsStream = <Message>(
 
 /** `ComposerEditor`'s own membership query: the signed-in user's member row in a channel. */
 export const ownMembershipStream = <Message>(
-	channelId: string,
-	userId: string,
+	channelId: ChannelId,
+	userId: UserId,
 	toMessage: (memberId: ChannelMemberId | null) => Message,
 ) =>
 	liveQueryStream<{ id: ChannelMemberId }, Message>(

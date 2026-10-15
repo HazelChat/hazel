@@ -1,48 +1,38 @@
-import { Effect, Queue, Stream } from "effect"
+import { Option, Stream } from "effect"
+import * as Dom from "foldkit/dom"
 
-/** Document-level listeners the composer reacts to (`useGlobalKeyboardFocus`, `useTyping`'s blur). */
+/** Document-level events the composer reacts to (`useGlobalKeyboardFocus`, `useTyping`'s blur). */
 
-/** Printable keys typed outside inputs, editables and open dialogs; the key is taken over. */
+const isEditableTarget = (target: EventTarget | null) =>
+	target instanceof HTMLElement &&
+	(target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.contentEditable === "true")
+
+/**
+ * Printable keys typed outside inputs and editables; the key is taken over. The page runs this only
+ * while none of its dialogs (or a root modal, the palette) is open, so a dialog keeps its keys.
+ */
 export const globalTypingStream = <Message>(toMessage: (key: string) => Message): Stream.Stream<Message> =>
-	Stream.callback<Message>((queue) =>
-		Effect.acquireRelease(
-			Effect.sync(() => {
-				const onKeyDown = (event: KeyboardEvent) => {
-					const target = event.target
-					if (
-						target instanceof HTMLElement &&
-						(target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.contentEditable === "true")
-					)
-						return
-					if (document.querySelector('[role="dialog"]:not([data-react-aria-hidden="true"] *)')) return
-					if (event.ctrlKey || event.altKey || event.metaKey) return
-					if (event.key.length !== 1) return
-					event.preventDefault()
-					Queue.offerUnsafe(queue, toMessage(event.key))
-				}
-				document.addEventListener("keydown", onKeyDown)
-				return () => document.removeEventListener("keydown", onKeyDown)
-			}),
-			(release) => Effect.sync(release),
-		).pipe(Effect.flatMap(() => Effect.never)),
-	)
+	Dom.streamFromEventFilterMapPreventDefault({
+		target: () => document,
+		type: "keydown",
+		filterMapEvent: (event) =>
+			isEditableTarget(event.target) ||
+			event.ctrlKey ||
+			event.altKey ||
+			event.metaKey ||
+			event.key.length !== 1
+				? Option.none()
+				: Option.some(toMessage(event.key)),
+	})
 
 /** The window lost focus or the document was hidden. */
 export const leftWindowStream = <Message>(message: Message): Stream.Stream<Message> =>
-	Stream.callback<Message>((queue) =>
-		Effect.acquireRelease(
-			Effect.sync(() => {
-				const onBlur = () => Queue.offerUnsafe(queue, message)
-				const onVisibility = () => {
-					if (document.visibilityState === "hidden") Queue.offerUnsafe(queue, message)
-				}
-				window.addEventListener("blur", onBlur)
-				document.addEventListener("visibilitychange", onVisibility)
-				return () => {
-					window.removeEventListener("blur", onBlur)
-					document.removeEventListener("visibilitychange", onVisibility)
-				}
-			}),
-			(release) => Effect.sync(release),
-		).pipe(Effect.flatMap(() => Effect.never)),
+	Stream.merge(
+		Dom.streamFromEvent({ target: () => window, type: "blur", mapEvent: () => message }),
+		Dom.streamFromEventFilterMap({
+			target: () => document,
+			type: "visibilitychange",
+			filterMapEvent: () =>
+				document.visibilityState === "hidden" ? Option.some(message) : Option.none(),
+		}),
 	)

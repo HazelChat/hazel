@@ -1,4 +1,4 @@
-import { ChannelId, MessageId, OrganizationId, TypingIndicatorId } from "@hazel/schema"
+import { ChannelId, MessageId, OrganizationId, TypingIndicatorId, UserId } from "@hazel/schema"
 import { Effect, Option, PubSub, Schema, Stream } from "effect"
 import { Subscription } from "foldkit"
 import * as Live from "../../../chat/live-state"
@@ -239,7 +239,7 @@ const uploadEntry = (which: "channel" | "thread") => ({
 	modelToDependencies: ({ model }: Input) => {
 		const draft = which === "channel" ? model.draft : (model.threadPanel?.draft ?? null)
 		return {
-			upload: draft?.currentUpload ?? null,
+			upload: draft === null ? null : Draft.currentUploadOf(draft),
 			channelId: draft?.channelId ?? null,
 			organizationId: model.channel?.organizationId ?? null,
 		}
@@ -304,6 +304,17 @@ export const typingCleanupStream = <R>(
 				),
 			)
 
+/** A dialog of the page holds the keyboard, so typed keys stay there (legacy checked the DOM for one). */
+const hasOpenDialog = (model: Model) =>
+	model.overlays.open._tag === "ImageViewer" ||
+	model.overlays.open._tag === "ReactionPicker" ||
+	model.overlays.open._tag === "ReactionModal" ||
+	(model.overlays.open._tag === "Popover" && model.overlays.open.popover.isOpen) ||
+	model.overlays.pinned.isOpen ||
+	[model.draft, model.threadPanel?.draft ?? null].some(
+		(draft) => draft !== null && (draft.emojiPicker.isOpen || draft.gifPicker.isOpen),
+	)
+
 /** The write path's streams: composer data, uploads, global typing and window blur. */
 const write = Subscription.make<Input, Message, HazelRpc | HazelApiClient>()((entry) => ({
 	composerMembers: entry(byChannel, {
@@ -314,7 +325,7 @@ const write = Subscription.make<Input, Message, HazelRpc | HazelApiClient>()((en
 			),
 	}),
 	composerBots: entry(
-		{ organizationId: Schema.NullOr(Schema.String) },
+		{ organizationId: Schema.NullOr(OrganizationId) },
 		{
 			modelToDependencies: ({ shared }) => ({
 				organizationId: shared.currentUser?.organizationId ?? null,
@@ -328,7 +339,7 @@ const write = Subscription.make<Input, Message, HazelRpc | HazelApiClient>()((en
 		},
 	),
 	composerCommands: entry(
-		{ organizationId: Schema.NullOr(Schema.String) },
+		{ organizationId: Schema.NullOr(OrganizationId) },
 		{
 			modelToDependencies: ({ shared }) => ({
 				organizationId: shared.currentUser?.organizationId ?? null,
@@ -342,7 +353,7 @@ const write = Subscription.make<Input, Message, HazelRpc | HazelApiClient>()((en
 		},
 	),
 	threadMembership: entry(
-		{ threadChannelId: Schema.NullOr(ChannelId), userId: Schema.NullOr(Schema.String) },
+		{ threadChannelId: Schema.NullOr(ChannelId), userId: Schema.NullOr(UserId) },
 		{
 			modelToDependencies: ({ model }) => ({
 				threadChannelId: model.threadPanel?.threadChannelId ?? null,
@@ -371,8 +382,12 @@ const write = Subscription.make<Input, Message, HazelRpc | HazelApiClient>()((en
 	globalTyping: entry(
 		{ isActive: Schema.Boolean },
 		{
-			modelToDependencies: ({ model }) => ({
-				isActive: model.tab._tag === "Messages" && isMemberOf(model) !== false,
+			modelToDependencies: ({ model, shared }) => ({
+				isActive:
+					model.tab._tag === "Messages" &&
+					isMemberOf(model) !== false &&
+					!shared.isOverlayOpen &&
+					!hasOpenDialog(model),
 			}),
 			dependenciesToStream: ({ isActive }) =>
 				isActive ? globalTypingStream((key) => Message.PressedGlobalKey({ key })) : Stream.empty,

@@ -31,6 +31,7 @@ import { AuthMiddlewareClientLive, RpcCredentialsLive } from "~/lib/rpc-auth-mid
 import { CustomFetchLive } from "~/lib/services/common/api-client"
 import { HazelAuthClient, HazelAuthClientLive } from "./auth/client"
 import { MessageWindows, MessageWindowsLive } from "./data/message-windows"
+import { EditorRegistry, EditorRegistryLive } from "./editor/registry"
 
 /** Same groups, transport and auth middleware as the legacy `HazelRpcClient`, as a plain Effect service. */
 const AllRpcs = MessageRpcs.merge(
@@ -83,11 +84,12 @@ export const HazelApiClientLive = Layer.effect(HazelApiClient, makeApiClient).pi
 )
 
 /** The app's `resources`: what every Command and Subscription may use. */
-export type Resources = HazelRpc | HazelApiClient | MessageWindows | HazelAuthClient
+export type Resources = HazelRpc | HazelApiClient | MessageWindows | HazelAuthClient | EditorRegistry
 
 export const ResourcesLive = Layer.mergeAll(
 	HazelRpcLive,
 	HazelApiClientLive,
 	MessageWindowsLive,
 	HazelAuthClientLive,
+	EditorRegistryLive,
 )

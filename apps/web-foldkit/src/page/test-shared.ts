@@ -8,4 +8,5 @@ export const sharedDefaults = {
 	theme: { ...defaultThemePreference(), resolved: "light" },
 	soundSettings: DEFAULT_SOUND_SETTINGS,
 	desktopUpdate: { _tag: "Idle" },
+	isOverlayOpen: false,
 } satisfies Partial<Shared>

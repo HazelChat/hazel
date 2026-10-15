@@ -2,7 +2,7 @@ import * as Scene from "foldkit/scene"
 import type { Html, HtmlBuilder } from "foldkit/html"
 import * as Composer from "../composer/composer"
 import * as Draft from "../composer/draft"
-import { DropEvent } from "../composer/drop"
+import { DragState, DropEvent } from "../composer/drop"
 import * as MessageList from "../mount/message-list"
 import * as Overlays from "../page/chat/overlays"
 import * as Tooltip from "../ui/tooltip"
@@ -53,11 +53,7 @@ export const mountedChannel = (hovered: MessageId | null = null): Step =>
 		[{ name: "MountEditor" }, composer(Composer.Message.UpdatedDraft({ markdown: "", isEmpty: true }))],
 		[
 			{ name: "TrackFileDrop" },
-			draft(
-				Draft.Message.ReceivedDropEvent({
-					event: DropEvent.ChangedDragState({ isDraggingOnPage: false, isDropTarget: false }),
-				}),
-			),
+			draft(Draft.Message.ReceivedDropEvent({ event: DropEvent.ChangedDragState({ drag: DragState.Idle() }) })),
 		],
 		[
 			{ name: "TrackMessageHover" },

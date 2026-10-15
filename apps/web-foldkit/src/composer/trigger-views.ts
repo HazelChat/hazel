@@ -4,7 +4,13 @@ import { cx } from "~/utils/cx"
 import { type BotCommand, type CommandInput, Message, type Model } from "./composer"
 import { commandFieldId } from "./editor-commands"
 import { listBox } from "./autocomplete-view"
-import { clampedActiveIndex, type CommandOption, commandOptions, type EmojiOption, emojiOptions } from "./options"
+import {
+	clampedActiveIndex,
+	type CommandOption,
+	commandOptions,
+	type EmojiOption,
+	emojiOptions,
+} from "./options"
 
 /** `CommandTrigger` / `BotCommandItem`, `EmojiTrigger` / `EmojiItem` and `CommandInputPanel`. */
 
@@ -30,14 +36,19 @@ const botCommandItem = <M>(h: HtmlBuilder<M>, option: CommandOption, isFocused: 
 					h.div(
 						[h.Class("flex flex-wrap items-center gap-1.5")],
 						[
-							h.span([h.Class(cx("font-medium", isFocused ? "text-primary" : "text-fg"))], [`/${command.name}`]),
+							h.span(
+								[h.Class(cx("font-medium", isFocused ? "text-primary" : "text-fg"))],
+								[`/${command.name}`],
+							),
 							...command.arguments.map((arg) =>
 								h.span(
 									[
 										h.Class(
 											cx(
 												"rounded px-1.5 py-0.5 text-xs",
-												arg.required ? "bg-warning/20 text-warning" : "bg-muted text-muted-fg",
+												arg.required
+													? "bg-warning/20 text-warning"
+													: "bg-muted text-muted-fg",
 											),
 										),
 									],
@@ -53,10 +64,15 @@ const botCommandItem = <M>(h: HtmlBuilder<M>, option: CommandOption, isFocused: 
 	)
 }
 
-export const commandTriggerContent = <M>(h: HtmlBuilder<M>, model: Model, toMessage: (message: Message) => M): Html => {
+export const commandTriggerContent = <M>(
+	h: HtmlBuilder<M>,
+	model: Model,
+	toMessage: (message: Message) => M,
+): Html => {
 	const activeIndex = clampedActiveIndex(model)
 	return listBox(
 		h,
+		model.editorId,
 		commandOptions(model).map((option, index) => ({
 			id: option.id,
 			content: botCommandItem(h, option, index === activeIndex),
@@ -72,15 +88,24 @@ const emojiItem = <M>(h: HtmlBuilder<M>, option: EmojiOption): Html =>
 		[h.Class("flex items-center gap-2")],
 		[
 			option.imageUrl
-				? h.img([h.Attribute("src", option.imageUrl), h.Attribute("alt", option.name), h.Class("size-5 object-contain")])
+				? h.img([
+						h.Attribute("src", option.imageUrl),
+						h.Attribute("alt", option.name),
+						h.Class("size-5 object-contain"),
+					])
 				: h.span([h.Class("text-xl")], [option.emoji]),
 			h.span([h.Class("text-muted-fg")], [`:${option.name}:`]),
 		],
 	)
 
-export const emojiTriggerContent = <M>(h: HtmlBuilder<M>, model: Model, toMessage: (message: Message) => M): Html =>
+export const emojiTriggerContent = <M>(
+	h: HtmlBuilder<M>,
+	model: Model,
+	toMessage: (message: Message) => M,
+): Html =>
 	listBox(
 		h,
+		model.editorId,
 		emojiOptions(model).map((option) => ({ id: option.id, content: emojiItem(h, option) })),
 		clampedActiveIndex(model),
 		(model.autocomplete?.search.length ?? 0) < 2 ? "Type at least 2 characters" : "No emoji found",
@@ -97,6 +122,7 @@ export const commandInputPanel = <M>(
 	toMessage: (message: Message) => M,
 ): Html => {
 	const { command } = input
+	const isExecuting = input.submission === "Executing"
 	return h.div(
 		[h.Class("mb-2 rounded-lg border border-border bg-surface-2 p-4")],
 		[
@@ -123,28 +149,42 @@ export const commandInputPanel = <M>(
 								[
 									h.span(
 										[h.Class("mb-1 block text-fg text-sm")],
-										[arg.name, arg.required ? h.span([h.Class("ml-1 text-warning")], ["*"]) : h.empty],
+										[
+											arg.name,
+											arg.required
+												? h.span(
+														[h.Class("ml-1 text-warning"), h.AriaHidden(true)],
+														["*"],
+													)
+												: h.empty,
+										],
 									),
 									h.input([
 										h.Id(commandFieldId(editorId, index)),
 										h.Attribute("type", arg.type === "number" ? "number" : "text"),
 										h.Value(input.values[arg.name] ?? ""),
 										h.Attribute("placeholder", arg.placeholder ?? arg.description ?? ""),
-										h.OnInput((value) => toMessage(Message.UpdatedCommandValue({ argName: arg.name, value }))),
-										h.OnFocus(toMessage(Message.FocusedCommandField({ index }))),
+										h.AriaRequired(arg.required),
+										h.OnInput((value) =>
+											toMessage(
+												Message.UpdatedCommandValue({ argName: arg.name, value }),
+											),
+										),
 										h.OnKeyDownPreventDefault((key, modifiers) =>
 											commandKeys.includes(key)
 												? Option.some(
-														toMessage(Message.PressedCommandFieldKey({ index, key, shiftKey: modifiers.shiftKey })),
+														toMessage(
+															Message.PressedCommandFieldKey({
+																index,
+																key,
+																shiftKey: modifiers.shiftKey,
+															}),
+														),
 													)
 												: Option.none(),
 										),
 										h.Class(
-											cx(
-												"w-full rounded-md border bg-surface px-3 py-2 text-sm",
-												"focus:border-primary focus:outline-none",
-												input.focusedFieldIndex === index ? "border-primary" : "border-border",
-											),
+											"w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none",
 										),
 									]),
 								],
@@ -159,7 +199,9 @@ export const commandInputPanel = <M>(
 						[
 							h.Attribute("type", "button"),
 							h.OnClick(toMessage(Message.ClickedCancelCommand())),
-							h.Class("rounded-md px-3 py-1.5 text-muted-fg text-sm hover:bg-muted hover:text-fg"),
+							h.Class(
+								"rounded-md px-3 py-1.5 text-muted-fg text-sm hover:bg-muted hover:text-fg",
+							),
 						],
 						["Cancel"],
 					),
@@ -167,9 +209,12 @@ export const commandInputPanel = <M>(
 						[
 							h.Attribute("type", "button"),
 							h.OnClick(toMessage(Message.ClickedExecuteCommand())),
-							h.Class("rounded-md bg-primary px-3 py-1.5 text-primary-fg text-sm hover:bg-primary/90"),
+							...(isExecuting ? [h.Disabled(true), h.AriaBusy(true)] : []),
+							h.Class(
+								"rounded-md bg-primary px-3 py-1.5 text-primary-fg text-sm hover:bg-primary/90 disabled:opacity-50",
+							),
 						],
-						["Execute"],
+						[isExecuting ? "Executing…" : "Execute"],
 					),
 				],
 			),
