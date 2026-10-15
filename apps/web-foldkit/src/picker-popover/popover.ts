@@ -56,7 +56,11 @@ export interface PopoverInputs<M> {
 	readonly isOpen: boolean
 	readonly ariaLabel: string
 	readonly toMessage: (event: PopoverEvent) => M
-	/** The DialogTrigger's child: spread `attributes` on the button and put `overlay` last. */
+	/**
+	 * The DialogTrigger's child: spread `attributes` on the button and render `overlay` as its sibling
+	 * (e.g. `h.div([h.Class("contents")], [button, overlay])`), never inside the `<button>`: interactive
+	 * content inside a button is invalid HTML and its clicks would bubble to the trigger.
+	 */
 	readonly toTrigger: (attributes: ReadonlyArray<ChildAttribute>, overlay: Html) => Html
 	readonly content: () => ReadonlyArray<Html>
 }
