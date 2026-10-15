@@ -1,13 +1,12 @@
 import { ChannelId } from "@hazel/schema"
 import { eq } from "@tanstack/db"
-import { Option } from "effect"
 import { Subscription } from "foldkit"
 import { channelCollection } from "~/db/collections"
 import { liveQueryStream } from "../../../data/live-query"
-import * as Interaction from "../../../ui/aria/interaction"
 import type { PageSubscriptionInput } from "../../contract"
 import { Message } from "./message"
 import type { Model } from "./model"
+import { interaction } from "./update"
 
 interface ChannelRow {
 	readonly channel: { readonly id: ChannelId; readonly name: string; readonly icon?: string | null }
@@ -44,11 +43,4 @@ const own = Subscription.make<PageSubscriptionInput<Model>, Message>()((entry) =
 	),
 }))
 
-const toInteractionMessage = (message: Interaction.Message) => Message.GotInteractionMessage({ message })
-
-const interaction = Subscription.lift(Interaction.subscriptions)<PageSubscriptionInput<Model>, Message>({
-	read: ({ model }) => Option.some(model.interaction),
-	toParentMessage: toInteractionMessage,
-})
-
-export const subscriptions = { ...own, ...interaction }
+export const subscriptions = { ...own, ...interaction.subscriptions }

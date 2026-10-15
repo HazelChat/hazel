@@ -1,54 +1,52 @@
-import { Array, Option } from "effect"
+import { Array, Option, Result } from "effect"
 import { Command, Update } from "foldkit"
+import * as AsyncData from "foldkit/asyncData"
 import { modifyFields } from "foldkit/struct"
-import type { ToastRequest } from "../../../overlay/toasts"
+import { failureMessage } from "~/lib/error-messages"
+import { errorToast, errorToastOf, successToast } from "../../../data/actions"
 import { AppRoute, type RouteOf } from "../../../route"
 import * as Menu from "../../../ui/menu"
-import * as Modal from "../../../ui/modal"
-import { errorToast, successToast } from "../../../data/actions"
 import type { PageReturn, Shared } from "../../contract"
 import { PageOutMessage, requestedOrgNavigation } from "../../out-message"
+import * as ConfirmAction from "../../shared/confirm-action"
 import { CopyText, ListRss, ListWebhooks, RunRowAction, WaitForCopiedReset } from "./command"
 import { Message } from "./message"
-import { type ConfirmTarget, type Model, type ProviderCard, type RowKind, rowMenuId } from "./model"
+import {
+	CardAction,
+	type ChannelRequestFailure,
+	type ConfirmTarget,
+	emptyCreateForm,
+	GitHubRepos,
+	itemsOf,
+	type Model,
+	type ProviderCard,
+	type RowActionFailure,
+	type RowKind,
+	RssFeeds,
+	rowMenuId,
+	Webhooks,
+} from "./model"
 import { reflectRowMenus, reload } from "./rows"
 import { updateCards } from "./update-cards"
 
 export type Return = PageReturn<Model, Message>
 
-const idleCard: ProviderCard = {
-	isCreating: false,
-	isToggling: false,
-	isDeleting: false,
-	confirmDelete: false,
-	confirmVersion: 0,
-	createdToken: null,
-}
+const idleCard: ProviderCard = { action: CardAction.Idle(), confirmVersion: 0, createdToken: null }
 
 export const init = (route: RouteOf<"ChannelSettingsIntegrations">): Return => ({
 	model: {
 		channelId: route.channelId,
 		isGitHubConnected: false,
-		webhooks: { isLoading: true, version: 1, items: [] },
-		rss: { isLoading: true, version: 1, items: [] },
-		// `useEffect`: not loading until the GitHub connection is known to exist.
-		github: { isLoading: false, version: 0, items: [] },
+		webhooks: { version: 1, data: Webhooks.Loading() },
+		rss: { version: 1, data: RssFeeds.Loading() },
+		// `useEffect`: nothing to load until the GitHub connection is known to exist.
+		github: { version: 0, data: GitHubRepos.Idle() },
 		rowMenus: [],
 		togglingRowIds: [],
 		copiedIds: [],
-		confirm: { _tag: "Closed" },
-		confirmModal: Modal.init("integration-row-remove"),
+		remove: ConfirmAction.init("integration-row-remove"),
 		providers: { openstatus: idleCard, railway: idleCard },
-		createForm: {
-			isExpanded: false,
-			name: "",
-			description: "",
-			avatarUrl: "",
-			isNameDirty: false,
-			isSubmitting: false,
-			created: null,
-			isTokenVisible: false,
-		},
+		createForm: emptyCreateForm,
 	},
 	// Mount effects: `fetchWebhooks()` in the page, `fetchSubscriptions()` in the RSS card.
 	commands: [
@@ -57,33 +55,37 @@ export const init = (route: RouteOf<"ChannelSettingsIntegrations">): Return => (
 	],
 })
 
-export const toast = (request: ToastRequest) => PageOutMessage.RequestedToast({ toast: request })
+/** A list result lands only if it answers the list's latest request; a failure keeps loaded rows (`Stale`). */
+const settleList = <A>(
+	list: {
+		readonly version: number
+		readonly data: AsyncData.AsyncData<ReadonlyArray<A>, ChannelRequestFailure>
+	},
+	version: number,
+	result: Result.Result<ReadonlyArray<A>, ChannelRequestFailure>,
+) => (list.version === version ? { version, data: AsyncData.settle(list.data, result) } : list)
 
-/** The list a row belongs to reloads with its spinner, like `onUpdate` / `onDelete` refetches. */
-const confirmModal = {
-	read: (model: Model) => Option.some(model.confirmModal),
-	// Dismissing the dialog drops a target still being asked about; a running removal keeps going.
-	write: (model: Model, modal: Modal.Model): Model =>
-		modifyFields(model, {
-			confirmModal: () => modal,
-			confirm: (confirm) =>
-				!modal.isOpen && confirm._tag === "Confirming" ? { _tag: "Closed" as const } : confirm,
-		}),
-	toParentMessage: (message: Modal.Message) => Message.GotConfirmModalMessage({ message }),
+const settleListOf = (model: Model, kind: RowKind, version: number, reason: ChannelRequestFailure): Model => {
+	const failure = Result.fail(reason)
+	if (kind === "webhook")
+		return modifyFields(model, { webhooks: (list) => settleList(list, version, failure) })
+	if (kind === "rss") return modifyFields(model, { rss: (list) => settleList(list, version, failure) })
+	return modifyFields(model, { github: (list) => settleList(list, version, failure) })
 }
-const foldConfirmModal = Update.foldChild({ update: Modal.update, ...confirmModal })
-const openConfirmModal = Update.foldChildStep({ update: Modal.open, ...confirmModal })
-const closeConfirmModal = Update.foldChildStep({ update: Modal.close, ...confirmModal })
 
-const withCommands = (result: Return, commands: Return["commands"]): Return => ({
-	...result,
-	commands: [...(result.commands ?? []), ...(commands ?? [])],
+const removeConfirm = Update.foldChild({
+	update: (remove: ConfirmAction.Model<ConfirmTarget>, message: ConfirmAction.Message) =>
+		ConfirmAction.update(remove, message),
+	read: (model: Model) => Option.some(model.remove),
+	write: (model: Model, remove: ConfirmAction.Model<ConfirmTarget>): Model =>
+		modifyFields(model, { remove: () => remove }),
+	toParentMessage: (message: ConfirmAction.Message) => Message.GotRemoveConfirmMessage({ message }),
 })
 
 const rowEnabled = (model: Model, kind: RowKind, id: string): boolean => {
-	if (kind === "webhook") return model.webhooks.items.find((row) => row.id === id)?.isEnabled ?? false
-	if (kind === "rss") return model.rss.items.find((row) => row.id === id)?.isEnabled ?? false
-	return model.github.items.find((row) => row.id === id)?.isEnabled ?? false
+	if (kind === "webhook") return itemsOf(model.webhooks).find((row) => row.id === id)?.isEnabled ?? false
+	if (kind === "rss") return itemsOf(model.rss).find((row) => row.id === id)?.isEnabled ?? false
+	return itemsOf(model.github).find((row) => row.id === id)?.isEnabled ?? false
 }
 
 const selectedRowItem = (model: Model, kind: RowKind, id: string, key: string): Return => {
@@ -92,12 +94,8 @@ const selectedRowItem = (model: Model, kind: RowKind, id: string, key: string): 
 			model: reflectRowMenus(modifyFields(model, { togglingRowIds: (ids) => [...ids, id] })),
 			commands: [RunRowAction({ kind, id, isEnabled: !rowEnabled(model, kind, id) })],
 		}
-	if (key === "remove") {
-		const target: ConfirmTarget = { kind, id }
-		return openConfirmModal(
-			modifyFields(model, { confirm: () => ({ _tag: "Confirming" as const, target }) }),
-		)
-	}
+	if (key === "remove")
+		return { model: modifyFields(model, { remove: (remove) => ConfirmAction.ask(remove, { kind, id }) }) }
 	// "edit" opens EditGitHubSubscriptionModal, which is not ported yet.
 	return { model }
 }
@@ -119,22 +117,41 @@ const foldRowMenu = (model: Model, kind: RowKind, id: string, message: Menu.Mess
 	return { ...selected, commands: [...commands, ...(selected.commands ?? [])] }
 }
 
-const settleRowAction = (model: Model, kind: RowKind, id: string): Return => {
+const isRemoving = (model: Model, kind: RowKind, id: string): boolean =>
+	ConfirmAction.isRunning(model.remove) &&
+	Option.exists(ConfirmAction.targetOf(model.remove), (target) => target.kind === kind && target.id === id)
+
+/**
+ * The row's action settled: its toggle stops running, and a removal closes the dialog on success
+ * (even if Escape closed it already) or goes back to asking on failure.
+ */
+const settleRowAction = (model: Model, kind: RowKind, id: string, isSuccess: boolean): Model => {
 	const settled = reflectRowMenus(
 		modifyFields(model, { togglingRowIds: (ids) => ids.filter((candidate) => candidate !== id) }),
 	)
-	const isRemoval =
-		model.confirm._tag === "Removing" &&
-		model.confirm.target.kind === kind &&
-		model.confirm.target.id === id
-	// `setShowDeleteDialog(false)` after the delete, whatever its outcome, even if Escape closed it already.
-	return isRemoval
-		? closeConfirmModal(modifyFields(settled, { confirm: () => ({ _tag: "Closed" as const }) }))
-		: { model: settled }
+	if (!isRemoving(model, kind, id)) return settled
+	return modifyFields(settled, {
+		remove: (remove) => (isSuccess ? ConfirmAction.close(remove) : ConfirmAction.failed(remove)),
+	})
 }
 
-/** A list result lands only if it answers the list's latest request. */
-const isCurrent = (list: { readonly version: number }, version: number) => list.version === version
+const ROW_NOUNS: Readonly<Record<RowKind, { readonly title: string; readonly noun: string }>> = {
+	webhook: { title: "Webhook not found", noun: "webhook" },
+	rss: { title: "Subscription not found", noun: "subscription" },
+	github: { title: "Subscription not found", noun: "subscription" },
+}
+
+const rowActionFailureMessage = (kind: RowKind, isToggle: boolean, reason: RowActionFailure) => {
+	const { title, noun } = ROW_NOUNS[kind]
+	return failureMessage(reason, {
+		NotFound: {
+			title,
+			description: isToggle
+				? `This ${noun} may have been deleted.`
+				: `This ${noun} may have already been deleted.`,
+		},
+	})
+}
 
 export const update = (model: Model, message: Message, shared: Shared): Return =>
 	Message.match<Return>(message, {
@@ -143,47 +160,32 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 			const next = modifyFields(model, { isGitHubConnected: () => isConnected })
 			return isConnected
 				? reload(next, "github")
-				: {
+				: // The card hides the list; a request in flight is dropped by the version bump.
+					{
 						model: modifyFields(next, {
-							github: (list) => modifyFields(list, { isLoading: () => false }),
+							github: (list) => ({ version: list.version + 1, data: GitHubRepos.Idle() }),
 						}),
 					}
 		},
-		SucceededListWebhooks: ({ version, webhooks }) =>
-			isCurrent(model.webhooks, version)
-				? {
-						model: reflectRowMenus(
-							modifyFields(model, {
-								webhooks: () => ({ isLoading: false, version, items: webhooks }),
-							}),
-						),
-					}
-				: { model },
-		SucceededListRss: ({ version, feeds }) =>
-			isCurrent(model.rss, version)
-				? {
-						model: reflectRowMenus(
-							modifyFields(model, { rss: () => ({ isLoading: false, version, items: feeds }) }),
-						),
-					}
-				: { model },
-		SucceededListGitHub: ({ version, repos }) =>
-			isCurrent(model.github, version)
-				? {
-						model: reflectRowMenus(
-							modifyFields(model, {
-								github: () => ({ isLoading: false, version, items: repos }),
-							}),
-						),
-					}
-				: { model },
-		FailedList: ({ list, version, toast: request }) =>
-			isCurrent(model[list], version)
-				? {
-						model: { ...model, [list]: { ...model[list], isLoading: false } },
-						outMessage: toast(request),
-					}
-				: { model },
+		SucceededListWebhooks: ({ version, webhooks }) => ({
+			model: reflectRowMenus(
+				modifyFields(model, {
+					webhooks: (list) => settleList(list, version, Result.succeed(webhooks)),
+				}),
+			),
+		}),
+		SucceededListRss: ({ version, feeds }) => ({
+			model: reflectRowMenus(
+				modifyFields(model, { rss: (list) => settleList(list, version, Result.succeed(feeds)) }),
+			),
+		}),
+		SucceededListGitHub: ({ version, repos }) => ({
+			model: reflectRowMenus(
+				modifyFields(model, { github: (list) => settleList(list, version, Result.succeed(repos)) }),
+			),
+		}),
+		FailedList: ({ kind, version, reason }) => ({ model: settleListOf(model, kind, version, reason) }),
+		ClickedRetryList: ({ kind }) => reload(model, kind),
 		// `window.location.href = /$orgSlug/settings/integrations/github`
 		ClickedConnectGitHub: () => ({
 			model,
@@ -201,39 +203,35 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 		ClickedAddFeed: () => ({ model }),
 		GotRowMenuMessage: ({ rowMenuId: { kind, id }, message: menuMessage }) =>
 			foldRowMenu(model, kind, id, menuMessage),
-		SucceededRowAction: ({ kind, id, successMessage }) => {
-			const settled = settleRowAction(model, kind, id)
-			return {
-				...withCommands(reload(settled.model, kind), settled.commands),
-				outMessage: toast(successToast(successMessage)),
-			}
-		},
-		FailedRowAction: ({ kind, id, toast: request }) => ({
-			...settleRowAction(model, kind, id),
-			outMessage: toast(request),
+		SucceededRowAction: ({ kind, id, successMessage }) => ({
+			...reload(settleRowAction(model, kind, id, true), kind),
+			outMessage: PageOutMessage.RequestedToast({ toast: successToast(successMessage) }),
 		}),
-		ClickedConfirmRemove: () => {
-			const confirm = model.confirm
-			if (confirm._tag !== "Confirming") return { model }
-			return {
-				model: modifyFields(model, {
-					confirm: () => ({ _tag: "Removing" as const, target: confirm.target }),
+		FailedRowAction: ({ kind, id, reason }) => ({
+			model: settleRowAction(model, kind, id, false),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToastOf(rowActionFailureMessage(kind, model.togglingRowIds.includes(id), reason)),
+			}),
+		}),
+		ClickedConfirmRemove: () =>
+			Option.match(ConfirmAction.confirm(model.remove), {
+				onNone: () => ({ model }),
+				onSome: ([remove, target]) => ({
+					model: modifyFields(model, { remove: () => remove }),
+					commands: [RunRowAction({ ...target, isEnabled: null })],
 				}),
-				commands: [RunRowAction({ ...confirm.target, isEnabled: null })],
-			}
-		},
-		GotConfirmModalMessage: ({ message: modalMessage }) => foldConfirmModal(model, modalMessage),
+			}),
+		GotRemoveConfirmMessage: ({ message: confirmMessage }) => removeConfirm(model, confirmMessage),
 		ClickedCopy: (copy) => ({ model, commands: [CopyText(copy)] }),
-		CompletedCopy: ({ id, isCopied, toastTitle }) =>
-			isCopied
-				? {
-						model: modifyFields(model, {
-							copiedIds: (ids) => [...ids.filter((found) => found !== id), id],
-						}),
-						commands: [WaitForCopiedReset({ id })],
-						outMessage: toast(successToast(toastTitle)),
-					}
-				: { model, outMessage: toast(errorToast(toastTitle)) },
+		SucceededCopy: ({ id, successMessage }) => ({
+			model: modifyFields(model, { copiedIds: (ids) => [...ids.filter((found) => found !== id), id] }),
+			commands: [WaitForCopiedReset({ id })],
+			outMessage: PageOutMessage.RequestedToast({ toast: successToast(successMessage) }),
+		}),
+		FailedCopy: ({ failureMessage: title }) => ({
+			model,
+			outMessage: PageOutMessage.RequestedToast({ toast: errorToast(title) }),
+		}),
 		ElapsedCopiedDelay: ({ id }) => ({
 			model: modifyFields(model, { copiedIds: (ids) => ids.filter((found) => found !== id) }),
 		}),

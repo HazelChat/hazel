@@ -2,9 +2,9 @@ import type { Html, HtmlBuilder } from "foldkit/html"
 import { IconPlus } from "../../../icons"
 import { badge } from "../../../ui/badge"
 import { button } from "../../../ui/button"
-import { cardTitle, emptyList, menuOf, spinner } from "./cards"
+import { cardTitle, emptyList, listBody, menuOf, spinner } from "./cards"
 import { Message } from "./message"
-import type { Model, RssFeed } from "./model"
+import { itemsOf, type Model, type RssFeed } from "./model"
 import { rowMenu } from "./row-menu"
 
 /** Port of `components/channel-settings/rss-integration-card.tsx`. */
@@ -100,7 +100,7 @@ const rssItem = (h: HtmlBuilder<Message>, model: Model, feed: RssFeed): Html => 
 }
 
 export const rssCard = (h: HtmlBuilder<Message>, model: Model): Html => {
-	const feeds = model.rss.items
+	const feeds = itemsOf(model.rss)
 	return h.div(
 		[h.Class("rounded-xl border border-border bg-bg")],
 		[
@@ -143,18 +143,20 @@ export const rssCard = (h: HtmlBuilder<Message>, model: Model): Html => {
 			h.div(
 				[h.Class("p-4")],
 				[
-					model.rss.isLoading
-						? spinner(h)
-						: feeds.length === 0
-							? emptyList(
-									h,
-									"No RSS feeds subscribed",
-									"Add a feed to receive new articles in this channel",
-								)
-							: h.div(
-									[h.Class("flex flex-col gap-2")],
-									feeds.map((feed) => rssItem(h, model, feed)),
-								),
+					listBody(h, "rss", model.rss.data, {
+						loading: () => spinner(h),
+						empty: () =>
+							emptyList(
+								h,
+								"No RSS feeds subscribed",
+								"Add a feed to receive new articles in this channel",
+							),
+						rows: (items) =>
+							h.div(
+								[h.Class("flex flex-col gap-2")],
+								items.map((feed) => rssItem(h, model, feed)),
+							),
+					}),
 				],
 			),
 		],

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import * as Scene from "foldkit/scene"
 import { describe, test } from "vitest"
-import { errorToast, successToast } from "../../../data/actions"
+import { successToast } from "../../../data/actions"
 import {
 	globex,
 	globexGuestMount,
@@ -42,6 +42,8 @@ describe("share channel", () => {
 		Scene.scene(
 			config,
 			Scene.given(initial),
+			Scene.expect(Scene.text("Not shared yet")).toBeAbsent(),
+			Scene.Subscription.emit(Message.SucceededListOutgoingInvites({ organizationId, invites: [] })),
 			Scene.expect(Scene.text("Not shared yet")).toExist(),
 			Scene.Subscription.emit(Message.UpdatedChannelName({ name: "general" })),
 			Scene.click(Scene.role("button", { name: /Share channel/ })),
@@ -86,10 +88,11 @@ describe("share channel", () => {
 		)
 	})
 
-	test("no matches shows the empty result, and Cancel closes the dialog", () => {
+	test("a failed search shows the error and Try again; no matches shows the empty result", () => {
 		Scene.scene(
 			config,
 			Scene.given(initial),
+			Scene.Subscription.emit(Message.SucceededListOutgoingInvites({ organizationId, invites: [] })),
 			Scene.Subscription.emit(Message.UpdatedChannelName({ name: "general" })),
 			Scene.click(Scene.role("button", { name: /Share this channel/ })),
 			portalModalMounted,
@@ -100,7 +103,17 @@ describe("share channel", () => {
 			),
 			Scene.Command.resolve(
 				ShareModal.SearchWorkspaces,
-				ShareModal.Message.FailedSearchWorkspaces({ version: 1 }),
+				ShareModal.Message.FailedSearchWorkspaces({ version: 1, reason: "Offline" }),
+			),
+			Scene.expect(Scene.within(dialog, Scene.text("Connection lost"))).toExist(),
+			Scene.expect(Scene.text("No public workspaces found")).toBeAbsent(),
+			Scene.click(Scene.within(dialog, Scene.role("button", { name: "Try again" }))),
+			Scene.Command.expectExact(
+				ShareModal.SearchWorkspaces({ version: 2, query: "zz", organizationId }),
+			),
+			Scene.Command.resolve(
+				ShareModal.SearchWorkspaces,
+				ShareModal.Message.SucceededSearchWorkspaces({ version: 2, results: [] }),
 			),
 			Scene.expect(Scene.text("No public workspaces found")).toExist(),
 			Scene.click(Scene.within(dialog, Scene.role("button", { name: "Cancel" }))),
@@ -123,12 +136,29 @@ describe("invitations", () => {
 			Scene.expect(Scene.role("button", { name: "Revoking..." })).toBeDisabled(),
 			Scene.Command.resolve(
 				RevokeInvite,
-				Message.FailedRevokeInvite({
-					inviteId,
-					toast: errorToast(failureToastFixture.title, failureToastFixture.description),
-				}),
+				Message.FailedRevokeInvite({ inviteId, reason: "Unexpected" }),
 			),
 			Scene.expectOutMessage(PageOutMessage.RequestedToast({ toast: failureToastFixture })),
+			Scene.expect(Scene.role("button", { name: "Revoke" })).toBeEnabled(),
+		)
+	})
+
+	test("a failed load shows the error and Try again instead of the empty state", () => {
+		Scene.scene(
+			config,
+			Scene.given(initial),
+			Scene.Subscription.emit(
+				Message.FailedListOutgoingInvites({ organizationId, reason: "Unavailable" }),
+			),
+			Scene.expect(Scene.text("Couldn't load invitations")).toExist(),
+			Scene.expect(Scene.text("Not shared yet")).toBeAbsent(),
+			Scene.click(Scene.role("button", { name: "Try again" })),
+			Scene.Command.expectExact(ListOutgoingInvites({ organizationId, channelId })),
+			Scene.Command.resolve(
+				ListOutgoingInvites,
+				Message.SucceededListOutgoingInvites({ organizationId, invites: [pendingInvite] }),
+			),
+			Scene.expect(Scene.text("Couldn't load invitations")).toBeAbsent(),
 			Scene.expect(Scene.role("button", { name: "Revoke" })).toBeEnabled(),
 		)
 	})
@@ -193,10 +223,7 @@ describe("active connections", () => {
 			Scene.expect(Scene.role("button", { name: "Leaving..." })).toBeDisabled(),
 			Scene.Command.resolve(
 				DisconnectOrganization,
-				Message.FailedDisconnect({
-					mountId: "mount-1",
-					toast: errorToast(failureToastFixture.title, failureToastFixture.description),
-				}),
+				Message.FailedDisconnect({ mountId: "mount-1", reason: "Unexpected" }),
 			),
 			Scene.expectOutMessage(PageOutMessage.RequestedToast({ toast: failureToastFixture })),
 		)
