@@ -70,7 +70,11 @@ const chat = Subscription.make<Input, Message, MessageWindows>()((entry) => ({
 	chatMessages: entry(
 		{ channelId: ChannelId, limit: Schema.Number, offset: Schema.Number },
 		{
-			modelToDependencies: ({ model }) => ({ channelId: model.channelId, limit: model.limit, offset: model.offset }),
+			modelToDependencies: ({ model }) => ({
+				channelId: model.channelId,
+				limit: model.limit,
+				offset: model.offset,
+			}),
 			// One live query per channel; paging moves its window instead of rebuilding it.
 			keepAliveEquivalence: (previous, next) => previous.channelId === next.channelId,
 			dependenciesToStream: ({ channelId, limit, offset }, readDependencies) =>
@@ -83,7 +87,11 @@ const chat = Subscription.make<Input, Message, MessageWindows>()((entry) => ({
 	chatMessagesWindow: entry(
 		{ channelId: ChannelId, limit: Schema.Number, offset: Schema.Number },
 		{
-			modelToDependencies: ({ model }) => ({ channelId: model.channelId, limit: model.limit, offset: model.offset }),
+			modelToDependencies: ({ model }) => ({
+				channelId: model.channelId,
+				limit: model.limit,
+				offset: model.offset,
+			}),
 			dependenciesToStream: (change) =>
 				Stream.fromEffect(
 					Effect.gen(function* () {
@@ -184,13 +192,13 @@ const chat = Subscription.make<Input, Message, MessageWindows>()((entry) => ({
 		{ threadChannelId: Schema.NullOr(ChannelId) },
 		{
 			modelToDependencies: ({ model }) => ({
-				threadChannelId: model.overlays.thread?.threadChannelId ?? null,
+				threadChannelId: model.threadPanel?.threadChannelId ?? null,
 			}),
 			dependenciesToStream: ({ threadChannelId }) =>
 				threadChannelId === null
-					? Stream.make(Message.UpdatedThreadPanelMessages({ messages: [] }))
+					? Stream.empty
 					: threadPanelStream(threadChannelId, (messages) =>
-							Message.UpdatedThreadPanelMessages({ messages }),
+							Message.UpdatedThreadPanelMessages({ threadChannelId, messages }),
 						),
 		},
 	),
@@ -229,7 +237,7 @@ const toChannelComposer = (message: Composer.Message) =>
 
 const uploadEntry = (which: "channel" | "thread") => ({
 	modelToDependencies: ({ model }: Input) => {
-		const draft = which === "channel" ? model.draft : model.threadDraft
+		const draft = which === "channel" ? model.draft : (model.threadPanel?.draft ?? null)
 		return {
 			upload: draft?.currentUpload ?? null,
 			channelId: draft?.channelId ?? null,
@@ -256,13 +264,16 @@ const UploadDependencies = Schema.Struct({
 })
 type UploadDependencies = typeof UploadDependencies.Type
 
-export const TypingCleanup = Schema.Struct({ channelId: ChannelId, indicatorIds: Schema.Array(TypingIndicatorId) })
+export const TypingCleanup = Schema.Struct({
+	channelId: ChannelId,
+	indicatorIds: Schema.Array(TypingIndicatorId),
+})
 export type TypingCleanup = typeof TypingCleanup.Type
 const isSameCleanup = Schema.toEquivalence(TypingCleanup)
 
 /** The indicators the page's drafts hold (channel, and the open thread's). */
 export const indicatorIdsOf = (model: Model): ReadonlyArray<TypingIndicatorId> =>
-	[model.draft.typing.indicatorId, model.threadDraft?.typing.indicatorId ?? null].filter(
+	[model.draft.typing.indicatorId, model.threadPanel?.draft.typing.indicatorId ?? null].filter(
 		(id): id is TypingIndicatorId => id !== null,
 	)
 
@@ -283,7 +294,8 @@ export const typingCleanupStream = <R>(
 					Effect.ensuring(
 						Effect.suspend(() => {
 							const latest = readLatest()
-							const isPageLeft = latest.channelId !== own.channelId || isSameCleanup(latest, own)
+							const isPageLeft =
+								latest.channelId !== own.channelId || isSameCleanup(latest, own)
 							return isPageLeft
 								? Effect.forEach(own.indicatorIds, deleteIndicator, { discard: true })
 								: Effect.void
@@ -304,7 +316,9 @@ const write = Subscription.make<Input, Message, HazelRpc | HazelApiClient>()((en
 	composerBots: entry(
 		{ organizationId: Schema.NullOr(Schema.String) },
 		{
-			modelToDependencies: ({ shared }) => ({ organizationId: shared.currentUser?.organizationId ?? null }),
+			modelToDependencies: ({ shared }) => ({
+				organizationId: shared.currentUser?.organizationId ?? null,
+			}),
 			dependenciesToStream: ({ organizationId }) =>
 				organizationId === null
 					? Stream.empty
@@ -316,7 +330,9 @@ const write = Subscription.make<Input, Message, HazelRpc | HazelApiClient>()((en
 	composerCommands: entry(
 		{ organizationId: Schema.NullOr(Schema.String) },
 		{
-			modelToDependencies: ({ shared }) => ({ organizationId: shared.currentUser?.organizationId ?? null }),
+			modelToDependencies: ({ shared }) => ({
+				organizationId: shared.currentUser?.organizationId ?? null,
+			}),
 			dependenciesToStream: ({ organizationId }) =>
 				organizationId === null
 					? Stream.empty
@@ -329,17 +345,22 @@ const write = Subscription.make<Input, Message, HazelRpc | HazelApiClient>()((en
 		{ threadChannelId: Schema.NullOr(ChannelId), userId: Schema.NullOr(Schema.String) },
 		{
 			modelToDependencies: ({ model }) => ({
-				threadChannelId: model.overlays.thread?.threadChannelId ?? null,
+				threadChannelId: model.threadPanel?.threadChannelId ?? null,
 				userId: model.currentUserId,
 			}),
 			dependenciesToStream: ({ threadChannelId, userId }) =>
 				threadChannelId === null || userId === null
 					? Stream.empty
-					: ownMembershipStream(threadChannelId, userId, (memberId) => Message.UpdatedThreadMember({ memberId })),
+					: ownMembershipStream(threadChannelId, userId, (memberId) =>
+							Message.UpdatedThreadMember({ threadChannelId, memberId }),
+						),
 		},
 	),
 	typingCleanup: entry(TypingCleanup.fields, {
-		modelToDependencies: ({ model }) => ({ channelId: model.channelId, indicatorIds: indicatorIdsOf(model) }),
+		modelToDependencies: ({ model }) => ({
+			channelId: model.channelId,
+			indicatorIds: indicatorIdsOf(model),
+		}),
 		// Restarts on every change like the default; the variant only adds `readDependencies`.
 		keepAliveEquivalence: isSameCleanup,
 		dependenciesToStream: (own, readDependencies) =>
@@ -350,7 +371,9 @@ const write = Subscription.make<Input, Message, HazelRpc | HazelApiClient>()((en
 	globalTyping: entry(
 		{ isActive: Schema.Boolean },
 		{
-			modelToDependencies: ({ model }) => ({ isActive: model.tab === "messages" && isMemberOf(model) !== false }),
+			modelToDependencies: ({ model }) => ({
+				isActive: model.tab._tag === "Messages" && isMemberOf(model) !== false,
+			}),
 			dependenciesToStream: ({ isActive }) =>
 				isActive ? globalTypingStream((key) => Message.PressedGlobalKey({ key })) : Stream.empty,
 		},
@@ -365,7 +388,7 @@ const write = Subscription.make<Input, Message, HazelRpc | HazelApiClient>()((en
 }))
 
 const files = Subscription.lift(FilesSubscriptions.subscriptions)<Input, Message>({
-	read: ({ model }) => Option.fromNullishOr(model.files),
+	read: ({ model }) => (model.tab._tag === "Files" ? Option.some(model.tab.files) : Option.none()),
 	toParentMessage: (message) => Message.GotFilesMessage({ message }),
 })
 

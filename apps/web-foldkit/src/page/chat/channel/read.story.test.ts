@@ -7,14 +7,22 @@ import * as Unfurl from "../../../chat/unfurl"
 import * as Draft from "../../../composer/draft"
 import * as Typing from "../../../composer/typing"
 import * as MessageList from "../../../mount/message-list"
-import type { ToastRequest } from "../../../overlay/toasts"
 import { chatMessageOf, imageAttachmentOf, liveEmbeds } from "../../../test/chat-messages"
 import { PageOutMessage } from "../../out-message"
-import { ActionMessage, CopyText, OpenUrl } from "../message-actions"
+import { ActionMessage, CopyText, GenerateThreadName, OpenUrl } from "../message-actions"
 import * as Overlays from "../overlays"
 import { PAGE_SIZE } from "../queries"
 import type { DisplayRow, MessageRow } from "../rows"
-import { ada, adaMessageId, grace, graceMessageId, loadedModel, messages, updateWithShared } from "./fixtures.test-support"
+import {
+	ada,
+	adaMessageId,
+	grace,
+	graceMessageId,
+	loadedMessages,
+	loadedModel,
+	messages,
+	updateWithShared,
+} from "./fixtures.test-support"
 import { Message, type Model } from "./model"
 import { MAX_WINDOW, setTab } from "./page"
 
@@ -23,7 +31,9 @@ import { MAX_WINDOW, setTab } from "./page"
 // The Files tab's `ui/aria/interaction` and ProseMirror's view read `document` at import; node has none.
 vi.hoisted(() => {
 	if (!("document" in globalThis))
-		Object.assign(globalThis, { document: Object.assign(new EventTarget(), { documentElement: { style: {} } }) })
+		Object.assign(globalThis, {
+			document: Object.assign(new EventTarget(), { documentElement: { style: {} } }),
+		})
 })
 
 const overlays = (inner: Overlays.Message) => Message.GotOverlaysMessage({ message: inner })
@@ -32,12 +42,13 @@ const draft = (inner: Draft.Message) => Message.GotDraftMessage({ message: inner
 const threadDraft = (inner: Draft.Message) => Message.GotThreadDraftMessage({ message: inner })
 
 const isMessageRow = (row: DisplayRow): row is MessageRow => row._tag === "MessageRow"
-const rowOf = (current: Model, key: string) => current.rows.filter(isMessageRow).find((row) => row.key === key)
+const rowOf = (current: Model, key: string) =>
+	current.rows.filter(isMessageRow).find((row) => row.key === key)
 const messageKeys = (current: Model) => current.rows.filter(isMessageRow).map((row) => row.key)
 
 /** The loaded page with its rows derived, as the first messages query answer leaves it. */
 const derived = (base: Model = loadedModel()): Model =>
-	updateWithShared(base, Message.UpdatedMessages({ messages: base.messages })).model
+	updateWithShared(base, loadedMessages(base.messages)).model
 
 const threadChannelId = Schema.decodeSync(ChannelId)("00000000-0000-4000-8000-000000004444")
 
@@ -48,7 +59,12 @@ describe("change sets", () => {
 		story(
 			updateWithShared,
 			given(before),
-			message(Message.ChangedMessages({ order: [fresh.id, adaMessageId, graceMessageId], upserts: [fresh] })),
+			message(
+				Message.ChangedMessages({
+					order: [fresh.id, adaMessageId, graceMessageId],
+					upserts: [fresh],
+				}),
+			),
 			model((current) => {
 				expect(messageKeys(current)).toEqual([graceMessageId, adaMessageId, fresh.id])
 				expect(current.messages[1]).toBe(before.messages[0])
@@ -64,7 +80,10 @@ describe("change sets", () => {
 			message(
 				Message.ChangedMessages({
 					order: [adaMessageId, graceMessageId],
-					upserts: adaMessage === undefined ? [] : [{ ...adaMessage, content: "Shipped v2", updatedAtMs: 1 }],
+					upserts:
+						adaMessage === undefined
+							? []
+							: [{ ...adaMessage, content: "Shipped v2", updatedAtMs: 1 }],
 				}),
 			),
 			model((current) => expect(rowOf(current, adaMessageId)?.message.content).toBe("Shipped v2")),
@@ -81,7 +100,9 @@ describe("change sets", () => {
 		story(
 			updateWithShared,
 			given(before),
-			message(Message.ChangedMessages({ order: [adaMessageId, graceMessageId], upserts: [...messages] })),
+			message(
+				Message.ChangedMessages({ order: [adaMessageId, graceMessageId], upserts: [...messages] }),
+			),
 			model((current) => {
 				expect(current.messages).toBe(before.messages)
 				expect(current.list.keys).toBe(before.list.keys)
@@ -134,7 +155,10 @@ describe("message window", () => {
 				// The newest loaded row is no longer the newest message: the list must not follow the end.
 				expect(current.list.canFollowEnd).toBe(false)
 			}),
-			Command.resolve(MessageList.WaitForScrollSettle, MessageList.Message.CompletedWaitForScrollSettle({ version: 1 })),
+			Command.resolve(
+				MessageList.WaitForScrollSettle,
+				MessageList.Message.CompletedWaitForScrollSettle({ version: 1 }),
+			),
 			message(draft(Draft.Message.SucceededSendMessage())),
 			model((current) => {
 				expect(current.offset).toBe(0)
@@ -154,7 +178,12 @@ describe("message window", () => {
 	const atEnd = (): Model => {
 		const steps: ReadonlyArray<Message> = [
 			list(MessageList.Message.ResizedViewport({ viewportHeight: VIEWPORT })),
-			list(MessageList.Message.CompletedApplyScroll({ version: 1, scrollTop: endScrollTopFor(PAGE_SIZE) })),
+			list(
+				MessageList.Message.CompletedApplyScroll({
+					version: 1,
+					scrollTop: endScrollTopFor(PAGE_SIZE),
+				}),
+			),
 		]
 		return steps.reduce(
 			(current, next) => updateWithShared(current, next).model,
@@ -194,7 +223,12 @@ describe("message window", () => {
 			updateWithShared,
 			given(current),
 			message(
-				list(MessageList.Message.MountedList({ scrollTop: current.list.scrollTop, viewportHeight: VIEWPORT })),
+				list(
+					MessageList.Message.MountedList({
+						scrollTop: current.list.scrollTop,
+						viewportHeight: VIEWPORT,
+					}),
+				),
 			),
 			Command.expectNone(),
 		)
@@ -218,9 +252,9 @@ describe("link unfurls", () => {
 			),
 			Command.expectExact(Unfurl.FetchLinkPreview({ url })),
 			model((current) => {
-				expect(current.unfurls[Unfurl.linkPreviewKey(url)]).toEqual(Unfurl.Unfurl.Loading())
+				expect(current.unfurls[Unfurl.linkPreviewKey(url)]).toEqual(Unfurl.loading)
 				expect(rowOf(current, first.id)?.urlEmbeds).toEqual([
-					expect.objectContaining({ _tag: "LinkPreview", url, unfurl: Unfurl.Unfurl.Loading() }),
+					expect.objectContaining({ _tag: "LinkPreview", url, unfurl: Unfurl.loading }),
 				])
 			}),
 			Command.resolve(
@@ -228,9 +262,11 @@ describe("link unfurls", () => {
 				Unfurl.Message.SucceededFetchLinkPreview({ url, preview: { title: "Launch" } }),
 			),
 			model((current) => {
-				const loaded = Unfurl.Unfurl.LoadedLinkPreview({ preview: { title: "Launch" } })
-				expect(rowOf(current, first.id)?.urlEmbeds).toEqual([expect.objectContaining({ unfurl: loaded })])
-				expect(rowOf(current, second.id)?.urlEmbeds).toEqual([expect.objectContaining({ unfurl: loaded })])
+				const unfurl = rowOf(current, first.id)?.urlEmbeds[0]
+				expect(unfurl?._tag === "LinkPreview" && Unfurl.linkPreviewOf(unfurl.unfurl)).toEqual({
+					title: "Launch",
+				})
+				expect(rowOf(current, second.id)?.urlEmbeds).toEqual(rowOf(current, first.id)?.urlEmbeds)
 			}),
 		)
 	})
@@ -240,9 +276,22 @@ describe("link unfurls", () => {
 		story(
 			updateWithShared,
 			given(derived()),
-			message(Message.ChangedMessages({ order: [linked.id, adaMessageId, graceMessageId], upserts: [linked] })),
-			Command.resolve(Unfurl.FetchLinkPreview, Unfurl.Message.FailedFetchLinkPreview({ url })),
-			model((current) => expect(current.unfurls[Unfurl.linkPreviewKey(url)]).toEqual(Unfurl.Unfurl.Failed())),
+			message(
+				Message.ChangedMessages({
+					order: [linked.id, adaMessageId, graceMessageId],
+					upserts: [linked],
+				}),
+			),
+			Command.resolve(
+				Unfurl.FetchLinkPreview,
+				Unfurl.Message.FailedFetchLinkPreview({ url, reason: "TimedOut" }),
+			),
+			model((current) =>
+				expect(current.unfurls[Unfurl.linkPreviewKey(url)]).toEqual({
+					_tag: "Failure",
+					error: "TimedOut",
+				}),
+			),
 			message(Message.UpdatedReactions({ reactions: [] })),
 			Command.expectNone(),
 		)
@@ -253,9 +302,17 @@ describe("link unfurls", () => {
 		story(
 			updateWithShared,
 			given(derived()),
-			message(Message.ChangedMessages({ order: [tweet.id, adaMessageId, graceMessageId], upserts: [tweet] })),
+			message(
+				Message.ChangedMessages({
+					order: [tweet.id, adaMessageId, graceMessageId],
+					upserts: [tweet],
+				}),
+			),
 			Command.expectExact(Unfurl.FetchTweet({ tweetId: "1234567890" })),
-			Command.resolve(Unfurl.FetchTweet, Unfurl.Message.FailedFetchTweet({ tweetId: "1234567890" })),
+			Command.resolve(
+				Unfurl.FetchTweet,
+				Unfurl.Message.FailedFetchTweet({ tweetId: "1234567890", reason: "Unavailable" }),
+			),
 		)
 	})
 })
@@ -273,7 +330,11 @@ describe("AI reply stream", () => {
 			message(received(Live.LiveEvent.Started())),
 			message(received(Live.LiveEvent.TextChunk({ fullText: "Hel" }))),
 			model((current) =>
-				expect(rowOf(current, ai.id)?.live?.state).toMatchObject({ status: "active", text: "Hel", isStreaming: true }),
+				expect(rowOf(current, ai.id)?.live?.state).toMatchObject({
+					status: "active",
+					text: "Hel",
+					isStreaming: true,
+				}),
 			),
 			message(received(Live.LiveEvent.StreamEnd({ text: "Hello" }))),
 			message(received(Live.LiveEvent.Completed())),
@@ -295,80 +356,155 @@ describe("AI reply stream", () => {
 			given(derived({ ...loadedModel(), messages: [ai, ...messages] })),
 			message(received(Live.LiveEvent.Failed({ error: "Agent crashed" }))),
 			model((current) =>
-				expect(rowOf(current, ai.id)?.live?.state).toMatchObject({ status: "failed", error: "Agent crashed" }),
+				expect(rowOf(current, ai.id)?.live?.state).toMatchObject({
+					status: "failed",
+					error: "Agent crashed",
+				}),
 			),
 		)
 	})
 })
 
 describe("threads", () => {
+	const preview = Message.ClickedThreadPreview({ threadChannelId, messageId: graceMessageId })
+	const otherThreadId = Schema.decodeSync(ChannelId)("00000000-0000-4000-8000-000000005555")
+	const action = (inner: ActionMessage) => Message.GotActionMessage({ message: inner })
+
 	test("a thread preview opens the panel with its own draft; closing drops it", () => {
 		story(
 			updateWithShared,
 			given(derived()),
-			message(overlays(Overlays.Message.ClickedThreadPreview({ threadChannelId, messageId: graceMessageId }))),
+			message(preview),
 			model((current) => {
-				expect(current.overlays.thread).toEqual({ threadChannelId, messageId: graceMessageId })
-				expect(current.threadDraft?.channelId).toBe(threadChannelId)
+				expect(current.threadPanel).toMatchObject({
+					threadChannelId,
+					messageId: graceMessageId,
+					creation: "Created",
+				})
+				expect(current.threadPanel?.draft.channelId).toBe(threadChannelId)
 			}),
-			message(overlays(Overlays.Message.ClosedThread())),
-			model((current) => {
-				expect(current.overlays.thread).toBeNull()
-				expect(current.threadDraft).toBeNull()
-			}),
+			message(Message.ClickedCloseThread()),
+			model((current) => expect(current.threadPanel).toBeNull()),
 		)
 	})
 
-	test("a failed thread creation closes the panel and toasts", () => {
-		const toast: ToastRequest = { intent: "error", title: "Could not create thread", description: null }
+	test("the panel's replies become keyed rows in update; a result for another thread is dropped", () => {
+		const reply = chatMessageOf(30, { channelId: threadChannelId, content: "On it" })
+		const opened = updateWithShared(derived(), preview).model
+		story(
+			updateWithShared,
+			given(opened),
+			message(Message.UpdatedThreadPanelMessages({ threadChannelId, messages: [reply] })),
+			model((current) => expect(current.threadPanel?.rows.map((row) => row.key)).toEqual([reply.id])),
+			message(Message.UpdatedThreadPanelMessages({ threadChannelId: otherThreadId, messages: [] })),
+			model((current) => expect(current.threadPanel?.rows.map((row) => row.key)).toEqual([reply.id])),
+		)
+	})
+
+	test("a failed thread creation closes the panel and toasts the reason's copy", () => {
 		const opened = updateWithShared(
 			derived(),
-			Message.GotActionMessage({
-				message: ActionMessage.CompletedGenerateThreadChannelId({ messageId: graceMessageId, threadChannelId }),
-			}),
+			action(
+				ActionMessage.CompletedGenerateThreadChannelId({
+					messageId: graceMessageId,
+					threadChannelId,
+				}),
+			),
 		).model
 		story(
 			updateWithShared,
 			given(opened),
-			message(Message.GotActionMessage({ message: ActionMessage.FailedCreateThread({ threadChannelId, toast }) })),
-			expectOutMessage(PageOutMessage.RequestedToast({ toast })),
-			model((current) => {
-				expect(current.overlays.thread).toBeNull()
-				expect(current.pendingThreadChannelId).toBeNull()
-			}),
+			message(action(ActionMessage.FailedCreateThread({ threadChannelId, reason: "NestedThread" }))),
+			expectOutMessage(
+				PageOutMessage.RequestedToast({
+					toast: {
+						intent: "error",
+						title: "Cannot create thread",
+						description: "Threads cannot be created within threads",
+					},
+				}),
+			),
+			model((current) => expect(current.threadPanel).toBeNull()),
 		)
+	})
+
+	// Thread A is still being created when the reader opens thread B.
+	test("creating or naming thread A never settles thread B's panel", () => {
+		const creatingA = updateWithShared(
+			derived(),
+			action(
+				ActionMessage.CompletedGenerateThreadChannelId({
+					messageId: graceMessageId,
+					threadChannelId,
+				}),
+			),
+		).model
+		const onB = updateWithShared(
+			creatingA,
+			Message.ClickedThreadPreview({ threadChannelId: otherThreadId, messageId: adaMessageId }),
+		).model
+		const creatingB = {
+			...onB,
+			threadPanel:
+				onB.threadPanel === null ? null : { ...onB.threadPanel, creation: "Creating" as const },
+		}
+		story(
+			updateWithShared,
+			given(creatingB),
+			message(action(ActionMessage.SucceededCreateThread({ threadChannelId }))),
+			model((current) => expect(current.threadPanel?.creation).toBe("Creating")),
+			message(action(ActionMessage.FailedCreateThread({ threadChannelId, reason: "Offline" }))),
+			expectOutMessage(
+				PageOutMessage.RequestedToast({
+					toast: {
+						intent: "error",
+						title: "Connection lost",
+						description: "Check your internet connection and try again.",
+					},
+				}),
+			),
+			model((current) => expect(current.threadPanel?.threadChannelId).toBe(otherThreadId)),
+			message(Message.ClickedGenerateThreadName()),
+			Command.resolve(
+				GenerateThreadName,
+				ActionMessage.SucceededGenerateThreadName({ threadChannelId: otherThreadId }),
+			),
+			model((current) => expect(current.threadPanel?.isNaming).toBe(false)),
+		)
+		const namingB = updateWithShared(onB, Message.ClickedGenerateThreadName()).model
+		expect(namingB.threadPanel?.isNaming).toBe(true)
+		const lateA = updateWithShared(
+			namingB,
+			action(ActionMessage.SucceededGenerateThreadName({ threadChannelId })),
+		)
+		expect(lateA.model.threadPanel?.isNaming).toBe(true)
 	})
 
 	const indicatorId = Schema.decodeSync(TypingIndicatorId)("00000000-0000-4000-8000-000000009999")
 
 	// Legacy `useTyping` deletes the indicator when the panel's composer unmounts.
 	test("closing the thread panel while typing deletes the thread's typing indicator", () => {
-		const opened = updateWithShared(
-			derived(),
-			overlays(Overlays.Message.ClickedThreadPreview({ threadChannelId, messageId: graceMessageId })),
-		).model
-		const typing = opened.threadDraft === null ? null : { ...opened.threadDraft.typing, isTyping: true, sessionId: 1, indicatorId }
+		const opened = updateWithShared(derived(), preview).model
+		const panel = opened.threadPanel!
+		const typing = { ...panel.draft.typing, isTyping: true, sessionId: 1, indicatorId }
 		story(
 			updateWithShared,
-			given({ ...opened, threadDraft: opened.threadDraft === null || typing === null ? null : { ...opened.threadDraft, typing } }),
-			message(overlays(Overlays.Message.ClosedThread())),
+			given({ ...opened, threadPanel: { ...panel, draft: { ...panel.draft, typing } } }),
+			message(Message.ClickedCloseThread()),
 			Command.expectExact(Typing.DeleteTypingIndicator({ id: indicatorId })),
 			Command.resolve(Typing.DeleteTypingIndicator, Typing.Message.CompletedDeleteTypingIndicator()),
-			model((current) => expect(current.threadDraft).toBeNull()),
+			model((current) => expect(current.threadPanel).toBeNull()),
 		)
 	})
 
 	test("thread typing heartbeats go through the thread draft", () => {
-		const opened = updateWithShared(
-			derived(),
-			overlays(Overlays.Message.ClickedThreadPreview({ threadChannelId, messageId: graceMessageId })),
-		).model
+		const opened = updateWithShared(derived(), preview).model
 		story(
 			updateWithShared,
 			given(opened),
 			message(threadDraft(Draft.Message.LeftWindow())),
 			Command.expectNone(),
-			model((current) => expect(current.threadDraft?.typing.isTyping).toBe(false)),
+			model((current) => expect(current.threadPanel?.draft.typing.isTyping).toBe(false)),
 		)
 	})
 })
@@ -388,14 +524,22 @@ describe("image viewer", () => {
 		story(
 			updateWithShared,
 			given(withImages()),
-			message(overlays(Overlays.Message.ClickedAttachmentImage({ messageId: graceMessageId, index: 1 }))),
+			message(
+				overlays(Overlays.Message.ClickedAttachmentImage({ messageId: graceMessageId, index: 1 })),
+			),
 			model((current) =>
-				expect(current.overlays.imageViewer).toEqual({ messageId: graceMessageId, index: 1, urlImages: null }),
+				expect(Overlays.imageViewerOf(current.overlays)).toEqual(
+					Overlays.OpenOverlay.ImageViewer({
+						messageId: graceMessageId,
+						index: 1,
+						urlImages: null,
+					}),
+				),
 			),
 			message(overlays(Overlays.Message.SelectedViewerImage({ index: 0 }))),
-			model((current) => expect(current.overlays.imageViewer?.index).toBe(0)),
+			model((current) => expect(Overlays.imageViewerOf(current.overlays)?.index).toBe(0)),
 			message(overlays(Overlays.Message.ClosedImageViewer())),
-			model((current) => expect(current.overlays.imageViewer).toBeNull()),
+			model((current) => expect(Overlays.imageViewerOf(current.overlays)).toBeNull()),
 		)
 	})
 
@@ -404,17 +548,33 @@ describe("image viewer", () => {
 		story(
 			updateWithShared,
 			given(withImages()),
-			message(overlays(Overlays.Message.ClickedAttachmentImage({ messageId: graceMessageId, index: 0 }))),
-			message(overlays(Overlays.Message.ClickedViewerAction({ action: "copyUrl", url, fileName: "photo-1.png" }))),
-			Command.expectExact(CopyText({ text: url })),
+			message(
+				overlays(Overlays.Message.ClickedAttachmentImage({ messageId: graceMessageId, index: 0 })),
+			),
+			message(
+				overlays(
+					Overlays.Message.ClickedViewerAction({ action: "copyUrl", url, fileName: "photo-1.png" }),
+				),
+			),
+			Command.expectExact(CopyText({ text: url, content: "ImageUrl" })),
+			Command.resolve(CopyText, ActionMessage.SucceededCopyText({ content: "ImageUrl" })),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "success", title: "URL copied", description: "Image URL has been copied to clipboard." },
+					toast: {
+						intent: "success",
+						title: "URL copied",
+						description: "Image URL has been copied to clipboard.",
+					},
 				}),
 			),
-			Command.resolve(CopyText, ActionMessage.CompletedCopyText()),
 			message(
-				overlays(Overlays.Message.ClickedViewerAction({ action: "openInBrowser", url, fileName: "photo-1.png" })),
+				overlays(
+					Overlays.Message.ClickedViewerAction({
+						action: "openInBrowser",
+						url,
+						fileName: "photo-1.png",
+					}),
+				),
 			),
 			Command.expectExact(OpenUrl({ url })),
 			Command.resolve(OpenUrl, ActionMessage.CompletedOpenUrl()),
@@ -426,10 +586,12 @@ describe("image viewer", () => {
 			updateWithShared,
 			given(withImages()),
 			message(overlays(Overlays.Message.PointerEnteredMessage({ messageId: graceMessageId }))),
-			message(overlays(Overlays.Message.ClickedAttachmentImage({ messageId: graceMessageId, index: 0 }))),
+			message(
+				overlays(Overlays.Message.ClickedAttachmentImage({ messageId: graceMessageId, index: 0 })),
+			),
 			message(overlays(Overlays.Message.PointerLeftList())),
 			Command.expectNone(),
-			model((current) => expect(current.overlays.hoveredMessageId).toBe(graceMessageId)),
+			model((current) => expect(Overlays.hoveredMessageIdOf(current.overlays)).toBe(graceMessageId)),
 		)
 	})
 
@@ -440,18 +602,26 @@ describe("image viewer", () => {
 			Overlays.Message.PointerEnteredMessage({ messageId: graceMessageId }),
 			facts,
 		).model
-		const within = Overlays.update(entered, Overlays.Message.PointerEnteredMessage({ messageId: graceMessageId }), facts)
+		const within = Overlays.update(
+			entered,
+			Overlays.Message.PointerEnteredMessage({ messageId: graceMessageId }),
+			facts,
+		)
 		expect(within.model).toBe(entered)
 		const left = Overlays.update(entered, Overlays.Message.PointerLeftList(), facts).model
-		expect(left.isHidePending).toBe(true)
-		const back = Overlays.update(left, Overlays.Message.PointerEnteredMessage({ messageId: graceMessageId }), facts).model
-		expect(back.isHidePending).toBe(false)
-		const stale = Overlays.update(
-			back,
-			Overlays.Message.CompletedWaitForHideToolbar({ version: left.hoverVersion }),
+		expect(left.hover._tag).toBe("HidePending")
+		const back = Overlays.update(
+			left,
+			Overlays.Message.PointerEnteredMessage({ messageId: graceMessageId }),
 			facts,
 		).model
-		expect(stale.hoveredMessageId).toBe(graceMessageId)
+		expect(back.hover._tag).toBe("Shown")
+		const stale = Overlays.update(
+			back,
+			Overlays.Message.CompletedWaitForHideToolbar({ version: left.hideVersion }),
+			facts,
+		).model
+		expect(Overlays.hoveredMessageIdOf(stale)).toBe(graceMessageId)
 	})
 
 	// The view renders nothing for a viewer whose message left the window, so the viewer closes; it
@@ -460,9 +630,40 @@ describe("image viewer", () => {
 		story(
 			updateWithShared,
 			given(withImages()),
-			message(overlays(Overlays.Message.ClickedAttachmentImage({ messageId: graceMessageId, index: 0 }))),
+			message(
+				overlays(Overlays.Message.ClickedAttachmentImage({ messageId: graceMessageId, index: 0 })),
+			),
 			message(Message.ChangedMessages({ order: [adaMessageId], upserts: [] })),
-			model((current) => expect(current.overlays.imageViewer).toBeNull()),
+			model((current) => expect(Overlays.imageViewerOf(current.overlays)).toBeNull()),
+		)
+	})
+
+	test("an image in a thread reply opens the viewer, which survives the channel's rows changing", () => {
+		const reply = chatMessageOf(30, { channelId: threadChannelId, content: "Screenshot" })
+		const opened = updateWithShared(
+			withImages(),
+			Message.ClickedThreadPreview({ threadChannelId, messageId: graceMessageId }),
+		).model
+		const withReply = updateWithShared(
+			updateWithShared(
+				opened,
+				Message.UpdatedThreadPanelMessages({ threadChannelId, messages: [reply] }),
+			).model,
+			Message.UpdatedAttachments({ attachments: [imageAttachmentOf(3, reply.id)] }),
+		).model
+		story(
+			updateWithShared,
+			given(withReply),
+			message(overlays(Overlays.Message.ClickedAttachmentImage({ messageId: reply.id, index: 0 }))),
+			model((current) => {
+				expect(Overlays.imageViewerOf(current.overlays)?.messageId).toBe(reply.id)
+				expect(current.threadPanel?.rows[0]?.attachments).toHaveLength(1)
+			}),
+			message(Message.UpdatedReactions({ reactions: [] })),
+			model((current) => expect(Overlays.imageViewerOf(current.overlays)?.messageId).toBe(reply.id)),
+			message(Message.ClickedCloseThread()),
+			message(Message.UpdatedReactions({ reactions: [] })),
+			model((current) => expect(Overlays.imageViewerOf(current.overlays)).toBeNull()),
 		)
 	})
 
@@ -471,12 +672,14 @@ describe("image viewer", () => {
 			updateWithShared,
 			given(withImages()),
 			message(overlays(Overlays.Message.PointerEnteredMessage({ messageId: graceMessageId }))),
-			message(overlays(Overlays.Message.ClickedAttachmentImage({ messageId: graceMessageId, index: 0 }))),
+			message(
+				overlays(Overlays.Message.ClickedAttachmentImage({ messageId: graceMessageId, index: 0 })),
+			),
 			message(Message.ChangedMessages({ order: [adaMessageId], upserts: [] })),
-			model((current) => expect(current.overlays.hoveredMessageId).toBeNull()),
+			model((current) => expect(Overlays.hoveredMessageIdOf(current.overlays)).toBeNull()),
 			message(overlays(Overlays.Message.PointerEnteredMessage({ messageId: adaMessageId }))),
 			message(Message.UpdatedReactions({ reactions: [] })),
-			model((current) => expect(current.overlays.hoveredMessageId).toBe(adaMessageId)),
+			model((current) => expect(Overlays.hoveredMessageIdOf(current.overlays)).toBe(adaMessageId)),
 		)
 	})
 })

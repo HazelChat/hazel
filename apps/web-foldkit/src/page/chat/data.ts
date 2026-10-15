@@ -27,29 +27,6 @@ import type { ChatMessage, ChatReaction } from "./rows"
  * builders of `routes/_app/$orgSlug/chat/$id.tsx` behind `liveQueryStream`.
  */
 
-export const messagesStream = <Message>(
-	channelId: ChannelId,
-	limit: number,
-	toMessage: (messages: ReadonlyArray<ChatMessage>) => Message,
-): Stream.Stream<Message> =>
-	liveQueryStream<MessageQueryRow, Message>(
-		(q) =>
-			q
-				.from({ message: messageCollection })
-				.leftJoin({ pinned: pinnedMessageCollection }, ({ message, pinned }) =>
-					eq(message.id, pinned.messageId),
-				)
-				.leftJoin({ author: userCollection }, ({ message, author }) =>
-					eq(message.authorId, author.id),
-				)
-				.where(({ message }) => eq(message.channelId, channelId))
-				.select(({ message, pinned, author }) => ({ ...message, pinnedMessage: pinned, author }))
-				.orderBy(({ message }) => message.createdAt, "desc")
-				.limit(limit)
-				.offset(0),
-		(rows) => toMessage(rows.map(toChatMessage)),
-	)
-
 /** Messages by channel, so a channel's share of the loaded messages is a lookup, not a scan. */
 const messagesByChannel = messageCollection.createIndex((row) => row.channelId, {
 	indexType: BasicIndex,
@@ -66,7 +43,7 @@ const loadsWholeChannel = (channelId: ChannelId) =>
 	messagesByChannel.equalityLookup(channelId).size * 5 <= messageCollection.size
 
 /**
- * The window of `messagesStream` as change sets: `offset` newest messages skipped, `limit` kept.
+ * The channel's messages, newest first, as change sets: `offset` newest messages skipped, `limit` kept.
  * One query per channel follows the pages `MessageWindows` publishes; only changed rows are converted.
  */
 export const messageChangesStream = <Message>(
@@ -94,7 +71,7 @@ const messageQueryStream = <Message>(
 	windows: Stream.Stream<LiveQueryWindow>,
 	toMessage: (changes: { order: ReadonlyArray<MessageId>; upserts: ReadonlyArray<ChatMessage> }) => Message,
 ): Stream.Stream<Message> =>
-	liveQueryChangeSetStream<MessageQueryRow, Message>(
+	liveQueryChangeSetStream<MessageQueryRow, Message, MessageId>(
 		(q, { limit, offset }) => {
 			const isWholeChannel = loadsWholeChannel(channelId)
 			return q
@@ -118,8 +95,7 @@ const messageQueryStream = <Message>(
 		readWindow,
 		windows,
 		(row) => row.id,
-		({ order, upserts }) =>
-			toMessage({ order: order as ReadonlyArray<MessageId>, upserts: upserts.map(toChatMessage) }),
+		({ order, upserts }) => toMessage({ order, upserts: upserts.map(toChatMessage) }),
 	)
 
 export const reactionsStream = <Message>(

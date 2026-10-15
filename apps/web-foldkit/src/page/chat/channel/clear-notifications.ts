@@ -1,7 +1,8 @@
 import { ChannelId } from "@hazel/schema"
-import { Effect, Schema } from "effect"
+import { Effect } from "effect"
 import { Command } from "foldkit"
 import { modifyFields } from "foldkit/struct"
+import { catchCommon } from "../../../data/actions"
 import { HazelRpc } from "../../../rpc"
 import type { Shared } from "../../contract"
 import { Message, type Model, type PageReturn } from "./model"
@@ -12,14 +13,15 @@ export const ClearChannelNotifications = Command.define("ClearChannelNotificatio
 	args: { channelId: ChannelId },
 	messages: [Message.SucceededClearNotifications, Message.FailedClearNotifications],
 	execute: ({ channelId }) =>
-		Effect.gen(function* () {
-			const client = yield* HazelRpc
-			yield* client("channelMember.clearNotifications", { channelId })
-			return Message.SucceededClearNotifications()
-		}).pipe(
-			Effect.catch((error) =>
-				Effect.succeed(Message.FailedClearNotifications({ reason: String(error) })),
-			),
+		HazelRpc.use((rpc) => rpc("channelMember.clearNotifications", { channelId })).pipe(
+			Effect.as(Message.SucceededClearNotifications({ channelId })),
+			Effect.catchTags({
+				ChannelNotFoundError: () =>
+					Effect.succeed(
+						Message.FailedClearNotifications({ channelId, reason: "ChannelNotFound" }),
+					),
+			}),
+			catchCommon((reason) => Message.FailedClearNotifications({ channelId, reason })),
 		),
 })
 
@@ -27,10 +29,11 @@ export const ClearChannelNotifications = Command.define("ClearChannelNotificatio
 const isMounted = (shared: Shared) =>
 	shared.auth === "SignedIn" && shared.currentUser !== null && shared.organization !== null
 
+/** Sends the clear unless it is in flight or done; a failed clear is sent again on the next shared change. */
 export const clearNotificationsOnMount = (model: Model, shared: Shared): PageReturn =>
-	model.hasClearedNotifications || !isMounted(shared)
+	model.notificationsClear !== "NotSent" || !isMounted(shared)
 		? { model }
 		: {
-				model: modifyFields(model, { hasClearedNotifications: () => true }),
+				model: modifyFields(model, { notificationsClear: () => "Sending" }),
 				commands: [ClearChannelNotifications({ channelId: model.channelId })],
 			}
