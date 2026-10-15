@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@effect/vitest"
 import { ChannelMemberRepo, ChannelRepo, MessageRepo, OrganizationMemberRepo } from "@hazel/backend-core"
+import { Database } from "@hazel/db"
 import { PermissionError } from "@hazel/domain"
 import type { ChannelId, ChannelMemberId, MessageId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect, Result, Layer, Option, Context } from "effect"
@@ -128,6 +129,37 @@ describe("OrgResolver", () => {
 			if (Result.isFailure(result)) {
 				expect(PermissionError.is(result.failure)).toBe(true)
 			}
+		})
+	})
+
+	describe("database failures", () => {
+		it("fail with the typed DatabaseError instead of a defect", async () => {
+			const layer = Layer.effect(OrgResolver, OrgResolver.make).pipe(
+				Layer.provide(
+					Layer.succeed(
+						OrganizationMemberRepo,
+						serviceShape<typeof OrganizationMemberRepo>({
+							findByOrgAndUser: () =>
+								Effect.fail(
+									new Database.DatabaseError({
+										type: "connection_error",
+										message: "connection refused",
+										cause: null,
+									}),
+								),
+						}),
+					),
+				),
+				Layer.provide(makeChannelRepoLayer({})),
+				Layer.provide(makeChannelMemberRepoLayer({})),
+				Layer.provide(makeMessageRepoLayer({})),
+			)
+
+			const result = await runEither(
+				use((r) => r.requireScope(TEST_ORG_ID, "organizations:read", "Organization", "read")),
+				layer,
+			)
+			expect(Result.isFailure(result) && (result.failure as { _tag: string })._tag).toBe("DatabaseError")
 		})
 	})
 
