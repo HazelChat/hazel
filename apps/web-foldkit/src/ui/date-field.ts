@@ -34,10 +34,8 @@ export interface DateFieldParts {
 export const hiddenInputStyle =
 	"border: 0px; clip: rect(0px, 0px, 0px, 0px); clip-path: inset(50%); height: 1px; margin: -1px; overflow: hidden; padding: 0px; position: fixed; width: 1px; white-space: nowrap; top: 0px; left: 0px;"
 
-const fieldName = (type: Segments.SegmentType) =>
-	new Intl.DisplayNames(navigator.language, { type: "dateTimeField" }).of(
-		type === "dayPeriod" ? "dayPeriod" : type,
-	) ?? type
+const fieldName = (locale: string, type: Segments.SegmentType) =>
+	Segments.formattersFor(locale).fieldNames.of(type) ?? type
 
 /** useDateSegment's name: the field's aria-label after a comma, a trailing comma when labelled by an element. */
 const segmentName = (name: string, ariaLabel: string | undefined, labelledBy: string | undefined) =>
@@ -47,9 +45,10 @@ const segmentName = (name: string, ariaLabel: string | undefined, labelledBy: st
 export const selectedDescription = (model: Segments.Model) => {
 	if (model.committed === null) return null
 	const date = Segments.dateValueOf(model)
+	const formatters = Segments.formattersFor(model.locale)
 	return model.kind === "date"
-		? `Selected Date: ${new Intl.DateTimeFormat(navigator.language, { dateStyle: "long", timeZone: "UTC" }).format(date)}`
-		: `Selected Time: ${new Intl.DateTimeFormat(navigator.language, { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(date)}`
+		? `Selected Date: ${formatters.longDate.format(date)}`
+		: `Selected Time: ${formatters.time.format(date)}`
 }
 
 /** The DateInput's segments: contenteditable spinbuttons plus aria-hidden literals. */
@@ -96,7 +95,7 @@ export const dateSegments = <ParentMessage>(
 				h.DataAttribute("type", type),
 				...statusAttributes,
 				...(part.isPlaceholder ? [h.DataAttribute("placeholder", "true")] : []),
-				h.AriaLabel(segmentName(fieldName(type), options.ariaLabel, options.labelledBy)),
+				h.AriaLabel(segmentName(fieldName(options.model.locale, type), options.ariaLabel, options.labelledBy)),
 				...(options.labelledBy === undefined
 					? []
 					: [h.AriaLabelledBy(`${id} ${options.labelledBy}`)]),
