@@ -8,7 +8,12 @@ import * as Overlays from "../page/chat/overlays"
 import * as Tooltip from "../ui/tooltip"
 import * as Menu from "../ui/menu"
 import { Message, type Model } from "../page/chat/channel/model"
-import { loadedModel, messages, updateWithShared } from "../page/chat/channel/fixtures.test-support"
+import {
+	loadedMessages,
+	loadedModel,
+	messages,
+	updateWithShared,
+} from "../page/chat/channel/fixtures.test-support"
 import { view } from "../page/chat/channel/view"
 import type { MessageId } from "@hazel/schema"
 
@@ -16,11 +21,9 @@ import type { MessageId } from "@hazel/schema"
 
 type Step = (simulation: Scene.SceneSimulation<Model, Message>) => Scene.SceneSimulation<Model, Message>
 
-const toSelf = (message: Message) => message
-
 export const channelScene = {
 	update: updateWithShared,
-	view: (model: Model, h: HtmlBuilder<Message>): Html => view(h, model, toSelf),
+	view: (model: Model, h: HtmlBuilder<Message>): Html => view(h, model),
 }
 
 export const VIEWPORT_PX = 600
@@ -28,12 +31,11 @@ export const VIEWPORT_PX = 600
 export const list = (message: MessageList.Message) => Message.GotListMessage({ message })
 export const overlays = (message: Overlays.Message) => Message.GotOverlaysMessage({ message })
 export const draft = (message: Draft.Message) => Message.GotDraftMessage({ message })
-export const composer = (message: Composer.Message) =>
-	draft(Draft.Message.GotComposerMessage({ message }))
+export const composer = (message: Composer.Message) => draft(Draft.Message.GotComposerMessage({ message }))
 
 /** `loadedModel` with its rows derived by update, as the messages query delivers them. */
 export const derivedModel = (base: Model = loadedModel()): Model =>
-	updateWithShared(base, Message.UpdatedMessages({ messages: base.messages.length === 0 ? messages : base.messages })).model
+	updateWithShared(base, loadedMessages(base.messages.length === 0 ? messages : base.messages)).model
 
 /** Runs steps in order (Scene has no `steps` grouping helper). */
 export const sequence =
@@ -44,7 +46,10 @@ export const sequence =
 /** The channel's first render: the list measures its viewport, the editor, drop zone and hover tracker start. */
 export const mountedChannel = (hovered: MessageId | null = null): Step =>
 	Scene.Mount.resolveAll(
-		[{ name: "ObserveMessageList" }, list(MessageList.Message.ResizedViewport({ viewportHeight: VIEWPORT_PX }))],
+		[
+			{ name: "ObserveMessageList" },
+			list(MessageList.Message.ResizedViewport({ viewportHeight: VIEWPORT_PX })),
+		],
 		[{ name: "MountEditor" }, composer(Composer.Message.UpdatedDraft({ markdown: "", isEmpty: true }))],
 		[
 			{ name: "TrackFileDrop" },

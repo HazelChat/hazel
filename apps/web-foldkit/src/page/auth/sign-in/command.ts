@@ -1,40 +1,56 @@
-import { Effect, Schema } from "effect"
+import type { DesktopAuth } from "@hazel/auth/desktop"
+import { Effect, Match, Schema } from "effect"
 import { Command } from "foldkit"
-import { Provider } from "../../../auth/client"
-import { signInWithPasskey, startOAuthSignIn } from "../../../auth/flows"
 import { load } from "foldkit/navigation"
-import { runDesktopAuth } from "../../../platform/desktop-auth"
+import { Provider } from "../../../auth/client"
+import { operationReasons, signInWithPasskey, startOAuthSignIn } from "../../../auth/flows"
+import { type DesktopAuthUnavailableError, runDesktopAuth } from "../../../platform/desktop-auth"
 import { Message } from "./message"
+import type { SignInFailure } from "./model"
 
-const settle = <R>(flow: Effect.Effect<void, { readonly message: string | null }, R>) =>
-	flow.pipe(
-		Effect.as(Message.LeftForSignIn()),
-		Effect.catch((error) => Effect.succeed(Message.FailedSignIn({ message: error.message }))),
-	)
+const failedSignIn = (error: { readonly reason: SignInFailure }) =>
+	Effect.succeed(Message.FailedSignIn({ reason: error.reason }))
 
 export const StartOAuthSignIn = Command.define("StartOAuthSignIn", {
 	args: { provider: Schema.Literals(Provider), returnTo: Schema.NullOr(Schema.String) },
 	messages: [Message.LeftForSignIn, Message.FailedSignIn],
-	execute: ({ provider, returnTo }) => settle(startOAuthSignIn(provider, returnTo)),
+	execute: ({ provider, returnTo }) =>
+		startOAuthSignIn(provider, returnTo).pipe(
+			Effect.as(Message.LeftForSignIn()),
+			Effect.catchTags({ AuthFlowError: failedSignIn }),
+		),
 })
 
 export const StartPasskeySignIn = Command.define("StartPasskeySignIn", {
 	args: { returnTo: Schema.NullOr(Schema.String) },
 	messages: [Message.LeftForSignIn, Message.FailedSignIn],
-	execute: ({ returnTo }) => settle(signInWithPasskey(returnTo)),
+	execute: ({ returnTo }) =>
+		signInWithPasskey(returnTo).pipe(
+			Effect.as(Message.LeftForSignIn()),
+			Effect.catchTags({ AuthFlowError: failedSignIn }),
+		),
 })
 
-/** What a failed desktop sign-in tells the user (the library's `PlatformError` reasons). */
-const browserFailure = (error: { readonly _tag: string; readonly reason?: string }): string =>
-	error._tag === "BrowserLoginIndeterminate"
-		? "Couldn't confirm the last sign-in. Restart Hazel and try again."
-		: error.reason === "expired"
-			? "Signing in took too long. Please try again."
-			: error.reason === "busy"
-				? "A sign-in is already in progress in your browser."
-				: error._tag === "OperationHttpError"
-					? "Couldn't reach Hazel. Check your connection and try again."
-					: "Couldn't sign in through the browser. Please try again."
+type BrowserSignInError = Effect.Error<DesktopAuth["signIn"]> | DesktopAuthUnavailableError
+
+/** Exhaustive over the desktop client's sign-in failures (the library's `PlatformError` reasons first). */
+const browserSignInReason = (error: BrowserSignInError): SignInFailure =>
+	Match.valueTags(error, {
+		...operationReasons,
+		BrowserLoginPlatformError: ({ reason }): SignInFailure =>
+			reason === "expired"
+				? "BrowserTimedOut"
+				: reason === "busy"
+					? "BrowserBusy"
+					: reason === "cancelled"
+						? "Cancelled"
+						: "Unavailable",
+		BrowserLoginIndeterminate: (): SignInFailure => "BrowserIndeterminate",
+		BrowserLoginInvalid: (): SignInFailure => "Expired",
+		BrowserLoginUnavailable: (): SignInFailure => "Unavailable",
+		// The desktop auth runtime (keychain, deep link) could not start.
+		DesktopAuthUnavailableError: (): SignInFailure => "Unavailable",
+	})
 
 /**
  * Desktop: opens the browser at `/auth/desktop`, waits for its link back, then reloads into
@@ -45,8 +61,10 @@ export const StartBrowserSignIn = Command.define("StartBrowserSignIn", {
 	interrupt: true,
 	execute: runDesktopAuth((auth) => auth.signIn).pipe(
 		Effect.andThen(load("/")),
-		Effect.as(Message.LeftForSignIn()),
-		Effect.catch((error) => Effect.succeed(Message.FailedSignIn({ message: browserFailure(error) }))),
+		Effect.match({
+			onSuccess: () => Message.LeftForSignIn(),
+			onFailure: (error) => Message.FailedSignIn({ reason: browserSignInReason(error) }),
+		}),
 	),
 })
 
@@ -54,6 +72,7 @@ export const StartBrowserSignIn = Command.define("StartBrowserSignIn", {
 export const RetireBrowserSignIn = Command.define("RetireBrowserSignIn", {
 	messages: [Message.CompletedRetireBrowserSignIn],
 	execute: runDesktopAuth((auth) => auth.cancel).pipe(
+		// Best effort: an attempt that can't be retired expires on its own.
 		Effect.ignore,
 		Effect.as(Message.CompletedRetireBrowserSignIn()),
 	),

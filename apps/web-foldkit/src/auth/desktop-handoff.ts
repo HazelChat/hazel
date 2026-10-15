@@ -1,8 +1,10 @@
 import { desktopLogin } from "@hazel/auth/contract"
 import { OperationHttpClient } from "@yielded/auth"
-import { Effect, Layer, Redacted, Schema } from "effect"
+import { type Context, Effect, Layer, Match, Redacted, Schema } from "effect"
 import { FetchHttpClient } from "effect/http"
+import { CommonReason } from "~/lib/error-messages"
 import { HazelAuthClient } from "./client"
+import { operationHttpReason } from "./flows"
 
 /**
  * The browser half of desktop sign-in: describe the desktop app's attempt, then authorize it
@@ -20,42 +22,78 @@ const TransportLive = OperationHttpClient.layer({
 	Layer.orDie,
 )
 
+/**
+ * Why the handoff failed, beyond the shared reasons. `Expired`: the attempt is gone or used, so
+ * the desktop app has to start again. `NeedsSignIn`: this browser has no session.
+ */
+export const HandoffFailure = Schema.Union([Schema.Literals(["Expired", "NeedsSignIn"]), CommonReason])
+export type HandoffFailure = typeof HandoffFailure.Type
+
 export class HandoffError extends Schema.TaggedError<HandoffError>()("HandoffError", {
-	message: Schema.String,
+	reason: HandoffFailure,
 }) {}
 
-const failed = (error: { readonly _tag: string }) =>
-	new HandoffError({
-		message:
-			error._tag === "OperationHttpError"
-				? "Couldn't reach Hazel. Check your connection and try again."
-				: "This sign-in request has expired or was already used. Start again from the desktop app.",
+type Transport = Context.Service.Shape<typeof OperationHttpClient.Client>
+type AuthApi = Context.Service.Shape<typeof HazelAuthClient>["auth"]
+type SessionId = NonNullable<Effect.Success<ReturnType<AuthApi["getSession"]>>>["sessionId"]
+
+type HandoffCallError =
+	| Effect.Error<ReturnType<typeof callDescribe>>
+	| Effect.Error<ReturnType<typeof callAuthorize>>
+	| Effect.Error<ReturnType<AuthApi["getSession"]>>
+
+const callDescribe = (transport: Transport, attemptId: string) =>
+	transport.call(desktopLogin.routes.describe, { attemptId })
+
+const callAuthorize = (transport: Transport, attemptId: string, expectedSessionId: SessionId) =>
+	transport.call(desktopLogin.routes.authorize, { attemptId, decision: "continue", expectedSessionId })
+
+const expired = (): HandoffFailure => "Expired"
+const unavailable = (): HandoffFailure => "Unavailable"
+const unexpected = (): HandoffFailure => "Unexpected"
+
+/** Exhaustive: a new error in the handoff contract must be classified here. */
+const reasonOf = (error: HandoffCallError): HandoffFailure =>
+	Match.valueTags(error, {
+		OperationHttpError: operationHttpReason,
+		BrowserLoginInvalid: expired,
+		BrowserLoginIndeterminate: expired,
+		PendingAuthenticationInvalid: expired,
+		StaleAuthentication: expired,
+		SessionInvalid: (): HandoffFailure => "NeedsSignIn",
+		AuthenticationRequired: (): HandoffFailure => "NeedsSignIn",
+		AssuranceRequired: (): HandoffFailure => "NeedsSignIn",
+		SessionStepUpInvalid: (): HandoffFailure => "NeedsSignIn",
+		BrowserLoginUnavailable: unavailable,
+		SessionUnavailable: unavailable,
+		SessionSignOutUnavailable: unavailable,
+		SessionCapabilityUnsupported: unavailable,
+		HookDenied: unexpected,
+		InvalidOperationInput: unexpected,
+		OperationForbidden: unexpected,
+		OperationPrivateOutputUnsupported: unexpected,
+		SessionConflict: unexpected,
+		SessionRenewalTooEarly: unexpected,
 	})
+
+const failed = (error: HandoffCallError) => new HandoffError({ reason: reasonOf(error) })
 
 /** The app asking to sign in (`displayName`), or a failure if the attempt is gone. */
 export const describeAttempt = (attemptId: string) =>
 	Effect.gen(function* () {
 		const transport = yield* OperationHttpClient.Client
-		return yield* transport.call(desktopLogin.routes.describe, { attemptId })
-	}).pipe(Effect.mapError(failed), Effect.provide(TransportLive))
+		return yield* callDescribe(transport, attemptId).pipe(Effect.mapError(failed))
+	}).pipe(Effect.provide(TransportLive))
 
 /** Authorizes the attempt for this browser's session and returns the app's callback URL. */
 export const authorizeAttempt = (attemptId: string) =>
 	Effect.gen(function* () {
 		const client = yield* HazelAuthClient
-		const session = yield* client.auth.getSession()
-		if (session === null) return yield* new HandoffError({ message: "Sign in first, then continue." })
+		const session = yield* client.auth.getSession().pipe(Effect.mapError(failed))
+		if (session === null) return yield* new HandoffError({ reason: "NeedsSignIn" })
 		const transport = yield* OperationHttpClient.Client
-		const result = yield* transport.call(desktopLogin.routes.authorize, {
-			attemptId,
-			decision: "continue",
-			expectedSessionId: session.sessionId,
-		})
+		const result = yield* callAuthorize(transport, attemptId, session.sessionId).pipe(
+			Effect.mapError(failed),
+		)
 		return Redacted.value(result.callbackUrl)
-	}).pipe(
-		Effect.catchIf(
-			(error) => error._tag !== "HandoffError",
-			(error) => Effect.fail(failed(error)),
-		),
-		Effect.provide(TransportLive),
-	)
+	}).pipe(Effect.provide(TransportLive))

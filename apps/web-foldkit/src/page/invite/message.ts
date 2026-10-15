@@ -1,15 +1,15 @@
-import { Schema } from "effect"
 import { defineMessageUnion } from "foldkit/message"
-import { Preview } from "./model"
+import { AcceptFailure, Preview, PreviewFailure } from "./model"
 
 export const Message = defineMessageUnion({
 	SucceededFetchPreview: { preview: Preview },
-	FailedFetchPreview: { isNotFound: Schema.Boolean },
+	FailedFetchPreview: { reason: PreviewFailure },
+	ClickedRetryPreview: {},
 	ClickedSignIn: {},
 	ClickedAccept: {},
 	ClickedSignOut: {},
 	/** The browser is loading the workspace or sign-in. */
 	LeftPage: {},
-	FailedAccept: { error: Schema.String },
+	FailedAccept: { reason: AcceptFailure },
 })
 export type Message = typeof Message.Type

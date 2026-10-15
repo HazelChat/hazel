@@ -51,13 +51,12 @@ describe("sign in", () => {
 			Scene.given(signIn(Option.none())),
 			Scene.click(passkey),
 			Scene.Command.expectExact(StartPasskeySignIn({ returnTo: null })),
-			Scene.Command.resolve(
-				StartPasskeySignIn,
-				SignInMessage.FailedSignIn({ message: "Sign-in failed." }),
+			Scene.Command.resolve(StartPasskeySignIn, SignInMessage.FailedSignIn({ reason: "Offline" })),
+			Scene.expect(Scene.role("alert")).toHaveText(
+				"Connection lost. Check your internet connection and try again.",
 			),
-			Scene.expect(Scene.role("alert")).toHaveText("Sign-in failed."),
 			Scene.click(passkey),
-			Scene.Command.resolve(StartPasskeySignIn, SignInMessage.FailedSignIn({ message: null })),
+			Scene.Command.resolve(StartPasskeySignIn, SignInMessage.FailedSignIn({ reason: "Cancelled" })),
 			Scene.expect(Scene.role("alert")).toBeAbsent(),
 		)
 	})
@@ -89,6 +88,20 @@ describe("register", () => {
 		)
 	})
 
+	test("a failed registration says why and offers to start again", () => {
+		Scene.scene(
+			pageScene(updateRegister, registerView, signedOut),
+			Scene.given(initRegister(route).model),
+			Scene.type(Scene.label("First name"), "Ada"),
+			Scene.click(Scene.role("button", { name: "Continue" })),
+			Scene.expect(Scene.role("button", { name: "Creating your account..." })).toBeDisabled(),
+			Scene.Command.resolve(Register, RegisterMessage.FailedRegistration({ reason: "Expired" })),
+			Scene.expect(Scene.role("alert")).toHaveText("That sign-in expired or was already used. Please start again."),
+			Scene.expect(Scene.role("link", { name: "Start sign-in again" })).toExist(),
+			Scene.expect(Scene.role("button", { name: "Continue" })).toBeEnabled(),
+		)
+	})
+
 	test("a missing first name blocks the submit", () => {
 		Scene.scene(
 			pageScene(updateRegister, registerView, signedOut),
@@ -115,21 +128,24 @@ describe("register", () => {
 describe("desktop sign-in", () => {
 	test("waits for the browser; Cancel stops the wait and retires the attempt", () => {
 		const started = updateSignIn(signIn(Option.none()), SignInMessage.ClickedBrowserSignIn())
-		expect(started.model.pending).toBe("browser")
+		expect(started.model.submission).toEqual({ _tag: "Pending", attempt: "browser" })
 		expect(started.commands?.map((command) => command.name)).toEqual([StartBrowserSignIn.name])
 
 		const cancelling = updateSignIn(started.model, SignInMessage.ClickedCancelBrowserSignIn())
 		expect(cancelling.commands).toHaveLength(1)
 
 		const cancelled = updateSignIn(cancelling.model, SignInMessage.CompletedCancelBrowserSignIn())
-		expect(cancelled.model.pending).toBeNull()
+		expect(cancelled.model.submission._tag).toBe("Idle")
 		expect(cancelled.commands?.map((command) => command.name)).toEqual([RetireBrowserSignIn.name])
 	})
 
 	test("a failed browser sign-in says why and can be retried", () => {
 		const started = updateSignIn(signIn(Option.none()), SignInMessage.ClickedBrowserSignIn()).model
-		const failed = updateSignIn(started, SignInMessage.FailedSignIn({ message: "Signing in took too long." }))
-		expect(failed.model).toMatchObject({ pending: null, error: "Signing in took too long." })
-		expect(updateSignIn(failed.model, SignInMessage.ClickedBrowserSignIn()).model.pending).toBe("browser")
+		const failed = updateSignIn(started, SignInMessage.FailedSignIn({ reason: "BrowserTimedOut" }))
+		expect(failed.model.submission).toEqual({ _tag: "Failed", reason: "BrowserTimedOut" })
+		expect(updateSignIn(failed.model, SignInMessage.ClickedBrowserSignIn()).model.submission).toEqual({
+			_tag: "Pending",
+			attempt: "browser",
+		})
 	})
 })

@@ -1,8 +1,8 @@
-import { Schema } from "effect"
 import { defineMessageUnion } from "foldkit/message"
+import { AuthFailure } from "../../../auth/flows"
 
 export const Message = defineMessageUnion({
 	LeftForProvider: {},
-	FailedSignIn: { message: Schema.NullOr(Schema.String) },
+	FailedSignIn: { reason: AuthFailure },
 })
 export type Message = typeof Message.Type

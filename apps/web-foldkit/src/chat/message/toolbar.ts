@@ -198,7 +198,7 @@ export const TrackMessageHover = Mount.defineStream("TrackMessageHover", {
 })
 
 export interface ToolbarInputs<M> {
-	readonly messageId: string
+	readonly messageId: MessageId
 	readonly isOwnMessage: boolean
 	readonly tooltip: TooltipHost.Model
 	readonly hoveredKey: string | null
@@ -234,6 +234,7 @@ const action = <M>(
 ): Html =>
 	TooltipHost.tooltipTrigger(h, {
 		key: `${inputs.messageId}:toolbar:${options.key}`,
+		messageId: inputs.messageId,
 		active: inputs.tooltip,
 		hoveredKey: inputs.hoveredKey,
 		toMessage: inputs.toTooltipMessage,

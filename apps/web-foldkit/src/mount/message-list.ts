@@ -25,6 +25,24 @@ export const ViewportAnchor = defineTaggedUnion({
 })
 export type ViewportAnchor = typeof ViewportAnchor.Type
 
+/**
+ * While the reader scrolls, rows render from a wide overscan window in row order instead of the
+ * pool (LegendList's 300px draw distance inserts a row subtree nearly every frame, and each insertion
+ * restyles the page). The pool keeps running and takes over again once the scroll settles.
+ * `Scrolling` always has exactly one `WaitForScrollSettle` in flight; `eventVersion` is the latest
+ * scroll event, and the overscan window's first and last row move in chunks, so most scroll frames
+ * change no DOM.
+ */
+export const ScrollPhase = defineTaggedUnion({
+	Settled: {},
+	Scrolling: {
+		eventVersion: Schema.Number,
+		renderedFromKey: Schema.NullOr(Schema.String),
+		renderedToKey: Schema.NullOr(Schema.String),
+	},
+})
+export type ScrollPhase = typeof ScrollPhase.Type
+
 export const Model = Schema.Struct({
 	id: Schema.String,
 	estimatedRowHeightPx: Schema.Number,
@@ -43,17 +61,7 @@ export const Model = Schema.Struct({
 	appliedScrollVersion: Schema.Number,
 	/** LegendList's containers: which row each rendered `<div>` holds, in DOM order. */
 	pool: Pool,
-	/**
-	 * While the reader scrolls, rows render from a wide overscan window in row order instead (LegendList's
-	 * 300px draw distance inserts a row subtree nearly every frame, and each insertion restyles the
-	 * page). The pool keeps running and takes over again once the scroll settles.
-	 */
-	isScrolling: Schema.Boolean,
-	scrollEventVersion: Schema.Number,
-	isSettleWaitPending: Schema.Boolean,
-	/** First and last row of the overscan window. Moved in chunks, so most scroll frames change no DOM. */
-	renderedFromKey: Schema.NullOr(Schema.String),
-	renderedToKey: Schema.NullOr(Schema.String),
+	scrollPhase: ScrollPhase,
 	/** `activeStickyIndex`: the divider pinned `position: sticky`. */
 	activeStickyKey: Schema.NullOr(Schema.String),
 	/**
@@ -75,6 +83,8 @@ export const Message = defineMessageUnion({
 		measurements: Schema.Array(Schema.Struct({ key: Schema.String, height: Schema.Number })),
 	},
 	CompletedApplyScroll: { version: Schema.Number, scrollTop: Schema.Number },
+	/** The list element was gone (another tab is shown): nothing was scrolled, nothing was observed. */
+	SkippedApplyScroll: { version: Schema.Number },
 	CompletedWaitForScrollSettle: { version: Schema.Number },
 })
 export type Message = typeof Message.Type
@@ -103,11 +113,7 @@ export const init = (config: {
 	scrollVersion: 0,
 	appliedScrollVersion: 0,
 	pool: emptyPool,
-	isScrolling: false,
-	scrollEventVersion: 0,
-	isSettleWaitPending: false,
-	renderedFromKey: null,
-	renderedToKey: null,
+	scrollPhase: ScrollPhase.Settled(),
 	activeStickyKey: null,
 	stuckKey: null,
 })
@@ -133,7 +139,10 @@ const computeLayout = (model: Model): Layout => {
 }
 
 // Pure memos keyed by the frozen inputs, so lists never evict each other's entries.
-const layouts = new WeakMap<ReadonlyArray<string>, WeakMap<object, { readonly estimate: number; readonly layout: Layout }>>()
+const layouts = new WeakMap<
+	ReadonlyArray<string>,
+	WeakMap<object, { readonly estimate: number; readonly layout: Layout }>
+>()
 
 /** Prefix sums over measured or estimated heights, memoized on the (frozen) inputs by reference. */
 export const layoutOf = (model: Model): Layout => {
@@ -227,12 +236,12 @@ const afterLayout = (element: Element) =>
 /** Adjusts `scrollTop` once the pending patch has committed and laid out, before the browser paints. */
 export const ApplyScroll = Command.define("ApplyScroll", {
 	args: { id: Schema.String, adjustment: ScrollAdjustment, version: Schema.Number },
-	messages: [Message.CompletedApplyScroll],
+	messages: [Message.CompletedApplyScroll, Message.SkippedApplyScroll],
 	execute: ({ id, adjustment, version }) =>
 		Effect.gen(function* () {
 			yield* Render.afterCommit
 			const element = document.getElementById(id)
-			if (element === null) return Message.CompletedApplyScroll({ version, scrollTop: 0 })
+			if (element === null) return Message.SkippedApplyScroll({ version })
 			yield* afterLayout(element)
 			element.scrollTop =
 				adjustment._tag === "To" ? adjustment.scrollTop : element.scrollTop + adjustment.deltaPx
@@ -288,13 +297,16 @@ const RENDER_STEP_PX = 320
 const RENDER_SLACK_PX = 600
 
 export const renderedIndexes = (model: Model, layout: Layout) => {
-	const from = model.renderedFromKey === null ? undefined : layout.indexByKey.get(model.renderedFromKey)
-	const to = model.renderedToKey === null ? undefined : layout.indexByKey.get(model.renderedToKey)
+	const phase = model.scrollPhase
+	if (phase._tag === "Settled") return undefined
+	const from = phase.renderedFromKey === null ? undefined : layout.indexByKey.get(phase.renderedFromKey)
+	const to = phase.renderedToKey === null ? undefined : layout.indexByKey.get(phase.renderedToKey)
 	return from === undefined || to === undefined || from > to ? undefined : { from, to }
 }
 
 const keepOverscan = (model: Model): Model => {
-	if (!model.isScrolling || model.viewportHeight === 0 || model.keys.length === 0) return model
+	const phase = model.scrollPhase
+	if (phase._tag === "Settled" || model.viewportHeight === 0 || model.keys.length === 0) return model
 	const layout = layoutOf(model)
 	const top = model.scrollTop
 	const bottom = top + model.viewportHeight
@@ -314,27 +326,37 @@ const keepOverscan = (model: Model): Model => {
 		at(bottom + RENDER_LEAD_PX),
 		Math.max(coveredTo, at(layout.offsets[coveredTo + 1]! + RENDER_STEP_PX)),
 	)
-	const from = Math.max(
-		Math.min(coveredFrom, grownFrom),
-		at(top - RENDER_LEAD_PX - RENDER_SLACK_PX),
-	)
+	const from = Math.max(Math.min(coveredFrom, grownFrom), at(top - RENDER_LEAD_PX - RENDER_SLACK_PX))
 	const to = Math.min(Math.max(coveredTo, grownTo), at(bottom + RENDER_LEAD_PX + RENDER_SLACK_PX))
 	if (current !== undefined && from === current.from && to === current.to) return model
-	return modifyFields(model, { renderedFromKey: () => model.keys[from]!, renderedToKey: () => model.keys[to]! })
+	return modifyFields(model, {
+		scrollPhase: () =>
+			ScrollPhase.Scrolling({
+				eventVersion: phase.eventVersion,
+				renderedFromKey: model.keys[from]!,
+				renderedToKey: model.keys[to]!,
+			}),
+	})
 }
 
 /** A scroll event that is not the echo of our own `ApplyScroll`: the reader is scrolling. */
-const startedScrolling = (model: Model): ListReturn => {
-	const version = Number.increment(model.scrollEventVersion)
-	const scrolling = modifyFields(model, {
-		isScrolling: () => true,
-		scrollEventVersion: () => version,
-		isSettleWaitPending: () => true,
+const startedScrolling = (model: Model): ListReturn =>
+	ScrollPhase.match(model.scrollPhase, {
+		// The settle wait in flight re-arms itself for the newest event when it completes.
+		Scrolling: (phase) => ({
+			model: modifyFields(model, {
+				scrollPhase: () =>
+					ScrollPhase.Scrolling({ ...phase, eventVersion: Number.increment(phase.eventVersion) }),
+			}),
+		}),
+		Settled: () => ({
+			model: modifyFields(model, {
+				scrollPhase: () =>
+					ScrollPhase.Scrolling({ eventVersion: 1, renderedFromKey: null, renderedToKey: null }),
+			}),
+			commands: [WaitForScrollSettle({ version: 1 })],
+		}),
 	})
-	return model.isSettleWaitPending
-		? { model: scrolling }
-		: { model: scrolling, commands: [WaitForScrollSettle({ version })] }
-}
 
 const stickyIndexes = new WeakMap<ReadonlyArray<string>, WeakMap<Layout, ReadonlyArray<number>>>()
 const stickyIndexesOf = (model: Model, layout: Layout): ReadonlyArray<number> => {
@@ -396,6 +418,7 @@ export const update = (model: Model, message: Message): ListReturn => {
 	const isScroll =
 		message._tag === "ScrolledList" ||
 		message._tag === "CompletedApplyScroll" ||
+		message._tag === "SkippedApplyScroll" ||
 		message._tag === "CompletedWaitForScrollSettle"
 	return withPool(result, isScroll ? "Scroll" : "Layout")
 }
@@ -415,16 +438,13 @@ const updateScroll = (model: Model, message: Message): ListReturn =>
 				: startedScrolling(scrolled)
 		},
 		CompletedWaitForScrollSettle: ({ version }) =>
-			version === model.scrollEventVersion
-				? {
-						model: modifyFields(model, {
-							isScrolling: () => false,
-							isSettleWaitPending: () => false,
-							renderedFromKey: () => null,
-							renderedToKey: () => null,
-						}),
-					}
-				: { model, commands: [WaitForScrollSettle({ version: model.scrollEventVersion })] },
+			ScrollPhase.match(model.scrollPhase, {
+				Settled: () => ({ model }),
+				Scrolling: ({ eventVersion }) =>
+					version === eventVersion
+						? { model: modifyFields(model, { scrollPhase: () => ScrollPhase.Settled() }) }
+						: { model, commands: [WaitForScrollSettle({ version: eventVersion })] },
+			}),
 		ResizedViewport: ({ viewportHeight }) =>
 			reconcile(modifyFields(model, { viewportHeight: () => viewportHeight })),
 		// A remounted element (the Files tab round-trip) starts at its own offset; the anchor is kept,
@@ -451,6 +471,12 @@ const updateScroll = (model: Model, message: Message): ListReturn =>
 							anchor: () => anchorAt(model, layoutOf(model), scrollTop),
 						}),
 					},
+		// Nothing moved and nothing was read: the scroll counts as applied, the anchor stays, and the
+		// next `MountedList` scrolls the new element back to it.
+		SkippedApplyScroll: ({ version }) =>
+			version !== model.scrollVersion
+				? { model }
+				: { model: modifyFields(model, { appliedScrollVersion: () => version }) },
 	})
 
 /** The parent's rows changed (prepended page, new message, deletion). Keeps the anchor in place. */
@@ -509,7 +535,10 @@ const observeList = (element: Element): Stream.Stream<ObservedMessage> =>
 				if (!(element instanceof HTMLElement)) return () => undefined
 				Queue.offerUnsafe(
 					queue,
-					Message.MountedList({ scrollTop: element.scrollTop, viewportHeight: element.clientHeight }),
+					Message.MountedList({
+						scrollTop: element.scrollTop,
+						viewportHeight: element.clientHeight,
+					}),
 				)
 
 				const onScroll = () =>
@@ -600,12 +629,19 @@ export const isViewEqual = (a: Model, b: Model): boolean =>
 		a.measuredHeights === b.measuredHeights &&
 		a.estimatedRowHeightPx === b.estimatedRowHeightPx &&
 		a.viewportHeight === b.viewportHeight &&
-		a.isScrolling === b.isScrolling &&
+		isSamePhaseView(a.scrollPhase, b.scrollPhase) &&
 		a.pool === b.pool &&
-		a.renderedFromKey === b.renderedFromKey &&
-		a.renderedToKey === b.renderedToKey &&
 		a.activeStickyKey === b.activeStickyKey &&
 		a.stuckKey === b.stuckKey)
+
+/** The phase as the view sees it: a new scroll event alone renders nothing new. */
+const isSamePhaseView = (a: ScrollPhase, b: ScrollPhase): boolean =>
+	a === b ||
+	(a._tag === "Settled"
+		? b._tag === "Settled"
+		: b._tag === "Scrolling" &&
+			a.renderedFromKey === b.renderedFromKey &&
+			a.renderedToKey === b.renderedToKey)
 
 export interface ViewInputs<Item, ParentMessage> {
 	/** Same order as `model.keys`, oldest first. */
@@ -628,18 +664,15 @@ export const view = <Item, ParentMessage>(
 	const layout = layoutOf(model)
 	const sticky = stickySetOf(model)
 	const emptyContainer = (slot: number) =>
-		h.keyed("div")(
-			`empty-${slot}`,
-			[
-				h.Style({
-					contain: "layout style paint",
-					left: "0px",
-					position: "absolute",
-					right: "0px",
-					top: `${OUT_OF_VIEW_PX}px`,
-				}),
-			],
-		)
+		h.keyed("div")(`empty-${slot}`, [
+			h.Style({
+				contain: "layout style paint",
+				left: "0px",
+				position: "absolute",
+				right: "0px",
+				top: `${OUT_OF_VIEW_PX}px`,
+			}),
+		])
 	// Keyed by row, so switching between the overscan window and the containers moves nodes.
 	const row = (index: number) => {
 		const key = model.keys[index]!
@@ -685,7 +718,12 @@ export const view = <Item, ParentMessage>(
 			const index = key === null ? undefined : layout.indexByKey.get(key)
 			return index === undefined ? emptyContainer(slot) : row(index)
 		})
-	const rows = model.viewportHeight === 0 ? [] : model.isScrolling ? overscanRows() : containerRows()
+	const rows =
+		model.viewportHeight === 0
+			? []
+			: model.scrollPhase._tag === "Scrolling"
+				? overscanRows()
+				: containerRows()
 
 	return h.div(
 		[

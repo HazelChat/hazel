@@ -6,7 +6,7 @@ import * as Tabs from "../../ui/tabs"
 import { PageOutMessage } from "../out-message"
 import { type ChannelRow, groupChannels } from "./group"
 import { Message } from "./message"
-import { singleDmPartnerIds } from "./model"
+import { Channels, singleDmPartnerIds } from "./model"
 import { init, update } from "./update"
 
 /** The chat index's grouping (the legacy useMemo) and its update loop. */
@@ -64,7 +64,8 @@ describe("chat index grouping", () => {
 	})
 
 	test("watches presence only for single-DM partners", () => {
-		expect(singleDmPartnerIds(groupChannels(rows, me), me)).toEqual([grace])
+		expect(singleDmPartnerIds(Channels.Loaded({ groups: groupChannels(rows, me) }), me)).toEqual([grace])
+		expect(singleDmPartnerIds(Channels.Loading(), me)).toEqual([])
 	})
 })
 

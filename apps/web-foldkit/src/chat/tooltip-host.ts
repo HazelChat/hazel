@@ -1,3 +1,4 @@
+import { MessageId } from "@hazel/schema"
 import { Schema } from "effect"
 import { Command, type Update } from "foldkit"
 import { type ChildAttribute, childAttributes, type Html, type HtmlBuilder } from "foldkit/html"
@@ -14,6 +15,8 @@ export type Model = typeof Model.Type
 
 export const Message = Schema.Struct({
 	key: Schema.String,
+	/** The message the trigger renders in (which row owns the open tooltip). */
+	messageId: MessageId,
 	delayMs: Schema.Number,
 	message: Tooltip.Message,
 })
@@ -25,7 +28,7 @@ const isActivating = (message: Tooltip.Message) =>
 
 export const update = <Wrapped>(
 	model: Model,
-	{ key, delayMs, message }: Message,
+	{ key, messageId, delayMs, message }: Message,
 	wrap: (message: Message) => Wrapped,
 ): Update.Return<Model, Wrapped> => {
 	const current =
@@ -39,7 +42,10 @@ export const update = <Wrapped>(
 	return {
 		model: result.model,
 		commands: Command.mapMessages(
-			Command.mapMessages(result.commands ?? [], (inner): Message => ({ key, delayMs, message: inner })),
+			Command.mapMessages(
+				result.commands ?? [],
+				(inner): Message => ({ key, messageId, delayMs, message: inner }),
+			),
 			wrap,
 		),
 	}
@@ -55,6 +61,7 @@ const closedModel = (key: string, delayMs: number) => {
 
 export interface TriggerOptions<M> {
 	readonly key: string
+	readonly messageId: MessageId
 	readonly active: Model
 	/** The trigger under the pointer: React Aria's `data-hovered` on the TooltipTrigger. */
 	readonly hoveredKey?: string | null
@@ -81,13 +88,16 @@ export const tooltipTrigger = <M>(h: HtmlBuilder<M>, options: TriggerOptions<M>)
 			toTrigger:
 				options.hoveredKey === options.key
 					? (attributes, overlay) =>
-							options.toTrigger([...attributes, ...childAttributes([h.Attribute("data-hovered", "true")])], overlay)
+							options.toTrigger(
+								[...attributes, ...childAttributes([h.Attribute("data-hovered", "true")])],
+								overlay,
+							)
 					: options.toTrigger,
 			content: model.isOpen ? options.content : [],
 			placement: options.placement,
 			className: options.className,
 		},
 		toParentMessage: (message: Tooltip.Message) =>
-			options.toMessage({ key: options.key, delayMs, message }),
+			options.toMessage({ key: options.key, messageId: options.messageId, delayMs, message }),
 	})
 }

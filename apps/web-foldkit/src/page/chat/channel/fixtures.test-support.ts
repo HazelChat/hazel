@@ -4,7 +4,7 @@ import type { Shared } from "../../contract"
 import { sharedDefaults } from "../../test-shared"
 import type { ChatMessage } from "../rows"
 import { init, type Model, update } from "./page"
-import type { Message } from "./model"
+import { Message } from "./model"
 
 /** Fixtures for the channel page's write-path stories: Ada in #general with two messages. */
 
@@ -59,18 +59,34 @@ export const messages: ReadonlyArray<ChatMessage> = [
 
 /** The page with the channel, its members and messages loaded. */
 export const loadedModel = (): Model => {
-	const base = init(channelId, ada)
+	const base = init(channelId, "hazel", ada)
 	return {
 		...base,
-		channel: { id: channelId, name: "general", type: "public", icon: null, organizationId, parentChannelId: null },
+		channel: {
+			id: channelId,
+			name: "general",
+			type: "public",
+			icon: null,
+			organizationId,
+			parentChannelId: null,
+		},
 		members: [
 			{ id: adaMemberId, userId: ada, isHidden: false, createdAtMs: 0 },
-			{ id: Schema.decodeSync(ChannelMemberId)(uuid(6)), userId: grace, isHidden: false, createdAtMs: 0 },
+			{
+				id: Schema.decodeSync(ChannelMemberId)(uuid(6)),
+				userId: grace,
+				isHidden: false,
+				createdAtMs: 0,
+			},
 		],
 		messages,
 		hasLoadedMessages: true,
 	}
 }
+
+/** The messages query's first result: every message upserted, newest first. */
+export const loadedMessages = (loaded: ReadonlyArray<ChatMessage>) =>
+	Message.ChangedMessages({ order: loaded.map((message) => message.id), upserts: loaded })
 
 /** `update` with the signed-in session, as `index.ts` calls it. */
 export const updateWithShared = (model: Model, message: Message) => update(model, message, shared)

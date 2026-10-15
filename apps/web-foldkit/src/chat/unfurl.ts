@@ -1,6 +1,6 @@
-import { Effect, Option, Schema } from "effect"
+import { Duration, Effect, Option, Schema } from "effect"
 import { FetchHttpClient, HttpClient, HttpClientResponse } from "effect/http"
-import { Command } from "foldkit"
+import { AsyncData, Command } from "foldkit"
 import { defineMessageUnion } from "foldkit/message"
 import { defineTaggedUnion } from "foldkit/schema"
 
@@ -42,7 +42,9 @@ export const TweetView = Schema.Struct({
 		isVerified: Schema.Boolean,
 	}),
 	entities: Schema.Array(TweetEntity),
-	photos: Schema.NullOr(Schema.Array(Schema.Struct({ url: Schema.String, width: Schema.Number, height: Schema.Number }))),
+	photos: Schema.NullOr(
+		Schema.Array(Schema.Struct({ url: Schema.String, width: Schema.Number, height: Schema.Number })),
+	),
 	video: Schema.NullOr(Schema.Struct({ poster: Schema.String, src: Schema.NullOr(Schema.String) })),
 	favoriteCount: Schema.NullOr(Schema.Number),
 	replyCount: Schema.NullOr(Schema.Number),
@@ -50,14 +52,35 @@ export const TweetView = Schema.Struct({
 })
 export type TweetView = typeof TweetView.Type
 
-/** One unfurl's state; the atom query's Initial, Success and Failure. */
-export const Unfurl = defineTaggedUnion({
-	Loading: {},
-	Failed: {},
-	LoadedLinkPreview: { preview: LinkPreviewData },
-	LoadedTweet: { tweet: TweetView },
+/** What an unfurl key resolves to: a link's Open Graph data, or a tweet. */
+export const UnfurlData = defineTaggedUnion({
+	LinkPreview: { preview: LinkPreviewData },
+	Tweet: { tweet: TweetView },
 })
+export type UnfurlData = typeof UnfurlData.Type
+
+/** Why an unfurl has nothing to show: the worker failed or answered nothing usable, or it hung. */
+export const UnfurlFailure = Schema.Literals(["Unavailable", "TimedOut"])
+export type UnfurlFailure = typeof UnfurlFailure.Type
+
+const UnfurlAsyncData = AsyncData.Schema(UnfurlData, UnfurlFailure)
+
+/** One unfurl's state (the atom query's Initial, Success and Failure); only `Loading` is ever pending. */
+export const Unfurl = UnfurlAsyncData.schema
 export type Unfurl = typeof Unfurl.Type
+
+/** A fetch was started. */
+export const loading: Unfurl = UnfurlAsyncData.Loading()
+
+/** The link preview an unfurl holds, if it has loaded one. */
+export const linkPreviewOf = (unfurl: Unfurl | null): LinkPreviewData | null =>
+	unfurl !== null && unfurl._tag === "Success" && unfurl.data._tag === "LinkPreview"
+		? unfurl.data.preview
+		: null
+
+/** The tweet an unfurl holds, if it has loaded one. */
+export const tweetOf = (unfurl: Unfurl | null): TweetView | null =>
+	unfurl !== null && unfurl._tag === "Success" && unfurl.data._tag === "Tweet" ? unfurl.data.tweet : null
 
 export const Unfurls = Schema.Record(Schema.String, Unfurl)
 export type Unfurls = typeof Unfurls.Type
@@ -81,7 +104,9 @@ const RawTweet = Schema.Struct({
 		),
 		symbols: Schema.Array(Schema.Struct({ indices: Indices, text: Schema.String })),
 		media: Schema.optionalKey(
-			Schema.Array(Schema.Struct({ indices: Indices, display_url: Schema.String, expanded_url: Schema.String })),
+			Schema.Array(
+				Schema.Struct({ indices: Indices, display_url: Schema.String, expanded_url: Schema.String }),
+			),
 		),
 	}),
 	user: Schema.Struct({
@@ -95,7 +120,10 @@ const RawTweet = Schema.Struct({
 		Schema.Array(Schema.Struct({ url: Schema.String, width: Schema.Number, height: Schema.Number })),
 	),
 	video: Schema.optionalKey(
-		Schema.Struct({ poster: Schema.String, variants: Schema.Array(Schema.Struct({ src: Schema.String })) }),
+		Schema.Struct({
+			poster: Schema.String,
+			variants: Schema.Array(Schema.Struct({ src: Schema.String })),
+		}),
 	),
 	favorite_count: Schema.optionalKey(Schema.Number),
 	reply_count: Schema.optionalKey(Schema.Number),
@@ -112,7 +140,10 @@ interface Span {
 }
 
 /** `addEntities`: splits the text span that contains each entity around it. */
-const addEntities = (result: Span[], entities: ReadonlyArray<Omit<Span, "type"> & { type: Span["type"] }>) => {
+const addEntities = (
+	result: Span[],
+	entities: ReadonlyArray<Omit<Span, "type"> & { type: Span["type"] }>,
+) => {
 	for (const entity of entities) {
 		const index = result.findIndex(
 			(item) => item.indices[0] <= entity.indices[0] && item.indices[1] >= entity.indices[1],
@@ -121,9 +152,19 @@ const addEntities = (result: Span[], entities: ReadonlyArray<Omit<Span, "type"> 
 		const item = result[index]!
 		const pieces: Span[] = [entity]
 		if (item.indices[0] < entity.indices[0])
-			pieces.unshift({ indices: [item.indices[0], entity.indices[0]], type: "text", href: null, text: null })
+			pieces.unshift({
+				indices: [item.indices[0], entity.indices[0]],
+				type: "text",
+				href: null,
+				text: null,
+			})
 		if (item.indices[1] > entity.indices[1])
-			pieces.push({ indices: [entity.indices[1], item.indices[1]], type: "text", href: null, text: null })
+			pieces.push({
+				indices: [entity.indices[1], item.indices[1]],
+				type: "text",
+				href: null,
+				text: null,
+			})
 		result.splice(index, 1, ...pieces)
 	}
 }
@@ -131,7 +172,9 @@ const addEntities = (result: Span[], entities: ReadonlyArray<Omit<Span, "type"> 
 const getEntities = (tweet: RawTweet): ReadonlyArray<TweetEntity> => {
 	const chars = Array.from(tweet.text)
 	let rangeEnd = tweet.display_text_range[1]
-	const result: Span[] = [{ indices: [tweet.display_text_range[0], rangeEnd], type: "text", href: null, text: null }]
+	const result: Span[] = [
+		{ indices: [tweet.display_text_range[0], rangeEnd], type: "text", href: null, text: null },
+	]
 	const { entities } = tweet
 	addEntities(
 		result,
@@ -153,7 +196,12 @@ const getEntities = (tweet: RawTweet): ReadonlyArray<TweetEntity> => {
 	)
 	addEntities(
 		result,
-		entities.urls.map((url) => ({ indices: url.indices, type: "url", href: url.expanded_url, text: url.display_url })),
+		entities.urls.map((url) => ({
+			indices: url.indices,
+			type: "url",
+			href: url.expanded_url,
+			text: url.display_url,
+		})),
 	)
 	addEntities(
 		result,
@@ -167,7 +215,12 @@ const getEntities = (tweet: RawTweet): ReadonlyArray<TweetEntity> => {
 	const media = entities.media ?? []
 	addEntities(
 		result,
-		media.map((item) => ({ indices: item.indices, type: "media", href: item.expanded_url, text: item.display_url })),
+		media.map((item) => ({
+			indices: item.indices,
+			type: "media",
+			href: item.expanded_url,
+			text: item.display_url,
+		})),
 	)
 	// `fixRange`: media trims the displayed range, and the last span never runs past it.
 	const firstMedia = media[0]
@@ -201,15 +254,16 @@ const toTweetView = (tweet: RawTweet): TweetView => ({
 })
 
 /** A worker tweet response as `TweetEmbed` renders it, or nothing when it does not decode. */
-export const tweetViewOf = (raw: unknown) => Schema.decodeUnknownOption(RawTweet)(raw).pipe(Option.map(toTweetView))
+export const tweetViewOf = (raw: unknown) =>
+	Schema.decodeUnknownOption(RawTweet)(raw).pipe(Option.map(toTweetView))
 
 // MESSAGE
 
 export const Message = defineMessageUnion({
 	SucceededFetchLinkPreview: { url: Schema.String, preview: LinkPreviewData },
-	FailedFetchLinkPreview: { url: Schema.String },
+	FailedFetchLinkPreview: { url: Schema.String, reason: UnfurlFailure },
 	SucceededFetchTweet: { tweetId: Schema.String, tweet: TweetView },
-	FailedFetchTweet: { tweetId: Schema.String },
+	FailedFetchTweet: { tweetId: Schema.String, reason: UnfurlFailure },
 })
 export type Message = typeof Message.Type
 
@@ -218,20 +272,40 @@ export const applyMessage = (unfurls: Unfurls, message: Message): Unfurls =>
 	Message.match<Unfurls>(message, {
 		SucceededFetchLinkPreview: ({ url, preview }) => ({
 			...unfurls,
-			[linkPreviewKey(url)]: Unfurl.LoadedLinkPreview({ preview }),
+			[linkPreviewKey(url)]: UnfurlAsyncData.Success({ data: UnfurlData.LinkPreview({ preview }) }),
 		}),
-		FailedFetchLinkPreview: ({ url }) => ({ ...unfurls, [linkPreviewKey(url)]: Unfurl.Failed() }),
-		SucceededFetchTweet: ({ tweetId, tweet }) => ({ ...unfurls, [tweetKey(tweetId)]: Unfurl.LoadedTweet({ tweet }) }),
-		FailedFetchTweet: ({ tweetId }) => ({ ...unfurls, [tweetKey(tweetId)]: Unfurl.Failed() }),
+		FailedFetchLinkPreview: ({ url, reason }) => ({
+			...unfurls,
+			[linkPreviewKey(url)]: UnfurlAsyncData.Failure({ error: reason }),
+		}),
+		SucceededFetchTweet: ({ tweetId, tweet }) => ({
+			...unfurls,
+			[tweetKey(tweetId)]: UnfurlAsyncData.Success({ data: UnfurlData.Tweet({ tweet }) }),
+		}),
+		FailedFetchTweet: ({ tweetId, reason }) => ({
+			...unfurls,
+			[tweetKey(tweetId)]: UnfurlAsyncData.Failure({ error: reason }),
+		}),
 	})
 
 // COMMAND
 
+/** A hung worker must not leave the embed loading for the whole visit. */
+const UNFURL_TIMEOUT = Duration.seconds(10)
+
+/**
+ * The worker's JSON, decoded, or the reason there is none. Every failure is an unfurl that shows
+ * nothing (legacy renders failed previews as nothing), so they collapse into two reasons.
+ */
 const getJson = <S extends Schema.Top & { readonly DecodingServices: never }>(path: string, schema: S) =>
 	HttpClient.get(`${LINK_PREVIEW_URL}${path}`).pipe(
 		Effect.flatMap(HttpClientResponse.filterStatusOk),
 		Effect.flatMap(HttpClientResponse.schemaBodyJson(schema)),
 		Effect.provide(FetchHttpClient.layer),
+		Effect.timeout(UNFURL_TIMEOUT),
+		Effect.mapError(
+			(error): UnfurlFailure => (error._tag === "TimeoutError" ? "TimedOut" : "Unavailable"),
+		),
 	)
 
 /** `LinkPreviewClient.query("linkPreview", "get", { payload: { url } })`. */
@@ -242,7 +316,7 @@ export const FetchLinkPreview = Command.define("FetchLinkPreview", {
 		getJson(`/link-preview?${new URLSearchParams({ url })}`, LinkPreviewData).pipe(
 			Effect.match({
 				onSuccess: (preview) => Message.SucceededFetchLinkPreview({ url, preview }),
-				onFailure: () => Message.FailedFetchLinkPreview({ url }),
+				onFailure: (reason) => Message.FailedFetchLinkPreview({ url, reason }),
 			}),
 		),
 })
@@ -255,7 +329,7 @@ export const FetchTweet = Command.define("FetchTweet", {
 		getJson(`/tweet?${new URLSearchParams({ id: tweetId })}`, RawTweet).pipe(
 			Effect.match({
 				onSuccess: (tweet) => Message.SucceededFetchTweet({ tweetId, tweet: toTweetView(tweet) }),
-				onFailure: () => Message.FailedFetchTweet({ tweetId }),
+				onFailure: (reason) => Message.FailedFetchTweet({ tweetId, reason }),
 			}),
 		),
 })

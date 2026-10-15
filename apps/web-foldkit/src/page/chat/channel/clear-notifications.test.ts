@@ -1,13 +1,16 @@
 import { describe, expect, test, vi } from "vitest"
 import { sharedDefaults } from "../../test-shared"
 import { ClearChannelNotifications, clearNotificationsOnMount } from "./clear-notifications"
-import { channelId, loadedModel, shared } from "./fixtures.test-support"
+import { channelId, loadedModel, shared, updateWithShared } from "./fixtures.test-support"
+import { Message } from "./model"
 
 /** `ChatRouteContent`'s mount effect: once per visit, inside the loaded org layout. */
 
 vi.hoisted(() => {
 	if (!("document" in globalThis))
-		Object.assign(globalThis, { document: Object.assign(new EventTarget(), { documentElement: { style: {} } }) })
+		Object.assign(globalThis, {
+			document: Object.assign(new EventTarget(), { documentElement: { style: {} } }),
+		})
 })
 
 const commandNames = (result: ReturnType<typeof clearNotificationsOnMount>) =>
@@ -21,8 +24,29 @@ describe("channelMember.clearNotifications on channel entry", () => {
 	})
 
 	test("waits while auth, the user or the organization is still loading", () => {
-		expect(clearNotificationsOnMount(loadedModel(), { ...shared, auth: "Loading" }).commands ?? []).toEqual([])
-		expect(clearNotificationsOnMount(loadedModel(), { ...shared, currentUser: null }).commands ?? []).toEqual([])
-		expect(clearNotificationsOnMount(loadedModel(), { ...sharedDefaults, ...shared, organization: null }).commands ?? []).toEqual([])
+		expect(
+			clearNotificationsOnMount(loadedModel(), { ...shared, auth: "Loading" }).commands ?? [],
+		).toEqual([])
+		expect(
+			clearNotificationsOnMount(loadedModel(), { ...shared, currentUser: null }).commands ?? [],
+		).toEqual([])
+		expect(
+			clearNotificationsOnMount(loadedModel(), { ...sharedDefaults, ...shared, organization: null })
+				.commands ?? [],
+		).toEqual([])
+	})
+
+	test("only a success marks the visit cleared; a failure is sent again on the next shared change", () => {
+		const sent = clearNotificationsOnMount(loadedModel(), shared).model
+		const failed = updateWithShared(
+			sent,
+			Message.FailedClearNotifications({ channelId, reason: "Offline" }),
+		).model
+		expect(commandNames(clearNotificationsOnMount(failed, shared))).toEqual([
+			[ClearChannelNotifications.name, { channelId }],
+		])
+		const cleared = updateWithShared(sent, Message.SucceededClearNotifications({ channelId })).model
+		expect(cleared.notificationsClear).toBe("Cleared")
+		expect(clearNotificationsOnMount(cleared, shared).commands ?? []).toEqual([])
 	})
 })

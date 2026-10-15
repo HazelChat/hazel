@@ -13,9 +13,7 @@ const data = Subscription.make<Model, Message>()((entry) => ({
 		{
 			modelToDependencies: (model) => ({ channelId: model.channelId }),
 			dependenciesToStream: ({ channelId }) =>
-				attachmentsStream(channelId, (attachments, nowMs) =>
-					Message.UpdatedAttachments({ attachments, nowMs }),
-				),
+				attachmentsStream(channelId, (attachments) => Message.UpdatedAttachments({ attachments })),
 		},
 	),
 	filesBreakpoint: Subscription.persistentEntry(

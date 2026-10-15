@@ -1,23 +1,24 @@
-import { Match } from "effect"
+import { Match, Option } from "effect"
 import type { Command } from "foldkit"
 import { modifyFields } from "foldkit/struct"
-import type { HazelRpc } from "../../rpc"
 import { onboardingHref } from "../../route"
+import type { Resources } from "../../rpc"
 import * as ChoiceBox from "../../ui/choice-box"
 import type { PageReturn, Shared } from "../contract"
 import { CompleteOnboarding, ReplaceOnboardingStepUrl } from "./command"
 import { type Direction, nextStep, previousStep, type Step, stepFromUrl } from "./flow"
 import type { Message } from "./message"
-import { type Data, type Model, StepForm } from "./model"
+import { type Data, type Membership, type Model, Phase, type Running, StepState, isBusy, stepOf } from "./model"
 
-/** Step changes: each entered step gets fresh form state, like the legacy step components remounting. */
+/** Step changes: each entered step gets fresh state, like the legacy step components remounting. */
 
 export type Return = PageReturn<Model, Message>
 
-const formFor = (model: Model, step: Step, shared: Shared): StepForm =>
+const stateFor = (step: Step, running: Running, shared: Shared): StepState =>
 	Match.value(step).pipe(
+		Match.when("welcome", () => StepState.Welcome()),
 		Match.when("profileInfo", () =>
-			StepForm.Profile({
+			StepState.Profile({
 				firstName: shared.currentUser?.firstName ?? "",
 				lastName: shared.currentUser?.lastName ?? "",
 				hasChanged: false,
@@ -25,8 +26,8 @@ const formFor = (model: Model, step: Step, shared: Shared): StepForm =>
 			}),
 		),
 		Match.when("timezoneSelection", () =>
-			StepForm.Timezone({
-				selected: model.data.timezone ?? model.browserTimezone ?? "UTC",
+			StepState.Timezone({
+				selected: running.data.timezone ?? (running.flow.browserTimezone || "UTC"),
 				query: "",
 				debouncedQuery: "",
 				hoveredOffset: null,
@@ -34,50 +35,56 @@ const formFor = (model: Model, step: Step, shared: Shared): StepForm =>
 				isSubmitting: false,
 			}),
 		),
-		Match.when("themeSelection", () => StepForm.Theme()),
+		Match.when("themeSelection", () => StepState.Theme()),
 		Match.when("useCases", () =>
-			StepForm.Choice({
-				box: ChoiceBox.init({ id: "team-size", selectedKeys: model.data.useCases.slice(0, 1) }),
+			StepState.UseCases({
+				box: ChoiceBox.init({ id: "team-size", selectedKeys: running.data.useCases.slice(0, 1) }),
 			}),
 		),
 		Match.when("role", () =>
-			StepForm.Choice({
-				box: ChoiceBox.init({ id: "role", selectedKeys: model.data.role ? [model.data.role] : [] }),
+			StepState.Role({
+				box: ChoiceBox.init({ id: "role", selectedKeys: running.data.role ? [running.data.role] : [] }),
 			}),
 		),
-		Match.when("teamInvitation", () => StepForm.Invite({ emails: [""], errors: {}, isLoading: false })),
-		Match.orElse(() => StepForm.None()),
+		Match.when("teamInvitation", () =>
+			StepState.Invite({ rows: [{ id: 0, email: "", error: Option.none() }], nextRowId: 1, isSending: false }),
+		),
+		Match.when("finalization", () => StepState.Finalizing({ failure: Option.none() })),
+		Match.when("completed", () => StepState.Completed()),
+		Match.exhaustive,
 	)
 
-const stepCommands = (model: Model, step: Step): ReadonlyArray<Command.Command<Message, never, HazelRpc>> =>
-	step === "finalization"
-			? [
-					CompleteOnboarding({
-						memberId: model.membership?.memberId ?? null,
-						role: model.data.role,
-						useCases: model.data.useCases,
-					}),
-				]
-			: []
+/** Finalizes with what the steps collected and the member the user joined as. */
+export const completeOnboarding = (running: Running): Command.Command<Message, never, Resources> =>
+	CompleteOnboarding({
+		memberId: running.flow.membership?.memberId ?? null,
+		role: running.data.role,
+		useCases: running.data.useCases,
+	})
+
+export const withPhase = (model: Model, phase: Running): Model => modifyFields(model, { phase: () => phase })
+
+/** Replaces the step's state in place (no step change, no URL change). */
+export const setStep = (model: Model, running: Running, step: StepState): Model =>
+	withPhase(model, modifyFields(running, { step: () => step }))
 
 /** Enters `step`; `syncUrl` is false only for the first step, which came from the URL. */
 export const enterStep = (
 	model: Model,
+	running: Running,
 	step: Step,
 	options: { readonly direction: Direction; readonly shared: Shared; readonly syncUrl: boolean },
 ): Return => {
-	const next = modifyFields(model, {
-		step: () => step,
+	const next = modifyFields(running, {
+		step: () => stateFor(step, running, options.shared),
 		direction: () => options.direction,
 		animatesStep: () => options.syncUrl,
-		error: () => null,
-		form: () => formFor(model, step, options.shared),
 	})
 	return {
-		model: next,
+		model: withPhase(model, next),
 		commands: [
 			...(options.syncUrl ? [ReplaceOnboardingStepUrl({ href: onboardingHref(model.orgId, step) })] : []),
-			...stepCommands(next, step),
+			...(step === "finalization" ? [completeOnboarding(next)] : []),
 		],
 	}
 }
@@ -85,40 +92,51 @@ export const enterStep = (
 type DataTransform = Partial<{ readonly [K in keyof Data]: (value: Data[K]) => Data[K] }>
 
 /** `createStepHandler`: record the step's data and move forward. */
-export const advance = (model: Model, shared: Shared, transform: DataTransform = {}): Return =>
+export const advance = (model: Model, running: Running, shared: Shared, transform: DataTransform = {}): Return =>
 	enterStep(
-		modifyFields(model, { data: (data) => modifyFields(data, transform) }),
-		nextStep(model.step, model.userType),
+		model,
+		modifyFields(running, { data: (data) => modifyFields(data, transform) }),
+		nextStep(stepOf(running.step), running.flow.userType),
 		{ direction: "forward", shared, syncUrl: true },
 	)
 
 /** The invite step skips straight to finalization (`handleTeamInviteContinue` / `Skip`). */
-export const finalize = (model: Model, shared: Shared, emails: ReadonlyArray<string>): Return =>
-	enterStep(modifyFields(model, { data: (data) => modifyFields(data, { emails: () => emails }) }), "finalization", {
-		direction: "forward",
-		shared,
-		syncUrl: true,
-	})
+export const finalize = (model: Model, running: Running, shared: Shared): Return =>
+	enterStep(model, running, "finalization", { direction: "forward", shared, syncUrl: true })
 
-export const goBack = (model: Model, shared: Shared): Return => {
-	const previous = previousStep(model.step, model.userType)
+/** Back waits for a request in flight: its late result would otherwise land on a fresh form. */
+export const goBack = (model: Model, running: Running, shared: Shared): Return => {
+	if (isBusy(running.step)) return { model }
+	const previous = previousStep(stepOf(running.step), running.flow.userType)
 	return previous === null
 		? { model }
-		: enterStep(model, previous, { direction: "backward", shared, syncUrl: true })
+		: enterStep(model, running, previous, { direction: "backward", shared, syncUrl: true })
 }
 
 /**
- * `createInitialState` plus the `?step=` override, once both the URL and the membership are known.
- * An organization with a slug means the user was invited into it.
+ * `createInitialState` plus the `?step=` override, once both the browser timezone and the membership
+ * are known. An organization with a slug means the user was invited into it.
  */
-export const initializeWhenReady = (model: Model, shared: Shared): Return => {
-	if (model.isInitialized || model.browserTimezone === undefined || model.membership === undefined)
-		return { model }
-	const userType = model.membership?.slug ? "invited" : "creator"
-	const step = stepFromUrl(model.urlStep, userType) ?? "welcome"
-	return enterStep(modifyFields(model, { isInitialized: () => true, userType: () => userType }), step, {
-		direction: "forward",
-		shared,
-		syncUrl: false,
+export const startWhenReady = (
+	model: Model,
+	known: { readonly membership: Option.Option<Membership | null>; readonly browserTimezone: Option.Option<string> },
+	shared: Shared,
+): Return =>
+	Option.match(Option.all({ membership: known.membership, browserTimezone: known.browserTimezone }), {
+		onNone: () => ({ model: modifyFields(model, { phase: () => Phase.Starting(known) }) }),
+		onSome: ({ membership, browserTimezone }) => {
+			const userType = membership?.slug ? "invited" : "creator"
+			const running = Phase.Running({
+				flow: { userType, membership, browserTimezone },
+				step: StepState.Welcome(),
+				direction: "forward",
+				animatesStep: false,
+				data: { timezone: null, useCases: [], role: null },
+			})
+			return enterStep(model, running, stepFromUrl(model.urlStep, userType) ?? "welcome", {
+				direction: "forward",
+				shared,
+				syncUrl: false,
+			})
+		},
 	})
-}

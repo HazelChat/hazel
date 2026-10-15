@@ -1,7 +1,9 @@
 import type { Html, HtmlBuilder } from "foldkit/html"
 import * as EmojiDialog from "../../emoji-picker/dialog"
 import { pickerView } from "../../emoji-picker/view"
-import { controlledModal } from "../../ui/modal"
+import type * as Picker from "../../emoji-picker/picker"
+import type * as TooltipHost from "../../chat/tooltip-host"
+import { controlledModal, type Message as ModalMessage } from "../../ui/modal"
 import { Mount } from "foldkit"
 import { IconDotsVertical, IconStar, IconThread } from "../../icons"
 import {
@@ -19,18 +21,27 @@ import { factsOf, Message, type Model } from "./channel/page"
 
 /** Overlays rendered outside the rows: hover toolbar, delete confirmation, reply indicator. */
 
-type ToParent<M> = (message: Message) => M
+type H = HtmlBuilder<Message>
 
-const toOverlays =
-	<M>(toParentMessage: ToParent<M>) =>
-	(message: Overlays.Message) =>
-		toParentMessage(Message.GotOverlaysMessage({ message }))
+const toOverlay = (message: Overlays.Message) => Message.GotOverlaysMessage({ message })
+
+const toTooltipMessage = (message: TooltipHost.Message) =>
+	toOverlay(Overlays.Message.GotTooltipMessage({ message }))
+
+const toToolbarMessage = (message: Toolbar.Message) =>
+	toOverlay(Overlays.Message.GotToolbarMessage({ message }))
+
+const toReactionModalMessage = (message: ModalMessage) =>
+	toOverlay(Overlays.Message.GotReactionModalMessage({ message }))
+
+const toReactionModalPickerMessage = (message: Picker.Message) =>
+	toOverlay(Overlays.Message.GotReactionModalPickerMessage({ message }))
 
 /** The list container's delegated hover and context menu handling. */
-export const trackHoverAttribute = <M>(h: HtmlBuilder<M>, toParentMessage: ToParent<M>) =>
+export const trackHoverAttribute = (h: H) =>
 	h.OnMount(
 		Mount.mapMessage(TrackMessageHover(), (event) =>
-			toOverlays(toParentMessage)(
+			toOverlay(
 				HoverEvent.match(event, {
 					PointerEnteredMessage: ({ messageId }) =>
 						Overlays.Message.PointerEnteredMessage({ messageId }),
@@ -47,16 +58,11 @@ export const trackHoverAttribute = <M>(h: HtmlBuilder<M>, toParentMessage: ToPar
 	)
 
 /** `MessageToolbar` in its body portal, for the hovered message. */
-export const messageToolbarOverlay = <M>(
-	h: HtmlBuilder<M>,
-	model: Model,
-	toParentMessage: ToParent<M>,
-): Html => {
+export const messageToolbarOverlay = (h: H, model: Model): Html => {
 	const overlays = model.overlays
-	const messageId = overlays.hoveredMessageId
+	const messageId = Overlays.hoveredMessageIdOf(overlays)
 	const row = messageId === null ? undefined : model.rows.find((candidate) => candidate.key === messageId)
 	if (messageId === null || row === undefined || row._tag !== "MessageRow") return h.empty
-	const toOverlay = toOverlays(toParentMessage)
 	const facts = factsOf(model)
 	const menu = Overlays.moreMenuFor(overlays, messageId)
 	const isPinned = facts.isPinned(messageId)
@@ -129,13 +135,10 @@ export const messageToolbarOverlay = <M>(
 										toolbarContent(h, {
 											messageId,
 											isOwnMessage: facts.isOwnMessage(messageId),
-											tooltip: overlays.tooltip,
-											hoveredKey: overlays.hoveredTriggerKey,
-											focusedKey: overlays.focusedTriggerKey,
-											toTooltipMessage: (tooltip) =>
-												toOverlay(
-													Overlays.Message.GotTooltipMessage({ message: tooltip }),
-												),
+											tooltip: Overlays.activeTooltipOf(overlays),
+											hoveredKey: overlays.hoveredTrigger?.key ?? null,
+											focusedKey: overlays.focusedTrigger?.key ?? null,
+											toTooltipMessage,
 											onReact: (emoji) =>
 												toOverlay(
 													Overlays.Message.ClickedReaction({
@@ -152,9 +155,7 @@ export const messageToolbarOverlay = <M>(
 											addReaction: (render) =>
 												EmojiDialog.view(
 													h,
-													overlays.reactionPicker?.messageId === messageId
-														? overlays.reactionPicker.dialog
-														: EmojiDialog.init(`reaction-picker-${messageId}`),
+													Overlays.reactionPickerFor(overlays, messageId),
 													{
 														toMessage: (message) =>
 															toOverlay(
@@ -170,8 +171,7 @@ export const messageToolbarOverlay = <M>(
 											moreActions,
 										}),
 								},
-								toParentMessage: (message) =>
-									toOverlay(Overlays.Message.GotToolbarMessage({ message })),
+								toParentMessage: toToolbarMessage,
 							}),
 						],
 					),
@@ -182,20 +182,18 @@ export const messageToolbarOverlay = <M>(
 }
 
 /** The context menu's emoji picker modal (`ModalContent size="xs"` around the picker). */
-export const reactionModalView = <M>(h: HtmlBuilder<M>, model: Model, toParentMessage: ToParent<M>): Html => {
-	const current = model.overlays.reactionModal
+export const reactionModalView = (h: H, model: Model): Html => {
+	const current = Overlays.reactionModalOf(model.overlays)
 	if (current === null) return h.empty
-	const toOverlay = toOverlays(toParentMessage)
 	return controlledModal(h, {
 		model: current.modal,
-		toParentMessage: (message) => toOverlay(Overlays.Message.GotReactionModalMessage({ message })),
+		toParentMessage: toReactionModalMessage,
 		size: "xs",
 		closeButton: false,
 		className: "overflow-hidden p-0!",
 		toContent: () => [
 			pickerView(h, current.picker, {
-				toMessage: (message) =>
-					toOverlay(Overlays.Message.GotReactionModalPickerMessage({ message })),
+				toMessage: toReactionModalPickerMessage,
 				className: "h-[420px]",
 			}),
 		],

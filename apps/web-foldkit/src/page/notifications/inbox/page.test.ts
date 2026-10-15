@@ -5,7 +5,7 @@ import { describe, expect, test } from "vitest"
 import type { Shared } from "../../contract"
 import { formatDistanceToNow, groupByTime } from "./format"
 import { Message } from "./message"
-import type { Model, NotificationItem } from "./model"
+import { type Model, type NotificationItem, Notifications } from "./model"
 import { MarkNotificationRead, routeChanged, update } from "./update"
 import { inboxView } from "./view"
 import { sharedDefaults } from "../../test-shared"
@@ -62,12 +62,13 @@ const olderThread = item(4, {
 	channel: { name: "Onboarding", type: "thread" },
 })
 
-const inbox: Model = { category: "all", notifications: [unreadChannel, readDm, unreadOrphan, olderThread] }
+const items = [unreadChannel, readDm, unreadOrphan, olderThread]
+const inbox: Model = { category: "all", notifications: Notifications.Loaded({ items }) }
 const view = Scene.withViewInputs(inboxView, { shared })
 
 describe("notifications inbox", () => {
 	test("groups by day and week, newest group first", () => {
-		expect(groupByTime(inbox.notifications ?? [], NOW).map((group) => group.label)).toEqual([
+		expect(groupByTime(items, NOW).map((group) => group.label)).toEqual([
 			"Today",
 			"Yesterday",
 			"This Week",
@@ -105,7 +106,7 @@ describe("notifications inbox", () => {
 			Scene.Command.expectExact(MarkNotificationRead),
 			Scene.Command.resolve(
 				MarkNotificationRead,
-				Message.FailedMarkNotificationRead({ id: unreadOrphan.id, reason: "offline" }),
+				Message.FailedMarkNotificationRead({ id: unreadOrphan.id, reason: "NotFound" }),
 			),
 		)
 	})
@@ -126,7 +127,7 @@ describe("notifications inbox", () => {
 		)
 		Scene.scene(
 			{ update, view: view() },
-			Scene.given({ ...dms, notifications: [unreadChannel] }),
+			Scene.given({ ...dms, notifications: Notifications.Loaded({ items: [unreadChannel] }) }),
 			Scene.expect(Scene.text("No DM notifications")).toExist(),
 		)
 	})
@@ -134,7 +135,7 @@ describe("notifications inbox", () => {
 	test("shows the loader until the first rows arrive", () => {
 		Scene.scene(
 			{ update, view: view() },
-			Scene.given<Model>({ category: "all", notifications: null }),
+			Scene.given<Model>({ category: "all", notifications: Notifications.Loading() }),
 			Scene.expect(Scene.role("progressbar")).toExist(),
 			Scene.expect(Scene.text("No notifications")).toBeAbsent(),
 		)

@@ -1,5 +1,6 @@
 import { ChannelId, UserId } from "@hazel/schema"
 import { Schema } from "effect"
+import { defineTaggedUnion } from "foldkit/schema"
 import * as Tabs from "../../ui/tabs"
 
 /** One row of `routes/_app/$orgSlug/chat/index.tsx`, already split by type for the signed-in user. */
@@ -37,12 +38,18 @@ export const Presence = Schema.Struct({
 })
 export type Presence = typeof Presence.Type
 
+/** The channel live query; `Loading` shows the legacy full-height loader. */
+export const Channels = defineTaggedUnion({
+	Loading: {},
+	Loaded: { groups: ChannelGroups },
+})
+export type Channels = typeof Channels.Type
+
 export const ChatIndexTab = Schema.Literals(["public", "private", "dms"])
 export type ChatIndexTab = typeof ChatIndexTab.Type
 
 export const Model = Schema.Struct({
-	/** `null` while the live query loads (the legacy full-height loader). */
-	groups: Schema.NullOr(ChannelGroups),
+	channels: Channels,
 	/** `useUserPresence` for the other member of each single DM, keyed by user id. */
 	presence: Schema.Record(Schema.String, Presence),
 	tab: ChatIndexTab,
@@ -60,8 +67,8 @@ export const otherMembers = (channel: ChannelSummary, currentUserId: string | un
 	channel.members.filter((member) => member.userId !== currentUserId)
 
 /** Users whose presence the single-DM cards show. */
-export const singleDmPartnerIds = (groups: ChannelGroups | null, currentUserId: string | undefined) =>
-	(groups?.dmChannels ?? []).flatMap((channel) => {
+export const singleDmPartnerIds = (channels: Channels, currentUserId: string | undefined) =>
+	(channels._tag === "Loaded" ? channels.groups.dmChannels : []).flatMap((channel) => {
 		const others = otherMembers(channel, currentUserId)
 		return channel.type === "single" && others.length === 1 && others[0] ? [others[0].userId] : []
 	})
