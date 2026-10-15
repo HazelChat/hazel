@@ -40,17 +40,16 @@ memoized views and a `sharedChanged` hook. `page/root/` shows a page that only r
   Tests spread `sharedDefaults` (`page/test-shared.ts`) into their `Shared` literal.
 - **RPC and HTTP API.** Commands `yield* HazelRpc`, or `yield* HazelApiClient` for the HTTP API (legacy
   `HazelApiClient`: base URL and authenticated fetch). Both are the app's `resources` (`src/rpc.ts`).
-  Map every `Exit` to a Message (`SucceededX` / `FailedX`).
-- **Optimistic mutations.** Run the legacy `db/actions` atoms with `runAtomFn` (`src/data/actions.ts`, one
-  registry for the app) and map the result with `settle`, `successToast` and `failureToast`.
+  Settle every Command into `SucceededX` / `FailedX({ reason })` following the error convention
+  (`docs/foldkit-decisions/s6-errors.md`): `Effect.catchTags` for the feature's errors, then `catchCommon`.
+- **Optimistic mutations.** The `db/actions` actions are functions returning Effects
+  (`updateChannelAction({ channelId, name })`); they need `HazelRpc`.
 - **Toast helpers.** `src/data/actions.ts` is the only toast module (pages, modals, palette, shell):
-  `successToast` / `errorToast` / `warningToast` / `infoToast` / `loadingToast` build a `ToastRequest`;
-  `failureToast(cause, fallback, handlers?)` is legacy `exitToast`'s error branch and `toastOfExit` its
-  whole `run()`. Handlers are `onErrorTag` messages by tag (a fixed message or a function of the error).
-  `fallback` keeps legacy's wording for unhandled errors: `"exitToast"` (common-error map, else "An error
-  occurred") or `"friendly"` (`getUserFriendlyError`: network, timeout, the error's `message`). Pick the
-  one the legacy call site uses; where legacy shows a fixed string, use `errorToast` and drop the cause.
-  A failure Message carries `{ toast: ToastRequest }`, built in the Command, never `{ title, description }`.
+  `successToast` / `errorToast` / `warningToast` / `infoToast` / `loadingToast` build a `ToastRequest`, and
+  `errorToastOf(failureMessage(reason, {...}))` turns a failure reason into one in `update`.
+  Legacy, being migrated: `failureToast(cause, fallback, handlers?)` / `toastOfExit` and `Failed*{ toast }`
+  Messages. Handlers are keyed by the failure's own tags; unhandled errors get the shared copy and never
+  show error text. `fallback` is ignored.
 - **Live queries.** Use `liveQueryStream` (`src/data/live-query.ts`) with the legacy `useLiveQuery`
   builder, inside an `entry` whose dependencies come from `input.model` and `input.shared`. Return
   `Stream.empty` until the dependencies exist. Keys are prefixed with the page id automatically.

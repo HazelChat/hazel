@@ -11,16 +11,15 @@ import { Cause, Effect, Schema } from "effect"
 import { Command, File } from "foldkit"
 import { defineMessageUnion } from "foldkit/message"
 import { editMessageAction, sendMessageAction } from "~/db/actions"
-import { HazelApiClient } from "~/lib/services/common/atom-client"
+import { HazelApiClient } from "../rpc"
 import { ToastRequest } from "../overlay/toasts"
-import { errorToast, failureToast, runAtomFn, successToast, toastOfExit } from "../data/actions"
+import { commonMessage } from "~/lib/error-messages"
+import { catchCommon, errorToast, failureToast, successToast, toastOfExit } from "../data/actions"
 import { notRetryable, rateLimited } from "../page/chat/action-effects"
 import * as Composer from "./composer"
 import * as Typing from "./typing"
-import { emojiUsageAtom } from "~/atoms/emoji-atoms"
 import * as EmojiDialog from "../emoji-picker/dialog"
 import * as GifPicker from "../gif-picker/picker"
-import { trackEmojiUsage } from "../emoji-picker/usage"
 import { DropEvent } from "./drop"
 import { UploadEvent } from "./upload"
 
@@ -118,7 +117,6 @@ export const Message = defineMessageUnion({
 	SelectedGif: { url: Schema.String },
 	GotEmojiPickerMessage: { message: EmojiDialog.Message },
 	GotGifPickerMessage: { message: GifPicker.Message },
-	CompletedTrackEmojiUsage: {},
 	CompletedExecuteBotCommand: { succeeded: Schema.Boolean, toast: ToastRequest },
 })
 export type Message = typeof Message.Type
@@ -157,7 +155,7 @@ export const SendMessage = Command.define("SendMessage", {
 	},
 	messages: [Message.SucceededSendMessage, Message.FailedSendMessage],
 	execute: ({ restoreContent, ...variables }) =>
-		Effect.matchCause(runAtomFn(sendMessageAction, { ...variables, attachmentIds: [...variables.attachmentIds] }), {
+		Effect.matchCause(sendMessageAction({ ...variables, attachmentIds: [...variables.attachmentIds] }), {
 			onSuccess: () => Message.SucceededSendMessage(),
 			onFailure: (cause) =>
 				Message.FailedSendMessage({
@@ -181,7 +179,7 @@ export const EditMessage = Command.define("EditMessage", {
 	args: { messageId: MessageId, content: Schema.String },
 	messages: [Message.CompletedEditMessage],
 	execute: (args) =>
-		toastOfExit(runAtomFn(editMessageAction, args), "exitToast", {
+		toastOfExit(editMessageAction(args), "exitToast", {
 			handlers: {
 				RateLimitExceededError: rateLimited("trying again"),
 				MessageNotFoundError: notRetryable("Message not found", "This message may have been deleted."),
@@ -203,10 +201,8 @@ export const OpenFilePicker = Command.define("OpenFilePicker", {
 		Effect.sync(() => document.getElementById(inputId)?.click()).pipe(Effect.as(Message.CompletedOpenFilePicker())),
 })
 
-const executeBotCommand = HazelApiClient.mutation("bot-commands", "executeBotCommand")
-
-const tagOf = (error: unknown) =>
-	typeof error === "object" && error !== null && "_tag" in error ? String(error._tag) : undefined
+const failedBotCommand = (title: string, description?: string) =>
+	Message.CompletedExecuteBotCommand({ succeeded: false, toast: errorToast(title, description ?? null) })
 
 /** The slash command panel's Execute (`bot-commands.executeBotCommand`). */
 export const ExecuteBotCommand = Command.define("ExecuteBotCommand", {
@@ -220,43 +216,25 @@ export const ExecuteBotCommand = Command.define("ExecuteBotCommand", {
 	},
 	messages: [Message.CompletedExecuteBotCommand],
 	execute: ({ orgId, botId, commandName, botName, channelId, arguments: args }) =>
-		Effect.matchCause(
-			runAtomFn(executeBotCommand, {
+		HazelApiClient.use((client) =>
+			client["bot-commands"].executeBotCommand({
 				params: { orgId, botId: BotId.make(botId), commandName },
 				payload: { channelId, arguments: [...args] },
 			}),
-			{
-				onSuccess: () =>
-					Message.CompletedExecuteBotCommand({
-						succeeded: true,
-						toast: successToast(`Executed /${commandName}`),
-					}),
-				onFailure: (cause) => {
-					const error = cause.reasons.find(Cause.isFailReason)?.error
-					const tag = tagOf(error)
-					const title =
-						error === undefined
-							? "Command failed"
-							: tag === "BotNotInstalledError"
-								? `Bot "${botName}" is not installed`
-								: tag === "BotCommandNotFoundError"
-									? `Command /${commandName} not found`
-									: tag === "BotCommandExecutionError" && typeof error === "object" && error !== null && "message" in error
-										? String(error.message)
-										: "Command execution failed"
-					return Message.CompletedExecuteBotCommand({
-						succeeded: false,
-						toast: errorToast(title),
-					})
-				},
-			},
+		).pipe(
+			Effect.as(
+				Message.CompletedExecuteBotCommand({ succeeded: true, toast: successToast(`Executed /${commandName}`) }),
+			),
+			Effect.catchTags({
+				BotNotFoundError: () => Effect.succeed(failedBotCommand(`Bot "${botName}" was not found`)),
+				BotNotInstalledError: () => Effect.succeed(failedBotCommand(`Bot "${botName}" is not installed`)),
+				BotCommandNotFoundError: () => Effect.succeed(failedBotCommand(`Command /${commandName} not found`)),
+				BotCommandExecutionError: () =>
+					Effect.succeed(failedBotCommand(`/${commandName} failed`, "The bot reported an error running the command.")),
+			}),
+			catchCommon((reason) => {
+				const message = commonMessage(reason)
+				return failedBotCommand(message.title, message.description)
+			}),
 		),
-})
-
-/** `ComposerActions.handleEmojiSelect` counts the emoji before inserting it. */
-export const TrackEmojiUsage = Command.define("TrackEmojiUsage", {
-	args: { emoji: Schema.String },
-	messages: [Message.CompletedTrackEmojiUsage],
-	execute: ({ emoji }) =>
-		Effect.sync(() => trackEmojiUsage(emojiUsageAtom, emoji)).pipe(Effect.as(Message.CompletedTrackEmojiUsage())),
 })

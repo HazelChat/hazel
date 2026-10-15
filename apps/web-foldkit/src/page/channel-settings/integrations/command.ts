@@ -1,13 +1,14 @@
+import type { ChannelNotFoundError } from "@hazel/domain/rpc"
 import { ChannelId, ChannelWebhookId, GitHubSubscriptionId, RssSubscriptionId } from "@hazel/schema"
 import { Duration, Effect, Exit, Schema } from "effect"
 import { Command } from "foldkit"
 import { toDate } from "~/lib/utils"
 import { HazelRpc } from "../../../rpc"
-import { type ErrorHandlers, failureToast } from "../../../data/actions"
+import { type ErrorHandlers, type ErrorMessage, failureToast } from "../../../data/actions"
 import { Message } from "./message"
 import { INTEGRATION_CONFIG, Provider, RowKind } from "./model"
 
-const channelNotFound: ErrorHandlers = {
+const channelNotFound: ErrorHandlers<ChannelNotFoundError> = {
 	ChannelNotFoundError: {
 		title: "Channel not found",
 		description: "This channel may have been deleted.",
@@ -111,7 +112,7 @@ export const ListGitHub = Command.define("ListGitHub", {
 
 // ROW ACTIONS (each row's toggle and delete, with its own messages)
 
-const notFound = (title: string, description: string): ErrorHandlers[string] => ({
+const notFound = (title: string, description: string): ErrorMessage => ({
 	title,
 	description,
 	isRetryable: false,

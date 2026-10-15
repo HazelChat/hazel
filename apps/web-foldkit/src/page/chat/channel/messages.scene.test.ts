@@ -18,7 +18,7 @@ import type { EmojiData } from "../../../emoji-picker/data"
 import * as Overlays from "../overlays"
 import { imageAttachmentOf } from "../../../test/chat-messages"
 import { PageOutMessage } from "../../out-message"
-import { ActionMessage, CreateThread, DownloadImage, GenerateThreadChannelId, ToggleReaction, TrackEmojiUsage } from "../message-actions"
+import { ActionMessage, CreateThread, DownloadImage, GenerateThreadChannelId, ToggleReaction } from "../message-actions"
 import { ada, adaMessageId, channelId, graceMessageId, updateWithShared } from "./fixtures.test-support"
 
 /** The channel page through its view: reading, the hover toolbar's actions and the composer indicators. */
@@ -39,7 +39,7 @@ describe("reading", () => {
 })
 
 describe("hover toolbar", () => {
-	test("react: the quick reaction counts the emoji and toggles it", () => {
+	test("react: the quick reaction toggles it", () => {
 		Scene.scene(
 			channelScene,
 			Scene.given(derivedModel()),
@@ -47,10 +47,8 @@ describe("hover toolbar", () => {
 			mountedToolbar(false),
 			Scene.click(Scene.role("button", { name: "React with 👍" })),
 			Scene.Command.expectExact(
-				TrackEmojiUsage({ emoji: "👍" }),
 				ToggleReaction({ messageId: graceMessageId, channelId, emoji: "👍", userId: ada }),
 			),
-			Scene.Command.resolve(TrackEmojiUsage, ActionMessage.CompletedTrackEmojiUsage()),
 			Scene.Command.resolve(ToggleReaction, ActionMessage.CompletedToggleReaction({ toast: null })),
 		)
 	})

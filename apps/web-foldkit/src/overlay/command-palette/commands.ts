@@ -7,7 +7,7 @@ import { PresenceStatus } from "../../platform/presence/model"
 import { HazelRpc } from "../../rpc"
 import { Message } from "./message"
 import { ChannelType } from "./model"
-import { failureToast, runAtomFn } from "../../data/actions"
+import { failureToast } from "../../data/actions"
 
 /** Side effects of the palette pages, each the call legacy makes from the same handler. */
 
@@ -16,7 +16,7 @@ export const CreateChannel = Command.define("CreateChannel", {
 	args: { name: Schema.String, type: ChannelType, organizationId: OrganizationId, currentUserId: UserId },
 	messages: [Message.SucceededCreateChannel, Message.FailedCreateChannel],
 	execute: ({ name, type, organizationId, currentUserId }) =>
-		runAtomFn(createChannelAction, {
+		createChannelAction({
 			name,
 			icon: null,
 			type,
@@ -34,7 +34,7 @@ export const JoinChannel = Command.define("JoinChannel", {
 	args: { channelId: ChannelId, userId: UserId },
 	messages: [Message.SucceededJoinChannel, Message.FailedJoinChannel],
 	execute: ({ channelId, userId }) =>
-		runAtomFn(joinChannelAction, { channelId, userId }).pipe(
+		joinChannelAction({ channelId, userId }).pipe(
 			Effect.as(Message.SucceededJoinChannel()),
 			Effect.catchCause((cause) =>
 				Effect.succeed(

@@ -6,7 +6,7 @@ import {
 	moveChannelToSectionAction,
 	updateChannelMemberAction,
 } from "~/db/actions"
-import { failureToast, runAtomFn, settle, successToast } from "../../data/actions"
+import { failureToast, settle, successToast } from "../../data/actions"
 import { HazelRpc } from "../../rpc"
 import { Message } from "./model"
 
@@ -32,7 +32,7 @@ export const UpdateChannelMember = Command.define("UpdateChannelMember", {
 	messages: [Message.SucceededSidebarAction, Message.FailedSidebarAction],
 	execute: ({ memberId, field, value, successTitle }) =>
 		settle(
-			runAtomFn(updateChannelMemberAction, { memberId, [field]: value }),
+			updateChannelMemberAction({ memberId, [field]: value }),
 			succeeded(successTitle),
 			(cause) =>
 				Message.FailedSidebarAction({ toast: failureToast(cause, "friendly", memberNotFound) }),
@@ -60,7 +60,7 @@ export const MoveChannelToSection = Command.define("MoveChannelToSection", {
 	messages: [Message.SucceededSidebarAction, Message.FailedSidebarAction],
 	execute: ({ channelId, sectionId }) =>
 		settle(
-			runAtomFn(moveChannelToSectionAction, { channelId, sectionId }),
+			moveChannelToSectionAction({ channelId, sectionId }),
 			succeeded(sectionId ? "Channel moved to section" : "Channel moved to default"),
 			(cause) =>
 				Message.FailedSidebarAction({
@@ -82,7 +82,7 @@ export const DeleteChannelSection = Command.define("DeleteChannelSection", {
 	args: { sectionId: ChannelSectionId },
 	messages: [Message.SucceededSidebarAction, Message.FailedSidebarAction],
 	execute: ({ sectionId }) =>
-		settle(runAtomFn(deleteChannelSectionAction, { sectionId }), succeeded("Section deleted"), (cause) =>
+		settle(deleteChannelSectionAction({ sectionId }), succeeded("Section deleted"), (cause) =>
 			Message.FailedSidebarAction({
 				toast: failureToast(cause, "friendly", {
 					ChannelSectionNotFoundError: {

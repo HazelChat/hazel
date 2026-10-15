@@ -20,7 +20,7 @@ import { ToastRequest } from "../toasts"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalViewInputs } from "./contract"
 import { Frame, Message as FrameMessage, frameView, initFrame, isFrameClosed, modalDescription, modalTitle } from "./frame"
-import { failureToast, runAtomFn, successToast } from "../../data/actions"
+import { failureToast, successToast } from "../../data/actions"
 
 /** `components/modals/create-channel-modal.tsx` (legacy `useModal("new-channel")`). */
 
@@ -59,7 +59,7 @@ const CreateChannel = Command.define("CreateChannel", {
 	},
 	messages: [Message.SucceededCreateChannel, Message.FailedCreateChannel],
 	execute: (args) =>
-		runAtomFn(createChannelAction, { ...args, icon: null, parentChannelId: null }).pipe(
+		createChannelAction({ ...args, icon: null, parentChannelId: null }).pipe(
 			Effect.map((result) => Message.SucceededCreateChannel({ channelId: result.data.channelId })),
 			Effect.catchCause((cause) => Effect.succeed(Message.FailedCreateChannel({ toast: failureToast(cause, "friendly") }))),
 		),

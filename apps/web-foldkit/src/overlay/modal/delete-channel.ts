@@ -13,7 +13,7 @@ import { ToastRequest } from "../toasts"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalViewInputs } from "./contract"
 import { Frame, Message as FrameMessage, frameView, initFrame, isFrameClosed, modalTitle } from "./frame"
-import { failureToast, runAtomFn, successToast } from "../../data/actions"
+import { failureToast, successToast } from "../../data/actions"
 
 /** `components/modals/delete-channel-modal.tsx`; confirming runs `deleteChannelAction`. */
 
@@ -37,7 +37,7 @@ const DeleteChannel = Command.define("DeleteChannel", {
 	args: { channelId: ChannelId, orgSlug: Schema.NullOr(Schema.String) },
 	messages: [Message.SucceededDeleteChannel, Message.FailedDeleteChannel],
 	execute: ({ channelId, orgSlug }) =>
-		runAtomFn(deleteChannelAction, { channelId }).pipe(
+		deleteChannelAction({ channelId }).pipe(
 			Effect.andThen(() =>
 				Effect.sync(() => {
 					const pathname = window.location.pathname

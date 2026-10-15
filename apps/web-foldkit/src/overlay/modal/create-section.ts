@@ -13,7 +13,7 @@ import { ToastRequest } from "../toasts"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalViewInputs } from "./contract"
 import { Frame, Message as FrameMessage, frameView, initFrame, isFrameClosed, modalTitle } from "./frame"
-import { failureToast, runAtomFn, successToast } from "../../data/actions"
+import { failureToast, successToast } from "../../data/actions"
 
 /** `components/modals/create-section-modal.tsx` (legacy `useModal("create-section")`). */
 
@@ -40,7 +40,7 @@ export const CreateSection = Command.define("CreateSection", {
 	args: { name: Schema.String, organizationId: OrganizationId },
 	messages: [Message.SucceededCreateSection, Message.FailedCreateSection],
 	execute: (args) =>
-		runAtomFn(createChannelSectionAction, args).pipe(
+		createChannelSectionAction(args).pipe(
 			Effect.as(Message.SucceededCreateSection()),
 			Effect.catchCause((cause) => Effect.succeed(Message.FailedCreateSection({ toast: failureToast(cause, "friendly") }))),
 		),

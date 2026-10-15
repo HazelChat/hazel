@@ -36,7 +36,7 @@ import * as Draft from "../../../composer/draft"
 import * as Typing from "../../../composer/typing"
 import { uploadStream } from "../../../composer/upload"
 import { MessageWindows } from "../../../data/message-windows"
-import type { HazelRpc } from "../../../rpc"
+import type { HazelApiClient, HazelRpc } from "../../../rpc"
 import { globalTypingStream, leftWindowStream } from "../../../composer/window-events"
 import { isMemberOf, Message, type Model } from "./page"
 
@@ -293,7 +293,7 @@ export const typingCleanupStream = <R>(
 			)
 
 /** The write path's streams: composer data, uploads, global typing and window blur. */
-const write = Subscription.make<Input, Message, HazelRpc>()((entry) => ({
+const write = Subscription.make<Input, Message, HazelRpc | HazelApiClient>()((entry) => ({
 	composerMembers: entry(byChannel, {
 		modelToDependencies: channelOf,
 		dependenciesToStream: ({ channelId }) =>

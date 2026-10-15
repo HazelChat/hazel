@@ -15,7 +15,6 @@ const spec = renameModalSpec({
 	notFound: {
 		title: "Thread not found",
 		description: "This thread may have been deleted.",
-		isRetryable: false,
 	},
 })
 

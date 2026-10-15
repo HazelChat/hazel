@@ -10,7 +10,7 @@ import { HazelRpc } from "../../../rpc"
 import type { RouteOf } from "../../../route"
 import type { PageReturn, Shared } from "../../contract"
 import { PageOutMessage } from "../../out-message"
-import { errorToast, failureToast, runAtomFn, settle, successToast } from "../../../data/actions"
+import { errorToast, failureToast, settle, successToast } from "../../../data/actions"
 import { publicUrlOf, uploadFile } from "../upload"
 import { Message } from "./message"
 import type { Model } from "./model"
@@ -33,7 +33,7 @@ export const UpdateOrganizationName = Command.define("UpdateOrganizationName", {
 	messages: [Message.SucceededUpdateName, Message.FailedUpdateName],
 	execute: ({ organizationId, name }) =>
 		settle(
-			runAtomFn(updateOrganizationAction, { organizationId, name }),
+			updateOrganizationAction({ organizationId, name }),
 			() => Message.SucceededUpdateName(),
 			(cause) =>
 				Message.FailedUpdateName({
@@ -53,7 +53,7 @@ export const SetPublicMode = Command.define("SetPublicMode", {
 	messages: [Message.SucceededSetPublicMode, Message.FailedSetPublicMode],
 	execute: ({ organizationId, isPublic }) =>
 		settle(
-			runAtomFn(setPublicModeAction, { organizationId, isPublic }),
+			setPublicModeAction({ organizationId, isPublic }),
 			() => Message.SucceededSetPublicMode({ isPublic }),
 			(cause) =>
 				Message.FailedSetPublicMode({ toast: failureToast(cause, "friendly", organizationNotFound) }),
@@ -104,7 +104,7 @@ export const UploadLogo = Command.define("UploadLogo", {
 					),
 				})
 			}
-			return yield* runAtomFn(updateOrganizationAction, { organizationId, logoUrl }).pipe(
+			return yield* updateOrganizationAction({ organizationId, logoUrl }).pipe(
 				Effect.as(Message.SucceededUploadLogo()),
 				Effect.catch(() =>
 					Effect.succeed(

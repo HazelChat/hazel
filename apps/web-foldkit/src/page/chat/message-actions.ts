@@ -2,7 +2,6 @@ import { ChannelId, MessageId, OrganizationId, PinnedMessageId, UserId } from "@
 import { Effect, Schema } from "effect"
 import { Command } from "foldkit"
 import { defineMessageUnion } from "foldkit/message"
-import { emojiUsageAtom } from "~/atoms/emoji-atoms"
 import {
 	createThreadAction,
 	deleteMessageAction,
@@ -12,9 +11,8 @@ import {
 } from "~/db/actions"
 import { ToastRequest } from "../../overlay/toasts"
 import { HazelRpc } from "../../rpc"
-import { runAtomFn, toastOfExit } from "../../data/actions"
+import { toastOfExit } from "../../data/actions"
 import { notRetryable, rateLimited } from "./action-effects"
-import { trackEmojiUsage } from "../../emoji-picker/usage"
 
 /**
  * The message actions of `ChatProvider` and `useMessageActions`: each Command runs the same
@@ -34,7 +32,6 @@ export const ActionMessage = defineMessageUnion({
 	CompletedCopyText: {},
 	CompletedDownloadImage: {},
 	CompletedOpenUrl: {},
-	CompletedTrackEmojiUsage: {},
 	CompletedGenerateThreadName: { threadChannelId: ChannelId, toast: Schema.NullOr(ToastRequest) },
 })
 export type ActionMessage = typeof ActionMessage.Type
@@ -51,7 +48,7 @@ export const ToggleReaction = Command.define("ToggleReaction", {
 	args: { messageId: MessageId, channelId: ChannelId, emoji: Schema.String, userId: UserId },
 	messages: [ActionMessage.CompletedToggleReaction],
 	execute: (args) =>
-		toastOfExit(runAtomFn(toggleReactionAction, args), "exitToast", {
+		toastOfExit(toggleReactionAction(args), "exitToast", {
 			handlers: { MessageNotFoundError: messageNotFound },
 		}).pipe(Effect.map((toast) => ActionMessage.CompletedToggleReaction({ toast }))),
 })
@@ -60,7 +57,7 @@ export const PinMessage = Command.define("PinMessage", {
 	args: { messageId: MessageId, channelId: ChannelId, userId: UserId },
 	messages: [ActionMessage.CompletedPinMessage],
 	execute: (args) =>
-		toastOfExit(runAtomFn(pinMessageAction, args), "exitToast", {
+		toastOfExit(pinMessageAction(args), "exitToast", {
 			success: "Message pinned",
 			handlers: { MessageNotFoundError: messageNotFound },
 		}).pipe(Effect.map((toast) => ActionMessage.CompletedPinMessage({ toast }))),
@@ -70,7 +67,7 @@ export const UnpinMessage = Command.define("UnpinMessage", {
 	args: { pinnedMessageId: PinnedMessageId },
 	messages: [ActionMessage.CompletedUnpinMessage],
 	execute: (args) =>
-		toastOfExit(runAtomFn(unpinMessageAction, args), "exitToast", {
+		toastOfExit(unpinMessageAction(args), "exitToast", {
 			success: "Message unpinned",
 			handlers: {
 				PinnedMessageNotFoundError: notRetryable(
@@ -85,7 +82,7 @@ export const DeleteMessage = Command.define("DeleteMessage", {
 	args: { messageId: MessageId },
 	messages: [ActionMessage.CompletedDeleteMessage],
 	execute: (args) =>
-		toastOfExit(runAtomFn(deleteMessageAction, args), "exitToast", {
+		toastOfExit(deleteMessageAction(args), "exitToast", {
 			handlers: {
 				RateLimitExceededError: rateLimited("trying again"),
 				MessageNotFoundError: notRetryable(
@@ -119,7 +116,7 @@ export const CreateThread = Command.define("CreateThread", {
 	},
 	messages: [ActionMessage.SucceededCreateThread, ActionMessage.FailedCreateThread],
 	execute: (args) =>
-		toastOfExit(runAtomFn(createThreadAction, args), "exitToast", {
+		toastOfExit(createThreadAction(args), "exitToast", {
 			handlers: {
 				MessageNotFoundError: notRetryable("Message not found", "The message no longer exists"),
 				NestedThreadError: notRetryable(
@@ -173,16 +170,6 @@ export const OpenUrl = Command.define("OpenUrl", {
 			window.open(url, "_blank")
 			return ActionMessage.CompletedOpenUrl()
 		}),
-})
-
-/** `useEmojiStats().trackEmojiUsage`: counts the emoji in the persisted usage atom. */
-export const TrackEmojiUsage = Command.define("TrackEmojiUsage", {
-	args: { emoji: Schema.String },
-	messages: [ActionMessage.CompletedTrackEmojiUsage],
-	execute: ({ emoji }) =>
-		Effect.sync(() => trackEmojiUsage(emojiUsageAtom, emoji)).pipe(
-			Effect.as(ActionMessage.CompletedTrackEmojiUsage()),
-		),
 })
 
 /** The thread panel's "Generate thread name" (`channel.generateName`). */

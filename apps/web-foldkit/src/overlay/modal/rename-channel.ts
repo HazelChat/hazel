@@ -16,7 +16,7 @@ import { closed, completed, ModalOutMessage } from "../out-message"
 import { ToastRequest } from "../toasts"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalSubscriptionInput, type ModalViewInputs } from "./contract"
-import { failureToast, runAtomFn, successToast } from "../../data/actions"
+import { failureToast, successToast } from "../../data/actions"
 import {
 	Frame,
 	Message as FrameMessage,
@@ -77,7 +77,7 @@ const RenameChannel = Command.define("RenameChannel", {
 	},
 	messages: [Message.SucceededRenameChannel, Message.FailedRenameChannel],
 	execute: ({ channelId, name, notFoundTitle, notFoundDescription }) =>
-		runAtomFn(updateChannelAction, { channelId, name }).pipe(
+		updateChannelAction({ channelId, name }).pipe(
 			Effect.as(Message.SucceededRenameChannel()),
 			Effect.catchCause((cause) =>
 				Effect.succeed(
@@ -256,7 +256,6 @@ const spec = renameModalSpec({
 	notFound: {
 		title: "Channel not found",
 		description: "This channel may have been deleted.",
-		isRetryable: false,
 	},
 })
 

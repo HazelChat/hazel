@@ -12,7 +12,7 @@ import * as TooltipHost from "../tooltip-host"
 
 /** Port of `MessageToolbar` and the hover overlay around it (`useMessageToolbarOverlay`). */
 
-/** `topEmojisAtom` with no usage data yet. */
+/** The toolbar's quick reactions. */
 export const TOP_EMOJIS = ["👍", "❤️", "😂", "🔥", "👀", "🎉"] as const
 
 const POSITION_PADDING = 12

@@ -1,11 +1,10 @@
 import { AttachmentId, ChannelId, OrganizationId } from "@hazel/schema"
 import { Effect, Exit, Queue, Schema, Stream } from "effect"
 import { defineMessageUnion } from "foldkit/message"
-import { HazelApiClient } from "~/lib/services/common/atom-client"
 import { type UploadErrorType, uploadErrorMessages, uploadToStorage } from "~/lib/upload-to-storage"
 import { ToastRequest } from "../overlay/toasts"
-import { HazelRpc } from "../rpc"
-import { errorToast, runAtomFn } from "../data/actions"
+import { HazelApiClient, HazelRpc } from "../rpc"
+import { errorToast } from "../data/actions"
 
 /**
  * Port of `useFileUpload().uploadFile`: presign (`uploads.presign`), PUT with progress, then
@@ -32,8 +31,6 @@ export interface UploadArgs {
 	readonly channelId: ChannelId
 }
 
-const presign = HazelApiClient.mutation("uploads", "presign")
-
 const markFailed = (id: AttachmentId, reason: string) =>
 	Effect.gen(function* () {
 		const client = yield* HazelRpc
@@ -47,16 +44,18 @@ const upload = (args: UploadArgs, onProgress: (percent: number) => void) =>
 			return { attachmentId: null, toast: errorToast("File too large", `File size exceeds ${MAX_FILE_SIZE / 1024 / 1024}MB limit`) }
 		}
 		const presigned = yield* Effect.exit(
-			runAtomFn(presign, {
-				payload: {
-					type: "attachment" as const,
-					fileName: file.name,
-					fileSize: file.size,
-					contentType: file.type || "application/octet-stream",
-					organizationId: args.organizationId,
-					channelId: args.channelId,
-				},
-			}),
+			HazelApiClient.use((client) =>
+				client.uploads.presign({
+					payload: {
+						type: "attachment" as const,
+						fileName: file.name,
+						fileSize: file.size,
+						contentType: file.type || "application/octet-stream",
+						organizationId: args.organizationId,
+						channelId: args.channelId,
+					},
+				}),
+			),
 		)
 		if (Exit.isFailure(presigned)) {
 			return { attachmentId: null, toast: errorToast("Upload failed", "Failed to get upload URL. Please try again.") }
@@ -93,8 +92,8 @@ const upload = (args: UploadArgs, onProgress: (percent: number) => void) =>
 	})
 
 /** The upload of one file as events: progress percentages, then `FinishedUpload`. */
-export const uploadStream = (args: UploadArgs): Stream.Stream<UploadEvent, never, HazelRpc> =>
-	Stream.callback<UploadEvent, never, HazelRpc>((queue) =>
+export const uploadStream = (args: UploadArgs): Stream.Stream<UploadEvent, never, HazelRpc | HazelApiClient> =>
+	Stream.callback<UploadEvent, never, HazelRpc | HazelApiClient>((queue) =>
 		upload(args, (progress) => Queue.offerUnsafe(queue, UploadEvent.ProgressedUpload({ fileId: args.fileId, progress }))).pipe(
 			Effect.catchCause(() =>
 				Effect.succeed({

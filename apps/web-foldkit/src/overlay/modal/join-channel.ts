@@ -18,7 +18,7 @@ import { ToastRequest } from "../toasts"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalSubscriptionInput, type ModalViewInputs } from "./contract"
 import { Frame, Message as FrameMessage, frameView, initFrame, isFrameClosed, modalDescription, modalTitle } from "./frame"
-import { failureToast, runAtomFn, successToast } from "../../data/actions"
+import { failureToast, successToast } from "../../data/actions"
 
 /** `components/modals/join-channel-modal.tsx` (legacy `useModal("join-channel")`). */
 
@@ -59,7 +59,7 @@ const JoinChannel = Command.define("JoinChannel", {
 	args: { channelId: ChannelId, userId: UserId },
 	messages: [Message.SucceededJoinChannel, Message.FailedJoinChannel],
 	execute: ({ channelId, userId }) =>
-		runAtomFn(joinChannelAction, { channelId, userId }).pipe(
+		joinChannelAction({ channelId, userId }).pipe(
 			Effect.as(Message.SucceededJoinChannel()),
 			Effect.catchCause((cause) =>
 				Effect.succeed(

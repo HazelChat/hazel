@@ -14,7 +14,6 @@ import {
 	GenerateThreadName,
 	PinMessage,
 	ToggleReaction,
-	TrackEmojiUsage,
 	UnpinMessage,
 } from "../message-actions"
 import * as Overlays from "../overlays"
@@ -42,16 +41,12 @@ const out = (action: Overlays.MessageAction, messageId = graceMessageId) =>
 	Overlays.OutMessage.RequestedMessageAction({ messageId, action })
 
 describe("reactions", () => {
-	test("a toolbar quick reaction counts the emoji and toggles through `messageReaction.toggle`", () => {
+	test("a toolbar quick reaction toggles through `messageReaction.toggle`", () => {
 		story(
 			updateWithShared,
 			given(loadedModel()),
 			message(overlays(Overlays.Message.ClickedReaction({ messageId: graceMessageId, emoji: "👍" }))),
-			Command.expectExact(
-				TrackEmojiUsage({ emoji: "👍" }),
-				ToggleReaction({ messageId: graceMessageId, channelId, emoji: "👍", userId: ada }),
-			),
-			Command.resolve(TrackEmojiUsage, ActionMessage.CompletedTrackEmojiUsage()),
+			Command.expectExact(ToggleReaction({ messageId: graceMessageId, channelId, emoji: "👍", userId: ada })),
 			Command.resolve(ToggleReaction, ActionMessage.CompletedToggleReaction({ toast: null })),
 		)
 	})

@@ -2,8 +2,7 @@ import type { KlipyGif } from "@hazel/domain/http"
 import { Duration, Effect, Schema } from "effect"
 import { Command, type Update } from "foldkit"
 import { defineMessageUnion } from "foldkit/message"
-import { HazelApiClient } from "~/lib/services/common/atom-client"
-import { runAtomFn } from "../data/actions"
+import { HazelApiClient } from "../rpc"
 import { PopoverEvent } from "../picker-popover/popover"
 
 /**
@@ -97,10 +96,6 @@ export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
 
-const trending = HazelApiClient.mutation("klipy", "trending")
-const search = HazelApiClient.mutation("klipy", "search")
-const categories = HazelApiClient.mutation("klipy", "categories")
-
 const toGif = (gif: KlipyGif): Gif => ({
 	slug: gif.slug,
 	title: gif.title,
@@ -117,8 +112,8 @@ export const FetchGifs = Command.define("FetchGifs", {
 	messages: [Message.SucceededFetchGifs, Message.FailedFetchGifs],
 	execute: ({ query, page, append, requestId }) =>
 		(query
-			? runAtomFn(search, { query: { q: query, page, per_page: PER_PAGE } })
-			: runAtomFn(trending, { query: { page, per_page: PER_PAGE } })
+			? HazelApiClient.use((client) => client.klipy.search({ query: { q: query, page, per_page: PER_PAGE } }))
+			: HazelApiClient.use((client) => client.klipy.trending({ query: { page, per_page: PER_PAGE } }))
 		).pipe(
 			Effect.map((response) =>
 				Message.SucceededFetchGifs({
@@ -135,7 +130,7 @@ export const FetchGifs = Command.define("FetchGifs", {
 
 export const FetchCategories = Command.define("FetchCategories", {
 	messages: [Message.SucceededFetchCategories, Message.FailedFetchCategories],
-	execute: runAtomFn(categories, {}).pipe(
+	execute: HazelApiClient.use((client) => client.klipy.categories()).pipe(
 		Effect.map((response) =>
 			Message.SucceededFetchCategories({
 				categories: response.categories.map(({ category, query }) => ({ category, query })),
@@ -155,7 +150,7 @@ export const WaitForGifSearch = Command.define("WaitForGifSearch", {
 
 // UPDATE
 
-export type Return = Update.ReturnWithOutMessage<Model, Message, OutMessage>
+export type Return = Update.ReturnWithOutMessage<Model, Message, OutMessage, HazelApiClient>
 
 const fetch = (model: Model, query: string, page: number, append: boolean): Return => {
 	const requestId = model.requestId + 1

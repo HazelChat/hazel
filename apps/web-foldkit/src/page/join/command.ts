@@ -1,3 +1,4 @@
+import type { AlreadyMemberError, OrganizationNotFoundError, PublicInviteDisabledError } from "@hazel/domain/rpc"
 import { Effect, Exit, Schema } from "effect"
 import { Command } from "foldkit"
 import { load } from "foldkit/navigation"
@@ -26,7 +27,7 @@ export const FetchPublicOrganization = Command.define("FetchPublicOrganization",
 })
 
 /** The toasts legacy's `exitToastAsync(...).onErrorTag(...)` chain shows. */
-const knownFailures: ErrorHandlers = {
+const knownFailures: ErrorHandlers<OrganizationNotFoundError | PublicInviteDisabledError | AlreadyMemberError> = {
 	OrganizationNotFoundError: {
 		title: "Organization not found",
 		description: "This organization may have been deleted.",

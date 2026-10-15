@@ -10,7 +10,6 @@ import { closed } from "../out-message"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalViewInputs } from "./contract"
 import { Frame, Message as FrameMessage, frameView, initFrame, isFrameClosed, modalDescription, modalTitle } from "./frame"
-import { runAtomFn } from "../../data/actions"
 
 /** `components/chat/delete-message-modal.tsx`; confirming runs the toolbar's `deleteMessageAction`. */
 
@@ -30,7 +29,7 @@ const DeleteMessage = Command.define("DeleteMessage", {
 	messages: [Message.CompletedDeleteMessage],
 	// Legacy `handleDelete` fires the action without a toast either way.
 	execute: ({ messageId }) =>
-		runAtomFn(deleteMessageAction, { messageId }).pipe(
+		deleteMessageAction({ messageId }).pipe(
 			Effect.ignoreCause,
 			Effect.as(Message.CompletedDeleteMessage()),
 		),

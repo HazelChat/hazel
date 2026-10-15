@@ -1,16 +1,14 @@
 import { ChannelId, MessageId, type NotificationId, type UserId } from "@hazel/schema"
 import { Effect, Option, Schema, Stream } from "effect"
-import { createIsMutedGetter } from "~/atoms/notification-sound-atoms"
 import { channelCollection, messageCollection, notificationCollection, userCollection } from "~/db/collections"
 import { notificationSoundManager } from "~/lib/notification-sound-manager"
 import {
-	inAppNotificationSink,
 	NativeNotificationSink,
 	type NotificationEvent,
 	notificationOrchestrator,
 	SoundNotificationSink,
 } from "~/lib/notifications"
-import type { SoundSettings } from "../notification-sound"
+import { isSoundMuted, type SoundSettings } from "../notification-sound"
 
 /**
  * The legacy `NotificationSoundProvider` (org layout) at the root: the singletons it wires (sound
@@ -24,7 +22,7 @@ export interface SinkContext {
 	readonly userId: UserId
 	readonly settings: SoundSettings
 	readonly currentChannelId: ChannelId | null
-	/** `sessionStartTimeAtom`: notifications from before this load never play. */
+	/** Notifications from before this load never play. */
 	readonly sessionStartMs: number
 }
 
@@ -53,21 +51,22 @@ export const wireNotificationSinks = ({
 				notificationOrchestrator.setDependencies({
 					getContext: () => {
 						const userSettings = userCollection.state.get(userId)?.settings
+						const now = Date.now()
 						return {
 							currentChannelId,
 							sessionStartTime,
-							isMuted: createIsMutedGetter(
+							isMuted: isSoundMuted({
 								settings,
-								userSettings?.doNotDisturb ?? false,
-								userSettings?.quietHoursStart ?? "22:00",
-								userSettings?.quietHoursEnd ?? "08:00",
-							)(),
+								doNotDisturb: userSettings?.doNotDisturb ?? false,
+								quietHoursStart: userSettings?.quietHoursStart ?? "22:00",
+								quietHoursEnd: userSettings?.quietHoursEnd ?? "08:00",
+								nowMs: now,
+							}),
 							isWindowFocused: document.hasFocus(),
 							visibilityState: document.visibilityState,
-							now: Date.now(),
+							now,
 						}
 					},
-					inAppSink: inAppNotificationSink,
 					soundSink,
 					nativeSink,
 				})

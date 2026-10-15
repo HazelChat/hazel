@@ -411,7 +411,7 @@ export function createEffectCollection<A extends Row<unknown>, TRuntime>(
 		"schema"
 	> & {
 		schema: Schema.Schema<A>
-		runtime: ManagedRuntime.ManagedRuntime<TRuntime, unknown>
+		runtime?: ManagedRuntime.ManagedRuntime<TRuntime, unknown>
 	},
 ): EffectCollection<A> {
 	// Convert Effect Schema to StandardSchemaV1 internally.

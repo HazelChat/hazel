@@ -1,13 +1,12 @@
-import { beforeEach, describe, expect, it } from "vitest"
-import { clearNotificationDiagnostics, getNotificationDiagnostics } from "./diagnostics-store"
+import { describe, expect, it } from "vitest"
 import { NotificationOrchestrator } from "./orchestrator"
 import type { NotificationDecision, NotificationEvent, NotificationSink } from "./types"
 
 class RecordingSink implements NotificationSink {
 	public handled: Array<{ id: string; decision: NotificationDecision }> = []
-	private readonly sink: "in-app" | "sound" | "native"
+	private readonly sink: "sound" | "native"
 
-	constructor(sink: "in-app" | "sound" | "native") {
+	constructor(sink: "sound" | "native") {
 		this.sink = sink
 	}
 
@@ -45,12 +44,7 @@ const createEvent = (id: string, createdAt: string, channelId: string | null = n
 })
 
 describe("NotificationOrchestrator", () => {
-	beforeEach(() => {
-		clearNotificationDiagnostics()
-	})
-
 	it("processes events in chronological order", async () => {
-		const inApp = new RecordingSink("in-app")
 		const sound = new RecordingSink("sound")
 		const native = new RecordingSink("native")
 		const orchestrator = new NotificationOrchestrator()
@@ -64,7 +58,6 @@ describe("NotificationOrchestrator", () => {
 				visibilityState: "hidden",
 				now: Date.now(),
 			}),
-			inAppSink: inApp,
 			soundSink: sound,
 			nativeSink: native,
 		})
@@ -74,12 +67,11 @@ describe("NotificationOrchestrator", () => {
 			createEvent("n1", "2025-01-01T10:00:01Z"),
 		])
 
-		await waitFor(() => getNotificationDiagnostics().length === 2)
-		expect(inApp.handled.map((h) => h.id)).toEqual(["n1", "n2"])
+		await waitFor(() => sound.handled.length === 2)
+		expect(sound.handled.map((h) => h.id)).toEqual(["n1", "n2"])
 	})
 
 	it("suppresses native notifications when focused", async () => {
-		const inApp = new RecordingSink("in-app")
 		const sound = new RecordingSink("sound")
 		const native = new RecordingSink("native")
 		const orchestrator = new NotificationOrchestrator()
@@ -93,21 +85,19 @@ describe("NotificationOrchestrator", () => {
 				visibilityState: "visible",
 				now: Date.now(),
 			}),
-			inAppSink: inApp,
 			soundSink: sound,
 			nativeSink: native,
 		})
 
 		orchestrator.enqueue([createEvent("n1", "2025-01-01T10:00:01Z", "channel-2")])
-		await waitFor(() => getNotificationDiagnostics().length === 1)
+		await waitFor(() => native.handled.length === 1)
 
-		const record = getNotificationDiagnostics()[0]
-		expect(record?.decision.sendNative).toBe(false)
-		expect(record?.decision.playSound).toBe(true)
+		const decision = native.handled[0]?.decision
+		expect(decision?.sendNative).toBe(false)
+		expect(decision?.playSound).toBe(true)
 	})
 
 	it("deduplicates repeated events", async () => {
-		const inApp = new RecordingSink("in-app")
 		const sound = new RecordingSink("sound")
 		const native = new RecordingSink("native")
 		const orchestrator = new NotificationOrchestrator()
@@ -121,7 +111,6 @@ describe("NotificationOrchestrator", () => {
 				visibilityState: "hidden",
 				now: Date.now(),
 			}),
-			inAppSink: inApp,
 			soundSink: sound,
 			nativeSink: native,
 		})
@@ -130,7 +119,9 @@ describe("NotificationOrchestrator", () => {
 		orchestrator.enqueue([event])
 		orchestrator.enqueue([event])
 
-		await waitFor(() => getNotificationDiagnostics().length === 1)
-		expect(inApp.handled.length).toBe(1)
+		await waitFor(() => sound.handled.length === 1)
+		// Let a duplicate run, if it were going to.
+		await new Promise((resolve) => setTimeout(resolve, 20))
+		expect(sound.handled.length).toBe(1)
 	})
 })

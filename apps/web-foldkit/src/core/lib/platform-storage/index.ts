@@ -1,6 +1,6 @@
 /**
  * @module PlatformStorage
- * @description Platform-aware storage utilities for Effect atoms
+ * @description Platform-aware key-value storage
  *
  * Provides a unified KeyValueStore abstraction that works across:
  * - Browser: localStorage
@@ -8,5 +8,4 @@
  */
 
 export { layer } from "./platform-key-value-store"
-export { platformStorageRuntime } from "./platform-runtime"
 export { layerTauriStore } from "./tauri-key-value-store"

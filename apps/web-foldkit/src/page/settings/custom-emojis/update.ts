@@ -10,7 +10,7 @@ import type { ToastRequest } from "../../../overlay/toasts"
 import * as Modal from "../../../ui/modal"
 import type { PageReturn, Shared } from "../../contract"
 import { PageOutMessage } from "../../out-message"
-import { errorToast, runAtomFn, successToast } from "../../../data/actions"
+import { errorToast, successToast } from "../../../data/actions"
 import { ALLOWED_EMOJI_TYPES, MAX_EMOJI_SIZE, publicUrlOf, uploadFile } from "../upload"
 import { Message } from "./message"
 import type { Model } from "./model"
@@ -100,7 +100,7 @@ export const CreateCustomEmoji = Command.define("CreateCustomEmoji", {
 				})
 			}
 			const exit = yield* Effect.exit(
-				runAtomFn(createCustomEmojiAction, { organizationId, name, imageUrl, createdBy }),
+				createCustomEmojiAction({ organizationId, name, imageUrl, createdBy }),
 			)
 			if (exit._tag === "Success") return Message.SucceededCreateEmoji({ name, previewUrl })
 			return Option.match(deletedExistsErrorOf(exit.cause), {
@@ -142,7 +142,7 @@ export const RestoreCustomEmoji = Command.define("RestoreCustomEmoji", {
 	},
 	messages: [Message.SucceededRestoreEmoji, Message.FailedRestoreEmoji],
 	execute: ({ previewUrl, ...args }) =>
-		runAtomFn(restoreCustomEmojiAction, args).pipe(
+		restoreCustomEmojiAction(args).pipe(
 			Effect.match({
 				onSuccess: () => Message.SucceededRestoreEmoji({ name: args.name, previewUrl }),
 				onFailure: () => Message.FailedRestoreEmoji(),
@@ -154,7 +154,7 @@ export const DeleteCustomEmoji = Command.define("DeleteCustomEmoji", {
 	args: { emojiId: CustomEmojiId, name: Schema.String },
 	messages: [Message.SucceededDeleteEmoji, Message.FailedDeleteEmoji],
 	execute: ({ emojiId, name }) =>
-		runAtomFn(deleteCustomEmojiAction, { emojiId }).pipe(
+		deleteCustomEmojiAction({ emojiId }).pipe(
 			Effect.match({
 				onSuccess: () => Message.SucceededDeleteEmoji({ name }),
 				onFailure: () => Message.FailedDeleteEmoji(),

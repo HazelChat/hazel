@@ -22,7 +22,6 @@ import {
 	OpenUrl,
 	PinMessage,
 	ToggleReaction,
-	TrackEmojiUsage,
 	UnpinMessage,
 } from "../message-actions"
 import * as Overlays from "../overlays"
@@ -132,16 +131,13 @@ const findMessage = (model: Model, messageId: MessageId) =>
 	model.messages.find((message) => message.id === messageId) ??
 	model.threadMessages.find((message) => message.id === messageId)
 
-/** `handleReaction`: count the emoji, then toggle (`toggleReactionAction`). */
+/** `handleReaction`: toggle the reaction (`toggleReactionAction`). */
 export const react = (model: Model, messageId: MessageId, emoji: string): PageReturn => {
 	if (model.currentUserId === null) return { model }
 	const channelId = findMessage(model, messageId)?.channelId ?? model.channelId
 	return {
 		model,
-		commands: actionCommands([
-			TrackEmojiUsage({ emoji }),
-			ToggleReaction({ messageId, channelId, emoji, userId: model.currentUserId }),
-		]),
+		commands: actionCommands([ToggleReaction({ messageId, channelId, emoji, userId: model.currentUserId })]),
 	}
 }
 
@@ -275,7 +271,6 @@ export const handleActionMessage = (model: Model, message: ActionMessage): PageR
 		CompletedCopyText: () => ({ model }),
 		CompletedDownloadImage: () => ({ model }),
 		CompletedOpenUrl: () => ({ model }),
-		CompletedTrackEmojiUsage: () => ({ model }),
 		CompletedGenerateThreadName: ({ toast: request }) =>
 			withToast({ ...model, isGeneratingThreadName: false }, request),
 	})

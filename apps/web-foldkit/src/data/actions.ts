@@ -1,53 +1,39 @@
 import { Cause, Effect, Option } from "effect"
-import { type AsyncResult, type Atom, AtomRegistry } from "effect/reactivity"
 import {
+	type CommonError,
+	type CommonReason,
+	commonMessage,
+	commonReasonOf,
 	DEFAULT_ERROR_MESSAGE,
-	getCommonErrorMessage,
-	getUserFriendlyError,
-	isCommonAppError,
+	isCommonError,
+	type UserErrorMessage,
 } from "~/lib/error-messages"
 import type { ToastRequest } from "../overlay/toasts"
 
 /**
- * Mutations through the legacy optimistic actions (`db/actions.ts`), and the app's one set of toast
- * helpers (legacy `exitToast` as data).
- * One atom registry for the whole app, so concurrent actions share state like legacy's one registry.
+ * The Command side of the error convention (`docs/foldkit-decisions/s6-errors.md`), and the app's one set of
+ * toast helpers.
  */
-
-const registry = AtomRegistry.make()
 
 /**
- * Runs a legacy `Atom.fn` action (the optimistic actions in `db/actions`) like
- * `useAtomSet(action, { mode: "promiseExit" })`: set the variables, wait for the settled result.
+ * The one defect boundary for a Command. Run it after `Effect.catchTags` has handled the feature's own errors:
+ * every typed error left must be a `CommonError` and becomes its reason; a defect is logged and becomes
+ * `"Unexpected"` (the runtime would otherwise crash the app). Interrupts stay interrupts.
  */
-export const runAtomFn = <A, E, V>(
-	atom: Atom.Writable<AsyncResult.AsyncResult<A, E>, V>,
-	variables: V,
-): Effect.Effect<A, E> =>
-	Effect.scoped(
-		Effect.gen(function* () {
-			yield* AtomRegistry.mount(registry, atom)
-			registry.set(atom, variables)
-			return yield* AtomRegistry.getResult(registry, atom, { suspendOnWaiting: true })
-		}),
-	)
-
-/** A handler's message, legacy `UserErrorMessage`. `isRetryable` is kept for parity, no retry action yet. */
-export interface ErrorMessage {
-	readonly title: string
-	readonly description?: string | null | undefined
-	readonly isRetryable?: boolean
-}
-
-/** Legacy `onErrorTag(tag, handler)`: a fixed message or one built from the tagged error. */
-export type ErrorHandler = ErrorMessage | ((error: { readonly _tag: string }) => ErrorMessage)
-export type ErrorHandlers = Readonly<Record<string, ErrorHandler>>
-
-/**
- * The message for a failure no handler matched. `exitToast`: legacy `exitToast` (the common-error map,
- * else "An error occurred"). `friendly`: `getUserFriendlyError` (adds network, timeout, `error.message`).
- */
-export type Fallback = "exitToast" | "friendly"
+export const catchCommon =
+	<M>(onReason: (reason: CommonReason) => M) =>
+	<A, E extends CommonError, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A | M, never, R> =>
+		Effect.catchCause(effect, (cause) =>
+			Option.match(Cause.findErrorOption(cause), {
+				onSome: (error) => Effect.succeed(onReason(commonReasonOf(error))),
+				onNone: () =>
+					Cause.hasInterruptsOnly(cause)
+						? Effect.interrupt
+						: Effect.logError("Command failed unexpectedly", cause).pipe(
+								Effect.as(onReason("Unexpected")),
+							),
+			}),
+		)
 
 export const successToast = (title: string, description: string | null = null): ToastRequest => ({
 	intent: "success",
@@ -76,32 +62,61 @@ export const infoToast = (title: string, description: string | null = null): Toa
 /** Give it an `id` and send the result toast with the same id to replace it. */
 export const loadingToast = (title: string): ToastRequest => ({ intent: "loading", title, description: null })
 
+/** A failure's copy as an error toast. */
+export const errorToastOf = (message: UserErrorMessage): ToastRequest =>
+	errorToast(message.title, message.description ?? null)
+
+/** The shared copy for a common reason, as an error toast. */
+export const reasonToast = (reason: CommonReason): ToastRequest => errorToastOf(commonMessage(reason))
+
+// LEGACY: `failureToast` and friends, for screens not yet on `Failed*({ reason })`.
+
+/** A legacy handler's message. `isRetryable` is ignored: retry policy is `isRetryableReason`. */
+export interface ErrorMessage {
+	readonly title: string
+	readonly description?: string | null | undefined
+	readonly isRetryable?: boolean
+}
+
+type Tagged<E> = Extract<E, { readonly _tag: string }>
+
+type ErrorHandler<E> = ErrorMessage | ((error: E) => ErrorMessage)
+
+/** A fixed message or one built from the tagged error, keyed by the failure's own tags. */
+export type ErrorHandlers<E> = {
+	readonly [K in Tagged<E>["_tag"]]?: ErrorHandler<Extract<Tagged<E>, { readonly _tag: K }>>
+}
+
+/** Legacy `exitToast` vs `getUserFriendlyError` fallbacks; both now resolve the same safe way. */
+export type Fallback = "exitToast" | "friendly"
+
 const hasTag = (error: unknown): error is { readonly _tag: string } =>
 	typeof error === "object" && error !== null && "_tag" in error && typeof error._tag === "string"
 
-const unhandledMessage = (error: unknown, cause: Cause.Cause<unknown>, fallback: Fallback): ErrorMessage => {
-	if (fallback === "friendly") return getUserFriendlyError(cause)
-	return isCommonAppError(error) ? getCommonErrorMessage(error) : DEFAULT_ERROR_MESSAGE
-}
-
-const messageOf = (cause: Cause.Cause<unknown>, handlers: ErrorHandlers, fallback: Fallback): ErrorMessage =>
+const messageOf = <E>(cause: Cause.Cause<E>, handlers: ErrorHandlers<E>): ErrorMessage =>
 	Option.match(Cause.findErrorOption(cause), {
-		onNone: () => getUserFriendlyError(cause),
+		onNone: () => DEFAULT_ERROR_MESSAGE,
 		onSome: (error) => {
-			if (!hasTag(error)) return unhandledMessage(error, cause, fallback)
-			const handler = handlers[error._tag]
-			if (handler === undefined) return unhandledMessage(error, cause, fallback)
-			return typeof handler === "function" ? handler(error) : handler
+			if (hasTag(error)) {
+				const handler = (handlers as Record<string, ErrorHandler<unknown> | undefined>)[error._tag]
+				if (handler !== undefined) return typeof handler === "function" ? handler(error) : handler
+			}
+			return isCommonError(error) ? commonMessage(commonReasonOf(error)) : DEFAULT_ERROR_MESSAGE
 		},
 	})
 
-/** Legacy `exitToast(exit).onErrorTag(...)` error branch, with the page's explicit fallback. */
-export const failureToast = (
-	cause: Cause.Cause<unknown>,
-	fallback: Fallback,
-	handlers: ErrorHandlers = {},
+/**
+ * Legacy `exitToast(exit).onErrorTag(...)` error branch: a handler for the failure's tag, else the common
+ * copy, else the generic message. Never shows error or defect text; unclassified failures and defects are
+ * logged instead.
+ */
+export const failureToast = <E>(
+	cause: Cause.Cause<E>,
+	_fallback: Fallback,
+	handlers: NoInfer<ErrorHandlers<E>> = {},
 ): ToastRequest => {
-	const message = messageOf(cause, handlers, fallback)
+	const message = messageOf(cause, handlers)
+	if (message === DEFAULT_ERROR_MESSAGE) console.error("[failureToast] unclassified failure", cause)
 	return errorToast(message.title, message.description ?? null)
 }
 
@@ -109,7 +124,7 @@ export const failureToast = (
 export const toastOfExit = <A, E, R>(
 	effect: Effect.Effect<A, E, R>,
 	fallback: Fallback,
-	options: { readonly success?: string; readonly handlers?: ErrorHandlers } = {},
+	options: { readonly success?: string; readonly handlers?: NoInfer<ErrorHandlers<E>> } = {},
 ): Effect.Effect<ToastRequest | null, never, R> =>
 	Effect.matchCause(effect, {
 		onSuccess: () => (options.success === undefined ? null : successToast(options.success)),
@@ -122,7 +137,7 @@ export const rateLimitMessage: ErrorMessage = {
 	description: "Please wait before trying again.",
 }
 
-/** Settles an Effect into one of two Messages, keeping the failure's toast. */
+/** Settles an Effect into one of two Messages, keeping the failure's cause. */
 export const settle = <A, E, R, Success, Failure>(
 	effect: Effect.Effect<A, E, R>,
 	onSuccess: (value: A) => Success,

@@ -2,7 +2,7 @@ import type { MessageId } from "@hazel/schema"
 import { Match } from "effect"
 import { Command, type Update } from "foldkit"
 import { errorToast } from "../data/actions"
-import type { HazelRpc } from "../rpc"
+import type { HazelApiClient, HazelRpc } from "../rpc"
 import * as Composer from "./composer"
 import * as EditorCommands from "./editor-commands"
 import {
@@ -17,7 +17,6 @@ import {
 	SendMessage,
 	ExecuteBotCommand,
 	fileInputId,
-	TrackEmojiUsage,
 } from "./draft"
 import * as EmojiDialog from "../emoji-picker/dialog"
 import * as GifPicker from "../gif-picker/picker"
@@ -28,7 +27,7 @@ import { UploadEvent } from "./upload"
 
 /** The draft's update: `ComposerEditor`'s submit, edit and escape handling plus the upload queue. */
 
-export type Return = Update.ReturnWithOutMessage<Model, Message, OutMessage, HazelRpc>
+export type Return = Update.ReturnWithOutMessage<Model, Message, OutMessage, HazelRpc | HazelApiClient>
 
 const editorIdOf = (model: Model) => model.composer.editorId
 
@@ -45,7 +44,7 @@ const liftTyping = (model: Model, result: Typing.Return): Return => ({
 	commands: Command.mapMessages(result.commands ?? [], (message) => Message.GotTypingMessage({ message })),
 })
 
-const withCommands = (result: Return, commands: ReadonlyArray<Command.Command<Message, never, HazelRpc>>): Return => ({
+const withCommands = (result: Return, commands: ReadonlyArray<Command.Command<Message, never, HazelRpc | HazelApiClient>>): Return => ({
 	...result,
 	commands: [...(result.commands ?? []), ...commands],
 })
@@ -259,9 +258,8 @@ export const update = (model: Model, message: Message, context: Context): Return
 			if (result.outMessage === undefined) return next
 			const { emoji, label, imageUrl } = result.outMessage
 			const inserted = update(next.model, Message.SelectedEmoji({ emoji, label, imageUrl }), context)
-			return { ...inserted, commands: [...(next.commands ?? []), TrackEmojiUsage({ emoji }), ...(inserted.commands ?? [])] }
+			return { ...inserted, commands: [...(next.commands ?? []), ...(inserted.commands ?? [])] }
 		},
-		CompletedTrackEmojiUsage: () => ({ model }),
 		GotGifPickerMessage: ({ message: gifMessage }) => {
 			const result = GifPicker.update(model.gifPicker, gifMessage)
 			const next: Return = {
