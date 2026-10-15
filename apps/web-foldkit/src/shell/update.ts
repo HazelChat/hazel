@@ -1,14 +1,25 @@
-import type { OrganizationId, UserId } from "@hazel/schema"
-import { Option } from "effect"
-import { Command, Update } from "foldkit"
+import { OrganizationId, type UserId } from "@hazel/schema"
+import { Match, Option, Schema } from "effect"
+import { Update } from "foldkit"
 import { modifyFields } from "foldkit/struct"
+import type { ModalRequest } from "../overlay/modal"
 import { PageOutMessage } from "../page/out-message"
-import { organizationHref } from "../route"
+import { type AppRoute, organizationRoute } from "../route"
 import type { HazelRpc } from "../rpc"
 import * as Menu from "../ui/menu"
 import * as Modal from "../ui/modal"
 import * as ChannelsSidebar from "./channels-sidebar"
-import { ORG_SWITCHER_ID, orgSwitcherEntries, USER_MENU_ID, userMenuEntries } from "./menus"
+import {
+	decodeSwitcherKey,
+	decodeUserMenuKey,
+	ORG_SWITCHER_ID,
+	orgSwitcherEntries,
+	switcherLinkRoute,
+	type SwitcherKey,
+	USER_MENU_ID,
+	userMenuEntries,
+	userMenuLinkRoute,
+} from "./menus"
 import { mobileSidebarModel } from "./mobile"
 import * as Notifications from "./notifications"
 import { Message, type Model } from "./model"
@@ -22,55 +33,46 @@ export interface Context {
 	readonly canCreateChannel: boolean
 	readonly organizationId: OrganizationId | null
 	readonly currentUserId: UserId | null
+	/** `useSidebar().isMobile`: mobile shows a flat org list instead of the full switcher. */
+	readonly isMobile: boolean
 }
 
 // INIT
 
-export const init = (): Model => ({
-	channelsSidebar: ChannelsSidebar.init(),
+export const init = (options: { readonly isCreateChannelHintDismissed: boolean }): Model => ({
+	channelsSidebar: ChannelsSidebar.init(options),
 	userMenu: Menu.init({ id: USER_MENU_ID, placement: "bottom right" }),
 	orgSwitcher: Menu.init({ id: ORG_SWITCHER_ID }),
 	userMenuEntries: [],
 	orgSwitcherEntries: [],
-	menuSignature: "",
 	userOrganizations: [],
 	userStatus: null,
 	notifications: Notifications.init(),
 	settingsChannel: null,
-	isMobile: false,
 	isSidebarOpen: false,
 })
 
 // UPDATE
 
-export type ShellReturn = Update.ReturnWithOutMessage<Model, Message, PageOutMessage>
-/** What `update` returns: the shell's own Commands (mark-read RPCs) need `HazelRpc`. */
-export type ShellUpdateReturn = Update.ReturnWithOutMessage<Model, Message, PageOutMessage, HazelRpc>
+export type ShellReturn = Update.ReturnWithOutMessage<Model, Message, PageOutMessage, HazelRpc>
+type Step = Update.StepWithOutMessage<Model, Message, PageOutMessage, HazelRpc>
 
-/** Rebuilds the menus' entries when one of their inputs changed (cheap no-op otherwise). */
+/**
+ * The menus' entries from the inputs they show. Rebuilt only where an input changes: the root's
+ * context (`informContext`) and the user's organizations.
+ */
 const withMenuEntries = (model: Model, context: Context): Model => {
-	const { orgSlug, currentUserId } = context
+	const { orgSlug, currentUserId, isMobile } = context
 	// The menus only render inside the org shell, which waits for `user.me`.
 	if (orgSlug === null) return model
-	const signature = JSON.stringify([
-		orgSlug,
-		context.currentUserId,
-		context.isChatSection,
-		context.canCreateChannel,
-		context.organizationId,
-		model.isMobile,
-		model.userOrganizations,
-	])
-	if (signature === model.menuSignature) return model
 	return modifyFields(model, {
-		menuSignature: () => signature,
 		userMenuEntries: (entries) =>
 			currentUserId === null ? entries : userMenuEntries(orgSlug, currentUserId),
 		orgSwitcherEntries: () =>
 			orgSwitcherEntries({
 				orgSlug,
 				isChat: context.isChatSection,
-				isMobile: model.isMobile,
+				isMobile,
 				canCreateChannel: context.canCreateChannel,
 				organizations: model.userOrganizations,
 			}),
@@ -79,90 +81,115 @@ const withMenuEntries = (model: Model, context: Context): Model => {
 				menu,
 				// Mobile shows `SwitchServerMenu` alone: a single-selection list with the current org checked.
 				{
-					selectionMode: () => (model.isMobile ? "Single" : "None"),
+					selectionMode: () => (isMobile ? "Single" : "None"),
 					selectedKeys: () =>
-						model.isMobile && context.organizationId !== null
-							? [`org:${context.organizationId}`]
-							: [],
+						isMobile && context.organizationId !== null ? [context.organizationId] : [],
 				},
 			),
 	})
 }
 
-const requested = (model: Model, outMessage: PageOutMessage): ShellReturn => ({ model, outMessage })
+const requested =
+	(outMessage: PageOutMessage): Step =>
+	(model) => ({ model, outMessage })
 
-const foldUserMenuOutMessage = Menu.OutMessage.match<
-	Update.StepWithOutMessage<Model, Message, PageOutMessage>
->({
-	SelectedItem:
-		({ key }) =>
-		(model) =>
-			key === "status"
-				? requested(model, PageOutMessage.RequestedModal({ modal: { _tag: "SetStatus" } }))
-				: key === "feedback"
-					? requested(model, PageOutMessage.RequestedModal({ modal: { _tag: "Feedback" } }))
-					: key === "logout"
-						? requested(model, PageOutMessage.RequestedSignOut())
-						: { model },
-	ActivatedLink:
-		({ href }) =>
-		(model) =>
-			requested(model, PageOutMessage.RequestedNavigation({ href, replace: false })),
-})
+const navigateTo = (route: AppRoute): Step =>
+	requested(PageOutMessage.RequestedNavigation({ route, replace: false }))
 
-const switcherModals: Readonly<Record<string, PageOutMessage>> = {
-	"invite-people": PageOutMessage.RequestedModal({ modal: { _tag: "EmailInvite" } }),
-	"create-channel": PageOutMessage.RequestedModal({ modal: { _tag: "NewChannel" } }),
-	"create-category": PageOutMessage.RequestedModal({ modal: { _tag: "CreateSection" } }),
-	"create-server": PageOutMessage.RequestedModal({ modal: { _tag: "CreateOrganization" } }),
+const unchanged: Step = (model) => ({ model })
+
+const foldUserMenuOutMessage = (context: Context) =>
+	Menu.OutMessage.match<Step>({
+		SelectedItem: ({ key }) =>
+			Option.match(decodeUserMenuKey(key), {
+				onNone: () => unchanged,
+				onSome: (userKey) =>
+					Match.value(userKey).pipe(
+						Match.withReturnType<Step>(),
+						Match.when("status", () =>
+							requested(PageOutMessage.RequestedModal({ modal: { _tag: "SetStatus" } })),
+						),
+						Match.when("feedback", () =>
+							requested(PageOutMessage.RequestedModal({ modal: { _tag: "Feedback" } })),
+						),
+						Match.when("logout", () => requested(PageOutMessage.RequestedSignOut())),
+						Match.orElse(() => unchanged),
+					),
+			}),
+		ActivatedLink: ({ key }) =>
+			Option.match(
+				Option.flatMap(decodeUserMenuKey(key), (userKey) =>
+					context.orgSlug === null || context.currentUserId === null
+						? Option.none()
+						: userMenuLinkRoute(userKey, context.orgSlug, context.currentUserId),
+				),
+				{ onNone: () => unchanged, onSome: navigateTo },
+			),
+	})
+
+const switcherModals: { readonly [Key in SwitcherKey]?: ModalRequest } = {
+	"invite-people": { _tag: "EmailInvite" },
+	"create-channel": { _tag: "NewChannel" },
+	"create-category": { _tag: "CreateSection" },
+	"create-server": { _tag: "CreateOrganization" },
 }
+
+const decodeOrganizationId = Schema.decodeUnknownOption(OrganizationId)
 
 /**
  * `SwitchServerMenu`: an org without a slug still has to finish setup (`getOrganizationRoute`).
  * Compared with the shown org, since a "Single" menu has already selected the clicked key.
  */
-const switchedOrganization = (model: Model, key: string, context: Context): ShellReturn =>
-	Option.match(
-		Option.fromNullishOr(
-			model.userOrganizations.find(
-				(organization) =>
-					`org:${organization.id}` === key && organization.id !== context.organizationId,
-			),
-		),
-		{
-			onNone: () => ({ model }),
-			onSome: (organization) =>
-				requested(
-					model,
-					PageOutMessage.RequestedNavigation({
-						href: organizationHref(organization),
-						replace: false,
-					}),
+const switchedOrganization =
+	(organizationId: OrganizationId, context: Context): Step =>
+	(model) =>
+		Option.match(
+			Option.fromNullishOr(
+				model.userOrganizations.find(
+					(organization) =>
+						organization.id === organizationId && organization.id !== context.organizationId,
 				),
-		},
-	)
+			),
+			{
+				onNone: () => ({ model }),
+				onSome: (organization) => navigateTo(organizationRoute(organization))(model),
+			},
+		)
 
 const foldOrgSwitcherOutMessage = (context: Context) =>
-	Menu.OutMessage.match<Update.StepWithOutMessage<Model, Message, PageOutMessage>>({
-		SelectedItem:
-			({ key }) =>
-			(model) => {
-				const modal = switcherModals[key]
-				return modal ? requested(model, modal) : switchedOrganization(model, key, context)
-			},
-		ActivatedLink:
-			({ href }) =>
-			(model) =>
-				requested(model, PageOutMessage.RequestedNavigation({ href, replace: false })),
+	Menu.OutMessage.match<Step>({
+		SelectedItem: ({ key }) =>
+			Option.match(decodeSwitcherKey(key), {
+				onSome: (switcherKey) =>
+					Option.match(Option.fromNullishOr(switcherModals[switcherKey]), {
+						onNone: () => unchanged,
+						onSome: (modal) => requested(PageOutMessage.RequestedModal({ modal })),
+					}),
+				onNone: () =>
+					Option.match(decodeOrganizationId(key), {
+						onNone: () => unchanged,
+						onSome: (organizationId) => switchedOrganization(organizationId, context),
+					}),
+			}),
+		ActivatedLink: ({ key }) =>
+			Option.match(
+				Option.flatMap(decodeSwitcherKey(key), (switcherKey) =>
+					context.orgSlug === null
+						? Option.none()
+						: switcherLinkRoute(switcherKey, context.orgSlug),
+				),
+				{ onNone: () => unchanged, onSome: navigateTo },
+			),
 	})
 
-const foldUserMenu = Update.foldChild({
-	update: Menu.update,
-	read: (model: Model) => Option.some(model.userMenu),
-	write: (model, userMenu) => modifyFields(model, { userMenu: () => userMenu }),
-	toParentMessage: (message) => Message.GotUserMenuMessage({ message }),
-	foldOutMessage: foldUserMenuOutMessage,
-})
+const foldUserMenu = (context: Context) =>
+	Update.foldChild({
+		update: Menu.update,
+		read: (model: Model) => Option.some(model.userMenu),
+		write: (model, userMenu) => modifyFields(model, { userMenu: () => userMenu }),
+		toParentMessage: (message) => Message.GotUserMenuMessage({ message }),
+		foldOutMessage: foldUserMenuOutMessage(context),
+	})
 
 const foldOrgSwitcher = (context: Context) =>
 	Update.foldChild({
@@ -174,65 +201,51 @@ const foldOrgSwitcher = (context: Context) =>
 	})
 
 /** The sidebar's Commands, plus its OutMessage (modals, navigation, toasts) for the root. */
-const foldChannelsSidebar = (
-	model: Model,
-	step: (sidebar: ChannelsSidebar.Model) => ChannelsSidebar.SidebarReturn,
-): ShellUpdateReturn => {
-	const result = step(model.channelsSidebar)
-	return {
-		model: modifyFields(model, { channelsSidebar: () => result.model }),
-		commands: Command.mapMessages(result.commands ?? [], (message) =>
-			Message.GotChannelsSidebarMessage({ message }),
-		),
-		...(result.outMessage === undefined ? {} : { outMessage: result.outMessage }),
-	}
-}
+const foldChannelsSidebar = Update.foldChild({
+	update: ChannelsSidebar.update,
+	read: (model: Model) => Option.some(model.channelsSidebar),
+	write: (model, channelsSidebar) => modifyFields(model, { channelsSidebar: () => channelsSidebar }),
+	toParentMessage: (message) => Message.GotChannelsSidebarMessage({ message }),
+	toParentOutMessage: (outMessage: PageOutMessage) => outMessage,
+})
 
-export const update = (model: Model, message: Message, context: Context): ShellUpdateReturn => {
-	const result = Message.match<ShellUpdateReturn>(message, {
-		GotChannelsSidebarMessage: ({ message }) =>
-			foldChannelsSidebar(model, (sidebar) => ChannelsSidebar.update(sidebar, message)),
-		GotUserMenuMessage: ({ message }) => foldUserMenu(model, message),
+const foldNotifications = Update.foldChild({
+	update: Notifications.update,
+	read: (model: Model) => Option.some(model.notifications),
+	write: (model, notifications) => modifyFields(model, { notifications: () => notifications }),
+	toParentMessage: (message) => Message.GotNotificationsMessage({ message }),
+})
+
+const foldMobileSidebar = Update.foldChild({
+	update: Modal.update,
+	read: (model: Model) => Option.some(mobileSidebarModel(model.isSidebarOpen)),
+	write: (model, sheet) => modifyFields(model, { isSidebarOpen: () => sheet.isOpen }),
+	toParentMessage: (message) => Message.GotMobileSidebarMessage({ message }),
+	foldOutMessage: Modal.ignoreOutMessage,
+})
+
+export const update = (model: Model, message: Message, context: Context): ShellReturn =>
+	Message.match<ShellReturn>(message, {
+		GotChannelsSidebarMessage: ({ message }) => foldChannelsSidebar(model, message),
+		GotUserMenuMessage: ({ message }) => foldUserMenu(context)(model, message),
 		GotOrgSwitcherMessage: ({ message }) => foldOrgSwitcher(context)(model, message),
 		UpdatedUserOrganizations: ({ organizations }) => ({
-			model: modifyFields(model, { userOrganizations: () => organizations }),
+			model: withMenuEntries(modifyFields(model, { userOrganizations: () => organizations }), context),
 		}),
 		UpdatedUserStatus: ({ status }) => ({ model: modifyFields(model, { userStatus: () => status }) }),
-		GotNotificationsMessage: ({ message }) => {
-			const result = Notifications.update(model.notifications, message)
-			return {
-				model: modifyFields(model, { notifications: () => result.model }),
-				commands: Command.mapMessages(result.commands ?? [], (child) =>
-					Message.GotNotificationsMessage({ message: child }),
-				),
-			}
-		},
+		GotNotificationsMessage: ({ message }) => foldNotifications(model, message),
 		UpdatedSettingsChannel: ({ channel }) => ({
 			model: modifyFields(model, { settingsChannel: () => channel }),
 		}),
 		ToggledSidebar: ({ isOpen }) => ({ model: modifyFields(model, { isSidebarOpen: () => isOpen }) }),
-		ChangedViewport: ({ isMobile }) => ({ model: modifyFields(model, { isMobile: () => isMobile }) }),
-		GotMobileSidebarMessage: ({ message }) => {
-			const sheet = Modal.update(mobileSidebarModel(model.isSidebarOpen), message)
-			return {
-				model: modifyFields(model, { isSidebarOpen: () => sheet.model.isOpen }),
-				commands: Command.mapMessages(sheet.commands ?? [], (child) =>
-					Message.GotMobileSidebarMessage({ message: child }),
-				),
-			}
-		},
+		GotMobileSidebarMessage: ({ message }) => foldMobileSidebar(model, message),
 	})
-	return { ...result, model: withMenuEntries(result.model, context) }
-}
 
-/** The root learned a new route, organization, user or role. */
-export const informContext = (model: Model, context: Context): Update.Return<Model, Message, HazelRpc> => {
-	// `setContext` only resets data, so there is no OutMessage to forward.
-	const { model: next, commands } = foldChannelsSidebar(withMenuEntries(model, context), (sidebar) =>
-		ChannelsSidebar.setContext(sidebar, {
-			organizationId: context.organizationId,
-			currentUserId: context.currentUserId,
-		}),
-	)
-	return { model: next, commands }
+/** The root learned a new route, organization, user, role or viewport. */
+export const informContext = (model: Model, context: Context): Model => {
+	const channelsSidebar = ChannelsSidebar.setContext(model.channelsSidebar, {
+		organizationId: context.organizationId,
+		currentUserId: context.currentUserId,
+	})
+	return withMenuEntries(modifyFields(model, { channelsSidebar: () => channelsSidebar }), context)
 }

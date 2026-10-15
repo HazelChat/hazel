@@ -1,13 +1,14 @@
-import "../document-stub"
+import "../../../test/document-stub"
+import { routeOfPath } from "../../../route"
 import { ChannelId, ChannelWebhookId } from "@hazel/schema"
 import { Schema } from "effect"
 import { Command, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
-import { errorToast } from "../../../data/actions"
 import * as Menu from "../../../ui/menu"
 import type { Shared } from "../../contract"
 import { PageOutMessage } from "../../out-message"
 import * as Modal from "../../../ui/modal"
+import * as ConfirmAction from "../../shared/confirm-action"
 import {
 	ConnectProvider,
 	CopyText,
@@ -20,6 +21,7 @@ import {
 	WaitForCopiedReset,
 } from "./command"
 import { Message } from "./message"
+import { Webhooks } from "./model"
 import { init, update } from "./update"
 import { sharedDefaults } from "../../test-shared"
 import { rowEntries } from "./rows"
@@ -82,7 +84,8 @@ describe("channel integrations", () => {
 					toast: { intent: "success", title: "Webhook disabled", description: null },
 				}),
 			),
-			model((current) => expect(current.webhooks.isLoading).toBe(true)),
+			// The reload keeps the rows on screen.
+			model((current) => expect(current.webhooks.data._tag).toBe("Refreshing")),
 			Command.resolve(ListWebhooks, Message.SucceededListWebhooks({ version: 2, webhooks: [] })),
 		)
 	})
@@ -92,30 +95,29 @@ describe("channel integrations", () => {
 			run,
 			given(loaded),
 			message(Message.ClickedDeleteProvider({ provider: "openstatus" })),
-			model((current) => expect(current.providers.openstatus.confirmDelete).toBe(true)),
+			model((current) => expect(current.providers.openstatus.action._tag).toBe("ConfirmingDelete")),
 			Command.resolve(
 				WaitForConfirmReset,
 				Message.ElapsedConfirmDelay({ provider: "openstatus", version: 1 }),
 			),
-			model((current) => expect(current.providers.openstatus.confirmDelete).toBe(false)),
+			model((current) => expect(current.providers.openstatus.action._tag).toBe("Idle")),
 			message(Message.ClickedDeleteProvider({ provider: "openstatus" })),
 			Command.resolve(
 				WaitForConfirmReset,
 				Message.ElapsedConfirmDelay({ provider: "openstatus", version: 1 }),
 			),
 			// A stale timeout (version 1) leaves the re-armed confirm (version 2) alone.
-			model((current) => expect(current.providers.openstatus.confirmDelete).toBe(true)),
+			model((current) => expect(current.providers.openstatus.action._tag).toBe("ConfirmingDelete")),
 			message(Message.ClickedDeleteProvider({ provider: "openstatus" })),
 			Command.resolve(
 				RunProviderAction,
 				Message.SucceededProviderAction({
 					provider: "openstatus",
 					successMessage: "OpenStatus disconnected",
-					isDelete: true,
 				}),
 			),
 			Command.resolve(ListWebhooks, Message.SucceededListWebhooks({ version: 2, webhooks: [ci] })),
-			model((current) => expect(current.providers.openstatus.confirmDelete).toBe(false)),
+			model((current) => expect(current.providers.openstatus.action._tag).toBe("Idle")),
 		)
 	})
 })
@@ -128,23 +130,34 @@ describe("list failure", () => {
 		])
 	})
 
-	test("a failed webhook list stops loading and toasts", () => {
+	test("a failed webhook list is a Failure with its reason, not an empty list; Try again reloads", () => {
 		story(
 			run,
 			given(initial.model),
-			message(
-				Message.FailedList({
-					list: "webhooks",
-					version: 1,
-					toast: errorToast("Channel not found"),
-				}),
+			message(Message.FailedList({ kind: "webhook", version: 1, reason: "Offline" })),
+			model((current) => expect(current.webhooks.data).toEqual(Webhooks.Failure({ error: "Offline" }))),
+			message(Message.ClickedRetryList({ kind: "webhook" })),
+			Command.expectExact(ListWebhooks({ channelId, version: 2 })),
+			model((current) => expect(current.webhooks.data._tag).toBe("Loading")),
+			Command.resolve(ListWebhooks, Message.SucceededListWebhooks({ version: 2, webhooks: [ci] })),
+			model((current) => expect(current.webhooks.data).toEqual(Webhooks.Success({ data: [ci] }))),
+		)
+	})
+
+	test("a failed reload keeps the rows it had (Stale)", () => {
+		story(
+			run,
+			given(loaded),
+			message(Message.ClickedRetryList({ kind: "webhook" })),
+			Command.resolve(
+				ListWebhooks,
+				Message.FailedList({ kind: "webhook", version: 2, reason: "Timeout" }),
 			),
-			expectOutMessage(
-				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Channel not found", description: null },
-				}),
+			model((current) =>
+				expect(current.webhooks.data).toEqual(
+					Webhooks.Stale({ error: "Timeout", data: [ci, openStatus] }),
+				),
 			),
-			model((current) => expect(current.webhooks.isLoading).toBe(false)),
 		)
 	})
 })
@@ -159,14 +172,17 @@ const confirming = [
 
 describe("row removal", () => {
 	test("Delete from the menu opens the confirm dialog, and confirming deletes and reloads", () => {
-		expect(confirming.confirm).toEqual({ _tag: "Confirming", target: { kind: "webhook", id: ci.id } })
-		expect(confirming.confirmModal.isOpen).toBe(true)
+		expect(confirming.remove.state).toEqual({
+			_tag: "Confirming",
+			target: { kind: "webhook", id: ci.id },
+		})
+		expect(confirming.remove.modal.isOpen).toBe(true)
 		story(
 			run,
 			given(confirming),
 			message(Message.ClickedConfirmRemove()),
 			Command.expectExact(RunRowAction({ kind: "webhook", id: ci.id, isEnabled: null })),
-			model((current) => expect(current.confirm._tag).toBe("Removing")),
+			model((current) => expect(current.remove.state._tag).toBe("Running")),
 			Command.resolve(
 				RunRowAction,
 				Message.SucceededRowAction({ kind: "webhook", id: ci.id, successMessage: "Webhook deleted" }),
@@ -177,8 +193,8 @@ describe("row removal", () => {
 				}),
 			),
 			model((current) => {
-				expect(current.confirmModal.isOpen).toBe(false)
-				expect(current.confirm).toEqual({ _tag: "Closed" })
+				expect(current.remove.modal.isOpen).toBe(false)
+				expect(current.remove.state).toEqual({ _tag: "Closed" })
 			}),
 			Command.resolve(
 				ListWebhooks,
@@ -187,26 +203,29 @@ describe("row removal", () => {
 		)
 	})
 
-	test("a failed delete closes the dialog and toasts, without reloading", () => {
+	test("a failed delete toasts and asks again, without reloading", () => {
 		story(
 			run,
 			given(confirming),
 			message(Message.ClickedConfirmRemove()),
 			Command.resolve(
 				RunRowAction,
-				Message.FailedRowAction({
-					kind: "webhook",
-					id: ci.id,
-					toast: errorToast("Webhook not found"),
-				}),
+				Message.FailedRowAction({ kind: "webhook", id: ci.id, reason: "NotFound" }),
 			),
 			Command.expectNone(),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Webhook not found", description: null },
+					toast: {
+						intent: "error",
+						title: "Webhook not found",
+						description: "This webhook may have already been deleted.",
+					},
 				}),
 			),
-			model((current) => expect(current.confirmModal.isOpen).toBe(false)),
+			model((current) => {
+				expect(current.remove.modal.isOpen).toBe(true)
+				expect(current.remove.state._tag).toBe("Confirming")
+			}),
 		)
 	})
 
@@ -216,33 +235,37 @@ describe("row removal", () => {
 	})
 
 	test("an older list response is dropped once a newer reload is out", () => {
-		const reloading = { ...loaded, webhooks: { ...loaded.webhooks, isLoading: true, version: 3 } }
+		const reloading = {
+			...loaded,
+			webhooks: { version: 3, data: Webhooks.Refreshing({ data: [ci, openStatus] }) },
+		}
 		const stale = run(reloading, Message.SucceededListWebhooks({ version: 2, webhooks: [] }))
-		expect(stale.model.webhooks).toMatchObject({ isLoading: true, items: [ci, openStatus] })
+		expect(stale.model.webhooks).toEqual(reloading.webhooks)
 		const staleFailure = run(
 			reloading,
-			Message.FailedList({
-				list: "webhooks",
-				version: 2,
-				toast: errorToast("Channel not found"),
-			}),
+			Message.FailedList({ kind: "webhook", version: 2, reason: "ChannelNotFound" }),
 		)
 		expect(staleFailure.outMessage).toBeUndefined()
-		expect(staleFailure.model.webhooks.isLoading).toBe(true)
+		expect(staleFailure.model.webhooks).toEqual(reloading.webhooks)
 	})
 
 	test("Escape while a delete runs does not wedge the next removal", () => {
 		const pending = run(confirming, Message.ClickedConfirmRemove()).model
 		const escaped = run(
 			pending,
-			Message.GotConfirmModalMessage({ message: Modal.Message.RequestedClose() }),
+			Message.GotRemoveConfirmMessage({
+				message: ConfirmAction.toModalMessage(Modal.Message.RequestedClose()),
+			}),
 		).model
 		const settled = run(
 			escaped,
 			Message.SucceededRowAction({ kind: "webhook", id: ci.id, successMessage: "Webhook deleted" }),
 		).model
 		const reopened = run(settled, rowMenu(Menu.Message.PressedTrigger({ pointerType: "mouse" }))).model
-		const again = run(reopened, rowMenu(Menu.Message.ClickedItem({ key: "remove", entries: rowEntries("webhook", false) }))).model
+		const again = run(
+			reopened,
+			rowMenu(Menu.Message.ClickedItem({ key: "remove", entries: rowEntries("webhook", false) })),
+		).model
 		expect(run(again, Message.ClickedConfirmRemove()).commands ?? []).toHaveLength(1)
 	})
 })
@@ -254,7 +277,7 @@ describe("provider cards", () => {
 			given(loaded),
 			message(Message.ClickedConnectProvider({ provider: "railway" })),
 			Command.expectExact(ConnectProvider({ channelId, provider: "railway" })),
-			model((current) => expect(current.providers.railway.isCreating).toBe(true)),
+			model((current) => expect(current.providers.railway.action._tag).toBe("Connecting")),
 			Command.resolve(
 				ConnectProvider,
 				Message.SucceededConnectProvider({ provider: "railway", token: "tok" }),
@@ -265,8 +288,11 @@ describe("provider cards", () => {
 				}),
 			),
 			model((current) => {
-				expect(current.providers.railway).toMatchObject({ isCreating: false, createdToken: "tok" })
-				expect(current.webhooks.isLoading).toBe(true)
+				expect(current.providers.railway).toMatchObject({
+					action: { _tag: "Idle" },
+					createdToken: "tok",
+				})
+				expect(current.webhooks.data._tag).toBe("Refreshing")
 			}),
 			Command.resolve(
 				ListWebhooks,
@@ -288,18 +314,17 @@ describe("provider cards", () => {
 		story(
 			run,
 			given(connecting),
-			message(
-				Message.FailedConnectProvider({
-					provider: "railway",
-					toast: errorToast("Channel not found"),
-				}),
-			),
+			message(Message.FailedConnectProvider({ provider: "railway", reason: "ChannelNotFound" })),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Channel not found", description: null },
+					toast: {
+						intent: "error",
+						title: "Channel not found",
+						description: "This channel may have been deleted.",
+					},
 				}),
 			),
-			model((current) => expect(current.providers.railway.isCreating).toBe(false)),
+			model((current) => expect(current.providers.railway.action._tag).toBe("Idle")),
 		)
 	})
 
@@ -313,15 +338,15 @@ describe("provider cards", () => {
 			),
 			Command.resolve(
 				RunProviderAction,
-				Message.FailedProviderAction({
-					provider: "openstatus",
-					isDelete: false,
-					toast: errorToast("Webhook not found"),
-				}),
+				Message.FailedProviderAction({ provider: "openstatus", reason: "NotFound" }),
 			),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Webhook not found", description: null },
+					toast: {
+						intent: "error",
+						title: "Webhook not found",
+						description: "This webhook may have been deleted.",
+					},
 				}),
 			),
 		)
@@ -335,13 +360,9 @@ describe("provider cards", () => {
 		).toHaveLength(0)
 		const failed = run(
 			toggling.model,
-			Message.FailedProviderAction({
-				provider: "openstatus",
-				isDelete: false,
-				toast: errorToast("Failed"),
-			}),
+			Message.FailedProviderAction({ provider: "openstatus", reason: "Unexpected" }),
 		)
-		expect(failed.model.providers.openstatus.isToggling).toBe(false)
+		expect(failed.model.providers.openstatus.action._tag).toBe("Idle")
 	})
 
 	test("a second Delete click while deleting sends nothing", () => {
@@ -419,15 +440,27 @@ describe("create webhook form", () => {
 		)
 	})
 
-	test("a short or empty name does not submit", () => {
+	test("a short or empty name does not submit, and says why", () => {
 		story(
 			run,
 			given(loaded),
 			message(Message.SubmittedCreateForm()),
 			Command.expectNone(),
+			model((current) =>
+				expect(current.createForm.name).toEqual({
+					_tag: "Invalid",
+					value: "",
+					errors: ["Webhook name is required"],
+				}),
+			),
 			message(field("name", "a")),
 			message(Message.SubmittedCreateForm()),
 			Command.expectNone(),
+			model((current) =>
+				expect(current.createForm.name).toMatchObject({
+					errors: ["Webhook name must be at least 2 characters"],
+				}),
+			),
 		)
 	})
 
@@ -440,14 +473,18 @@ describe("create webhook form", () => {
 		story(
 			run,
 			given(submitting),
-			message(Message.FailedCreateWebhook({ toast: errorToast("Channel not found") })),
+			message(Message.FailedCreateWebhook({ reason: "Offline" })),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Channel not found", description: null },
+					toast: {
+						intent: "error",
+						title: "Connection lost",
+						description: "Check your internet connection and try again.",
+					},
 				}),
 			),
 			model((current) =>
-				expect(current.createForm).toMatchObject({ name: "Deploys", isSubmitting: false }),
+				expect(current.createForm).toMatchObject({ name: { value: "Deploys" }, isSubmitting: false }),
 			),
 		)
 	})
@@ -468,10 +505,7 @@ describe("copy and GitHub", () => {
 			message(Message.ClickedCopy(copy)),
 			// Matched by Definition: update passes the whole Message (with `_tag`) as the args.
 			Command.expectExact(CopyText),
-			Command.resolve(
-				CopyText,
-				Message.CompletedCopy({ id: ci.id, isCopied: true, toastTitle: "URL copied" }),
-			),
+			Command.resolve(CopyText, Message.SucceededCopy({ id: ci.id, successMessage: "URL copied" })),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
 					toast: { intent: "success", title: "URL copied", description: null },
@@ -487,7 +521,7 @@ describe("copy and GitHub", () => {
 		story(
 			run,
 			given(loaded),
-			message(Message.CompletedCopy({ id: ci.id, isCopied: false, toastTitle: "Failed to copy" })),
+			message(Message.FailedCopy({ failureMessage: "Failed to copy" })),
 			Command.expectNone(),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
@@ -503,14 +537,14 @@ describe("copy and GitHub", () => {
 			given(loaded),
 			message(Message.UpdatedGitHubConnection({ isConnected: true })),
 			Command.expectExact(ListGitHub({ channelId, version: 1 })),
-			model((current) => expect(current.github.isLoading).toBe(true)),
+			model((current) => expect(current.github.data._tag).toBe("Loading")),
 			Command.resolve(ListGitHub, Message.SucceededListGitHub({ version: 1, repos: [] })),
 			message(Message.UpdatedGitHubConnection({ isConnected: true })),
 			Command.expectNone(),
 			message(Message.ClickedConnectGitHub()),
 			expectOutMessage(
 				PageOutMessage.RequestedNavigation({
-					href: "/hazel/settings/integrations/github",
+					route: routeOfPath("/hazel/settings/integrations/github"),
 					replace: false,
 				}),
 			),

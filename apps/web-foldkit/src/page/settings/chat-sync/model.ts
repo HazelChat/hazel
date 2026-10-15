@@ -1,11 +1,14 @@
 import { OrganizationId, SyncConnectionId } from "@hazel/schema"
 import { Schema } from "effect"
+import * as AsyncData from "foldkit/asyncData"
 import { defineMessageUnion } from "foldkit/message"
-import { ToastRequest } from "../../../overlay/toasts"
+import { defineTaggedUnion } from "foldkit/schema"
+import { CommonReason } from "~/lib/error-messages"
 import * as Interaction from "../../../ui/aria/interaction"
 import * as Menu from "../../../ui/menu"
 import * as Modal from "../../../ui/modal"
-import { DiscordGuild, DiscordResource } from "./discord"
+import * as ConfirmAction from "../../shared/confirm-action"
+import { DiscordFailure, DiscordGuild, DiscordGuilds } from "./discord"
 
 export const ConnectionStatus = Schema.Literals(["active", "paused", "error", "disabled"])
 export type ConnectionStatus = typeof ConnectionStatus.Type
@@ -21,34 +24,45 @@ export const Connection = Schema.Struct({
 })
 export type Connection = typeof Connection.Type
 
-/** `HazelRpcClient.query("chatSync.connection.list")` as AsyncResult: initial, failure or success. */
-export const Connections = Schema.Union([
-	Schema.TaggedStruct("Loading", {}),
-	Schema.TaggedStruct("Failed", {}),
-	Schema.TaggedStruct("Loaded", { connections: Schema.Array(Connection) }),
-])
-export type Connections = typeof Connections.Type
+/** `chatSync.connection.list`: its only declared errors are the common ones. */
+export const Connections = AsyncData.Schema(Schema.Array(Connection), CommonReason)
 
 export const DeleteTarget = Schema.Struct({ id: SyncConnectionId, name: Schema.String })
+export type DeleteTarget = typeof DeleteTarget.Type
+
+export const DeleteConnectionFailure = Schema.Union([Schema.Literal("NotFound"), CommonReason])
+export type DeleteConnectionFailure = typeof DeleteConnectionFailure.Type
+
+export const CreateConnectionFailure = Schema.Union([
+	Schema.Literals(["AlreadyExists", "DiscordNotConnected"]),
+	CommonReason,
+])
+export type CreateConnectionFailure = typeof CreateConnectionFailure.Type
+
+/** The add modal's Connect: not pressed yet, creating, or failed (the modal stays open to retry). */
+export const Submission = defineTaggedUnion({
+	NotSubmitted: {},
+	Submitting: {},
+	Failed: { reason: CreateConnectionFailure },
+})
+export type Submission = typeof Submission.Type
 
 export const Model = Schema.Struct({
 	/** The organization the list was requested for; the query reruns when it changes. */
 	requestedOrganizationId: Schema.NullOr(OrganizationId),
-	connections: Connections,
+	connections: Connections.schema,
 	addMenu: Menu.Model,
 	emptyAddMenu: Menu.Model,
-	/** `AddConnectionModal`: open state, its guild query (run whenever the modal mounts) and form. */
+	/** `AddConnectionModal`: open state, its guild query (run when the first list mounts it) and form. */
 	addModal: Modal.Model,
-	discordGuilds: DiscordResource(DiscordGuild),
+	discordGuilds: DiscordGuilds.schema,
 	/** Bumped per guild request; a list for an older request or another organization is dropped. */
 	guildsVersion: Schema.Number,
 	selectedGuild: Schema.NullOr(DiscordGuild),
 	guildSearch: Schema.String,
 	isGuildSearchFocused: Schema.Boolean,
-	isCreating: Schema.Boolean,
-	deleteTarget: Schema.NullOr(DeleteTarget),
-	deleteModal: Modal.Model,
-	isDeleting: Schema.Boolean,
+	submission: Submission,
+	deleteConfirm: ConfirmAction.Model(DeleteTarget),
 	/** Hover, press and focus of the add modal's search Input and Connect button. */
 	interaction: Interaction.Model,
 })
@@ -56,21 +70,27 @@ export type Model = typeof Model.Type
 
 export const Message = defineMessageUnion({
 	SucceededListConnections: { organizationId: OrganizationId, connections: Schema.Array(Connection) },
-	FailedListConnections: { organizationId: OrganizationId },
+	FailedListConnections: { organizationId: OrganizationId, reason: CommonReason },
+	ClickedRetryListConnections: {},
 	SucceededListDiscordGuilds: {
 		organizationId: OrganizationId,
 		version: Schema.Number,
 		guilds: Schema.Array(DiscordGuild),
 	},
-	FailedListDiscordGuilds: { organizationId: OrganizationId, version: Schema.Number },
+	FailedListDiscordGuilds: {
+		organizationId: OrganizationId,
+		version: Schema.Number,
+		reason: DiscordFailure,
+	},
+	ClickedRetryListDiscordGuilds: {},
 	ClickedConnection: { connectionId: SyncConnectionId },
 	ClickedDeleteConnection: { target: DeleteTarget },
 	ClickedConfirmDelete: {},
 	SucceededDeleteConnection: {},
-	FailedDeleteConnection: { toast: ToastRequest },
+	FailedDeleteConnection: { reason: DeleteConnectionFailure },
 	GotAddMenuMessage: { message: Menu.Message },
 	GotEmptyAddMenuMessage: { message: Menu.Message },
-	GotDeleteModalMessage: { message: Modal.Message },
+	GotDeleteConfirmMessage: { message: ConfirmAction.Message },
 	GotAddModalMessage: { message: Modal.Message },
 	ChangedGuildSearch: { value: Schema.String },
 	FocusedGuildSearch: {},
@@ -81,7 +101,7 @@ export const Message = defineMessageUnion({
 	ClickedOpenDiscordIntegration: {},
 	ClickedConnect: {},
 	SucceededCreateConnection: {},
-	FailedCreateConnection: { toast: ToastRequest },
+	FailedCreateConnection: { reason: CreateConnectionFailure },
 	GotInteractionMessage: { message: Interaction.Message },
 })
 export type Message = typeof Message.Type

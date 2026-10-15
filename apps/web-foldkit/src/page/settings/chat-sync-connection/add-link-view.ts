@@ -1,10 +1,16 @@
+import * as AsyncData from "foldkit/asyncData"
 import type { ChildAttribute, Html, HtmlBuilder } from "foldkit/html"
 import { IconHashtag } from "../../../icons"
 import { button } from "../../../ui/button"
 import { dialogBody, dialogClose, dialogFooter, dialogHeader, dialogTitle } from "../../../ui/dialog"
 import { description, label } from "../../../ui/field"
 import * as Modal from "../../../ui/modal"
-import type { DiscordChannel } from "../chat-sync/discord"
+import {
+	type DiscordChannel,
+	type DiscordFailure,
+	discordFailureMessage,
+	isRetryable,
+} from "../chat-sync/discord"
 import {
 	filterByName,
 	scrollList,
@@ -140,33 +146,52 @@ const discordPicker = (
 	description(h, {}, ["Select the Discord channel from the connected server."]),
 ]
 
+const loadingChannels = (h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
+	h.div(
+		[h.Class("flex items-center justify-center rounded-lg border border-border p-6")],
+		[spinnerLine(h, "Loading Discord channels...")],
+	),
+]
+
+/** Why the channels didn't load, with "Try again" when the reason is transient. */
+const loadFailed = (h: HtmlBuilder<Message>, reason: DiscordFailure): ReadonlyArray<Html> => {
+	const message = discordFailureMessage(reason, "channels")
+	return [
+		h.div(
+			[h.Class("rounded-lg border border-border bg-bg-muted/20 p-4")],
+			[
+				h.p([h.Class("font-medium text-fg text-sm")], [message.title]),
+				...(message.description === undefined
+					? []
+					: [h.p([h.Class("mt-1 text-muted-fg text-sm")], [message.description])]),
+				...(isRetryable(reason)
+					? [
+							button(
+								h,
+								{
+									intent: "secondary",
+									size: "sm",
+									className: "mt-3",
+									onPress: Message.ClickedRetryListDiscordChannels(),
+								},
+								["Try again"],
+							),
+						]
+					: []),
+			],
+		),
+	]
+}
+
 const discordSection = (h: HtmlBuilder<Message>, model: Model): Html => {
-	const channels = model.discordChannels
-	const content =
-		channels._tag === "Loading"
-			? [
-					h.div(
-						[h.Class("flex items-center justify-center rounded-lg border border-border p-6")],
-						[spinnerLine(h, "Loading Discord channels...")],
-					),
-				]
-			: channels._tag === "Failed"
-				? [
-						h.div(
-							[h.Class("rounded-lg border border-border bg-bg-muted/20 p-4")],
-							[
-								h.p(
-									[h.Class("font-medium text-fg text-sm")],
-									["Could not load Discord channels"],
-								),
-								h.p(
-									[h.Class("mt-1 text-muted-fg text-sm")],
-									["Make sure the bot is installed in this server and has channel access."],
-								),
-							],
-						),
-					]
-				: discordPicker(h, model, channels.items)
+	const content = AsyncData.match(model.discordChannels, {
+		onIdle: () => loadingChannels(h),
+		onLoading: () => loadingChannels(h),
+		onFailure: (reason) => loadFailed(h, reason),
+		onRefreshing: (channels) => discordPicker(h, model, channels),
+		onStale: ({ data }) => discordPicker(h, model, data),
+		onSuccess: (channels) => discordPicker(h, model, channels),
+	})
 	return h.div([h.Class("flex flex-col gap-2")], [label(h, {}, ["Discord Channel"]), ...content])
 }
 
@@ -243,6 +268,7 @@ const content = (
 	closeAttributes: ReadonlyArray<ChildAttribute>,
 ): ReadonlyArray<Html> => {
 	const isValid = model.selectedChannel !== null && model.selectedDiscordChannel !== null
+	const isSubmitting = model.submission._tag === "Submitting"
 	return [
 		dialogHeader(h, {}, [dialogTitle(h, { id: Modal.titleId(model.addLinkModal.id) }, "Link Channel")]),
 		dialogBody(
@@ -257,11 +283,11 @@ const content = (
 				{
 					intent: "primary",
 					onPress: Message.ClickedCreateLink(),
-					isDisabled: !isValid || model.isCreatingLink || model.discordChannels._tag !== "Loaded",
-					isPending: model.isCreatingLink,
+					isDisabled: !isValid || isSubmitting || !AsyncData.isSuccess(model.discordChannels),
+					isPending: isSubmitting,
 					interaction: { wiring: interaction.wiring(model), target: CREATE_LINK_TARGET },
 				},
-				[model.isCreatingLink ? "Linking..." : "Link Channel"],
+				[isSubmitting ? "Linking..." : "Link Channel"],
 			),
 		]),
 	]

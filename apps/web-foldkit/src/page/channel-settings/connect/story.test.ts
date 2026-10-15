@@ -1,9 +1,8 @@
-import "../document-stub"
+import "../../../test/document-stub"
 import { ChannelId, ConnectInviteId, OrganizationId } from "@hazel/schema"
 import { Schema } from "effect"
 import { Command, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
-import { errorToast } from "../../../data/actions"
 import type { Shared } from "../../contract"
 import { PageOutMessage } from "../../out-message"
 import {
@@ -15,7 +14,7 @@ import {
 	slugless,
 } from "../../../test/pages-channel-settings-fixtures"
 import { DisconnectOrganization, ListOutgoingInvites, RevokeInvite } from "./command"
-import { Message } from "./model"
+import { Invites, Message } from "./model"
 import * as ShareModal from "./share-modal"
 import { init, sharedChanged, update } from "./update"
 import { sharedDefaults } from "../../test-shared"
@@ -57,7 +56,7 @@ describe("channel connect", () => {
 				ListOutgoingInvites,
 				Message.SucceededListOutgoingInvites({ organizationId, invites: [] }),
 			),
-			model((current) => expect(current.invites).toEqual([])),
+			model((current) => expect(current.invites).toEqual(Invites.Success({ data: [] }))),
 		)
 	})
 
@@ -66,7 +65,7 @@ describe("channel connect", () => {
 			ShareModal.Message.ChangedWorkspaceQuery({ value: "gl" }),
 			ShareModal.Message.ChangedWorkspaceQuery({ value: "glo" }),
 		].reduce((current, next) => run(current, share(next)).model, initial.model)
-		expect(typed.share.isSearching).toBe(true)
+		expect(typed.share.searchResults).toEqual(ShareModal.SearchResults.Loading())
 		const stale = run(typed, share(ShareModal.Message.ElapsedSearchDelay({ version: 1, query: "gl" })))
 		expect(stale.commands ?? []).toHaveLength(0)
 		const latest = run(typed, share(ShareModal.Message.ElapsedSearchDelay({ version: 2, query: "glo" })))
@@ -83,10 +82,7 @@ describe("revoke failure", () => {
 			message(Message.SucceededListOutgoingInvites({ organizationId, invites: [invite] })),
 			message(Message.ClickedRevokeInvite({ inviteId })),
 			Command.expectExact(RevokeInvite({ inviteId })),
-			Command.resolve(
-				RevokeInvite,
-				Message.FailedRevokeInvite({ inviteId, toast: errorToast("Invite not found", description) }),
-			),
+			Command.resolve(RevokeInvite, Message.FailedRevokeInvite({ inviteId, reason: "NotFound" })),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
 					toast: { intent: "error", title: "Invite not found", description },
@@ -154,14 +150,15 @@ describe("disconnect", () => {
 			),
 			Command.resolve(
 				DisconnectOrganization,
-				Message.FailedDisconnect({
-					mountId: hostMount.id,
-					toast: errorToast("Something went wrong"),
-				}),
+				Message.FailedDisconnect({ mountId: hostMount.id, reason: "Unexpected" }),
 			),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Something went wrong", description: null },
+					toast: {
+						intent: "error",
+						title: "Something went wrong",
+						description: "Please try again.",
+					},
 				}),
 			),
 			model((current) => expect(current.disconnectingMountIds).toEqual([])),
@@ -210,7 +207,32 @@ describe("invites list", () => {
 			run,
 			given(initial.model),
 			message(Message.SucceededListOutgoingInvites({ organizationId: otherOrg, invites: [invite] })),
-			model((current) => expect(current.invites).toEqual([])),
+			model((current) => expect(current.invites).toEqual(Invites.Loading())),
+		)
+	})
+
+	test("a failed load is a Failure, and a failed refetch keeps the list (Stale)", () => {
+		story(
+			run,
+			given(initial.model),
+			message(Message.FailedListOutgoingInvites({ organizationId, reason: "Offline" })),
+			model((current) => expect(current.invites).toEqual(Invites.Failure({ error: "Offline" }))),
+			message(Message.ClickedRetryInvites()),
+			Command.expectExact(ListOutgoingInvites({ organizationId, channelId })),
+			model((current) => expect(current.invites).toEqual(Invites.Loading())),
+			Command.resolve(
+				ListOutgoingInvites,
+				Message.SucceededListOutgoingInvites({ organizationId, invites: [invite] }),
+			),
+			message(Message.ClickedRetryInvites()),
+			model((current) => expect(current.invites).toEqual(Invites.Refreshing({ data: [invite] }))),
+			Command.resolve(
+				ListOutgoingInvites,
+				Message.FailedListOutgoingInvites({ organizationId, reason: "Timeout" }),
+			),
+			model((current) =>
+				expect(current.invites).toEqual(Invites.Stale({ error: "Timeout", data: [invite] })),
+			),
 		)
 	})
 
@@ -258,7 +280,7 @@ describe("share modal", () => {
 				ListOutgoingInvites,
 				Message.SucceededListOutgoingInvites({ organizationId, invites: [invite] }),
 			),
-			model((current) => expect(current.invites).toEqual([invite])),
+			model((current) => expect(current.invites).toEqual(Invites.Success({ data: [invite] }))),
 		)
 	})
 
@@ -269,11 +291,15 @@ describe("share modal", () => {
 			message(share(ShareModal.Message.ClickedSendInvite())),
 			Command.resolve(
 				ShareModal.CreateInvite,
-				ShareModal.Message.FailedCreateInvite({ toast: errorToast("Already shared", "Shared.") }),
+				ShareModal.Message.FailedCreateInvite({ reason: "AlreadyShared" }),
 			),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Already shared", description: "Shared." },
+					toast: {
+						intent: "error",
+						title: "Already shared",
+						description: "This channel is already shared with that organization.",
+					},
 				}),
 			),
 			model((current) => {
@@ -315,7 +341,7 @@ describe("share modal", () => {
 			given(opened),
 			message(share(ShareModal.Message.ChangedWorkspaceQuery({ value: "g" }))),
 			Command.expectNone(),
-			model((current) => expect(current.share.isSearching).toBe(false)),
+			model((current) => expect(current.share.searchResults).toEqual(ShareModal.SearchResults.Idle())),
 		)
 	})
 
@@ -334,12 +360,56 @@ describe("share modal", () => {
 				ShareModal.Message.SucceededSearchWorkspaces({ version: 1, results: [globex] }),
 			),
 			model((current) => {
-				expect(current.share.searchResults).toEqual([globex])
-				expect(current.share.isSearching).toBe(false)
+				expect(current.share.searchResults).toEqual(
+					ShareModal.SearchResults.Success({ data: [globex] }),
+				)
 			}),
 			message(share(ShareModal.Message.SucceededSearchWorkspaces({ version: 0, results: [] }))),
-			model((current) => expect(current.share.searchResults).toEqual([globex])),
+			model((current) =>
+				expect(current.share.searchResults).toEqual(
+					ShareModal.SearchResults.Success({ data: [globex] }),
+				),
+			),
 		)
+	})
+
+	test("a failed search is a Failure with its reason, not an empty result; Try again searches now", () => {
+		story(
+			run,
+			given(opened),
+			message(share(ShareModal.Message.ChangedWorkspaceQuery({ value: "glo" }))),
+			Command.resolve(
+				ShareModal.WaitForSearchDelay,
+				ShareModal.Message.ElapsedSearchDelay({ version: 1, query: "glo" }),
+			),
+			Command.resolve(
+				ShareModal.SearchWorkspaces,
+				ShareModal.Message.FailedSearchWorkspaces({ version: 1, reason: "Offline" }),
+			),
+			model((current) =>
+				expect(current.share.searchResults).toEqual(
+					ShareModal.SearchResults.Failure({ error: "Offline" }),
+				),
+			),
+			message(share(ShareModal.Message.ClickedRetrySearch())),
+			Command.expectExact(ShareModal.SearchWorkspaces({ version: 2, query: "glo", organizationId })),
+			model((current) =>
+				expect(current.share.searchResults).toEqual(ShareModal.SearchResults.Loading()),
+			),
+			Command.resolve(
+				ShareModal.SearchWorkspaces,
+				ShareModal.Message.SucceededSearchWorkspaces({ version: 2, results: [globex] }),
+			),
+		)
+	})
+
+	test("a failure for a superseded search is dropped", () => {
+		const typed = run(opened, share(ShareModal.Message.ChangedWorkspaceQuery({ value: "glo" }))).model
+		const next = run(
+			typed,
+			share(ShareModal.Message.FailedSearchWorkspaces({ version: 0, reason: "Offline" })),
+		)
+		expect(next.model.share.searchResults).toEqual(ShareModal.SearchResults.Loading())
 	})
 
 	test("closing the modal resets the draft", () => {

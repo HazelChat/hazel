@@ -1,4 +1,5 @@
 import { Dialog } from "@foldkit/ui"
+import { Schema } from "effect"
 import { Submodel } from "foldkit"
 import type { ChildAttribute, Html, HtmlBuilder } from "foldkit/html"
 import { twMerge } from "tailwind-merge"
@@ -52,11 +53,11 @@ export const titleId = (id: string): string => Dialog.titleId(init(id))
 export const dialogId = (id: string): string => `${id}-content`
 
 /** The modal asked to close: its close button, close icon, Escape or a press on the backdrop. */
-export const isCloseRequest = (message: Message): boolean => Message.guards.RequestedClose(message)
+export const isCloseRequest = (message: Message): boolean => Schema.is(Message.RequestedClose)(message)
 
 /** The dialog rendered open and moved focus in: the moment for a field's autofocus. */
 export const isReady = (message: Message): boolean =>
-	Message.guards.SucceededAcquireResources(message)
+	Schema.is(Message.SucceededAcquireResources)(message)
 
 // UPDATE
 

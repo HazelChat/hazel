@@ -5,7 +5,7 @@ import * as Dom from "foldkit/dom"
 import { modifyFields } from "foldkit/struct"
 import { HazelRpc } from "../../rpc"
 import type { Shared } from "../../page/contract"
-import { AppRoute, orgHrefOf } from "../../route"
+import { AppRoute, orgRouteOf } from "../../route"
 import { closed, completed, ModalOutMessage } from "../out-message"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalSubscriptionInput } from "./contract"
@@ -44,17 +44,27 @@ const StartConversation = Command.define("StartConversation", {
 				name: name ?? undefined,
 			})
 			return Message.SucceededCreateDm({ channelId: result.data.id })
-		}).pipe(Effect.catchCause((cause) => Effect.succeed(Message.FailedCreateDm({ toast: failureToast(cause, "friendly") })))),
+		}).pipe(
+			Effect.catchCause((cause) =>
+				Effect.succeed(Message.FailedCreateDm({ toast: failureToast(cause, "friendly") })),
+			),
+		),
 })
 
 type Return = ModalReturn<Model, Message>
 
-const chatHref = (shared: Shared, channelId: ChannelId) =>
-	orgHrefOf(shared.orgSlug, (orgSlug) => AppRoute.ChatChannel({ orgSlug, channelId })) ?? undefined
+const chatRoute = (shared: Shared, channelId: ChannelId) =>
+	orgRouteOf(shared.orgSlug, (orgSlug) => AppRoute.ChatChannel({ orgSlug, channelId }))
 
 const submitted = (model: Model, shared: Shared): Return => {
 	const ids = model.selectedUserIds
-	if (ids.length === 0 || model.isSubmitting || !shared.currentUser || !shared.organization || !shared.orgSlug)
+	if (
+		ids.length === 0 ||
+		model.isSubmitting ||
+		!shared.currentUser ||
+		!shared.organization ||
+		!shared.orgSlug
+	)
 		return { model }
 	const type = ids.length === 1 ? "single" : "direct"
 	const names = model.organizationUsers
@@ -97,16 +107,25 @@ const update = (model: Model, message: Message, shared: Shared): Return =>
 		BlurredSearch: () => ({ model: modifyFields(model, { isSearchFocused: () => false }) }),
 		ClickedUser: ({ userId }) => ({
 			model: modifyFields(model, {
-				selectedUserIds: (ids) => (ids.includes(userId) ? ids.filter((id) => id !== userId) : [...ids, userId]),
+				selectedUserIds: (ids) =>
+					ids.includes(userId) ? ids.filter((id) => id !== userId) : [...ids, userId],
 			}),
 		}),
 		ClickedCancel: () => ({ model, outMessage: closed }),
 		ClickedStartConversation: () => submitted(model, shared),
-		UpdatedOrganizationUsers: ({ users }) => ({ model: modifyFields(model, { organizationUsers: () => users }) }),
-		FoundExistingDm: ({ channelId }) => ({ model, outMessage: completed({ href: chatHref(shared, channelId) }) }),
+		UpdatedOrganizationUsers: ({ users }) => ({
+			model: modifyFields(model, { organizationUsers: () => users }),
+		}),
+		FoundExistingDm: ({ channelId }) => ({
+			model,
+			outMessage: completed({ route: chatRoute(shared, channelId) }),
+		}),
 		SucceededCreateDm: ({ channelId }) => ({
 			model,
-			outMessage: completed({ href: chatHref(shared, channelId), toast: successToast(successMessage(model)) }),
+			outMessage: completed({
+				route: chatRoute(shared, channelId),
+				toast: successToast(successMessage(model)),
+			}),
 		}),
 		FailedCreateDm: ({ toast }) => ({
 			model: modifyFields(model, { isSubmitting: () => false }),
@@ -123,7 +142,9 @@ const subscriptions = Subscription.make<ModalSubscriptionInput<Model>, Message>(
 			dependenciesToStream: ({ organizationId }) =>
 				organizationId === null
 					? Stream.empty
-					: organizationUsersStream(organizationId, (users) => Message.UpdatedOrganizationUsers({ users })),
+					: organizationUsersStream(organizationId, (users) =>
+							Message.UpdatedOrganizationUsers({ users }),
+						),
 		},
 	),
 }))

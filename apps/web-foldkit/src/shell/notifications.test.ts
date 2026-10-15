@@ -62,7 +62,7 @@ describe("mark all as read", () => {
 			),
 			Story.Command.resolve(
 				MarkNotificationRead({ id: second }),
-				Message.FailedMarkNotificationRead({ id: second, reason: "offline" }),
+				Message.FailedMarkNotificationRead({ id: second, reason: "Offline" }),
 			),
 			Story.Command.resolve(
 				MarkNotificationRead({ id: third }),

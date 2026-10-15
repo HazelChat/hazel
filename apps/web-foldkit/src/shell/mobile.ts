@@ -1,11 +1,18 @@
 import type { Attribute, Html, HtmlBuilder } from "foldkit/html"
 import { twMerge } from "tailwind-merge"
 import { IconBell, IconDashboard, IconGear, IconMenu, IconMsgs } from "../icons"
-import { AppRoute, hrefOf } from "../route"
+import {
+	AppRoute,
+	hrefOf,
+	isChannelChatRoute,
+	isChatRoute,
+	isNotificationsRoute,
+	isSettingsRoute,
+} from "../route"
 import { button } from "../ui/button"
 import * as Modal from "../ui/modal"
 import * as Sheet from "../ui/sheet"
-import { isActiveFuzzy, type ShellContext } from "./context"
+import type { ShellContext } from "./context"
 
 /** The mobile shell (`useSidebar().isMobile`): bottom nav, the sidebar sheet and its menu buttons. */
 
@@ -24,11 +31,10 @@ export const mobileNav = <Message>(
 	const chat = hrefOf(AppRoute.ChatIndex({ orgSlug }))
 	const notifications = hrefOf(AppRoute.NotificationsAll({ orgSlug }))
 	const settings = hrefOf(AppRoute.SettingsGeneral({ orgSlug }))
-	const path = context.pathname
-	const link = (label: string, href: string, isActive: boolean, icon: Html) => {
-		// TanStack `Link` marks any fuzzy match active, independently of the colour rule above.
-		const isLinkActive = isActiveFuzzy(path, href)
-		return h.a(
+	const { route } = context
+	/** `isActive` colours the item; `isLinkActive` is TanStack `Link`'s own (fuzzy) match. */
+	const link = (label: string, href: string, isActive: boolean, isLinkActive: boolean, icon: Html) =>
+		h.a(
 			[
 				h.Class(
 					twMerge(
@@ -44,8 +50,6 @@ export const mobileNav = <Message>(
 			],
 			[icon, h.span([h.Class("font-medium text-[10px]")], [label])],
 		)
-	}
-	const chatPrefix = `${chat}/`
 	return h.nav(
 		[
 			h.Class(
@@ -67,23 +71,32 @@ export const mobileNav = <Message>(
 							h.span([h.Class("font-medium text-[10px]")], ["Menu"]),
 						],
 					),
-					link("Home", home, path === home, IconDashboard(h, { className: "size-6" })),
+					link(
+						"Home",
+						home,
+						route._tag === "OrgHome",
+						route._tag === "OrgHome",
+						IconDashboard(h, { className: "size-6" }),
+					),
 					link(
 						"Messages",
 						chat,
-						path.startsWith(chatPrefix) && path.length > chatPrefix.length,
+						isChannelChatRoute(route),
+						isChatRoute(route),
 						IconMsgs(h, { className: "size-6" }),
 					),
 					link(
 						"Activity",
 						notifications,
-						isActiveFuzzy(path, notifications),
+						isNotificationsRoute(route),
+						isNotificationsRoute(route),
 						IconBell(h, { className: "size-6" }),
 					),
 					link(
 						"Settings",
 						settings,
-						isActiveFuzzy(path, settings),
+						isSettingsRoute(route),
+						isSettingsRoute(route),
 						IconGear(h, { className: "size-6" }),
 					),
 				],

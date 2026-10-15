@@ -20,7 +20,7 @@ const github = Scene.role("button", { name: "Continue with GitHub" })
 const passkey = Scene.role("button", { name: "Sign in with a passkey" })
 
 const signIn = (redirectUrl: Option.Option<string>) =>
-	initSignIn(AppRoute.SignIn.make({ splat: "", redirectUrl })).model
+	initSignIn(AppRoute.SignIn.make({ redirectUrl })).model
 
 describe("sign in", () => {
 	test("a provider starts OAuth with the route's redirect, and disables the other choices", () => {
@@ -64,7 +64,7 @@ describe("sign in", () => {
 	test("/sign-up offers the same choices and links back to sign-in", () => {
 		Scene.scene(
 			pageScene(updateSignIn, signInView, signedOut),
-			Scene.given(initSignIn(AppRoute.SignUp.make({ splat: "", redirectUrl: Option.none() })).model),
+			Scene.given(initSignIn(AppRoute.SignUp.make({ redirectUrl: Option.none() })).model),
 			Scene.expect(Scene.role("heading", { name: "Create your Hazel account" })).toExist(),
 			Scene.expect(Scene.role("link", { name: "Sign in" })).toHaveAttr("href", "/sign-in"),
 		)

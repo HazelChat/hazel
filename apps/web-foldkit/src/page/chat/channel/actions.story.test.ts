@@ -1,3 +1,4 @@
+import { routeOfPath } from "../../../route"
 import { ChannelId, PinnedMessageId } from "@hazel/schema"
 import { Schema } from "effect"
 import { Command, expectOutMessage, given, message, model, story } from "foldkit/story"
@@ -286,7 +287,7 @@ describe("navigation", () => {
 			message(Message.ClickedTab({ tab: "files" })),
 			expectOutMessage(
 				PageOutMessage.RequestedNavigation({
-					href: `/hazel/chat/${channelId}/files`,
+					route: routeOfPath(`/hazel/chat/${channelId}/files`),
 					replace: false,
 				}),
 			),

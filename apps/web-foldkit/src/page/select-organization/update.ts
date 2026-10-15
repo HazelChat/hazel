@@ -1,7 +1,7 @@
 import { Option } from "effect"
 import { Command } from "foldkit"
 import { modifyFields } from "foldkit/struct"
-import { AppRoute, hrefOf, organizationHref } from "../../route"
+import { AppRoute, organizationRoute } from "../../route"
 import type { PageReturn } from "../contract"
 import * as CreateWorkspace from "../create-workspace"
 import { PageOutMessage } from "../out-message"
@@ -10,9 +10,9 @@ import { type Model, Organizations } from "./model"
 
 type Return = PageReturn<Model, Message>
 
-const navigate = (model: Model, href: string): Return => ({
+const navigate = (model: Model, route: AppRoute): Return => ({
 	model,
-	outMessage: PageOutMessage.RequestedNavigation({ href, replace: false }),
+	outMessage: PageOutMessage.RequestedNavigation({ route, replace: false }),
 })
 
 export const init = (): Return => ({
@@ -29,14 +29,14 @@ export const update = (model: Model, message: Message): Return =>
 			return organizations.length === 1 && single
 				? navigate(
 						modifyFields(model, { organizations: () => Organizations.Redirected() }),
-						organizationHref(single),
+						organizationRoute(single),
 					)
 				: { model: modifyFields(model, { organizations: () => Organizations.Loaded({ organizations }) }) }
 		},
-		ClickedOrganization: ({ organization }) => navigate(model, organizationHref(organization)),
+		ClickedOrganization: ({ organization }) => navigate(model, organizationRoute(organization)),
 		// Not `/onboarding`: it sends an onboarded user (anyone with organizations to pick) back to `/`.
 		ClickedCreateNew: () =>
-			navigate(model, hrefOf(AppRoute.OnboardingSetupOrganization({ orgId: Option.none() }))),
+			navigate(model, AppRoute.OnboardingSetupOrganization({ orgId: Option.none() })),
 		GotCreateWorkspaceMessage: ({ message: child }) => {
 			const result = CreateWorkspace.update(model.createWorkspace, child)
 			return {

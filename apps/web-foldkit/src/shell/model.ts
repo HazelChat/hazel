@@ -10,12 +10,14 @@ import * as Notifications from "./notifications"
 
 // MODEL
 
+/** An organization in the switcher (`SwitchServerMenu`). */
 export const SwitcherOrg = Schema.Struct({
 	id: OrganizationId,
 	name: Schema.String,
 	slug: Schema.NullOr(Schema.String),
 	logoUrl: Schema.NullOr(Schema.String),
 })
+export type SwitcherOrg = typeof SwitcherOrg.Type
 
 export const ChannelSummary = Schema.Struct({
 	id: ChannelId,
@@ -38,20 +40,17 @@ export const Model = Schema.Struct({
 	orgSwitcher: Menu.Model,
 	/**
 	 * The menus' structure, which the views pass to the menus. Kept here (not rebuilt per render) so the
-	 * memoized sidebars see a stable reference; rebuilt only when `menuSignature` changes.
+	 * memoized sidebars see a stable reference; rebuilt where an input changes (`informContext`, the
+	 * user's organizations).
 	 */
 	userMenuEntries: Schema.Array(Menu.Entry),
 	orgSwitcherEntries: Schema.Array(Menu.Entry),
-	/** The inputs the menus' entries were last built from. */
-	menuSignature: Schema.String,
 	userOrganizations: Schema.Array(SwitcherOrg),
 	userStatus: Schema.NullOr(UserStatus),
 	/** Unread notification ids and the optimistic "Mark all as read" state. */
 	notifications: Notifications.Model,
 	/** `channels/$channelId/settings/layout.tsx` header (name and icon). */
 	settingsChannel: Schema.NullOr(ChannelSummary),
-	/** `useSidebar().isMobile`: the `(max-width: 767px)` media query. */
-	isMobile: Schema.Boolean,
 	/** `isOpenOnMobile`: the sidebar sheet opened from the header or the bottom nav. */
 	isSidebarOpen: Schema.Boolean,
 })
@@ -68,7 +67,6 @@ export const Message = defineMessageUnion({
 	GotNotificationsMessage: { message: Notifications.Message },
 	UpdatedSettingsChannel: { channel: Schema.NullOr(ChannelSummary) },
 	ToggledSidebar: { isOpen: Schema.Boolean },
-	ChangedViewport: { isMobile: Schema.Boolean },
 	GotMobileSidebarMessage: { message: Modal.Message },
 })
 export type Message = typeof Message.Type

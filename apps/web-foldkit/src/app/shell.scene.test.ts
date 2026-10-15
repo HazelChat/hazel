@@ -21,7 +21,6 @@ import {
 import { describe, test } from "vitest"
 import * as CommandPalette from "../overlay/command-palette"
 import { CreateChannel, FocusInput } from "../overlay/command-palette/commands"
-import * as Shell from "../shell/model"
 import { ada, hazelOrg, rootScene, signedIn } from "../test/root-fixtures"
 import { drainToast } from "../test/toast-fixtures"
 import * as CommandMenu from "../ui/command-menu"
@@ -59,7 +58,7 @@ describe("nav rail", () => {
 })
 
 describe("mobile", () => {
-	const mobile = Message.GotShellMessage({ message: Shell.Message.ChangedViewport({ isMobile: true }) })
+	const mobile = Message.ChangedViewport({ isMobile: true })
 
 	test("the bottom nav's Menu button opens the sidebar sheet", () => {
 		scene(

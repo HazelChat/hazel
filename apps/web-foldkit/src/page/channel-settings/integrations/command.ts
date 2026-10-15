@@ -1,20 +1,11 @@
-import type { ChannelNotFoundError } from "@hazel/domain/rpc"
 import { ChannelId, ChannelWebhookId, GitHubSubscriptionId, RssSubscriptionId } from "@hazel/schema"
-import { Duration, Effect, Exit, Schema } from "effect"
+import { Duration, Effect, Schema } from "effect"
 import { Command } from "foldkit"
 import { toDate } from "~/lib/utils"
+import { catchCommon } from "../../../data/actions"
 import { HazelRpc } from "../../../rpc"
-import { type ErrorHandlers, type ErrorMessage, failureToast } from "../../../data/actions"
 import { Message } from "./message"
 import { INTEGRATION_CONFIG, Provider, RowKind } from "./model"
-
-const channelNotFound: ErrorHandlers<ChannelNotFoundError> = {
-	ChannelNotFoundError: {
-		title: "Channel not found",
-		description: "This channel may have been deleted.",
-		isRetryable: false,
-	},
-}
 
 const msOf = (date: Parameters<typeof toDate>[0] | null) => (date ? toDate(date).getTime() : null)
 
@@ -24,121 +15,99 @@ export const ListWebhooks = Command.define("ListWebhooks", {
 	args: { channelId: ChannelId, version: Schema.Number },
 	messages: [Message.SucceededListWebhooks, Message.FailedList],
 	execute: ({ channelId, version }) =>
-		Effect.gen(function* () {
-			const client = yield* HazelRpc
-			const exit = yield* Effect.exit(client("channelWebhook.list", { channelId }))
-			return Exit.match(exit, {
-				onSuccess: (response) =>
-					Message.SucceededListWebhooks({
-						version,
-						webhooks: response.data.map((webhook) => ({
-							id: webhook.id,
-							name: webhook.name,
-							avatarUrl: webhook.avatarUrl ?? null,
-							tokenSuffix: webhook.tokenSuffix,
-							isEnabled: webhook.isEnabled,
-							lastUsedAtMs: msOf(webhook.lastUsedAt),
-						})),
-					}),
-				onFailure: (cause) =>
-					Message.FailedList({
-						list: "webhooks",
-						version,
-						toast: failureToast(cause, "exitToast", channelNotFound),
-					}),
-			})
-		}),
+		HazelRpc.use((rpc) => rpc("channelWebhook.list", { channelId })).pipe(
+			Effect.map((response) =>
+				Message.SucceededListWebhooks({
+					version,
+					webhooks: response.data.map((webhook) => ({
+						id: webhook.id,
+						name: webhook.name,
+						avatarUrl: webhook.avatarUrl ?? null,
+						tokenSuffix: webhook.tokenSuffix,
+						isEnabled: webhook.isEnabled,
+						lastUsedAtMs: msOf(webhook.lastUsedAt),
+					})),
+				}),
+			),
+			Effect.catchTags({
+				ChannelNotFoundError: () =>
+					Effect.succeed(
+						Message.FailedList({ kind: "webhook", version, reason: "ChannelNotFound" }),
+					),
+			}),
+			catchCommon((reason) => Message.FailedList({ kind: "webhook", version, reason })),
+		),
 })
 
 export const ListRss = Command.define("ListRss", {
 	args: { channelId: ChannelId, version: Schema.Number },
 	messages: [Message.SucceededListRss, Message.FailedList],
 	execute: ({ channelId, version }) =>
-		Effect.gen(function* () {
-			const client = yield* HazelRpc
-			const exit = yield* Effect.exit(client("rssSubscription.list", { channelId }))
-			return Exit.match(exit, {
-				onSuccess: (response) =>
-					Message.SucceededListRss({
-						version,
-						feeds: response.data.map((feed) => ({
-							id: feed.id,
-							feedUrl: feed.feedUrl,
-							feedTitle: feed.feedTitle,
-							feedIconUrl: feed.feedIconUrl,
-							consecutiveErrors: feed.consecutiveErrors,
-							isEnabled: feed.isEnabled,
-							pollingIntervalMinutes: feed.pollingIntervalMinutes,
-						})),
-					}),
-				onFailure: (cause) =>
-					Message.FailedList({
-						list: "rss",
-						version,
-						toast: failureToast(cause, "exitToast", channelNotFound),
-					}),
-			})
-		}),
+		HazelRpc.use((rpc) => rpc("rssSubscription.list", { channelId })).pipe(
+			Effect.map((response) =>
+				Message.SucceededListRss({
+					version,
+					feeds: response.data.map((feed) => ({
+						id: feed.id,
+						feedUrl: feed.feedUrl,
+						feedTitle: feed.feedTitle,
+						feedIconUrl: feed.feedIconUrl,
+						consecutiveErrors: feed.consecutiveErrors,
+						isEnabled: feed.isEnabled,
+						pollingIntervalMinutes: feed.pollingIntervalMinutes,
+					})),
+				}),
+			),
+			Effect.catchTags({
+				ChannelNotFoundError: () =>
+					Effect.succeed(Message.FailedList({ kind: "rss", version, reason: "ChannelNotFound" })),
+			}),
+			catchCommon((reason) => Message.FailedList({ kind: "rss", version, reason })),
+		),
 })
 
 export const ListGitHub = Command.define("ListGitHub", {
 	args: { channelId: ChannelId, version: Schema.Number },
 	messages: [Message.SucceededListGitHub, Message.FailedList],
 	execute: ({ channelId, version }) =>
-		Effect.gen(function* () {
-			const client = yield* HazelRpc
-			const exit = yield* Effect.exit(client("githubSubscription.list", { channelId }))
-			return Exit.match(exit, {
-				onSuccess: (response) =>
-					Message.SucceededListGitHub({
-						version,
-						repos: response.data.map((repo) => ({
-							id: repo.id,
-							repositoryFullName: repo.repositoryFullName,
-							enabledEvents: [...repo.enabledEvents],
-							branchFilter: repo.branchFilter,
-							isEnabled: repo.isEnabled,
-						})),
-					}),
-				onFailure: (cause) =>
-					Message.FailedList({
-						list: "github",
-						version,
-						toast: failureToast(cause, "exitToast", channelNotFound),
-					}),
-			})
-		}),
+		HazelRpc.use((rpc) => rpc("githubSubscription.list", { channelId })).pipe(
+			Effect.map((response) =>
+				Message.SucceededListGitHub({
+					version,
+					repos: response.data.map((repo) => ({
+						id: repo.id,
+						repositoryFullName: repo.repositoryFullName,
+						enabledEvents: [...repo.enabledEvents],
+						branchFilter: repo.branchFilter,
+						isEnabled: repo.isEnabled,
+					})),
+				}),
+			),
+			Effect.catchTags({
+				ChannelNotFoundError: () =>
+					Effect.succeed(
+						Message.FailedList({ kind: "github", version, reason: "ChannelNotFound" }),
+					),
+			}),
+			catchCommon((reason) => Message.FailedList({ kind: "github", version, reason })),
+		),
 })
 
 // ROW ACTIONS (each row's toggle and delete, with its own messages)
 
-const notFound = (title: string, description: string): ErrorMessage => ({
-	title,
-	description,
-	isRetryable: false,
-})
-
+/** Each row kind's success copy; update has the failure copy. */
 const rowCopy = {
 	webhook: {
-		tag: "ChannelWebhookNotFoundError",
-		title: "Webhook not found",
 		toggled: (isEnabled: boolean) => (isEnabled ? "Webhook enabled" : "Webhook disabled"),
 		deleted: "Webhook deleted",
-		noun: "webhook",
 	},
 	rss: {
-		tag: "RssSubscriptionNotFoundError",
-		title: "Subscription not found",
 		toggled: (isEnabled: boolean) => (isEnabled ? "Feed resumed" : "Feed paused"),
 		deleted: "Feed removed",
-		noun: "subscription",
 	},
 	github: {
-		tag: "GitHubSubscriptionNotFoundError",
-		title: "Subscription not found",
 		toggled: (isEnabled: boolean) => (isEnabled ? "Subscription enabled" : "Subscription disabled"),
 		deleted: "Subscription removed",
-		noun: "subscription",
 	},
 } as const
 
@@ -167,31 +136,25 @@ const rowRequest = (kind: RowKind, id: string, isEnabled: boolean | null) =>
 export const RunRowAction = Command.define("RunRowAction", {
 	args: { kind: RowKind, id: Schema.String, isEnabled: Schema.NullOr(Schema.Boolean) },
 	messages: [Message.SucceededRowAction, Message.FailedRowAction],
-	execute: ({ kind, id, isEnabled }) =>
-		Effect.gen(function* () {
-			const copy = rowCopy[kind]
-			const exit = yield* Effect.exit(rowRequest(kind, id, isEnabled))
-			const description =
-				isEnabled === null
-					? `This ${copy.noun} may have already been deleted.`
-					: `This ${copy.noun} may have been deleted.`
-			return Exit.match(exit, {
-				onSuccess: () =>
-					Message.SucceededRowAction({
-						kind,
-						id,
-						successMessage: isEnabled === null ? copy.deleted : copy.toggled(isEnabled),
-					}),
-				onFailure: (cause) =>
-					Message.FailedRowAction({
-						kind,
-						id,
-						toast: failureToast(cause, "exitToast", {
-							[copy.tag]: notFound(copy.title, description),
-						}),
-					}),
-			})
-		}),
+	execute: ({ kind, id, isEnabled }) => {
+		const notFound = () => Effect.succeed(Message.FailedRowAction({ kind, id, reason: "NotFound" }))
+		return rowRequest(kind, id, isEnabled).pipe(
+			Effect.as(
+				Message.SucceededRowAction({
+					kind,
+					id,
+					successMessage:
+						isEnabled === null ? rowCopy[kind].deleted : rowCopy[kind].toggled(isEnabled),
+				}),
+			),
+			Effect.catchTags({
+				ChannelWebhookNotFoundError: notFound,
+				RssSubscriptionNotFoundError: notFound,
+				GitHubSubscriptionNotFoundError: notFound,
+			}),
+			catchCommon((reason) => Message.FailedRowAction({ kind, id, reason })),
+		)
+	},
 })
 
 // INTEGRATION CARDS
@@ -208,61 +171,54 @@ export const PROVIDER_LOGOS: Readonly<Record<Provider, string>> = {
 export const ConnectProvider = Command.define("ConnectProvider", {
 	args: { channelId: ChannelId, provider: Provider },
 	messages: [Message.SucceededConnectProvider, Message.FailedConnectProvider],
-	execute: ({ channelId, provider }) =>
-		Effect.gen(function* () {
-			const client = yield* HazelRpc
-			const config = INTEGRATION_CONFIG[provider]
-			const exit = yield* Effect.exit(
-				client("channelWebhook.create", {
-					channelId,
-					name: config.name,
-					description: config.webhookDescription,
-					avatarUrl: PROVIDER_LOGOS[provider],
-					integrationProvider: provider,
-				}),
-			)
-			return Exit.match(exit, {
-				onSuccess: (result) => Message.SucceededConnectProvider({ provider, token: result.token }),
-				onFailure: (cause) =>
-					Message.FailedConnectProvider({
-						provider,
-						toast: failureToast(cause, "exitToast", channelNotFound),
-					}),
-			})
-		}),
+	execute: ({ channelId, provider }) => {
+		const config = INTEGRATION_CONFIG[provider]
+		return HazelRpc.use((rpc) =>
+			rpc("channelWebhook.create", {
+				channelId,
+				name: config.name,
+				description: config.webhookDescription,
+				avatarUrl: PROVIDER_LOGOS[provider],
+				integrationProvider: provider,
+			}),
+		).pipe(
+			Effect.map((result) => Message.SucceededConnectProvider({ provider, token: result.token })),
+			Effect.catchTags({
+				ChannelNotFoundError: () =>
+					Effect.succeed(Message.FailedConnectProvider({ provider, reason: "ChannelNotFound" })),
+			}),
+			catchCommon((reason) => Message.FailedConnectProvider({ provider, reason })),
+		)
+	},
 })
 
 /** The provider card's Enable/Disable and Delete (`isEnabled: null`). */
 export const RunProviderAction = Command.define("RunProviderAction", {
 	args: { provider: Provider, webhookId: ChannelWebhookId, isEnabled: Schema.NullOr(Schema.Boolean) },
 	messages: [Message.SucceededProviderAction, Message.FailedProviderAction],
-	execute: ({ provider, webhookId, isEnabled }) =>
-		Effect.gen(function* () {
-			const name = INTEGRATION_CONFIG[provider].name
-			const exit = yield* Effect.exit(rowRequest("webhook", webhookId, isEnabled))
-			return Exit.match(exit, {
-				onSuccess: () =>
-					Message.SucceededProviderAction({
-						provider,
-						isDelete: isEnabled === null,
-						successMessage:
-							isEnabled === null
-								? `${name} disconnected`
-								: `${name} ${isEnabled ? "enabled" : "disabled"}`,
-					}),
-				onFailure: (cause) =>
-					Message.FailedProviderAction({
-						provider,
-						isDelete: isEnabled === null,
-						toast: failureToast(cause, "exitToast", {
-							ChannelWebhookNotFoundError: notFound(
-								"Webhook not found",
-								"This webhook may have been deleted.",
-							),
-						}),
-					}),
-			})
-		}),
+	execute: ({ provider, webhookId, isEnabled }) => {
+		const name = INTEGRATION_CONFIG[provider].name
+		return HazelRpc.use((rpc) =>
+			isEnabled === null
+				? rpc("channelWebhook.delete", { id: webhookId })
+				: rpc("channelWebhook.update", { id: webhookId, isEnabled }),
+		).pipe(
+			Effect.as(
+				Message.SucceededProviderAction({
+					provider,
+					successMessage:
+						isEnabled === null
+							? `${name} disconnected`
+							: `${name} ${isEnabled ? "enabled" : "disabled"}`,
+				}),
+			),
+			Effect.catchTags({
+				ChannelWebhookNotFoundError: () =>
+					Effect.succeed(Message.FailedProviderAction({ provider, reason: "NotFound" })),
+			}),
+			catchCommon((reason) => Message.FailedProviderAction({ provider, reason })),
+		)
+	},
 })
 
 export const WaitForConfirmReset = Command.define("WaitForConfirmReset", {
@@ -278,26 +234,29 @@ export const CreateWebhook = Command.define("CreateWebhook", {
 	args: { channelId: ChannelId, name: Schema.String, description: Schema.String, avatarUrl: Schema.String },
 	messages: [Message.SucceededCreateWebhook, Message.FailedCreateWebhook],
 	execute: ({ channelId, name, description, avatarUrl }) =>
-		Effect.gen(function* () {
-			const client = yield* HazelRpc
-			const exit = yield* Effect.exit(
-				client("channelWebhook.create", {
-					channelId,
-					name,
-					description: description || undefined,
-					avatarUrl: avatarUrl || undefined,
-				}),
-			)
-			return Exit.match(exit, {
-				onSuccess: (result) =>
-					Message.SucceededCreateWebhook({ token: result.token, webhookUrl: result.webhookUrl }),
-				onFailure: (cause) =>
-					Message.FailedCreateWebhook({ toast: failureToast(cause, "exitToast", channelNotFound) }),
-			})
-		}),
+		HazelRpc.use((rpc) =>
+			rpc("channelWebhook.create", {
+				channelId,
+				name,
+				description: description || undefined,
+				avatarUrl: avatarUrl || undefined,
+			}),
+		).pipe(
+			Effect.map((result) =>
+				Message.SucceededCreateWebhook({ token: result.token, webhookUrl: result.webhookUrl }),
+			),
+			Effect.catchTags({
+				ChannelNotFoundError: () =>
+					Effect.succeed(Message.FailedCreateWebhook({ reason: "ChannelNotFound" })),
+			}),
+			catchCommon((reason) => Message.FailedCreateWebhook({ reason })),
+		),
 })
 
 // CLIPBOARD
+
+/** `navigator.clipboard.writeText` rejected (permission, insecure context). */
+class ClipboardWriteError extends Schema.TaggedError<ClipboardWriteError>()("ClipboardWriteError", {}) {}
 
 export const CopyText = Command.define("CopyText", {
 	args: {
@@ -306,12 +265,15 @@ export const CopyText = Command.define("CopyText", {
 		successMessage: Schema.String,
 		failureMessage: Schema.String,
 	},
-	messages: [Message.CompletedCopy],
+	messages: [Message.SucceededCopy, Message.FailedCopy],
 	execute: ({ id, value, successMessage, failureMessage }) =>
-		Effect.tryPromise(() => navigator.clipboard.writeText(value)).pipe(
-			Effect.match({
-				onSuccess: () => Message.CompletedCopy({ id, isCopied: true, toastTitle: successMessage }),
-				onFailure: () => Message.CompletedCopy({ id, isCopied: false, toastTitle: failureMessage }),
+		Effect.tryPromise({
+			try: () => navigator.clipboard.writeText(value),
+			catch: () => new ClipboardWriteError(),
+		}).pipe(
+			Effect.as(Message.SucceededCopy({ id, successMessage })),
+			Effect.catchTags({
+				ClipboardWriteError: () => Effect.succeed(Message.FailedCopy({ failureMessage })),
 			}),
 		),
 })

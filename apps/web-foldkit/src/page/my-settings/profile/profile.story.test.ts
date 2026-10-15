@@ -16,8 +16,9 @@ import {
 	UploadAvatar,
 } from "./command"
 import { dragTo } from "./crop"
-import { errorsOf, isSaveDisabled } from "./form"
+import { isDirty, isSaveDisabled, valuesOf } from "./form"
 import { Message } from "./message"
+import { AvatarAction, CropState, Save } from "./model"
 import { init, update } from "./update"
 import { sharedDefaults } from "../../test-shared"
 
@@ -43,13 +44,16 @@ const shared: Shared = {
 }
 const pageUpdate = (current: Parameters<typeof update>[0], next: Message) => update(current, next, shared)
 const initial = () => init(undefined, shared).model
+const errorToastOf = (title: string, description: string | null) =>
+	PageOutMessage.RequestedToast({ toast: { intent: "error", title, description } })
 
 describe("profile form", () => {
 	test("starts clean with Save disabled and no errors", () => {
 		const current = initial()
-		expect(current.values).toMatchObject({ firstName: "Ada", lastName: "Lovelace" })
+		expect(valuesOf(current)).toMatchObject({ firstName: "Ada", lastName: "Lovelace" })
 		expect(isSaveDisabled(current)).toBe(true)
-		expect(errorsOf(current)).toEqual({ firstName: null, lastName: null })
+		expect(current.firstName._tag).toBe("NotValidated")
+		expect(current.lastName._tag).toBe("NotValidated")
 	})
 
 	test("an edited name enables Save, and saving sends the form values", () => {
@@ -59,24 +63,64 @@ describe("profile form", () => {
 			message(Message.ChangedFirstName({ value: "Augusta Ada" })),
 			model((current) => expect(isSaveDisabled(current)).toBe(false)),
 			message(Message.SubmittedProfile()),
-			model((current) => expect(current.isSubmitting).toBe(true)),
-			Command.resolve(SaveProfile, Message.CompletedSaveProfile({ isSaved: true })),
+			model((current) => expect(current.save).toEqual(Save.Saving())),
+			Command.resolve(
+				SaveProfile,
+				Message.SucceededSaveProfile({
+					values: { firstName: "Augusta Ada", lastName: "Lovelace", timezone: null },
+				}),
+			),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
 					toast: { intent: "success", title: "Profile updated successfully", description: null },
 				}),
 			),
-			model((current) => expect(current.isSubmitting).toBe(false)),
+			model((current) => {
+				expect(current.save).toEqual(Save.Idle())
+				// The saved values are the new defaults: clean again, Save disabled.
+				expect(current.defaults.firstName).toBe("Augusta Ada")
+				expect(isDirty(current)).toBe(false)
+				expect(isSaveDisabled(current)).toBe(true)
+			}),
 		)
 	})
 
-	test("an empty last name shows the arktype message and blocks Save", () => {
+	test("an empty last name shows the field's message and blocks Save", () => {
 		story(
 			pageUpdate,
 			given(initial()),
 			message(Message.ChangedLastName({ value: "" })),
 			model((current) => {
-				expect(errorsOf(current).lastName).toBe("lastName must be non-empty")
+				expect(current.lastName).toMatchObject({ _tag: "Invalid", errors: ["Last name is required"] })
+				expect(isSaveDisabled(current)).toBe(true)
+			}),
+		)
+	})
+
+	test("a name over 100 characters is rejected before the server sees it", () => {
+		story(
+			pageUpdate,
+			given(initial()),
+			message(Message.ChangedFirstName({ value: "a".repeat(101) })),
+			model((current) => {
+				expect(current.firstName).toMatchObject({
+					_tag: "Invalid",
+					errors: ["First name must be at most 100 characters"],
+				})
+				expect(isSaveDisabled(current)).toBe(true)
+			}),
+		)
+	})
+
+	test("reverting an edit makes the form clean again", () => {
+		story(
+			pageUpdate,
+			given(initial()),
+			message(Message.ChangedFirstName({ value: "Augusta" })),
+			model((current) => expect(isDirty(current)).toBe(true)),
+			message(Message.ChangedFirstName({ value: "Ada" })),
+			model((current) => {
+				expect(isDirty(current)).toBe(false)
 				expect(isSaveDisabled(current)).toBe(true)
 			}),
 		)
@@ -88,15 +132,7 @@ describe("profile form", () => {
 			pageUpdate,
 			given(initial()),
 			message(Message.SelectedAvatarFiles({ files: [file] })),
-			expectOutMessage(
-				PageOutMessage.RequestedToast({
-					toast: {
-						intent: "error",
-						title: "Invalid file type",
-						description: "Please select a JPEG, PNG, or WebP image",
-					},
-				}),
-			),
+			expectOutMessage(errorToastOf("Invalid file type", "Please select a JPEG, PNG, or WebP image")),
 			model((current) => expect(current.cropModal.isOpen).toBe(false)),
 		)
 	})
@@ -108,8 +144,8 @@ describe("avatar", () => {
 			pageUpdate,
 			given(initial()),
 			message(Message.ClickedResetAvatar()),
-			model((current) => expect(current.isResetting).toBe(true)),
-			Command.resolve(ResetAvatar, Message.CompletedResetAvatar({ isReset: true })),
+			model((current) => expect(current.avatarAction).toEqual(AvatarAction.Resetting())),
+			Command.resolve(ResetAvatar, Message.SucceededResetAvatar()),
 			expectOutMessage(
 				PageOutMessage.RequestedCurrentUserRefresh({
 					toast: {
@@ -119,7 +155,7 @@ describe("avatar", () => {
 					},
 				}),
 			),
-			model((current) => expect(current.isResetting).toBe(false)),
+			model((current) => expect(current.avatarAction).toEqual(AvatarAction.Idle())),
 		)
 	})
 })
@@ -153,36 +189,39 @@ describe("profile save", () => {
 			given(start),
 			message(Message.ChangedLastName({ value: "Byron" })),
 			message(Message.SubmittedProfile()),
-			Command.expectExact(SaveProfile({ userId: ada, values: { ...start.values, lastName: "Byron" } })),
-			Command.resolve(SaveProfile, Message.CompletedSaveProfile({ isSaved: true })),
+			Command.expectExact(
+				SaveProfile({ userId: ada, values: { ...valuesOf(start), lastName: "Byron" } }),
+			),
+			Command.resolve(
+				SaveProfile,
+				Message.SucceededSaveProfile({ values: { ...valuesOf(start), lastName: "Byron" } }),
+			),
 		)
 	})
 
-	test("a failed save re-enables the form, keeps the edit and toasts the error", () => {
+	test("a failed save re-enables the form, keeps the edit and toasts the reason", () => {
 		story(
 			pageUpdate,
 			given(initial()),
 			message(Message.ChangedFirstName({ value: "Augusta Ada" })),
 			message(Message.SubmittedProfile()),
-			Command.resolve(SaveProfile, Message.CompletedSaveProfile({ isSaved: false })),
+			Command.resolve(SaveProfile, Message.FailedSaveProfile({ reason: "Offline" })),
 			expectOutMessage(
-				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Failed to update profile", description: null },
-				}),
+				errorToastOf("Failed to update profile", "Check your internet connection and try again."),
 			),
 			model((current) => {
-				expect(current.isSubmitting).toBe(false)
-				expect(current.values.firstName).toBe("Augusta Ada")
+				expect(current.save).toEqual(Save.Idle())
+				expect(current.firstName.value).toBe("Augusta Ada")
 				expect(isSaveDisabled(current)).toBe(false)
 			}),
 		)
 	})
 
 	test("a second submit while saving is ignored", () => {
-		const saving = { ...initial(), isDirty: true, isSubmitting: true }
+		const edited = pageUpdate(initial(), Message.ChangedFirstName({ value: "Augusta" })).model
 		story(
 			pageUpdate,
-			given(saving),
+			given({ ...edited, save: Save.Saving() }),
 			message(Message.SubmittedProfile()),
 			Command.expectNone(),
 			expectNoOutMessage(),
@@ -196,21 +235,42 @@ describe("profile save", () => {
 			message(Message.ChangedFirstName({ value: "" })),
 			message(Message.SubmittedProfile()),
 			Command.expectNone(),
-			model((current) => expect(current.isSubmitting).toBe(false)),
+			model((current) => expect(current.save).toEqual(Save.Idle())),
+		)
+	})
+
+	test("submitting validates untouched fields too", () => {
+		const nameless: Shared = {
+			...shared,
+			currentUser: shared.currentUser === null ? null : { ...shared.currentUser, lastName: "" },
+		}
+		const start = init(undefined, nameless).model
+		story(
+			(current: Parameters<typeof update>[0], next: Message) => update(current, next, nameless),
+			given(start),
+			message(Message.ChangedFirstName({ value: "Augusta" })),
+			message(Message.SubmittedProfile()),
+			Command.expectNone(),
+			model((current) =>
+				expect(current.lastName).toMatchObject({
+					_tag: "Invalid",
+					errors: ["Last name is required"],
+				}),
+			),
 		)
 	})
 
 	test("the browser timezone is read by a Command and fills an untouched form without a stored one", () => {
 		const started = init(undefined, shared)
 		expect(started.commands?.map((command) => command.name)).toEqual([ReadProfileBrowserTimezone.name])
-		expect(started.model.values.timezone).toBeNull()
+		expect(started.model.selectedTimezone).toBeNull()
 		story(
 			pageUpdate,
 			given(started.model),
 			message(Message.DetectedBrowserTimezone({ browserTimezone: "Europe/Vienna" })),
 			model((current) => {
-				expect(current.values.timezone).toBe("Europe/Vienna")
-				expect(current.isDirty).toBe(false)
+				expect(current.selectedTimezone).toBe("Europe/Vienna")
+				expect(isDirty(current)).toBe(false)
 			}),
 		)
 		story(
@@ -218,7 +278,7 @@ describe("profile save", () => {
 			given(started.model),
 			message(Message.ChangedFirstName({ value: "Augusta" })),
 			message(Message.DetectedBrowserTimezone({ browserTimezone: "Europe/Vienna" })),
-			model((current) => expect(current.values.timezone).toBeNull()),
+			model((current) => expect(current.selectedTimezone).toBeNull()),
 		)
 	})
 
@@ -237,8 +297,8 @@ describe("profile save", () => {
 			message(Message.ChangedFirstName({ value: "Augusta" })),
 			message(Message.UpdatedUserRow({ row })),
 			model((current) => {
-				expect(current.values.firstName).toBe("Augusta")
-				expect(current.values.timezone).not.toBe("Asia/Tokyo")
+				expect(current.firstName.value).toBe("Augusta")
+				expect(current.selectedTimezone).not.toBe("Asia/Tokyo")
 			}),
 		)
 	})
@@ -254,6 +314,7 @@ describe("avatar upload", () => {
 		Command.expectExact(LoadCropImage),
 		Command.resolve(LoadCropImage, Message.LoadedCropImage({ loadId: 1, image: loaded })),
 	]
+	const uploading = () => ({ ...initial(), avatarAction: AvatarAction.Uploading() })
 
 	test("pick, crop and upload refreshes the current user and frees the object URL", () => {
 		story(
@@ -266,51 +327,67 @@ describe("avatar upload", () => {
 			}),
 			message(Message.ClickedSaveCrop()),
 			Command.expectExact(CropAvatarImage({ src: "blob:me", crop: loaded.crop })),
-			Command.resolve(CropAvatarImage, Message.CompletedCropImage({ blob })),
+			Command.resolve(CropAvatarImage, Message.SucceededCropImage({ blob })),
 			model((current) => {
 				expect(current.cropModal.isOpen).toBe(false)
-				expect(current.isUploading).toBe(true)
+				expect(current.avatarAction).toEqual(AvatarAction.Uploading())
 			}),
 			Command.expectExact(RevokeCropImage({ src: "blob:me" }), UploadAvatar),
 			Command.resolveAll(
 				[RevokeCropImage, Message.CompletedRevokeCropImage()],
-				[UploadAvatar, Message.CompletedUploadAvatar({ isUploaded: true })],
+				[UploadAvatar, Message.SucceededUploadAvatar()],
 			),
 			expectOutMessage(
 				PageOutMessage.RequestedCurrentUserRefresh({
 					toast: { intent: "success", title: "Profile picture updated", description: null },
 				}),
 			),
-			model((current) => expect(current.isUploading).toBe(false)),
+			model((current) => expect(current.avatarAction).toEqual(AvatarAction.Idle())),
 		)
 	})
 
-	test("a failed upload clears the spinner and toasts", () => {
+	test("a failed upload clears the spinner and toasts the reason", () => {
 		story(
 			pageUpdate,
-			given({ ...initial(), isUploading: true }),
-			message(Message.CompletedUploadAvatar({ isUploaded: false })),
-			expectOutMessage(
-				PageOutMessage.RequestedToast({
-					toast: {
-						intent: "error",
-						title: "Upload failed",
-						description: "Failed to update profile picture. Please try again.",
-					},
-				}),
-			),
-			model((current) => expect(current.isUploading).toBe(false)),
+			given(uploading()),
+			message(Message.FailedUploadAvatar({ reason: "Unavailable" })),
+			expectOutMessage(errorToastOf("Upload failed", "Please try again in a moment.")),
+			model((current) => expect(current.avatarAction).toEqual(AvatarAction.Idle())),
 		)
 	})
 
-	test("a failed crop returns to the editable image", () => {
+	test("an upload the storage rejects as too large says so, not a generic failure", () => {
+		story(
+			pageUpdate,
+			given(uploading()),
+			message(Message.FailedUploadAvatar({ reason: "TooLarge" })),
+			expectOutMessage(errorToastOf("File too large", "File size must be less than 5MB")),
+		)
+	})
+
+	test("an unconfigured upload bucket says so", () => {
+		story(
+			pageUpdate,
+			given(uploading()),
+			message(Message.FailedUploadAvatar({ reason: "NotConfigured" })),
+			expectOutMessage(
+				errorToastOf(
+					"Configuration error",
+					"Image upload is not configured. Please contact support.",
+				),
+			),
+		)
+	})
+
+	test("a failed crop returns to the editable image and toasts", () => {
 		story(
 			pageUpdate,
 			given(initial()),
 			...openCrop(),
 			message(Message.ClickedSaveCrop()),
-			Command.resolve(CropAvatarImage, Message.CompletedCropImage({ blob: null })),
+			Command.resolve(CropAvatarImage, Message.FailedCropImage({ reason: "EncodeFailed" })),
 			Command.expectNone(),
+			expectOutMessage(errorToastOf("Could not crop the image", "Please try again.")),
 			model((current) => {
 				expect(current.crop._tag).toBe("Ready")
 				expect(current.cropModal.isOpen).toBe(true)
@@ -323,8 +400,9 @@ describe("avatar upload", () => {
 			pageUpdate,
 			given(initial()),
 			message(Message.SelectedAvatarFiles({ files: [png] })),
-			Command.resolve(LoadCropImage, Message.FailedLoadCropImage({ loadId: 1 })),
+			Command.resolve(LoadCropImage, Message.FailedLoadCropImage({ loadId: 1, reason: "LoadFailed" })),
 			Command.expectNone(),
+			expectOutMessage(errorToastOf("Could not open the image", "Please choose another image.")),
 			model((current) => {
 				expect(current.cropModal.isOpen).toBe(false)
 				expect(current.crop._tag).toBe("Idle")
@@ -360,11 +438,12 @@ describe("avatar upload", () => {
 		const first = pageUpdate(initial(), Message.SelectedAvatarFiles({ files: [png] })).model
 		const cancelled = pageUpdate(first, Message.ClickedCancelCrop()).model
 		const repicked = pageUpdate(cancelled, Message.SelectedAvatarFiles({ files: [second] })).model
-		expect(repicked.crop).toEqual({ _tag: "Loading", loadId: 2 })
+		expect(repicked.crop).toEqual(CropState.Loading({ loadId: 2 }))
 		const stale = pageUpdate(repicked, Message.LoadedCropImage({ loadId: 1, image: loaded }))
-		expect(stale.model.crop).toEqual({ _tag: "Loading", loadId: 2 })
+		expect(stale.model.crop).toEqual(CropState.Loading({ loadId: 2 }))
 		expect(stale.commands).toMatchObject([{ name: RevokeCropImage.name, args: { src: "blob:me" } }])
-		expect(pageUpdate(repicked, Message.FailedLoadCropImage({ loadId: 1 })).model.cropModal.isOpen).toBe(true)
+		const staleFailure = Message.FailedLoadCropImage({ loadId: 1, reason: "LoadFailed" })
+		expect(pageUpdate(repicked, staleFailure).model.cropModal.isOpen).toBe(true)
 	})
 
 	test("a file over 5MB is rejected with a toast", () => {
@@ -374,15 +453,7 @@ describe("avatar upload", () => {
 			given(initial()),
 			message(Message.SelectedAvatarFiles({ files: [huge] })),
 			Command.expectNone(),
-			expectOutMessage(
-				PageOutMessage.RequestedToast({
-					toast: {
-						intent: "error",
-						title: "File too large",
-						description: "Image must be less than 5MB",
-					},
-				}),
-			),
+			expectOutMessage(errorToastOf("File too large", "File size must be less than 5MB")),
 		)
 	})
 
@@ -394,36 +465,47 @@ describe("avatar upload", () => {
 			Command.expectExact(OpenFilePicker()),
 			Command.resolve(OpenFilePicker, Message.CompletedOpenFilePicker()),
 		)
+		story(pageUpdate, given(uploading()), message(Message.ClickedAvatar()), Command.expectNone())
+	})
+
+	test("a crop is not saved while a removal runs", () => {
 		story(
 			pageUpdate,
-			given({ ...initial(), isUploading: true }),
-			message(Message.ClickedAvatar()),
+			given({
+				...initial(),
+				crop: CropState.Ready({ image: loaded }),
+				avatarAction: AvatarAction.Resetting(),
+			}),
+			message(Message.ClickedSaveCrop()),
 			Command.expectNone(),
+			model((current) => expect(current.crop._tag).toBe("Ready")),
 		)
 	})
 })
 
 describe("avatar reset", () => {
-	test("a failed reset clears the pending state and toasts", () => {
+	test("a failed reset clears the pending state and toasts the reason", () => {
 		story(
 			pageUpdate,
 			given(initial()),
 			message(Message.ClickedResetAvatar()),
-			Command.resolve(ResetAvatar, Message.CompletedResetAvatar({ isReset: false })),
-			expectOutMessage(
-				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Failed to remove profile picture", description: null },
-				}),
-			),
-			model((current) => expect(current.isResetting).toBe(false)),
+			Command.resolve(ResetAvatar, Message.FailedResetAvatar({ reason: "UserNotFound" })),
+			expectOutMessage(errorToastOf("Failed to remove profile picture", "Please sign in again.")),
+			model((current) => expect(current.avatarAction).toEqual(AvatarAction.Idle())),
 		)
 	})
 
-	// ClickedResetAvatar is guarded on isResetting in update, not only by the view's disabled button.
-	test("a second reset while one is pending is ignored", () => {
+	// ClickedResetAvatar is guarded on the avatar action in update, not only by the view's disabled button.
+	test("a reset while another avatar write is pending is ignored", () => {
 		story(
 			pageUpdate,
-			given({ ...initial(), isResetting: true }),
+			given({ ...initial(), avatarAction: AvatarAction.Resetting() }),
+			message(Message.ClickedResetAvatar()),
+			Command.expectNone(),
+		)
+		story(
+			pageUpdate,
+			given({ ...initial(), avatarAction: AvatarAction.Uploading() }),
 			message(Message.ClickedResetAvatar()),
 			Command.expectNone(),
 		)

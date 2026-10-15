@@ -1,7 +1,11 @@
 import { ChannelId, ChannelWebhookId, GitHubSubscriptionId, RssSubscriptionId } from "@hazel/schema"
 import { Schema } from "effect"
+import * as AsyncData from "foldkit/asyncData"
+import { Field, NotValidated } from "foldkit/fieldValidation"
+import { defineTaggedUnion } from "foldkit/schema"
+import { CommonReason, failureMessage } from "~/lib/error-messages"
 import * as Menu from "../../../ui/menu"
-import * as Modal from "../../../ui/modal"
+import * as ConfirmAction from "../../shared/confirm-action"
 
 export const Webhook = Schema.Struct({
 	id: ChannelWebhookId,
@@ -33,21 +37,47 @@ export const GitHubRepo = Schema.Struct({
 })
 export type GitHubRepo = typeof GitHubRepo.Type
 
-/** `useState(true)` loading plus the fetched rows; `version` names the latest request, so older results drop. */
-const listOf = <S extends Schema.Top>(item: S) =>
-	Schema.Struct({ isLoading: Schema.Boolean, version: Schema.Number, items: Schema.Array(item) })
+/** What can go wrong with a request scoped to the channel (the lists, creating a webhook). */
+export const ChannelRequestFailure = Schema.Union([Schema.Literals(["ChannelNotFound"]), CommonReason])
+export type ChannelRequestFailure = typeof ChannelRequestFailure.Type
+
+/** The copy for a failed channel request: a list load (rendered with a retry) or a create (a toast). */
+export const channelRequestMessage = (reason: ChannelRequestFailure) =>
+	failureMessage(reason, {
+		ChannelNotFound: { title: "Channel not found", description: "This channel may have been deleted." },
+	})
+
+/** What can go wrong toggling or deleting a row (or a provider's webhook). */
+export const RowActionFailure = Schema.Union([Schema.Literals(["NotFound"]), CommonReason])
+export type RowActionFailure = typeof RowActionFailure.Type
+
+export const Webhooks = AsyncData.Schema(Schema.Array(Webhook), ChannelRequestFailure)
+export const RssFeeds = AsyncData.Schema(Schema.Array(RssFeed), ChannelRequestFailure)
+export const GitHubRepos = AsyncData.Schema(Schema.Array(GitHubRepo), ChannelRequestFailure)
+
+/** A fetched list; `version` names the latest request, so older results drop. */
+const listOf = <A, I>(data: Schema.Codec<A, I>) => Schema.Struct({ version: Schema.Number, data })
 
 export const Provider = Schema.Literals(["openstatus", "railway"])
 export type Provider = typeof Provider.Type
 
+/**
+ * The provider card's action: connecting, toggling, the 3 s "Confirm?" before a delete, or deleting.
+ * Legacy keeps Enable/Disable enabled while it runs, so update ignores repeats.
+ */
+export const CardAction = defineTaggedUnion({
+	Idle: {},
+	Connecting: {},
+	Toggling: {},
+	ConfirmingDelete: {},
+	Deleting: {},
+})
+export type CardAction = typeof CardAction.Type
+
 /** `IntegrationCard` local state. */
 export const ProviderCard = Schema.Struct({
-	isCreating: Schema.Boolean,
-	/** Enable/Disable in flight; legacy keeps the button enabled, so update ignores repeats. */
-	isToggling: Schema.Boolean,
-	isDeleting: Schema.Boolean,
-	confirmDelete: Schema.Boolean,
-	/** Bumped per confirm, so only the latest 3 s timeout resets it. */
+	action: CardAction,
+	/** Bumped per "Confirm?", so only the latest 3 s timeout disarms it. */
 	confirmVersion: Schema.Number,
 	createdToken: Schema.NullOr(Schema.String),
 })
@@ -56,43 +86,44 @@ export type ProviderCard = typeof ProviderCard.Type
 /** `CreateWebhookForm` state. */
 export const CreateForm = Schema.Struct({
 	isExpanded: Schema.Boolean,
-	name: Schema.String,
+	/** `NotValidated` until the user edits the name or submits. */
+	name: Field(Schema.String),
 	description: Schema.String,
 	avatarUrl: Schema.String,
-	isNameDirty: Schema.Boolean,
 	isSubmitting: Schema.Boolean,
 	created: Schema.NullOr(Schema.Struct({ token: Schema.String, webhookUrl: Schema.String })),
 	isTokenVisible: Schema.Boolean,
 })
 export type CreateForm = typeof CreateForm.Type
 
+export const emptyCreateForm: CreateForm = {
+	isExpanded: false,
+	name: NotValidated({ value: "" }),
+	description: "",
+	avatarUrl: "",
+	isSubmitting: false,
+	created: null,
+	isTokenVisible: false,
+}
+
 export const RowKind = Schema.Literals(["webhook", "rss", "github"])
 export type RowKind = typeof RowKind.Type
 
-/** The row whose delete confirmation is open (each legacy row owns an alertdialog). */
+/** The row a delete confirmation is about (each legacy row owns an alertdialog). */
 export const ConfirmTarget = Schema.Struct({ kind: RowKind, id: Schema.String })
 export type ConfirmTarget = typeof ConfirmTarget.Type
-
-/** The delete confirmation: no target, asking, or removing (the dialog may be dismissed meanwhile). */
-export const Confirm = Schema.Union([
-	Schema.TaggedStruct("Closed", {}),
-	Schema.TaggedStruct("Confirming", { target: ConfirmTarget }),
-	Schema.TaggedStruct("Removing", { target: ConfirmTarget }),
-])
-export type Confirm = typeof Confirm.Type
 
 export const Model = Schema.Struct({
 	channelId: ChannelId,
 	isGitHubConnected: Schema.Boolean,
-	webhooks: listOf(Webhook),
-	rss: listOf(RssFeed),
-	github: listOf(GitHubRepo),
+	webhooks: listOf(Webhooks.schema),
+	rss: listOf(RssFeeds.schema),
+	github: listOf(GitHubRepos.schema),
 	rowMenus: Schema.Array(Menu.Model),
 	togglingRowIds: Schema.Array(Schema.String),
 	/** Copy buttons showing their check for 2 s: webhook ids, `provider:<name>`, `token`, `url`. */
 	copiedIds: Schema.Array(Schema.String),
-	confirm: Confirm,
-	confirmModal: Modal.Model,
+	remove: ConfirmAction.Model(ConfirmTarget),
 	providers: Schema.Struct({ openstatus: ProviderCard, railway: ProviderCard }),
 	createForm: CreateForm,
 })
@@ -128,4 +159,7 @@ export const INTEGRATION_CONFIG: Readonly<
 	},
 }
 
-export const isNameValid = (name: string) => name.length > 1 && name.length < 101
+/** A list's rows, or none while it has no data. */
+export const itemsOf = <A, E>(list: {
+	readonly data: AsyncData.AsyncData<ReadonlyArray<A>, E>
+}): ReadonlyArray<A> => AsyncData.getOrElse(list.data, () => [])

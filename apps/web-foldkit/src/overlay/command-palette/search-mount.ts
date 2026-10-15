@@ -71,7 +71,9 @@ const editorFailed =
 	<M>(toFailure: (failure: { reason: "EditorNotMounted" }) => M) =>
 	<A, R>(effect: Effect.Effect<A, EditorNotMounted, R>): Effect.Effect<A | M, never, R> =>
 		effect.pipe(
-			Effect.catchTags({ EditorNotMounted: () => Effect.succeed(toFailure({ reason: "EditorNotMounted" })) }),
+			Effect.catchTags({
+				EditorNotMounted: () => Effect.succeed(toFailure({ reason: "EditorNotMounted" })),
+			}),
 		)
 
 export const SetSearchText = Command.define("SetSearchText", {
@@ -132,7 +134,9 @@ const RecentSearches = Schema.Array(RecentSearch)
 export const LoadRecentSearches = Command.define("LoadRecentSearches", {
 	messages: [Message.LoadedRecentSearches],
 	execute: readStored(RECENT_SEARCHES_KEY, RecentSearches).pipe(
-		Effect.map((stored) => Message.LoadedRecentSearches({ searches: Option.getOrElse(stored, () => []) })),
+		Effect.map((stored) =>
+			Message.LoadedRecentSearches({ searches: Option.getOrElse(stored, () => []) }),
+		),
 	),
 })
 
@@ -141,5 +145,9 @@ export const SaveRecentSearches = Command.define("SaveRecentSearches", {
 	args: { searches: RecentSearches },
 	messages: [Message.CompletedSaveRecentSearches],
 	execute: ({ searches }) =>
-		writeStored(RECENT_SEARCHES_KEY, RecentSearches, searches).pipe(Effect.as(Message.CompletedSaveRecentSearches())),
+		writeStored(RECENT_SEARCHES_KEY, RecentSearches, searches).pipe(
+			// Best effort: an unsaved recent search only means it is missing next time.
+			Effect.catchTag("StorageWriteError", () => Effect.void),
+			Effect.as(Message.CompletedSaveRecentSearches()),
+		),
 })

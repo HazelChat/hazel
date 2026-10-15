@@ -47,6 +47,8 @@ describe("root toaster", () => {
 						systemTheme: "light",
 						soundSettings: DEFAULT_SOUND_SETTINGS,
 						sessionStartMs: 0,
+						isMobile: false,
+						isCreateChannelHintDismissed: false,
 					},
 					url,
 				),
@@ -55,7 +57,7 @@ describe("root toaster", () => {
 			{
 				kind: "error",
 				title: "Failed to link Discord account",
-				maybeDescription: Option.some("db_error"),
+				maybeDescription: Option.some("A database error occurred. Please try again."),
 			},
 		])
 		// The kit's own Messages fold back into the slot through `GotToastsMessage`.

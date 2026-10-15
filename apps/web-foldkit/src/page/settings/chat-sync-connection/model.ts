@@ -1,12 +1,15 @@
 import { ChannelId, OrganizationId, SyncChannelLinkId, SyncConnectionId } from "@hazel/schema"
-import { Schema } from "effect"
+import { Option, Schema } from "effect"
+import * as AsyncData from "foldkit/asyncData"
 import { defineMessageUnion } from "foldkit/message"
-import { ToastRequest } from "../../../overlay/toasts"
+import { defineTaggedUnion } from "foldkit/schema"
+import { CommonReason, failureMessage, type UserErrorMessage } from "~/lib/error-messages"
 import * as Interaction from "../../../ui/aria/interaction"
 import * as Menu from "../../../ui/menu"
 import * as Modal from "../../../ui/modal"
-import { DiscordChannel, DiscordResource } from "../chat-sync/discord"
-import { Connection } from "../chat-sync/model"
+import * as ConfirmAction from "../../shared/confirm-action"
+import { DiscordChannel, DiscordChannels, DiscordFailure } from "../chat-sync/discord"
+import { Connection, DeleteConnectionFailure } from "../chat-sync/model"
 
 export const SyncDirection = Schema.Literals(["both", "hazel_to_external", "external_to_hazel"])
 export type SyncDirection = typeof SyncDirection.Type
@@ -25,28 +28,52 @@ export const ChannelLink = Schema.Struct({
 })
 export type ChannelLink = typeof ChannelLink.Type
 
-/** The connection list query: loading, or the connection (none when it is not in the list). */
-export const ConnectionState = Schema.Union([
-	Schema.TaggedStruct("Loading", {}),
-	Schema.TaggedStruct("Loaded", { connection: Schema.NullOr(Connection) }),
-])
+/** The connection list query: the connection, or `null` when it is not in the list. */
+export const ConnectionLookup = AsyncData.Schema(Schema.NullOr(Connection), CommonReason)
 
-export const LinksState = Schema.Union([
-	Schema.TaggedStruct("Loading", {}),
-	Schema.TaggedStruct("Loaded", { links: Schema.Array(ChannelLink) }),
+export const ListLinksFailure = Schema.Union([Schema.Literal("ConnectionNotFound"), CommonReason])
+export type ListLinksFailure = typeof ListLinksFailure.Type
+
+export const ChannelLinks = AsyncData.Schema(Schema.Array(ChannelLink), ListLinksFailure)
+
+export const listLinksFailureMessage = (reason: ListLinksFailure): UserErrorMessage =>
+	failureMessage(reason, {
+		ConnectionNotFound: {
+			title: "Connection not found",
+			description: "This sync connection may have been deleted.",
+		},
+	})
+
+/** Removing, pausing, resuming or redirecting a link. */
+export const LinkFailure = Schema.Union([Schema.Literal("LinkNotFound"), CommonReason])
+export type LinkFailure = typeof LinkFailure.Type
+
+export const CreateLinkFailure = Schema.Union([
+	Schema.Literals(["ConnectionNotFound", "AlreadyLinked"]),
+	CommonReason,
 ])
+export type CreateLinkFailure = typeof CreateLinkFailure.Type
+
+/** The link modal's Link Channel: not pressed yet, linking, or failed (the modal stays open to retry). */
+export const Submission = defineTaggedUnion({
+	NotSubmitted: {},
+	Submitting: {},
+	Failed: { reason: CreateLinkFailure },
+})
+export type Submission = typeof Submission.Type
 
 /** A Hazel channel as `AddChannelLinkModal` lists it. */
 export const HazelChannel = Schema.Struct({ id: ChannelId, name: Schema.String })
 export type HazelChannel = typeof HazelChannel.Type
 
 export const LinkTarget = Schema.Struct({ id: SyncChannelLinkId, name: Schema.String })
+export type LinkTarget = typeof LinkTarget.Type
 
 export const Model = Schema.Struct({
 	connectionId: SyncConnectionId,
 	requestedOrganizationId: Schema.NullOr(OrganizationId),
-	connection: ConnectionState,
-	links: LinksState,
+	connection: ConnectionLookup.schema,
+	links: ChannelLinks.schema,
 	/** Bumped per links request (every create / remove / update reloads); an older list is dropped. */
 	linksVersion: Schema.Number,
 	/** Links with a pause / resume / direction update in flight; a repeat is ignored. */
@@ -56,7 +83,7 @@ export const Model = Schema.Struct({
 	linkMenus: Schema.Array(Menu.Model),
 	/** `AddChannelLinkModal`: open state, its queries (run once the connection is found) and form. */
 	addLinkModal: Modal.Model,
-	discordChannels: DiscordResource(DiscordChannel),
+	discordChannels: DiscordChannels.schema,
 	hazelChannels: Schema.Array(HazelChannel),
 	selectedChannel: Schema.NullOr(HazelChannel),
 	selectedDiscordChannel: Schema.NullOr(DiscordChannel),
@@ -64,12 +91,10 @@ export const Model = Schema.Struct({
 	channelSearch: Schema.String,
 	discordChannelSearch: Schema.String,
 	focusedSearch: Schema.NullOr(Schema.Literals(["hazel", "discord"])),
-	isCreatingLink: Schema.Boolean,
-	deleteTarget: Schema.NullOr(LinkTarget),
-	deleteLinkModal: Modal.Model,
-	isDeletingLink: Schema.Boolean,
-	disconnectModal: Modal.Model,
-	isDisconnecting: Schema.Boolean,
+	submission: Submission,
+	removeLinkConfirm: ConfirmAction.Model(LinkTarget),
+	/** Disconnecting deletes this page's connection. */
+	disconnectConfirm: ConfirmAction.Model(SyncConnectionId),
 	/** Hover, press and focus of the link modal's Link Channel button. */
 	interaction: Interaction.Model,
 })
@@ -77,26 +102,29 @@ export type Model = typeof Model.Type
 
 export const Message = defineMessageUnion({
 	SucceededListConnections: { organizationId: OrganizationId, connections: Schema.Array(Connection) },
-	FailedListConnections: { organizationId: OrganizationId },
+	FailedListConnections: { organizationId: OrganizationId, reason: CommonReason },
+	ClickedRetryLoadConnection: {},
 	SucceededListDiscordChannels: { guildId: Schema.String, channels: Schema.Array(DiscordChannel) },
-	FailedListDiscordChannels: { guildId: Schema.String },
+	FailedListDiscordChannels: { guildId: Schema.String, reason: DiscordFailure },
+	ClickedRetryListDiscordChannels: {},
 	SucceededListChannelLinks: { version: Schema.Number, links: Schema.Array(ChannelLink) },
-	FailedListChannelLinks: { version: Schema.Number },
+	FailedListChannelLinks: { version: Schema.Number, reason: ListLinksFailure },
+	ClickedRetryListChannelLinks: {},
 	UpdatedChannelNames: { names: Schema.Record(Schema.String, Schema.String) },
 	ClickedBack: {},
 	ClickedDisconnect: {},
 	ClickedConfirmDisconnect: {},
 	SucceededDisconnect: {},
-	FailedDisconnect: { toast: ToastRequest },
+	FailedDisconnect: { reason: DeleteConnectionFailure },
 	ClickedLinkChannel: {},
 	ClickedConfirmRemoveLink: {},
 	SucceededRemoveLink: {},
 	SucceededUpdateLink: { linkId: SyncChannelLinkId, successMessage: Schema.String },
-	FailedUpdateLink: { linkId: SyncChannelLinkId, toast: ToastRequest },
-	FailedRemoveLink: { toast: ToastRequest },
+	FailedUpdateLink: { linkId: SyncChannelLinkId, reason: LinkFailure },
+	FailedRemoveLink: { reason: LinkFailure },
 	GotLinkMenuMessage: { linkId: SyncChannelLinkId, message: Menu.Message },
-	GotDeleteLinkModalMessage: { message: Modal.Message },
-	GotDisconnectModalMessage: { message: Modal.Message },
+	GotRemoveLinkConfirmMessage: { message: ConfirmAction.Message },
+	GotDisconnectConfirmMessage: { message: ConfirmAction.Message },
 	GotAddLinkModalMessage: { message: Modal.Message },
 	UpdatedHazelChannels: { channels: Schema.Array(HazelChannel) },
 	ChangedChannelSearch: { value: Schema.String },
@@ -111,10 +139,18 @@ export const Message = defineMessageUnion({
 	ClickedDirection: { direction: SyncDirection },
 	ClickedCreateLink: {},
 	SucceededCreateLink: { successMessage: Schema.String },
-	FailedCreateLink: { toast: ToastRequest },
+	FailedCreateLink: { reason: CreateLinkFailure },
 	GotInteractionMessage: { message: Interaction.Message },
 })
 export type Message = typeof Message.Type
+
+/** The connection, once the list has it (also while it refreshes). */
+export const foundConnection = (model: Model): Connection | null =>
+	Option.getOrNull(AsyncData.getData(model.connection))
+
+/** The listed links, or none while the first list loads or after it failed. */
+export const listedLinks = (model: Model): ReadonlyArray<ChannelLink> =>
+	Option.getOrElse(AsyncData.getData(model.links), () => [])
 
 export const DIRECTION_LABELS: Readonly<Record<SyncDirection, string>> = {
 	both: "Both",

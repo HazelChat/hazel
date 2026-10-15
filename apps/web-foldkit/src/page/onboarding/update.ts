@@ -57,7 +57,7 @@ const redirectIfOnboarded = (model: Model, shared: Shared): Return =>
 	shared.currentUser?.isOnboarded && canRedirect(model)
 		? {
 				model: modifyFields(model, { phase: () => Phase.Leaving() }),
-				outMessage: PageOutMessage.RequestedNavigation({ href: hrefOf(AppRoute.Root()), replace: false }),
+				outMessage: PageOutMessage.RequestedNavigation({ route: AppRoute.Root(), replace: false }),
 			}
 		: { model }
 

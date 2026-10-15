@@ -34,7 +34,7 @@ describe("webhook providers", () => {
 		story(
 			update,
 			given(init(route, noOrganization).model),
-			message(Message.FailedListWebhooks()),
+			message(Message.FailedListWebhooks({ reason: "Unavailable" })),
 			model((current) => expect(current.webhookProviders).toEqual([])),
 		)
 	})

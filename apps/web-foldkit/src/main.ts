@@ -1,44 +1,59 @@
+import type { OrganizationId } from "@hazel/schema"
 import { Clock, Effect, Match, Option, Schema } from "effect"
-import { Command, type Runtime, Update } from "foldkit"
+import { AsyncData, type Runtime, Update } from "foldkit"
 import { UrlRequest } from "foldkit/navigation"
 import { modifyFields } from "foldkit/struct"
 import { toString as urlToString, type Url } from "foldkit/url"
+import { commonMessage, type CommonReason, isRetryableReason } from "~/lib/error-messages"
 import {
 	ApplyTheme,
 	CheckSession,
-	Reload,
-	RetryCheckSession,
+	DeliverNotifications,
 	FetchCurrentUser,
-	RetryFetchCurrentUser,
 	LoadExternal,
 	NavigateInternal,
-	DeliverNotifications,
+	Reload,
 	ReplaceUrl,
+	RetryCheckSession,
+	RetryFetchCurrentUser,
 	SaveSoundSettings,
 	SaveThemePreference,
 	SignOut,
 } from "./app/command"
 import { Message } from "./app/message"
-import { Model, resolvedThemeOf, sharedOf, shellContextOf } from "./app/model"
+import {
+	authOf,
+	MemberData,
+	Model,
+	OrgState,
+	orgStateFor,
+	resolvedThemeOf,
+	Session,
+	sharedOf,
+	shellContextOf,
+} from "./app/model"
+import { MOBILE_QUERY } from "./app/subscription"
 import { toPageMessage } from "./app/view"
+import { errorToast, errorToastOf } from "./data/actions"
+import { loadSoundSettings, SoundSettings } from "./notification-sound"
 import * as CommandPalette from "./overlay/command-palette"
-import type { Return as CommandPaletteReturn } from "./overlay/command-palette/update"
 import type { LayoutHotkeyActionId } from "./overlay/hotkeys"
 import * as Modal from "./overlay/modal"
+import { ModalOutMessage } from "./overlay/out-message"
+import * as Toasts from "./overlay/toaster"
+import type { ToastAction } from "./overlay/toasts"
+import { can } from "./page/contract"
+import { PageOutMessage } from "./page/out-message"
+import { enterRoute, informShared, type PageSlot, type PageTransition, updatePage } from "./page/registry"
 import * as Platform from "./platform"
 import type { DesktopMenuItem } from "./platform/desktop-menu"
 import * as Updates from "./platform/updates"
-import * as Toasts from "./overlay/toaster"
-import { can } from "./page/contract"
-import { PageOutMessage } from "./page/out-message"
-import { errorToast } from "./data/actions"
-import { ModalOutMessage } from "./overlay/out-message"
-import { enterRoute, informShared, type PageTransition, updatePage } from "./page/registry"
 import { authRedirect, routeRedirect } from "./redirect"
 import { AppRoute, hrefOf, orgSlugOf, urlToAppRoute } from "./route"
+import type { Member, Organization } from "./session"
 import type { Resources } from "./rpc"
-import { loadSoundSettings, SoundSettings } from "./notification-sound"
-import { Message as ShellMessage } from "./shell/model"
+import { loadIsCreateChannelHintDismissed } from "./shell/channels-sidebar"
+import { Message as ShellMessage, type Model as ShellModel } from "./shell/model"
 import * as Shell from "./shell/update"
 import {
 	loadThemePreference,
@@ -50,16 +65,20 @@ import {
 
 export { Message } from "./app/message"
 export { Model } from "./app/model"
-export { managedResources, subscriptions } from "./app/subscription"
+export { subscriptions } from "./app/subscription"
 export { view } from "./app/view"
 
-/** Read before the first render, so a stored theme never flashes the default (`Atom.kvs` reads sync). */
+/** Read before the first render, so a stored theme, the viewport or a dismissed hint never flash. */
 export const Flags = Schema.Struct({
 	themePreference: ThemePreference,
 	systemTheme: ResolvedTheme,
 	soundSettings: SoundSettings,
-	/** `sessionStartTimeAtom`: notifications from before this load never play. */
+	/** `sessionStartTimeAtom`: notifications from before this load never play; also the clock's first value. */
 	sessionStartMs: Schema.Number,
+	/** `useSidebar().isMobile` at load: the mobile layout renders from the first frame. */
+	isMobile: Schema.Boolean,
+	/** `useFeatureHint("create-channel")`. */
+	isCreateChannelHintDismissed: Schema.Boolean,
 })
 export type Flags = typeof Flags.Type
 
@@ -68,349 +87,442 @@ export const flags: Effect.Effect<Flags> = Effect.all({
 	systemTheme: Effect.sync(resolveSystemTheme),
 	soundSettings: loadSoundSettings,
 	sessionStartMs: Clock.currentTimeMillis,
+	isMobile: Effect.sync(() => globalThis.matchMedia?.(MOBILE_QUERY).matches ?? false),
+	isCreateChannelHintDismissed: loadIsCreateChannelHintDismissed,
 })
+
+/** Production builds skip the dev-only routes. Read once here, never inside `update`. */
+const IS_PROD = import.meta.env.PROD
+
+/** Automatic retries of a session check or `user.me` before the error screen waits for the user. */
+export const MAX_AUTO_RETRIES = 3
 
 type Return = Update.Return<Model, Message, Resources>
 type Step = Update.Step<Model, Message, Resources>
 
+const unchanged: Step = (model) => ({ model })
+
+const command =
+	(...commands: NonNullable<Return["commands"]>): Step =>
+	(model) => ({ model, commands })
+
+const setModel =
+	(f: (model: Model) => Model): Step =>
+	(model) => ({ model: f(model) })
+
 // CHILDREN
 
-const foldOverlay =
-	<Child, ChildMessage>(
-		write: (model: Model, child: Child) => Model,
-		toParentMessage: (message: ChildMessage) => Message,
-	) =>
-	(model: Model, result: Update.Return<Child, ChildMessage>): Return => ({
-		model: write(model, result.model),
-		commands: Command.mapMessages(result.commands, toParentMessage),
-	})
+/** Each child folds through one lens; the input is the child entry point to run (open, push, update...). */
 
-const withToasts = foldOverlay(
-	(model, toasts: Toasts.Model) => modifyFields(model, { toasts: () => toasts }),
-	(message: Toasts.Message) => Message.GotToastsMessage({ message }),
-)
-
-/** Completed overlay actions: follow the link, then show the toast (legacy `onSuccess` order). */
-const completedOverlay = (model: Model, href: string | null, toast: Toasts.ToastRequest | null): Return => {
-	const toasted = toast === null ? { model } : withToasts(model, Toasts.push(model.toasts, toast))
-	return {
-		model: toasted.model,
-		commands: [...(toasted.commands ?? []), ...(href === null ? [] : [NavigateInternal({ url: href })])],
-	}
-}
-
-const followModalOutMessage = (model: Model, outMessage: Option.Option<ModalOutMessage>): Return =>
-	Option.match(outMessage, {
-		onNone: () => ({ model }),
-		onSome: ModalOutMessage.match<Return>({
-			Closed: () => ({ model }),
-			Completed: ({ href, toast }) => completedOverlay(model, href, toast),
-			RequestedToast: ({ toast }) => withToasts(model, Toasts.push(model.toasts, toast)),
-		}),
-	})
-
-const modalContextOf = (model: Model): Modal.ModalContext => ({ ...sharedOf(model), route: model.route })
-
-/** The modal slot after an open or update; a closing OutMessage already dropped the slot. */
-const withModal = (model: Model, transition: Modal.Transition): Return => {
-	const followed = followModalOutMessage(modifyFields(model, { modal: () => transition.model }), transition.outMessage)
-	return {
-		model: followed.model,
-		commands: [
-			...Command.mapMessages(transition.commands, (message) => Message.GotModalMessage({ message })),
-			...(followed.commands ?? []),
-		],
-	}
-}
-
-const withPlatform = (model: Model, result: Update.Return<Platform.Model, Platform.Message, Resources>): Return => ({
-	model: modifyFields(model, { platform: () => result.model }),
-	commands: Command.mapMessages(result.commands, (child) => Message.GotPlatformMessage({ message: child })),
+const foldToasts = Update.foldChild({
+	update: (
+		toasts: Toasts.Model,
+		step: (toasts: Toasts.Model) => Update.Return<Toasts.Model, Toasts.Message>,
+	) => step(toasts),
+	read: (model: Model) => Option.some(model.toasts),
+	write: (model, toasts) => modifyFields(model, { toasts: () => toasts }),
+	toParentMessage: (message: Toasts.Message) => Message.GotToastsMessage({ message }),
 })
 
-const withCommandPalette = (model: Model, result: CommandPaletteReturn): Return => {
-	const next = modifyFields(model, { commandPalette: () => result.model })
-	const commands = Command.mapMessages(result.commands, (message) => Message.GotCommandPaletteMessage({ message }))
-	const followed = Option.match(Option.fromNullishOr(result.outMessage), {
-		onNone: (): Return => ({ model: next }),
-		onSome: CommandPalette.OutMessage.match<Return>({
-			Completed: ({ href, toast }) => completedOverlay(next, href, toast),
-			RequestedModal: ({ modal }) => withModal(next, Modal.open(next.modal, modal, modalContextOf(next))),
-			RequestedToast: ({ toast }) => withToasts(next, Toasts.push(next.toasts, toast)),
-			RequestedTheme: ({ preference }) => requestTheme(next, preference),
-			RequestedPresenceStatus: ({ status }) => withPlatform(next, Platform.pickPresenceStatus(next.platform, status)),
-		}),
+const showToast = (toast: Toasts.ToastRequest): Step => foldToasts((toasts) => Toasts.push(toasts, toast))
+
+const showToastIf = (toast: Toasts.ToastRequest | null | undefined): Step =>
+	toast === null || toast === undefined ? unchanged : showToast(toast)
+
+const navigateTo = (route: AppRoute, options: { readonly replace?: boolean } = {}): Step =>
+	command(options.replace ? ReplaceUrl({ url: hrefOf(route) }) : NavigateInternal({ url: hrefOf(route) }))
+
+const foldUpdates = Update.foldChild({
+	update: (updates: Updates.Model, step: (updates: Updates.Model) => Updates.Return) => step(updates),
+	read: (model: Model) => Option.some(model.desktopUpdate),
+	write: (model, desktopUpdate) => modifyFields(model, { desktopUpdate: () => desktopUpdate }),
+	toParentMessage: (message: Updates.Message) => Message.GotUpdatesMessage({ message }),
+	foldOutMessage: Updates.OutMessage.match<Step>({ RequestedToast: ({ toast }) => showToast(toast) }),
+})
+
+/** An update step, its toast, and the pages that read `Shared.desktopUpdate`. */
+const stepUpdates = (step: (updates: Updates.Model) => Updates.Return): Step =>
+	Update.combine([foldUpdates(step), informPage])
+
+/** The toaster; a toast's action button reports what it asks for (the update toast's "Install & Restart"). */
+const foldToastsWithAction = Update.foldChild({
+	update: (toasts: Toasts.Model, message: Toasts.Message) => {
+		const { action, ...result } = Toasts.update(toasts, message)
+		return Update.withOutMessage(result, action)
+	},
+	read: (model: Model) => Option.some(model.toasts),
+	write: (model, toasts) => modifyFields(model, { toasts: () => toasts }),
+	toParentMessage: (message: Toasts.Message) => Message.GotToastsMessage({ message }),
+	foldOutMessage: (action: ToastAction) =>
+		Match.value(action).pipe(
+			Match.withReturnType<Step>(),
+			Match.when("InstallUpdate", () => stepUpdates(Updates.install)),
+			Match.exhaustive,
+		),
+})
+
+const followModalOutMessage = (outMessage: ModalOutMessage): Step =>
+	ModalOutMessage.match<Step>(outMessage, {
+		Closed: () => unchanged,
+		// Legacy `onSuccess` order: follow the link, then show the toast.
+		Completed: ({ route, toast }) =>
+			Update.combine([route === null ? unchanged : navigateTo(route), showToastIf(toast)]),
+		RequestedToast: ({ toast }) => showToast(toast),
 	})
-	return { model: followed.model, commands: [...commands, ...(followed.commands ?? [])] }
-}
+
+/** A closing OutMessage has already dropped the modal slot; the root still follows it. */
+const foldModal = Update.foldChild({
+	update: (modal: Modal.Model, step: (modal: Modal.Model) => Modal.Transition) => {
+		const transition = step(modal)
+		return Update.withOutMessage(
+			{ model: transition.model, commands: transition.commands ?? [] },
+			Option.getOrUndefined(transition.outMessage),
+		)
+	},
+	read: (model: Model) => Option.some(model.modal),
+	write: (model, modal) => modifyFields(model, { modal: () => modal }),
+	toParentMessage: (message: Modal.Message) => Message.GotModalMessage({ message }),
+	foldOutMessage: followModalOutMessage,
+})
+
+/** What a modal reads: the shared state, plus the route (to leave a channel it deleted). */
+const modalContextOf = (model: Model): Modal.ModalContext => ({ ...sharedOf(model), route: model.route })
+
+const openModal =
+	(request: Modal.ModalRequest): Step =>
+	(model) =>
+		foldModal(model, (modal) => Modal.open(modal, request, modalContextOf(model)))
+
+const foldPlatform = Update.foldChild({
+	update: (
+		platform: Platform.Model,
+		step: (platform: Platform.Model) => Update.Return<Platform.Model, Platform.Message, Resources>,
+	) => step(platform),
+	read: (model: Model) => Option.some(model.platform),
+	write: (model, platform) => modifyFields(model, { platform: () => platform }),
+	toParentMessage: (message: Platform.Message) => Message.GotPlatformMessage({ message }),
+})
+
+const foldCommandPalette = Update.foldChild({
+	update: (
+		palette: CommandPalette.Model,
+		step: (palette: CommandPalette.Model) => ReturnType<typeof CommandPalette.update>,
+	) => step(palette),
+	read: (model: Model) => Option.some(model.commandPalette),
+	write: (model, commandPalette) => modifyFields(model, { commandPalette: () => commandPalette }),
+	toParentMessage: (message: CommandPalette.Message) => Message.GotCommandPaletteMessage({ message }),
+	foldOutMessage: (outMessage: CommandPalette.OutMessage) =>
+		CommandPalette.OutMessage.match<Step>(outMessage, {
+			// The palette's links can carry a search (`?messageId=`), so they stay URLs.
+			Completed: ({ href, toast }) =>
+				Update.combine([
+					href === null ? unchanged : command(NavigateInternal({ url: href })),
+					showToastIf(toast),
+				]),
+			RequestedModal: ({ modal }) => openModal(modal),
+			RequestedToast: ({ toast }) => showToast(toast),
+			RequestedTheme: ({ preference }) => requestedTheme(preference),
+			RequestedPresenceStatus: ({ status }) =>
+				foldPlatform((platform) => Platform.pickPresenceStatus(platform, status)),
+		}),
+})
+
+const openCommandPalette =
+	(page: CommandPalette.Page): Step =>
+	(model) =>
+		foldCommandPalette(model, (palette) => CommandPalette.open(palette, page, sharedOf(model)))
+
+const foldShell = Update.foldChild({
+	update: (shell: ShellModel, step: (shell: ShellModel) => Shell.ShellReturn) => step(shell),
+	read: (model: Model) => Option.some(model.shell),
+	write: (model, shell) => modifyFields(model, { shell: () => shell }),
+	// Literal wrapper: the constructor would re-validate every sidebar row payload.
+	toParentMessage: (message: ShellMessage): Message => ({ _tag: "GotShellMessage", message }),
+	foldOutMessage: (outMessage: PageOutMessage) => handleOutMessage(outMessage),
+})
+
+/** The shell's menus and sidebar follow the route, organization, user, role and viewport. */
+const informShell: Step = setModel((model) =>
+	modifyFields(model, { shell: (shell) => Shell.informContext(shell, shellContextOf(model)) }),
+)
+
+/** The page slot; its OutMessages are facts the root acts on (navigation, overlays, session). */
+const foldPage = Update.foldChild({
+	update: (page: PageSlot | null, step: (page: PageSlot | null) => PageTransition) => {
+		const transition = step(page)
+		return Update.withOutMessage(
+			{ model: transition.slot, commands: transition.commands ?? [] },
+			Option.getOrUndefined(transition.outMessage),
+		)
+	},
+	read: (model: Model) => Option.some(model.page),
+	write: (model, page) => modifyFields(model, { page: () => page }),
+	toParentMessage: toPageMessage,
+	foldOutMessage: (outMessage: PageOutMessage) => handleOutMessage(outMessage),
+})
+
+const informPage: Step = (model) => foldPage(model, (page) => informShared(page, sharedOf(model)))
+
+const enteredRoute: Step = (model) =>
+	foldPage(model, (page) => enterRoute(page, model.route, sharedOf(model)))
 
 /** `useAppHotkey` handlers in `$orgSlug/layout.tsx`. */
-const pressedHotkey = (model: Model, actionId: LayoutHotkeyActionId): Return => {
-	const shared = sharedOf(model)
-	const openModal = (modal: Modal.ModalRequest) => withModal(model, Modal.open(model.modal, modal, modalContextOf(model)))
-	// Legacy passes `initialPage`, but the palette shows its own (reset) page: always home.
-	const openPalette = () => withCommandPalette(model, CommandPalette.open(model.commandPalette, "home", shared))
-	return Match.value(actionId).pipe(
-		Match.when("commandPalette.open", openPalette),
-		Match.when("search.open", openPalette),
-		Match.when("channel.create", () =>
-			can(shared, "channel.create") ? openModal({ _tag: "NewChannel" }) : { model },
+const pressedHotkey = (actionId: LayoutHotkeyActionId): Step =>
+	Match.value(actionId).pipe(
+		Match.withReturnType<Step>(),
+		// Legacy passes `initialPage`, but the palette shows its own (reset) page: always home.
+		Match.when("commandPalette.open", () => openCommandPalette("home")),
+		Match.when("search.open", () => openCommandPalette("home")),
+		Match.when(
+			"channel.create",
+			() => (model) =>
+				can(sharedOf(model), "channel.create") ? openModal({ _tag: "NewChannel" })(model) : { model },
 		),
 		Match.when("dm.create", () => openModal({ _tag: "CreateDm" })),
 		Match.when("invite.email", () => openModal({ _tag: "EmailInvite" })),
 		Match.exhaustive,
 	)
-}
-
-/** The update toast for a change of update state (legacy `TauriUpdateCheck`), if it needs one. */
-const updateToastOf = (previous: Updates.Model, next: Updates.Model): Toasts.ToastRequest | null => {
-	const id = "tauri-update"
-	switch (next._tag) {
-		case "Available":
-			return previous._tag === "Available"
-				? null
-				: {
-						intent: "info",
-						title: `Update available: v${next.version}`,
-						description: next.body ?? "A new version is ready to install",
-						id,
-						isSticky: true,
-						action: { label: "Install & Restart", key: "InstallUpdate" },
-					}
-		case "Downloading":
-			return {
-				intent: "loading",
-				title:
-					next.totalBytes === null
-						? `Downloading update... ${(next.downloadedBytes / 1024 / 1024).toFixed(1)} MB`
-						: `Downloading update... ${Math.round((next.downloadedBytes / next.totalBytes) * 100)}%`,
-				description: null,
-				id,
-			}
-		case "Installing":
-			return { intent: "loading", title: "Installing update...", description: null, id }
-		case "Restarting":
-			return { intent: "loading", title: "Restarting...", description: null, id }
-		case "InstallFailed":
-			return previous._tag === "InstallFailed"
-				? null
-				: { intent: "error", title: "Update failed", description: next.message, id }
-		default:
-			return null
-	}
-}
-
-/** The update state after a check or install step, its toast, and the pages that read it. */
-const withUpdates = (model: Model, result: Update.Return<Updates.Model, Updates.Message>): Return => {
-	const next = modifyFields(model, { desktopUpdate: () => result.model })
-	const toast = updateToastOf(model.desktopUpdate, result.model)
-	const toasted = toast === null ? { model: next } : withToasts(next, Toasts.push(next.toasts, toast))
-	return Update.combine<Model, Message, Resources>(toasted.model, [
-		(m) => ({
-			model: m,
-			commands: [
-				...Command.mapMessages(result.commands, (message) => Message.GotUpdatesMessage({ message })),
-				...(toasted.commands ?? []),
-			],
-		}),
-		informPage,
-	])
-}
-
-/** A toast's action button: the update toast's "Install & Restart". */
-const followToasts = (model: Model, result: ReturnType<typeof Toasts.update>): Return => {
-	const toasted = withToasts(model, result)
-	if (result.action !== "InstallUpdate") return toasted
-	const installing = withUpdates(toasted.model, Updates.install(toasted.model.desktopUpdate))
-	return { model: installing.model, commands: [...(toasted.commands ?? []), ...(installing.commands ?? [])] }
-}
 
 /** The desktop app menu (legacy `TauriMenuListener`). */
-const pressedDesktopMenuItem = (model: Model, item: DesktopMenuItem): Return =>
+const pressedDesktopMenuItem = (item: DesktopMenuItem): Step =>
 	Match.value(item).pipe(
-		Match.when("OpenSettings", () => {
+		Match.withReturnType<Step>(),
+		Match.when("OpenSettings", () => (model) => {
 			const orgSlug = orgSlugOf(model.route)
 			return orgSlug === undefined
 				? { model }
-				: { model, commands: [NavigateInternal({ url: hrefOf(AppRoute.MySettingsDesktop({ orgSlug })) })] }
+				: navigateTo(AppRoute.MySettingsDesktop({ orgSlug }))(model)
 		}),
-		Match.when("CheckForUpdates", () => withUpdates(model, Updates.check(model.desktopUpdate))),
-		Match.when("NewChannel", () => pressedHotkey(model, "channel.create")),
-		Match.when("Invite", () => pressedHotkey(model, "invite.email")),
+		Match.when("CheckForUpdates", () => stepUpdates(Updates.check)),
+		Match.when("NewChannel", () => pressedHotkey("channel.create")),
+		Match.when("Invite", () => pressedHotkey("invite.email")),
 		Match.exhaustive,
 	)
 
-/** Runs the OutMessage's consequence after `result`, keeping both sets of Commands. */
-const withCommands = (result: Return, outMessage: Option.Option<PageOutMessage>): Return =>
-	Option.match(outMessage, {
-		onNone: () => result,
-		onSome: (found) => {
-			const followed = handleOutMessage(found)(result.model)
-			return {
-				model: followed.model,
-				commands: [...(result.commands ?? []), ...(followed.commands ?? [])],
-			}
-		},
-	})
-
-/** A page or the shell reported a fact; the root owns navigation and the overlays. */
+/** A page or the shell reported a fact; the root owns navigation, the overlays and the session. */
 const handleOutMessage = (outMessage: PageOutMessage): Step =>
 	PageOutMessage.match<Step>(outMessage, {
-		RequestedNavigation:
-			({ href, replace, toast }) =>
-			(model) => {
-				const toasted = toast === undefined ? { model } : withToasts(model, Toasts.push(model.toasts, toast))
-				return {
-					model: toasted.model,
-					commands: [
-						...(toasted.commands ?? []),
-						replace ? ReplaceUrl({ url: href }) : NavigateInternal({ url: href }),
-					],
-				}
-			},
-		RequestedToast:
-			({ toast }) =>
-			(model) =>
-				withToasts(model, Toasts.push(model.toasts, toast)),
-		RequestedModal:
-			({ modal }) =>
-			(model) =>
-				withModal(model, Modal.open(model.modal, modal, modalContextOf(model))),
-		RequestedCommandPalette:
-			({ page }) =>
-			(model) =>
-				withCommandPalette(model, CommandPalette.open(model.commandPalette, page, sharedOf(model))),
-		RequestedSignOut: () => (model) => ({ model, commands: [SignOut()] }),
-		RequestedTheme:
-			({ preference }) =>
-			(model) =>
-				requestTheme(model, preference),
-		RequestedSoundSettings:
-			({ settings }) =>
-			(model) =>
-				Update.combine<Model, Message, Resources>(modifyFields(model, { soundSettings: () => settings }), [
-					(m) => ({ model: m, commands: [SaveSoundSettings({ settings })] }),
-					informPage,
-				]),
-		RequestedCurrentUserRefresh:
-			({ toast }) =>
-			(model) => {
-				const toasted = toast === undefined ? { model } : withToasts(model, Toasts.push(model.toasts, toast))
-				return { model: toasted.model, commands: [...(toasted.commands ?? []), FetchCurrentUser()] }
-			},
-		RequestedUpdateCheck: () => (model) => withUpdates(model, Updates.check(model.desktopUpdate)),
-		RequestedUpdateInstall: () => (model) => withUpdates(model, Updates.install(model.desktopUpdate)),
+		RequestedNavigation: ({ route, replace, toast }) =>
+			Update.combine([showToastIf(toast), navigateTo(route, { replace })]),
+		RequestedToast: ({ toast }) => showToast(toast),
+		RequestedModal: ({ modal }) => openModal(modal),
+		RequestedCommandPalette: ({ page }) => openCommandPalette(page),
+		RequestedSignOut: () => command(SignOut()),
+		RequestedTheme: ({ preference }) => requestedTheme(preference),
+		RequestedSoundSettings: ({ settings }) =>
+			Update.combine([
+				setModel((model) => modifyFields(model, { soundSettings: () => settings })),
+				command(SaveSoundSettings({ settings })),
+				informPage,
+			]),
+		RequestedCurrentUserRefresh: ({ toast }) => Update.combine([showToastIf(toast), refreshCurrentUser]),
+		RequestedUpdateCheck: () => stepUpdates(Updates.check),
+		RequestedUpdateInstall: () => stepUpdates(Updates.install),
 		// The shell owns its sheet: the root sends it the same Message as its header button.
-		RequestedMobileSidebar: () => (model) => {
-			const result = Shell.update(model.shell, ShellMessage.ToggledSidebar({ isOpen: true }), shellContextOf(model))
-			return {
-				model: modifyFields(model, { shell: () => result.model }),
-				commands: Command.mapMessages(result.commands, (child) => Message.GotShellMessage({ message: child })),
-			}
-		},
+		RequestedMobileSidebar: () => (model) =>
+			foldShell(model, (shell) =>
+				Shell.update(shell, ShellMessage.ToggledSidebar({ isOpen: true }), shellContextOf(model)),
+			),
 	})
 
-const applyPage =
-	(transition: PageTransition): Step =>
-	(model) =>
-		withCommands(
-			{
-				model: modifyFields(model, { page: () => transition.slot }),
-				commands: Command.mapMessages(transition.commands, toPageMessage),
-			},
-			transition.outMessage,
-		)
+// SESSION
 
-/** The shell's menus and sidebar follow the route, organization, user and role. */
-const informShell: Step = (model) => {
-	const result = Shell.informContext(model.shell, shellContextOf(model))
-	return {
-		model: modifyFields(model, { shell: () => result.model }),
-		commands: Command.mapMessages(result.commands, (message) => Message.GotShellMessage({ message })),
-	}
-}
-
-const informPage: Step = (model) => applyPage(informShared(model.page, sharedOf(model)))(model)
-
-/** `beforeLoad` redirects and the signed-out gate, re-checked whenever the route or auth changes. */
-const redirect: Step = (model) => {
-	const target = Option.orElse(routeRedirect(model.route, { isProd: import.meta.env.PROD }), () =>
-		authRedirect(model.route, model.auth, model.currentUrl),
+/** `beforeLoad` redirects and the signed-out gate, re-checked whenever the route or session changes. */
+const redirect: Step = (model) =>
+	Option.match(
+		Option.orElse(routeRedirect(model.route, { isProd: IS_PROD }), () =>
+			authRedirect(model.route, authOf(model.session), model.currentUrl),
+		),
+		{ onNone: () => ({ model }), onSome: (route) => navigateTo(route, { replace: true })(model) },
 	)
-	return {
-		model,
-		commands: Option.match(target, { onNone: () => [], onSome: (url) => [ReplaceUrl({ url })] }),
+
+/** Everything that reads the session: the page, the shell and the signed-out gate. */
+const sessionChanged: Step = Update.combine([informPage, informShell, redirect])
+
+/** `useAtomRefresh(userAtom)`: `user.me` again, keeping the user on screen while it runs. */
+const refreshCurrentUser: Step = (model) =>
+	model.session._tag !== "SignedIn"
+		? { model }
+		: Option.match(AsyncData.revalidateOrLoad(model.session.user), {
+				onNone: () => ({ model }),
+				onSome: (user) => ({
+					model: modifyFields(model, { session: () => Session.SignedIn({ user, retries: 0 }) }),
+					commands: [FetchCurrentUser()],
+				}),
+			})
+
+const signedInSession = Session.SignedIn({ user: AsyncData.Loading(), retries: 0 })
+
+const changedAuth =
+	(auth: "SignedIn" | "SignedOut"): Step =>
+	(model) => {
+		if (auth === "SignedOut")
+			return model.session._tag === "SignedOut"
+				? { model }
+				: sessionChanged(modifyFields(model, { session: () => Session.SignedOut() }))
+		// A session check that confirms the session changes nothing; a new one loads its user.
+		if (model.session._tag === "SignedIn") return { model }
+		return Update.combine(modifyFields(model, { session: () => signedInSession }), [
+			sessionChanged,
+			command(FetchCurrentUser()),
+		])
 	}
-}
+
+/** The API did not answer the session check. A signed-in session stays: only the boot check can stall. */
+const failedCheckSession =
+	(reason: CommonReason): Step =>
+	(model) => {
+		if (model.session._tag === "SignedIn" || model.session._tag === "SignedOut") return { model }
+		const retries = model.session._tag === "Unreachable" ? model.session.retries : 0
+		const isAutoRetried = retries < MAX_AUTO_RETRIES
+		return {
+			model: modifyFields(model, {
+				session: () => Session.Unreachable({ reason, retries: retries + 1 }),
+			}),
+			commands: isAutoRetried ? [RetryCheckSession()] : [],
+		}
+	}
+
+/** `user.me` failed. A transient failure is retried a few times; after that, or an ended session, it shows. */
+const failedFetchCurrentUser =
+	(reason: CommonReason): Step =>
+	(model) => {
+		if (model.session._tag !== "SignedIn") return { model }
+		const { user, retries } = model.session
+		const hasUser = AsyncData.hasData(user)
+		if (!hasUser && isRetryableReason(reason) && retries < MAX_AUTO_RETRIES)
+			return {
+				model: modifyFields(model, {
+					session: () => Session.SignedIn({ user, retries: retries + 1 }),
+				}),
+				commands: [RetryFetchCurrentUser()],
+			}
+		const failed = Session.SignedIn({
+			user: Option.match(AsyncData.getData(user), {
+				onNone: () => AsyncData.Failure({ error: reason }),
+				onSome: (data) => AsyncData.Stale({ error: reason, data }),
+			}),
+			retries,
+		})
+		// An ended session re-reads it: if it is gone, ChangedAuth sends the browser to sign-in.
+		return Update.combine(modifyFields(model, { session: () => failed }), [
+			sessionChanged,
+			reason === "SignedOut" ? command(CheckSession()) : unchanged,
+		])
+	}
+
+// ORGANIZATION
+
+const updatedOrganization =
+	(orgSlug: string, organization: Organization | null): Step =>
+	(model) => {
+		const current = model.org
+		if (current._tag === "None" || current.slug !== orgSlug) return { model }
+		const next: OrgState =
+			organization === null
+				? OrgState.NotFound({ slug: orgSlug })
+				: OrgState.Loaded({
+						slug: orgSlug,
+						organization,
+						// The role belongs to one organization; another one's must not show until its own arrives.
+						member:
+							current._tag === "Loaded" && current.organization.id === organization.id
+								? current.member
+								: MemberData.Loading(),
+					})
+		return Update.combine(modifyFields(model, { org: () => next }), [informPage, informShell])
+	}
+
+/** The user's row in the loaded organization; a row for another organization is stale and ignored. */
+const updatedMember =
+	(organizationId: OrganizationId, member: Member | null): Step =>
+	(model) => {
+		const current = model.org
+		if (current._tag !== "Loaded" || current.organization.id !== organizationId) return { model }
+		return Update.combine(
+			modifyFields(model, {
+				org: () => OrgState.Loaded({ ...current, member: MemberData.Success({ data: member }) }),
+			}),
+			[informPage, informShell],
+		)
+	}
+
+// URL
 
 const withUrl = (model: Model, url: Url): Model => {
 	const route = urlToAppRoute(url)
 	return modifyFields(model, {
 		route: () => route,
-		pathname: () => url.pathname,
 		// Foldkit's `Url.search` holds the query without its `?`.
 		currentUrl: () =>
-			Option.match(url.search, { onNone: () => url.pathname, onSome: (search) => `${url.pathname}?${search}` }),
+			Option.match(url.search, {
+				onNone: () => url.pathname,
+				onSome: (search) => `${url.pathname}?${search}`,
+			}),
+		org: (org) => orgStateFor(org, route),
 	})
 }
 
 // THEME
 
 const isSameCustomization = (first: ThemeCustomization, second: ThemeCustomization) =>
-	first.primary === second.primary && first.grayPalette === second.grayPalette && first.radius === second.radius
+	first.primary === second.primary &&
+	first.grayPalette === second.grayPalette &&
+	first.radius === second.radius
 
 /**
  * The legacy theme atoms' effects after a change: re-apply when the resolved mode or the
  * customization changed, persist a user's choice, and tell the page when `Shared.theme` moved.
  */
-const transitionTheme = (previous: Model, next: Model, shouldPersist: boolean): Return => {
-	const resolved = resolvedThemeOf(next)
-	const { mode, customization } = next.themePreference
-	const isApplied =
-		resolved !== resolvedThemeOf(previous) ||
-		!isSameCustomization(customization, previous.themePreference.customization)
-	const commands = [
-		...(isApplied ? [ApplyTheme({ resolved, customization })] : []),
-		...(shouldPersist ? [SaveThemePreference({ preference: next.themePreference })] : []),
-	]
-	return isApplied || mode !== previous.themePreference.mode
-		? Update.combine<Model, Message, Resources>(next, [(m) => ({ model: m, commands }), informPage])
-		: { model: next, commands }
-}
+const transitionTheme =
+	(next: (model: Model) => Model, shouldPersist: boolean): Step =>
+	(previous) => {
+		const model = next(previous)
+		const resolved = resolvedThemeOf(model)
+		const { mode, customization } = model.themePreference
+		const isApplied =
+			resolved !== resolvedThemeOf(previous) ||
+			!isSameCustomization(customization, previous.themePreference.customization)
+		const commands = [
+			...(isApplied ? [ApplyTheme({ resolved, customization })] : []),
+			...(shouldPersist ? [SaveThemePreference({ preference: model.themePreference })] : []),
+		]
+		return Update.combine(model, [
+			command(...commands),
+			isApplied || mode !== previous.themePreference.mode ? informPage : unchanged,
+		])
+	}
 
 /** `RequestedTheme` from a page or the palette: the user's choice, applied and persisted. */
+const requestedTheme = (preference: ThemePreference): Step =>
+	transitionTheme((model) => modifyFields(model, { themePreference: () => preference }), true)
+
 export const requestTheme = (model: Model, preference: ThemePreference): Return =>
-	transitionTheme(model, modifyFields(model, { themePreference: () => preference }), true)
+	requestedTheme(preference)(model)
 
-const appliedTheme: Step = (model) => ({
-	model,
-	commands: [ApplyTheme({ resolved: resolvedThemeOf(model), customization: model.themePreference.customization })],
-})
-
-const enteredRoute: Step = (model) => applyPage(enterRoute(model.page, model.route, sharedOf(model)))(model)
+const appliedTheme: Step = (model) =>
+	command(
+		ApplyTheme({ resolved: resolvedThemeOf(model), customization: model.themePreference.customization }),
+	)(model)
 
 // INIT
 
 export const init: Runtime.RoutingApplicationInit<Model, Message, Flags, Resources> = (flags, url) => {
-	const model = withUrl(
+	const route = urlToAppRoute(url)
+	const model: Model = withUrl(
 		{
-			route: { _tag: "Root" },
-			pathname: "",
+			route,
 			currentUrl: "",
-			auth: "Loading",
-			currentUser: null,
-			organization: null,
-			orgLoad: null,
-			isSessionStalled: false,
-			isCurrentUserStalled: false,
-			member: null,
-			nowMs: 0,
+			session: Session.Loading(),
+			org: OrgState.None(),
+			isMobile: flags.isMobile,
+			nowMs: flags.sessionStartMs,
 			themePreference: flags.themePreference,
 			systemTheme: flags.systemTheme,
 			soundSettings: flags.soundSettings,
 			sessionStartMs: flags.sessionStartMs,
 			page: null,
-			shell: Shell.init(),
+			shell: Shell.init({ isCreateChannelHintDismissed: flags.isCreateChannelHintDismissed }),
 			modal: Modal.initialModel,
 			commandPalette: CommandPalette.init(),
 			toasts: Toasts.init(),
@@ -419,16 +531,13 @@ export const init: Runtime.RoutingApplicationInit<Model, Message, Flags, Resourc
 		},
 		url,
 	)
-	return Update.combine<Model, Message, Resources>(model, [
-		appliedTheme,
-		enteredRoute,
-		informShell,
-		redirect,
-		(m) => ({ model: m, commands: [CheckSession()] }),
-	])
+	return Update.combine(model, [appliedTheme, enteredRoute, informShell, redirect, command(CheckSession())])
 }
 
 // UPDATE
+
+const savingFailed = (title: string) =>
+	showToast(errorToast(title, "It applies for now, but won't be remembered next time."))
 
 export const update = (model: Model, message: Message): Return =>
 	Message.match<Return>(message, {
@@ -437,113 +546,78 @@ export const update = (model: Model, message: Message): Return =>
 				Internal: ({ url }) => ({ model, commands: [NavigateInternal({ url: urlToString(url) })] }),
 				External: ({ href }) => ({ model, commands: [LoadExternal({ href })] }),
 			}),
-		ChangedUrl: ({ url }) =>
-			Update.combine<Model, Message, Resources>(withUrl(model, url), [
-				enteredRoute,
-				informShell,
-				redirect,
-			]),
+		ChangedUrl: ({ url }) => Update.combine(withUrl(model, url), [enteredRoute, informShell, redirect]),
 		CompletedNavigateInternal: () => ({ model }),
 		CompletedReplaceUrl: () => ({ model }),
 		CompletedLoadExternal: () => ({ model }),
 		ChangedSystemTheme: ({ theme }) =>
-			transitionTheme(model, modifyFields(model, { systemTheme: () => theme }), false),
+			transitionTheme((current) => modifyFields(current, { systemTheme: () => theme }), false)(model),
+		ChangedViewport: ({ isMobile }) =>
+			Update.combine(modifyFields(model, { isMobile: () => isMobile }), [informPage, informShell]),
 		CompletedApplyTheme: () => ({ model }),
 		CompletedSaveThemePreference: () => ({ model }),
+		FailedSaveThemePreference: () => savingFailed("Couldn't save your theme")(model),
 		CompletedSaveSoundSettings: () => ({ model }),
+		FailedSaveSoundSettings: () => savingFailed("Couldn't save your sound settings")(model),
 		UpdatedRecentNotifications: ({ ids }) => ({
 			model,
 			commands: ids.length === 0 ? [] : [DeliverNotifications({ ids })],
 		}),
 		CompletedDeliverNotifications: () => ({ model }),
-		ChangedAuth: ({ auth }) => {
-			const next = modifyFields(model, { auth: () => auth, isSessionStalled: () => false })
-			// Legacy `userAtom` runs wherever `useAuth()` mounts: the join page queries it signed out too.
-			const isUserQueried =
-				(auth === "SignedIn" && model.auth !== "SignedIn") ||
-				(auth === "SignedOut" && model.auth === "Loading" && model.route._tag === "Join")
-			const fetchUser = isUserQueried ? [FetchCurrentUser()] : []
-			return Update.combine<Model, Message, Resources>(next, [
-				informPage,
-				redirect,
-				(m) => ({ model: m, commands: fetchUser }),
-			])
-		},
+		ChangedAuth: ({ auth }) => changedAuth(auth)(model),
+		FailedCheckSession: ({ reason }) => failedCheckSession(reason)(model),
+		PressedRetrySession: () =>
+			model.session._tag === "Unreachable"
+				? {
+						model: modifyFields(model, { session: () => Session.Loading() }),
+						commands: [CheckSession()],
+					}
+				: { model },
 		RejectedSession: () => ({ model, commands: [CheckSession()] }),
-		FailedCheckSession: () => ({
-			model: modifyFields(model, { isSessionStalled: () => true }),
-			commands: [RetryCheckSession()],
-		}),
 		SucceededFetchCurrentUser: ({ user }) =>
-			Update.combine<Model, Message, Resources>(
-				modifyFields(model, { currentUser: () => user, isCurrentUserStalled: () => false }),
-				[informPage, informShell],
-			),
-		// A signed-in shell has nothing to show without its user, so it keeps asking. Unauthorized
-		// also re-reads the session: if it has ended, ChangedAuth sends the browser to sign-in.
-		FailedFetchCurrentUser: ({ isUnauthorized }) =>
-			model.auth !== "SignedIn" || model.currentUser !== null
-				? { model }
-				: {
-						model: modifyFields(model, { isCurrentUserStalled: () => true }),
-						commands: [...(isUnauthorized ? [CheckSession()] : []), RetryFetchCurrentUser()],
-					},
-		CompletedSignOut: () => ({ model }),
-		FailedSignOut: () => withToasts(model, Toasts.push(model.toasts, errorToast("Failed to sign out", "Please try again."))),
-		UpdatedOrganization: ({ orgSlug, organization }) =>
-			Update.combine<Model, Message, Resources>(
-				modifyFields(model, {
-					organization: () => organization,
-					orgLoad: () => ({ slug: orgSlug, status: organization === null ? "NotFound" : "Found" }),
-					// The role belongs to one organization; another one's must not show until its own arrives.
-					member: (member) => (organization?.id === model.organization?.id ? member : null),
-				}),
-				[informPage, informShell],
-			),
+			model.session._tag === "SignedIn"
+				? sessionChanged(
+						modifyFields(model, {
+							session: () =>
+								Session.SignedIn({ user: AsyncData.Success({ data: user }), retries: 0 }),
+						}),
+					)
+				: { model },
+		FailedFetchCurrentUser: ({ reason }) => failedFetchCurrentUser(reason)(model),
+		PressedRetryCurrentUser: () => refreshCurrentUser(model),
+		// A full load of `/`: every collection, token and subscription starts over, signed out.
+		SucceededSignOut: () => ({ model, commands: [LoadExternal({ href: hrefOf(AppRoute.Root()) })] }),
+		FailedSignOut: ({ reason }) =>
+			showToast(
+				errorToastOf({ title: "Failed to sign out", description: commonMessage(reason).description }),
+			)(model),
+		UpdatedOrganization: ({ orgSlug, organization }) => updatedOrganization(orgSlug, organization)(model),
 		// Only a slug still loading counts: data already on screen stays when its sync hiccups.
 		StalledOrganization: ({ orgSlug }) =>
-			model.orgLoad?.slug === orgSlug && model.orgLoad.status !== "Stalled"
-				? { model }
-				: {
+			model.org._tag === "Loading" && model.org.slug === orgSlug && !model.org.isStalled
+				? {
 						model: modifyFields(model, {
-							orgLoad: () => ({ slug: orgSlug, status: "Stalled" as const }),
+							org: () => OrgState.Loading({ slug: orgSlug, isStalled: true }),
 						}),
-					},
+					}
+				: { model },
 		PressedReload: () => ({ model, commands: [Reload()] }),
 		CompletedReload: () => ({ model }),
-		UpdatedMember: ({ member }) =>
-			Update.combine<Model, Message, Resources>(modifyFields(model, { member: () => member }), [
-				informPage,
-				informShell,
-			]),
-		TickedPresenceClock: ({ nowMs }) => ({ model: modifyFields(model, { nowMs: () => nowMs }) }),
-		ClickedLayoutTab: ({ href }) => ({ model, commands: [NavigateInternal({ url: href })] }),
-		GotPageMessage: ({ message }) => applyPage(updatePage(model.page, message, sharedOf(model)))(model),
-		GotShellMessage: ({ message }) => {
-			const result = Shell.update(model.shell, message, shellContextOf(model))
-			const shelled = withCommands(
-				{
-					model: modifyFields(model, { shell: () => result.model }),
-					commands: Command.mapMessages(result.commands, (child) =>
-						Message.GotShellMessage({ message: child }),
-					),
-				},
-				Option.fromNullishOr(result.outMessage),
-			)
-			// `Shared.isMobile` comes from the shell's viewport query.
-			return result.model.isMobile === model.shell.isMobile
-				? shelled
-				: Update.combine<Model, Message, Resources>(shelled.model, [
-						(m) => ({ model: m, commands: shelled.commands }),
-						informPage,
-					])
-		},
-		GotModalMessage: ({ message }) => withModal(model, Modal.update(model.modal, message, modalContextOf(model))),
+		UpdatedMember: ({ organizationId, member }) => updatedMember(organizationId, member)(model),
+		TickedClock: ({ nowMs }) => ({ model: modifyFields(model, { nowMs: () => nowMs }) }),
+		ClickedLayoutTab: ({ route }) => navigateTo(route)(model),
+		GotPageMessage: ({ message }) =>
+			foldPage(model, (page) => updatePage(page, message, sharedOf(model))),
+		GotShellMessage: ({ message }) =>
+			foldShell(model, (shell) => Shell.update(shell, message, shellContextOf(model))),
+		GotModalMessage: ({ message }) =>
+			foldModal(model, (modal) => Modal.update(modal, message, modalContextOf(model))),
 		GotCommandPaletteMessage: ({ message }) =>
-			withCommandPalette(model, CommandPalette.update(model.commandPalette, message, sharedOf(model))),
-		PressedHotkey: ({ actionId }) => pressedHotkey(model, actionId),
-		GotToastsMessage: ({ message }) => followToasts(model, Toasts.update(model.toasts, message)),
-		GotUpdatesMessage: ({ message }) => withUpdates(model, Updates.update(model.desktopUpdate, message)),
-		PressedDesktopMenuItem: ({ item }) => pressedDesktopMenuItem(model, item),
-		GotPlatformMessage: ({ message }) => withPlatform(model, Platform.update(model.platform, message)),
+			foldCommandPalette(model, (palette) => CommandPalette.update(palette, message, sharedOf(model))),
+		PressedHotkey: ({ actionId }) => pressedHotkey(actionId)(model),
+		GotToastsMessage: ({ message }) => foldToastsWithAction(model, message),
+		GotUpdatesMessage: ({ message }) => stepUpdates((updates) => Updates.update(updates, message))(model),
+		PressedDesktopMenuItem: ({ item }) => pressedDesktopMenuItem(item)(model),
+		GotPlatformMessage: ({ message }) =>
+			foldPlatform(model, (platform) => Platform.update(platform, message)),
 	})

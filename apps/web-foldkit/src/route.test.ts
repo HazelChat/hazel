@@ -82,11 +82,12 @@ describe("urlToAppRoute", () => {
 	it("decodes branded and query segments", () => {
 		expect(parse(`/hazel/chat/${channelId}`)).toMatchObject({ orgSlug: "hazel", channelId })
 		expect(parse(`/hazel/profile/${userId}`)).toMatchObject({ userId })
-		expect(parse("/sign-in/factor-one?redirect_url=%2Fhazel")).toMatchObject({
+		expect(parse("/sign-in?redirect_url=%2Fhazel")).toMatchObject({
 			_tag: "SignIn",
-			splat: "factor-one",
 			redirectUrl: Option.some("/hazel"),
 		})
+		// The old Clerk sub-routes (`/sign-in/factor-one`) are gone.
+		expect(parse("/sign-in/factor-one")._tag).toBe("NotFound")
 		expect(parse(`/onboarding?orgId=${orgId}`)).toMatchObject({
 			orgId: Option.some(orgId),
 			step: Option.none(),
@@ -148,14 +149,16 @@ describe("redirects", () => {
 	})
 
 	it("hides the debug settings in production", () => {
-		expect(routeRedirect(parse("/hazel/settings/debug"), { isProd: true })).toEqual(
+		expect(Option.map(routeRedirect(parse("/hazel/settings/debug"), { isProd: true }), hrefOf)).toEqual(
 			Option.some("/hazel/settings"),
 		)
 		expect(routeRedirect(parse("/hazel/settings/debug"), { isProd: false })).toEqual(Option.none())
 	})
 
 	it("sends signed-out visitors on app routes to sign-in", () => {
-		expect(authRedirect(parse("/"), "SignedOut", "/")).toEqual(Option.some("/sign-in?redirect_url=%2F"))
+		expect(Option.map(authRedirect(parse("/"), "SignedOut", "/"), hrefOf)).toEqual(
+			Option.some("/sign-in?redirect_url=%2F"),
+		)
 		expect(authRedirect(parse("/hazel/chat"), "SignedIn", "/hazel/chat")).toEqual(Option.none())
 		expect(authRedirect(parse("/hazel/chat"), "Loading", "/hazel/chat")).toEqual(Option.none())
 		expect(authRedirect(parse("/join/hazel"), "SignedOut", "/join/hazel")).toEqual(Option.none())
@@ -175,11 +178,11 @@ describe("redirects", () => {
 	it("resolves the root redirect like `_app/index.tsx`", () => {
 		const organizationId = Schema.decodeUnknownSync(OrganizationId)(orgId)
 		const member = Option.some({ organizationId, slug: "hazel" })
-		expect(rootRedirect(user(true), member)).toBe("/hazel")
-		expect(rootRedirect(user(true), Option.none())).toBe("/select-organization")
-		expect(rootRedirect(user(false), Option.none())).toBe("/onboarding")
-		expect(rootRedirect(user(false), member)).toBe(`/onboarding?orgId=${orgId}`)
-		expect(rootRedirect(user(true), Option.some({ organizationId, slug: null }))).toBe(
+		expect(hrefOf(rootRedirect(user(true), member))).toBe("/hazel")
+		expect(hrefOf(rootRedirect(user(true), Option.none()))).toBe("/select-organization")
+		expect(hrefOf(rootRedirect(user(false), Option.none()))).toBe("/onboarding")
+		expect(hrefOf(rootRedirect(user(false), member))).toBe(`/onboarding?orgId=${orgId}`)
+		expect(hrefOf(rootRedirect(user(true), Option.some({ organizationId, slug: null })))).toBe(
 			`/onboarding/setup-organization?orgId=${orgId}`,
 		)
 	})
@@ -197,20 +200,13 @@ describe("hrefOf", () => {
 	const examples: { readonly [Tag in RouteTag]: ReadonlyArray<readonly [AppRoute, string]> } = {
 		Root: [[AppRoute.Root(), "/"]],
 		SignIn: [
-			[AppRoute.SignIn({ splat: "", redirectUrl: none }), "/sign-in"],
+			[AppRoute.SignIn({ redirectUrl: none }), "/sign-in"],
 			[
-				AppRoute.SignIn({ splat: "", redirectUrl: Option.some("/hazel/chat") }),
+				AppRoute.SignIn({ redirectUrl: Option.some("/hazel/chat") }),
 				"/sign-in?redirect_url=%2Fhazel%2Fchat",
 			],
-			[
-				AppRoute.SignIn({ splat: "factor-one/sso", redirectUrl: Option.some("/hazel") }),
-				"/sign-in/factor-one/sso?redirect_url=%2Fhazel",
-			],
 		],
-		SignUp: [
-			[AppRoute.SignUp({ splat: "", redirectUrl: none }), "/sign-up"],
-			[AppRoute.SignUp({ splat: "verify", redirectUrl: none }), "/sign-up/verify"],
-		],
+		SignUp: [[AppRoute.SignUp({ redirectUrl: none }), "/sign-up"]],
 		AuthRegister: [
 			[AppRoute.AuthRegister({ flowId: none, reference: none }), "/auth/register"],
 			[
@@ -224,9 +220,7 @@ describe("hrefOf", () => {
 		],
 		Join: [[AppRoute.Join({ slug: "hazel" }), "/join/hazel"]],
 		Invite: [[AppRoute.Invite({ token: "abc_DEF-123" }), "/invite/abc_DEF-123"]],
-		AuthDesktop: [
-			[AppRoute.AuthDesktop({ attempt: Option.some("a1") }), "/auth/desktop?attempt=a1"],
-		],
+		AuthDesktop: [[AppRoute.AuthDesktop({ attempt: Option.some("a1") }), "/auth/desktop?attempt=a1"]],
 		Onboarding: [
 			[AppRoute.Onboarding({ orgId: Option.none(), step: none }), "/onboarding"],
 			[

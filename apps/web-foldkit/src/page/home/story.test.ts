@@ -1,3 +1,4 @@
+import { routeOfPath } from "../../route"
 import { ChannelId, OrganizationId, UserId } from "@hazel/schema"
 import { Option, Schema } from "effect"
 import { Command, expectNoOutMessage, expectOutMessage, given, message, model, story } from "foldkit/story"
@@ -123,7 +124,7 @@ describe("org home directory", () => {
 			message(Message.PressedMessageMember({ userId: grace, name: "Grace Hopper" })),
 			Command.expectNone(),
 			expectOutMessage(
-				PageOutMessage.RequestedNavigation({ href: `/hazel/chat/${channelId}`, replace: false }),
+				PageOutMessage.RequestedNavigation({ route: routeOfPath(`/hazel/chat/${channelId}`), replace: false }),
 			),
 			model((current) => expect(current.dmRequest).toEqual(DmRequest.Idle())),
 		)
@@ -148,7 +149,7 @@ describe("org home directory", () => {
 			Command.resolve(CreateDm, Message.SucceededCreateDm({ channelId, name: "Grace Hopper" })),
 			expectOutMessage(
 				PageOutMessage.RequestedNavigation({
-					href: `/hazel/chat/${channelId}`,
+					route: routeOfPath(`/hazel/chat/${channelId}`),
 					replace: false,
 					toast: {
 						intent: "success",
@@ -212,7 +213,7 @@ describe("org home failures and guards", () => {
 			expectNoOutMessage(),
 			model((current) => expect(current.dmRequest).toEqual(DmRequest.AwaitingChannels({ userId: grace }))),
 			message(Message.UpdatedDmChannels({ rows: dmWithGrace })),
-			expectOutMessage(PageOutMessage.RequestedNavigation({ href: `/hazel/chat/${channelId}`, replace: false })),
+			expectOutMessage(PageOutMessage.RequestedNavigation({ route: routeOfPath(`/hazel/chat/${channelId}`), replace: false })),
 			model((current) => expect(current.dmRequest).toEqual(DmRequest.Idle())),
 		)
 	})

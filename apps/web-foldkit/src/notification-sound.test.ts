@@ -3,7 +3,7 @@ import { UserId } from "@hazel/schema"
 import { Effect, Fiber, Schema, Stream } from "effect"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 import { notificationSoundManager } from "~/lib/notification-sound-manager"
-import { wireNotificationSinks } from "./app/notification-sinks"
+import { NotificationSinks, wireNotificationSinks } from "./app/notification-sinks"
 import {
 	DEFAULT_SOUND_SETTINGS,
 	isInQuietHours,
@@ -72,7 +72,7 @@ describe("notification sinks", () => {
 		const fiber = Effect.runFork(
 			Stream.runDrain(
 				wireNotificationSinks({ userId: ada, settings, currentChannelId: null, sessionStartMs: 0 }),
-			),
+			).pipe(Effect.provide(NotificationSinks.layer)),
 		)
 		await Effect.runPromise(Effect.yieldNow)
 		const result = await notificationSoundManager.testSound()

@@ -2,20 +2,22 @@ import { Effect } from "effect"
 import { Command } from "foldkit"
 import { modifyFields } from "foldkit/struct"
 import { HazelRpc } from "../../../../rpc"
-import { integrationHref, type RouteOf } from "../../../../route"
+import { integrationRoute, type RouteOf } from "../../../../route"
 import type { PageReturn, Shared } from "../../../contract"
 import { PageOutMessage } from "../../../out-message"
+import { catchCommon } from "../../../../data/actions"
 import { Message } from "./message"
 import type { Model } from "./model"
 
 /** `listOrganizationWebhooksMutation({ payload: {} })`, once the user's organization is known. */
 export const ListOrganizationWebhooks = Command.define("ListOrganizationWebhooks", {
 	messages: [Message.SucceededListWebhooks, Message.FailedListWebhooks],
-	execute: Effect.gen(function* () {
-		const client = yield* HazelRpc
-		const result = yield* client("channelWebhook.listByOrganization", {})
-		return Message.SucceededListWebhooks({ names: result.data.map((webhook) => webhook.name) })
-	}).pipe(Effect.catch(() => Effect.succeed(Message.FailedListWebhooks()))),
+	execute: HazelRpc.use((rpc) => rpc("channelWebhook.listByOrganization", {})).pipe(
+		Effect.map((result) =>
+			Message.SucceededListWebhooks({ names: result.data.map((webhook) => webhook.name) }),
+		),
+		catchCommon((reason) => Message.FailedListWebhooks({ reason })),
+	),
 })
 
 const requestWebhooksOnce = (model: Model, shared: Shared): PageReturn<Model, Message> =>
@@ -48,7 +50,7 @@ export const update = (model: Model, message: Message): PageReturn<Model, Messag
 		ClickedIntegration: ({ integrationId }) => ({
 			model,
 			outMessage: PageOutMessage.RequestedNavigation({
-				href: integrationHref(model.orgSlug, integrationId),
+				route: integrationRoute(model.orgSlug, integrationId),
 				replace: false,
 			}),
 		}),
@@ -60,6 +62,7 @@ export const update = (model: Model, message: Message): PageReturn<Model, Messag
 				webhookProviders: () => Array.from(new Set(names.map((name) => name.toLowerCase()))),
 			}),
 		}),
+		// Best effort: without the webhook names the OpenStatus and Railway cards just read "not connected".
 		FailedListWebhooks: () => ({ model }),
 		ClickedRequestIntegration: () => ({
 			model,

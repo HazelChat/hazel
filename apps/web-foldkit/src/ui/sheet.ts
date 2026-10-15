@@ -1,4 +1,5 @@
 import { Submodel } from "foldkit"
+import { childAttributes } from "foldkit/html"
 import {
 	type Sides,
 	sheetBackdropClassName,
@@ -33,8 +34,8 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, view
 				isFloat: viewInputs.isFloat ?? true,
 			}),
 			closeIconClassName: sheetCloseIconClassName,
-			panelAttributes: Object.entries(viewInputs.panelAttributes ?? {}).map(([name, value]) =>
-				h.Attribute(name, value),
+			panelAttributes: childAttributes(
+				Object.entries(viewInputs.panelAttributes ?? {}).map(([name, value]) => h.Attribute(name, value)),
 			),
 		},
 		(message) => message,

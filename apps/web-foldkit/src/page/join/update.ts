@@ -46,7 +46,7 @@ export const update = (model: Model, message: Message): Return =>
 		SucceededJoinWorkspace: () => ({
 			model: modifyFields(model, { isJoining: () => false }),
 			outMessage: PageOutMessage.RequestedNavigation({
-				href: hrefOf(AppRoute.OrgHome({ orgSlug: model.slug })),
+				route: AppRoute.OrgHome({ orgSlug: model.slug }),
 				replace: false,
 				toast: successToast("Successfully joined workspace!"),
 			}),

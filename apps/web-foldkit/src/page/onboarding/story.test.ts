@@ -3,7 +3,7 @@ import { Option } from "effect"
 import { Command, expectNoOutMessage, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
 import { errorToast } from "../../data/actions"
-import { onboardingHref } from "../../route"
+import { onboardingHref, routeOfPath } from "../../route"
 import {
 	creatorMembership,
 	invitedMembership,
@@ -45,7 +45,7 @@ describe("start-up", () => {
 	test("an onboarded user is sent home once, and later shared changes do not redirect again", () => {
 		const onboarded = makeShared()
 		const started = init(onboardingRoute(null), onboarded)
-		expect(started.outMessage).toEqual(PageOutMessage.RequestedNavigation({ href: "/", replace: false }))
+		expect(started.outMessage).toEqual(PageOutMessage.RequestedNavigation({ route: routeOfPath("/"), replace: false }))
 		expect(started.model.phase._tag).toBe("Leaving")
 		expect(started.commands?.map((command) => command.name)).toEqual([ReadBrowserTimezone.name])
 		expect(sharedChanged(started.model, onboarded).outMessage).toBeUndefined()

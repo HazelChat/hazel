@@ -1,4 +1,5 @@
 import { Submodel } from "foldkit"
+import type * as FieldValidation from "foldkit/fieldValidation"
 import type { Html, HtmlBuilder } from "foldkit/html"
 import { IconEnvelope } from "../../../icons"
 import { button } from "../../../ui/button"
@@ -10,7 +11,7 @@ import * as TimezoneSelect from "../../../ui/timezone-select"
 import type { PageViewInputs, Shared } from "../../contract"
 import { pageHeader } from "../shared"
 import { profilePictureUpload } from "./avatar-view"
-import { errorsOf, initialsOf, isSaveDisabled } from "./form"
+import { initialsOf, isSaveDisabled } from "./form"
 import { Message } from "./message"
 import type { Model } from "./model"
 import { interaction, toTimezoneMessage } from "./update"
@@ -26,27 +27,28 @@ const nameField = (
 	field: {
 		id: string
 		label: string
-		value: string
-		error: string | null
+		state: FieldValidation.Field<string>
 		onInput: (value: string) => Message
 	},
-): Html =>
-	textField(
+): Html => {
+	const error = field.state._tag === "Invalid" ? field.state.errors[0] : undefined
+	return textField(
 		h,
 		{
 			id: field.id,
-			value: field.value,
+			value: field.state.value,
 			onInput: field.onInput,
 			isRequired: true,
-			isInvalid: field.error !== null,
+			isInvalid: error !== undefined,
 			interaction: interaction.wiring(model),
 		},
 		(parts) => [
 			parts.label([field.label], { className: "lg:hidden" }),
 			parts.input(),
-			...(field.error === null ? [] : [parts.fieldError([field.error])]),
+			...(error === undefined ? [] : [parts.fieldError([error])]),
 		],
 	)
+}
 
 const section = (h: HtmlBuilder<Message>, title: string, children: ReadonlyArray<Html>, isRequired = false) =>
 	h.div(
@@ -57,7 +59,6 @@ const section = (h: HtmlBuilder<Message>, title: string, children: ReadonlyArray
 /** The page body as a plain view (Scene tests render it directly). */
 export const profileView = (model: Model, shared: Shared, h: HtmlBuilder<Message>): Html => {
 	const user = shared.currentUser
-	const errors = errorsOf(model)
 	return h.form(
 		[h.Class("flex flex-col gap-6 px-4 lg:px-8"), h.OnSubmit(Message.SubmittedProfile())],
 		[
@@ -81,15 +82,13 @@ export const profileView = (model: Model, shared: Shared, h: HtmlBuilder<Message
 									nameField(h, model, {
 										id: "profile-first-name",
 										label: "First name",
-										value: model.values.firstName,
-										error: errors.firstName,
+										state: model.firstName,
 										onInput: toFirstName,
 									}),
 									nameField(h, model, {
 										id: "profile-last-name",
 										label: "Last name",
-										value: model.values.lastName,
-										error: errors.lastName,
+										state: model.lastName,
 										onInput: toLastName,
 									}),
 								],
@@ -135,7 +134,7 @@ export const profileView = (model: Model, shared: Shared, h: HtmlBuilder<Message
 									},
 									attributes: [h.Type("submit")],
 								},
-								[model.isSubmitting ? "Saving..." : "Save"],
+								[model.save._tag === "Saving" ? "Saving..." : "Save"],
 							),
 						],
 					),

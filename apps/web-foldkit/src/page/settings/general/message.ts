@@ -1,8 +1,14 @@
 import { Schema } from "effect"
 import { File } from "foldkit/file"
 import { defineMessageUnion } from "foldkit/message"
-import { ToastRequest } from "../../../overlay/toasts"
-import * as Modal from "../../../ui/modal"
+import * as ConfirmAction from "../../shared/confirm-action"
+import {
+	CopyTarget,
+	DeleteWorkspaceFailure,
+	RenameFailure,
+	SetPublicModeFailure,
+	UploadLogoFailure,
+} from "./model"
 
 export const Message = defineMessageUnion({
 	ResolvedOrigin: { origin: Schema.String },
@@ -11,23 +17,24 @@ export const Message = defineMessageUnion({
 	SubmittedName: {},
 	ClickedCancelName: {},
 	SucceededUpdateName: {},
-	FailedUpdateName: { toast: ToastRequest },
+	FailedUpdateName: { reason: RenameFailure },
 	ClickedLogo: {},
 	CompletedOpenLogoPicker: {},
 	SelectedLogo: { files: Schema.Array(File) },
 	SucceededUploadLogo: {},
-	FailedUploadLogo: { toast: ToastRequest },
+	FailedUploadLogo: { reason: UploadLogoFailure },
 	ToggledPublicMode: { isPublic: Schema.Boolean },
 	SucceededSetPublicMode: { isPublic: Schema.Boolean },
-	FailedSetPublicMode: { toast: ToastRequest },
-	ClickedCopy: { text: Schema.String, successTitle: Schema.String, failureTitle: Schema.String },
-	CompletedCopy: { toast: ToastRequest },
+	FailedSetPublicMode: { reason: SetPublicModeFailure },
+	ClickedCopy: { target: CopyTarget, text: Schema.String },
+	SucceededCopy: { target: CopyTarget },
+	FailedCopy: { target: CopyTarget, reason: Schema.Literal("ClipboardDenied") },
 	ClickedDeleteWorkspace: {},
-	GotDeleteModalMessage: { message: Modal.Message },
+	GotDeleteConfirmMessage: { message: ConfirmAction.Message },
 	ChangedConfirmation: { value: Schema.String },
 	ClickedCancelDelete: {},
 	ClickedConfirmDelete: {},
 	SucceededDeleteWorkspace: {},
-	FailedDeleteWorkspace: { toast: ToastRequest },
+	FailedDeleteWorkspace: { reason: DeleteWorkspaceFailure },
 })
 export type Message = typeof Message.Type

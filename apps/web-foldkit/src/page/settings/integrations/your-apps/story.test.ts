@@ -56,7 +56,9 @@ describe("your apps menu actions", () => {
 			given(withOpenMenu),
 			message(Message.GotMenuMessage({ botId: deploy.id, message: Menu.Message.ClickedItem({ key: "regenerate", entries: BOT_MENU_ENTRIES }) })),
 			expectOutMessage(
-				PageOutMessage.RequestedModal({ modal: { _tag: "RegenerateBotToken", botId: deploy.id, botName: "Deploy Bot" } }),
+				PageOutMessage.RequestedModal({
+					modal: { _tag: "RegenerateBotToken", botId: deploy.id, botName: "Deploy Bot" },
+				}),
 			),
 			model((current) => expect(current.menus[0]?.popup._tag).toBe("Closed")),
 		)

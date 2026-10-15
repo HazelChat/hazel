@@ -7,7 +7,7 @@ import * as Unfurl from "../../../chat/unfurl"
 import * as Composer from "../../../composer/composer"
 import * as Draft from "../../../composer/draft"
 import * as MessageList from "../../../mount/message-list"
-import { AppRoute, hrefOf } from "../../../route"
+import { AppRoute } from "../../../route"
 import type { Shared } from "../../contract"
 import { PageOutMessage } from "../../out-message"
 import {
@@ -155,8 +155,8 @@ const tabRoutes = {
 	media: AppRoute.ChatFilesMedia,
 } as const
 
-export const tabPath = (orgSlug: string, channelId: ChannelId, tab: ChatTab) =>
-	hrefOf(tabRoutes[tab]({ orgSlug, channelId }))
+export const tabRoute = (orgSlug: string, channelId: ChannelId, tab: ChatTab): AppRoute =>
+	tabRoutes[tab]({ orgSlug, channelId })
 
 // UPDATE
 
@@ -312,7 +312,7 @@ export const update = (model: Model, message: Message, shared: Shared | null = n
 				: {
 						model,
 						outMessage: PageOutMessage.RequestedNavigation({
-							href: tabPath(model.orgSlug, model.channelId, tab),
+							route: tabRoute(model.orgSlug, model.channelId, tab),
 							replace: false,
 						}),
 					},

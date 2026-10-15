@@ -1,25 +1,38 @@
 import { Option } from "effect"
 import { modifyFields } from "foldkit/struct"
+import { failureMessage } from "~/lib/error-messages"
 import { errorToast, successToast } from "../../../data/actions"
-import type { ToastRequest } from "../../../overlay/toasts"
 import * as Interaction from "../../../ui/aria/interaction"
-import type { PageReturn, Shared } from "../../contract"
+import type { PageReturn, PageSubscriptionInput, Shared } from "../../contract"
 import { PageOutMessage } from "../../out-message"
-import { embedInteraction } from "../shared"
 import { DisconnectDiscord, StartDiscordLink } from "./command"
 import { Message } from "./message"
-import type { Model } from "./model"
-import { linkedAccountsHref, type RouteOf } from "../../../route"
+import { Link, type Model } from "./model"
+import { linkedAccountsRoute, type RouteOf } from "../../../route"
 
 type Return = PageReturn<Model, Message>
 
-export const interaction = embedInteraction<Model, Message>((message) =>
-	Message.GotInteractionMessage({ message }),
+export const interaction = Interaction.embed<Model, Message, PageSubscriptionInput<Model>>(
+	(message) => Message.GotInteractionMessage({ message }),
+	(input) => input.model,
 )
 
-const toast = (request: ToastRequest) => PageOutMessage.RequestedToast({ toast: request })
-
 type Route = RouteOf<"MySettingsLinkedAccounts">
+
+/** The backend's OAuth callback `error_code`s (`OAuthErrorCode`), in words; anything else is a retry hint. */
+const callbackErrorCopy: Readonly<Record<string, string>> = {
+	token_exchange_failed: "Could not authenticate with Discord. Please try again.",
+	account_info_failed: "Could not fetch your Discord account information.",
+	db_error: "A database error occurred. Please try again.",
+	encryption_error: "A security error occurred. Please try again.",
+	invalid_state: "The link request expired. Please try again.",
+}
+
+const callbackErrorOf = (errorCode: Option.Option<string>): string =>
+	Option.match(errorCode, {
+		onNone: () => "Please try again.",
+		onSome: (code) => callbackErrorCopy[code] ?? "Please try again.",
+	})
 
 /** The OAuth callback's `?connection_status=&provider=&error_code=`: clean the URL with the result toast. */
 const linkResult = (model: Model, route: Route): Return => {
@@ -28,15 +41,12 @@ const linkResult = (model: Model, route: Route): Return => {
 	return {
 		model,
 		outMessage: PageOutMessage.RequestedNavigation({
-			href: linkedAccountsHref(model.orgSlug),
+			route: linkedAccountsRoute(model.orgSlug),
 			replace: true,
 			toast:
 				status === "success"
 					? successToast("Discord account linked")
-					: errorToast(
-							"Failed to link Discord account",
-							Option.getOrNull(route.errorCode) ?? "Please try again.",
-						),
+					: errorToast("Failed to link Discord account", callbackErrorOf(route.errorCode)),
 		}),
 	}
 }
@@ -46,8 +56,7 @@ export const init = (route: Route): Return =>
 		{
 			orgSlug: route.orgSlug,
 			connection: null,
-			isConnecting: false,
-			isDisconnecting: false,
+			link: Link.Idle(),
 			interaction: Interaction.init(),
 		},
 		route,
@@ -56,38 +65,62 @@ export const init = (route: Route): Return =>
 /** Same page, new search: a later callback redirect, or the cleaned URL (nothing to show). */
 export const routeChanged = (model: Model, route: Route): Return => linkResult(model, route)
 
+const unsupported = {
+	title: "Discord is not available",
+	description: "Discord linking is not supported right now.",
+}
+
 export const update = (model: Model, message: Message, shared: Shared): Return => {
 	const orgId = shared.currentUser?.organizationId ?? null
+	const isIdle = model.link._tag === "Idle"
+	const toIdle = () => modifyFields(model, { link: () => Link.Idle() })
 	return Message.match<Return>(message, {
 		UpdatedDiscordConnection: ({ connection }) => ({
 			model: modifyFields(model, { connection: () => connection }),
 		}),
 		ClickedLinkDiscord: () =>
-			orgId === null || model.isConnecting
+			orgId === null || !isIdle
 				? { model }
 				: {
-						model: modifyFields(model, { isConnecting: () => true }),
+						model: modifyFields(model, { link: () => Link.Linking() }),
 						commands: [StartDiscordLink({ orgId })],
 					},
+		// The page is navigating away; `Linking` keeps the button pending until it does.
 		SucceededGetDiscordOAuthUrl: () => ({ model }),
-		FailedGetDiscordOAuthUrl: () => ({
-			model: modifyFields(model, { isConnecting: () => false }),
-			outMessage: toast(errorToast("Failed to start Discord linking flow")),
+		FailedGetDiscordOAuthUrl: ({ reason }) => ({
+			model: toIdle(),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToast(
+					"Failed to start Discord linking flow",
+					failureMessage(reason, { UnsupportedProvider: unsupported }).description ?? null,
+				),
+			}),
 		}),
 		ClickedUnlinkDiscord: () =>
-			orgId === null || model.isDisconnecting
+			orgId === null || !isIdle
 				? { model }
 				: {
-						model: modifyFields(model, { isDisconnecting: () => true }),
+						model: modifyFields(model, { link: () => Link.Unlinking() }),
 						commands: [DisconnectDiscord({ orgId })],
 					},
 		SucceededDisconnectDiscord: () => ({
-			model: modifyFields(model, { isDisconnecting: () => false }),
-			outMessage: toast(successToast("Discord account unlinked")),
+			model: toIdle(),
+			outMessage: PageOutMessage.RequestedToast({ toast: successToast("Discord account unlinked") }),
 		}),
-		FailedDisconnectDiscord: () => ({
-			model: modifyFields(model, { isDisconnecting: () => false }),
-			outMessage: toast(errorToast("Failed to unlink Discord account")),
+		FailedDisconnectDiscord: ({ reason }) => ({
+			model: toIdle(),
+			outMessage: PageOutMessage.RequestedToast({
+				toast: errorToast(
+					"Failed to unlink Discord account",
+					failureMessage(reason, {
+						NotConnected: {
+							title: "Not linked",
+							description: "This Discord account is no longer linked.",
+						},
+						UnsupportedProvider: unsupported,
+					}).description ?? null,
+				),
+			}),
 		}),
 		GotInteractionMessage: ({ message: child }) => interaction.fold(model, child),
 	})

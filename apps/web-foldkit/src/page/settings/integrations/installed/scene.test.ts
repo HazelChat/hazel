@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
+import { routeOfPath } from "../../../../route"
 import * as Scene from "foldkit/scene"
 import { describe, test } from "vitest"
-import { failureToastFixture, makeShared, pageScene } from "../../../../test/pages-fixtures"
+import { makeShared, pageScene } from "../../../../test/pages-fixtures"
 import { bot, botId } from "../../../../test/pages-integrations-fixtures"
 import { PageOutMessage } from "../../../out-message"
-import { successToast } from "../../../../data/actions"
+import { reasonToast, successToast } from "../../../../data/actions"
 import { Message } from "./message"
 import { init, UninstallBot, update } from "./update"
 import { view } from "./view"
@@ -25,7 +26,7 @@ describe("installed apps", () => {
 			Scene.click(Scene.role("button", { name: "Browse Marketplace" })),
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedNavigation({
-					href: "/hazel/settings/integrations/marketplace",
+					route: routeOfPath("/hazel/settings/integrations/marketplace"),
 					replace: false,
 				}),
 			),
@@ -66,9 +67,9 @@ describe("installed apps", () => {
 			Scene.click(Scene.role("button", { name: "Uninstall" })),
 			Scene.Command.resolve(
 				UninstallBot,
-				Message.FailedUninstallBot({ botId: bot.id, toast: failureToastFixture }),
+				Message.FailedUninstallBot({ botId: bot.id, reason: "Unavailable" }),
 			),
-			Scene.expectOutMessage(PageOutMessage.RequestedToast({ toast: failureToastFixture })),
+			Scene.expectOutMessage(PageOutMessage.RequestedToast({ toast: reasonToast("Unavailable") })),
 			Scene.expect(Scene.text("Deploy Bot")).toExist(),
 		)
 	})

@@ -1,4 +1,4 @@
-import { Effect, Option, type Schema } from "effect"
+import { Effect, Option, Schema } from "effect"
 import * as KeyValueStore from "effect/persistence/KeyValueStore"
 import { layer as platformStorageLayer } from "~/lib/platform-storage/platform-key-value-store"
 
@@ -14,7 +14,16 @@ export const readStored = <S extends Schema.Constraint>(key: string, schema: S) 
 		Effect.catch(() => Effect.succeed(Option.none<S["Type"]>())),
 	)
 
+/** A setting could not be saved: storage is full or blocked (private mode), or the value did not encode. */
+export class StorageWriteError extends Schema.TaggedError<StorageWriteError>()("StorageWriteError", {
+	key: Schema.String,
+	cause: Schema.Defect(),
+}) {}
+
 export const writeStored = <S extends Schema.Constraint>(key: string, schema: S, value: S["Type"]) =>
 	KeyValueStore.KeyValueStore.use((store) =>
 		KeyValueStore.toSchemaStore(store, schema).set(key, value),
-	).pipe(Effect.provide(platformStorageLayer), Effect.ignore)
+	).pipe(
+		Effect.provide(platformStorageLayer),
+		Effect.mapError((cause) => new StorageWriteError({ key, cause })),
+	)

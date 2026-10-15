@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { routeOfPath } from "../../route"
 import { OrganizationId } from "@hazel/schema"
 import { Schema } from "effect"
 import * as Scene from "foldkit/scene"
@@ -31,11 +32,11 @@ describe("select organization view", () => {
 			Scene.expect(Scene.text("@hazel")).toExist(),
 			Scene.click(Scene.role("button", { name: /Acme Corp/ })),
 			Scene.expectOutMessage(
-				PageOutMessage.RequestedNavigation({ href: `/onboarding/setup-organization?orgId=${acme.id}`, replace: false }),
+				PageOutMessage.RequestedNavigation({ route: routeOfPath(`/onboarding/setup-organization?orgId=${acme.id}`), replace: false }),
 			),
 			Scene.click(Scene.role("button", { name: "Create a new one" })),
 			Scene.expectOutMessage(
-				PageOutMessage.RequestedNavigation({ href: "/onboarding/setup-organization", replace: false }),
+				PageOutMessage.RequestedNavigation({ route: routeOfPath("/onboarding/setup-organization"), replace: false }),
 			),
 		)
 	})
@@ -46,7 +47,7 @@ describe("select organization view", () => {
 			Scene.given(init().model),
 			Scene.expect(Scene.role("heading", { name: "Select an organization" })).toBeAbsent(),
 			Scene.Subscription.emit(Message.UpdatedOrganizations({ organizations: [hazel] })),
-			Scene.expectOutMessage(PageOutMessage.RequestedNavigation({ href: "/hazel", replace: false })),
+			Scene.expectOutMessage(PageOutMessage.RequestedNavigation({ route: routeOfPath("/hazel"), replace: false })),
 			Scene.expect(Scene.role("button", { name: /Hazel Labs/ })).toBeAbsent(),
 		)
 	})

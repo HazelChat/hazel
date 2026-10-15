@@ -1,5 +1,5 @@
 import type { ChannelSectionId } from "@hazel/schema"
-import { Array, Option } from "effect"
+import { Array, Option, Schema } from "effect"
 import type { ChildAttribute, Html, HtmlBuilder } from "foldkit/html"
 import {
 	IconCirclePlus,
@@ -17,7 +17,7 @@ import {
 import { button } from "../../ui/button"
 import * as Menu from "../../ui/menu"
 import { menuLabel, view as menuView } from "../../ui/menu-view"
-import type { SectionAction } from "./model"
+import { SectionAction } from "./model"
 import type { ChannelEntry, Section } from "./rows"
 
 /** The channel row "dots" menu (`ChannelItem`) and the section "+" menu (`SectionGroup`). */
@@ -29,14 +29,28 @@ const DEFAULT_SECTION_KEY = "section:default"
 const sectionKeyOf = (sectionId: string | null) =>
 	sectionId === null ? DEFAULT_SECTION_KEY : `section:${sectionId}`
 
+// KEYS
+
+/** The row menu's fixed items; "Move to section" leaves are keyed per section (`sectionIdOfKey`). */
+export const RowMenuKey = Schema.Literals(["mute", "favorite", "settings", "delete", "leave"])
+export type RowMenuKey = typeof RowMenuKey.Type
+export const decodeRowMenuKey = Schema.decodeUnknownOption(RowMenuKey)
+
+/** The section menu's items: its actions plus "Delete section". */
+export const SectionMenuKey = Schema.Union([SectionAction, Schema.Literal("delete-section")])
+export type SectionMenuKey = typeof SectionMenuKey.Type
+export const decodeSectionMenuKey = Schema.decodeUnknownOption(SectionMenuKey)
+
+const rowItem = (key: RowMenuKey, options?: Parameters<typeof Menu.item>[1]) => Menu.item(key, options)
+
 // ENTRIES
 
 export const rowMenuEntries = (
 	sections: ReadonlyArray<Section>,
 	canDelete: boolean,
 ): ReadonlyArray<Menu.Entry> => [
-	Menu.item("mute"),
-	Menu.item("favorite"),
+	rowItem("mute"),
+	rowItem("favorite"),
 	...(sections.length > 0
 		? [
 				Menu.item("move", {
@@ -50,10 +64,10 @@ export const rowMenuEntries = (
 			]
 		: []),
 	Menu.separator,
-	Menu.item("settings"),
-	...(canDelete ? [Menu.item("delete", { intent: "Danger" })] : []),
+	rowItem("settings"),
+	...(canDelete ? [rowItem("delete", { intent: "Danger" })] : []),
 	Menu.separator,
-	Menu.item("leave", { intent: "Danger" }),
+	rowItem("leave", { intent: "Danger" }),
 ]
 
 /** The move target a submenu key names: `null` for the default section. */
@@ -73,8 +87,10 @@ export const sectionMenuEntries = (
 	actions: ReadonlyArray<SectionAction>,
 	isEditable: boolean,
 ): ReadonlyArray<Menu.Entry> => [
-	...actions.map((action) => Menu.item(action)),
-	...(isEditable ? [Menu.separator, Menu.item("delete-section", { intent: "Danger" })] : []),
+	...actions.map((action) => Menu.item(action satisfies SectionMenuKey)),
+	...(isEditable
+		? [Menu.separator, Menu.item("delete-section" satisfies SectionMenuKey, { intent: "Danger" })]
+		: []),
 ]
 
 export const closedMenu = (id: string, placement?: "right top") =>
@@ -141,7 +157,8 @@ export const rowMenuView = <M>(
 						attributes: [
 							h.Attribute("data-slot", "menu-trigger"),
 							h.AriaLabel(
-								options.entry.channel.type === "single" || options.entry.channel.type === "direct"
+								options.entry.channel.type === "single" ||
+									options.entry.channel.type === "direct"
 									? "Conversation options"
 									: "Channel options",
 							),

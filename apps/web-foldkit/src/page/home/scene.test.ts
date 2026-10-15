@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { routeOfPath } from "../../route"
 import { UserId } from "@hazel/schema"
 import { Schema } from "effect"
 import * as Scene from "foldkit/scene"
@@ -90,7 +91,7 @@ describe("member directory", () => {
 			Scene.Subscription.emit(Message.UpdatedDmChannels({ rows: dmWithGrace })),
 			Scene.click(messageButton),
 			Scene.Command.expectNone(),
-			Scene.expectOutMessage(PageOutMessage.RequestedNavigation({ href: `/hazel/chat/${channelId}`, replace: false })),
+			Scene.expectOutMessage(PageOutMessage.RequestedNavigation({ route: routeOfPath(`/hazel/chat/${channelId}`), replace: false })),
 		)
 	})
 
@@ -103,7 +104,7 @@ describe("member directory", () => {
 			Scene.click(messageButton),
 			Scene.expectNoOutMessage(),
 			Scene.Subscription.emit(Message.UpdatedDmChannels({ rows: dmWithGrace })),
-			Scene.expectOutMessage(PageOutMessage.RequestedNavigation({ href: `/hazel/chat/${channelId}`, replace: false })),
+			Scene.expectOutMessage(PageOutMessage.RequestedNavigation({ route: routeOfPath(`/hazel/chat/${channelId}`), replace: false })),
 		)
 	})
 

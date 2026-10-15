@@ -128,12 +128,13 @@ describe("delete", () => {
 			Scene.expect(Scene.within(deleteDialog, Scene.text(":shipit:"))).toExist(),
 			Scene.click(Scene.role("button", { name: "Delete emoji" })),
 			Scene.Command.expectExact(DeleteCustomEmoji({ emojiId: shipit.id, name: "shipit" })),
-			Scene.expect(deleteDialog).toBeAbsent(),
-			Scene.Mount.expectEnded(Modal.AcquireResources),
+			Scene.expect(Scene.within(deleteDialog, Scene.role("button", { name: "Deleting..." }))).toExist(),
 			Scene.Command.resolve(DeleteCustomEmoji, Message.SucceededDeleteEmoji({ name: "shipit" })),
 			Scene.expectOutMessage(
 				PageOutMessage.RequestedToast({ toast: successToast("Emoji :shipit: deleted") }),
 			),
+			Scene.expect(deleteDialog).toBeAbsent(),
+			Scene.Mount.expectEnded(Modal.AcquireResources),
 		)
 	})
 

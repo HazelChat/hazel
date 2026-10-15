@@ -1,5 +1,19 @@
 // @vitest-environment jsdom
-import { Command, Mount, click, expect as sceneExpect, given, label, role, scene, submit, text, type, within, selector } from "foldkit/scene"
+import {
+	Command,
+	Mount,
+	click,
+	expect as sceneExpect,
+	given,
+	label,
+	role,
+	scene,
+	submit,
+	text,
+	type,
+	within,
+	selector,
+} from "foldkit/scene"
 import { describe, test } from "vitest"
 import * as CreateSection from "../overlay/modal/create-section"
 import { orgSwitcherEntries } from "../shell/menus"
@@ -72,7 +86,10 @@ describe("modal host", () => {
 			...mounted,
 			type(label("Section Name"), "Design"),
 			submit(within(dialog, selector("form"))),
-			Command.resolve(CreateSection.CreateSection, CreateSection.Message.FailedCreateSection({ toast: failed })),
+			Command.resolve(
+				CreateSection.CreateSection,
+				CreateSection.Message.FailedCreateSection({ toast: failed }),
+			),
 			sceneExpect(dialog).toExist(),
 			sceneExpect(role("button", { name: "Create section" })).toBeEnabled(),
 			sceneExpect(text("Could not create the section")).toExist(),

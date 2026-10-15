@@ -10,28 +10,30 @@ import { interaction } from "./update"
 export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, _inputs, h) => {
 	const isConnected = model.connection?.status === "active"
 	const wiring = interaction.wiring(model)
+	const isLinking = model.link._tag === "Linking"
+	const isUnlinking = model.link._tag === "Unlinking"
 	const action = isConnected
 		? button(
 				h,
 				{
 					intent: "danger",
 					size: "sm",
-					isDisabled: model.isDisconnecting,
+					isDisabled: isUnlinking,
 					onPress: Message.ClickedUnlinkDiscord(),
 					interaction: { wiring, target: "unlink-discord" },
 				},
-				[model.isDisconnecting ? "Unlinking..." : "Unlink"],
+				[isUnlinking ? "Unlinking..." : "Unlink"],
 			)
 		: button(
 				h,
 				{
 					intent: "primary",
 					size: "sm",
-					isDisabled: model.isConnecting,
+					isDisabled: isLinking,
 					onPress: Message.ClickedLinkDiscord(),
 					interaction: { wiring, target: "link-discord" },
 				},
-				[model.isConnecting ? "Redirecting..." : "Link Discord"],
+				[isLinking ? "Redirecting..." : "Link Discord"],
 			)
 	return h.div(
 		[h.Class("flex flex-col gap-6 px-4 lg:px-8")],

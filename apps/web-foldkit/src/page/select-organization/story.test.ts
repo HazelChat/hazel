@@ -9,7 +9,7 @@ import { PageOutMessage } from "../out-message"
 import { enterRoute } from "../registry"
 import { Message } from "./message"
 import type { UserOrganization } from "./model"
-import { organizationHref, urlToAppRoute } from "../../route"
+import { hrefOf, organizationHref, routeOfPath, urlToAppRoute } from "../../route"
 import { init, update } from "./update"
 
 /** `/select-organization`: a single organization redirects once; otherwise the user picks. */
@@ -23,7 +23,7 @@ const org = (n: number, slug: string | null): UserOrganization => ({
 })
 const hazel = org(1, "hazel")
 const unfinished = org(2, null)
-const navigation = (href: string) => PageOutMessage.RequestedNavigation({ href, replace: false })
+const navigation = (href: string) => PageOutMessage.RequestedNavigation({ route: routeOfPath(href), replace: false })
 
 describe("select organization", () => {
 	test("a single organization redirects once, even when the live query re-emits", () => {
@@ -71,7 +71,7 @@ describe("select organization", () => {
 			update(init().model, Message.UpdatedOrganizations({ organizations: [hazel, unfinished] })).model,
 			Message.ClickedCreateNew(),
 		)
-		const href = picked.outMessage?._tag === "RequestedNavigation" ? picked.outMessage.href : ""
+		const href = picked.outMessage?._tag === "RequestedNavigation" ? hrefOf(picked.outMessage.route) : ""
 		const route = Option.match(fromString(`http://localhost${href}`), {
 			onNone: () => expect.unreachable(`unparseable ${href}`),
 			onSome: urlToAppRoute,

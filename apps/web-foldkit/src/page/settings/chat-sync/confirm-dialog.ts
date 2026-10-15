@@ -1,34 +1,39 @@
+import { Option } from "effect"
 import type { Html, HtmlBuilder } from "foldkit/html"
 import { dialogDescriptionBase } from "~/components/ui/dialog.styles"
 import { button } from "../../../ui/button"
 import { dialog, dialogClose, dialogFooter, dialogHeader, dialogTitle } from "../../../ui/dialog"
 import * as Modal from "../../../ui/modal"
+import * as ConfirmAction from "../../shared/confirm-action"
 
 /**
  * The chat sync pages' confirmations: `<Modal><ModalContent isOpen size="md"><Dialog>` with a danger
  * icon tile, a title, a description naming the target, Cancel and a pending danger button.
  */
-export const confirmDialog = <Message>(
+export const confirmDialog = <Target, Message>(
 	h: HtmlBuilder<Message>,
 	options: Readonly<{
 		slotId: string
-		modal: Modal.Model
+		confirm: ConfirmAction.Model<Target>
 		icon: Html
 		title: string
-		/** Description text before and after the highlighted name. */
-		description: readonly [string, string, string]
+		/** Description text before and after the highlighted name of the target. */
+		description: (target: Target) => readonly [string, string, string]
 		confirmLabel: string
 		pendingLabel: string
-		isPending: boolean
 		onConfirm: Message
-		toParentMessage: (message: Modal.Message) => Message
+		toParentMessage: (message: ConfirmAction.Message) => Message
 	}>,
 ): Html => {
 	const titleId = `${options.slotId}-title`
-	const [before, name, after] = options.description
+	const isPending = ConfirmAction.isRunning(options.confirm)
+	const [before, name, after] = Option.match(ConfirmAction.targetOf(options.confirm), {
+		onNone: () => ["", "", ""] as const,
+		onSome: options.description,
+	})
 	return h.submodel({
 		slotId: options.slotId,
-		model: options.modal,
+		model: options.confirm.modal,
 		view: Modal.view,
 		viewInputs: {
 			size: "md",
@@ -55,16 +60,16 @@ export const confirmDialog = <Message>(
 							h,
 							{
 								intent: "danger",
-								isDisabled: options.isPending,
-								isPending: options.isPending,
+								isDisabled: isPending,
+								isPending,
 								onPress: options.onConfirm,
 							},
-							[options.isPending ? options.pendingLabel : options.confirmLabel],
+							[isPending ? options.pendingLabel : options.confirmLabel],
 						),
 					]),
 				]),
 			],
 		},
-		toParentMessage: options.toParentMessage,
+		toParentMessage: (message) => options.toParentMessage(ConfirmAction.toModalMessage(message)),
 	})
 }

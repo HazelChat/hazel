@@ -4,7 +4,7 @@ import { Command } from "foldkit"
 import { load } from "foldkit/navigation"
 import { Provider } from "../../../auth/client"
 import { operationReasons, signInWithPasskey, startOAuthSignIn } from "../../../auth/flows"
-import { runDesktopAuth } from "../../../platform/desktop-auth"
+import { type DesktopAuthUnavailableError, runDesktopAuth } from "../../../platform/desktop-auth"
 import { Message } from "./message"
 import type { SignInFailure } from "./model"
 
@@ -31,7 +31,7 @@ export const StartPasskeySignIn = Command.define("StartPasskeySignIn", {
 		),
 })
 
-type BrowserSignInError = Effect.Error<DesktopAuth["signIn"]>
+type BrowserSignInError = Effect.Error<DesktopAuth["signIn"]> | DesktopAuthUnavailableError
 
 /** Exhaustive over the desktop client's sign-in failures (the library's `PlatformError` reasons first). */
 const browserSignInReason = (error: BrowserSignInError): SignInFailure =>
@@ -48,6 +48,8 @@ const browserSignInReason = (error: BrowserSignInError): SignInFailure =>
 		BrowserLoginIndeterminate: (): SignInFailure => "BrowserIndeterminate",
 		BrowserLoginInvalid: (): SignInFailure => "Expired",
 		BrowserLoginUnavailable: (): SignInFailure => "Unavailable",
+		// The desktop auth runtime (keychain, deep link) could not start.
+		DesktopAuthUnavailableError: (): SignInFailure => "Unavailable",
 	})
 
 /**

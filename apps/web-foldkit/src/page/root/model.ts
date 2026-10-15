@@ -20,7 +20,8 @@ export type Model = typeof Model.Type
 
 export const Message = defineMessageUnion({
 	UpdatedMembership: { membership: Schema.NullOr(RootMembership) },
-	TookReturnTo: { returnTo: Schema.NullOr(Schema.String) },
+	ReadReturnTo: { returnTo: Schema.NullOr(Schema.String) },
+	CompletedForgetReturnTo: {},
 	StalledMembership: {},
 	PressedReload: {},
 	CompletedReload: {},

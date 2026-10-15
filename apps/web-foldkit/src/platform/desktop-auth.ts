@@ -3,7 +3,7 @@ import { type DesktopAuth, layerVault, makeDesktopAuth } from "@hazel/auth/deskt
 import { getTauriCore, getTauriDeepLink, getTauriOpener } from "@hazel/desktop/bridge"
 import { BrowserLogin } from "@yielded/auth"
 import { layerCryptoWeb } from "@yielded/crypto/WebCrypto"
-import { Context, Effect, Layer, ManagedRuntime, Schema } from "effect"
+import { Context, Effect, Exit, Layer, ManagedRuntime, Option, Schema, SynchronizedRef } from "effect"
 import { FetchHttpClient } from "effect/http"
 
 /**
@@ -15,25 +15,22 @@ import { FetchHttpClient } from "effect/http"
 const unavailable = (reason: "unavailable" | "storage" = "unavailable") =>
 	BrowserLogin.PlatformError.make({ reason })
 
+/** A Tauri command on the keychain vault; outside Tauri the storage is unavailable. */
+const invokeVault = <A>(command: string, args?: Record<string, unknown>) =>
+	Effect.suspend(() => {
+		const core = getTauriCore()
+		return core === undefined
+			? Effect.fail(unavailable("storage"))
+			: Effect.tryPromise({
+					try: () => core.invoke<A>(command, args),
+					catch: () => unavailable("storage"),
+				})
+	})
+
 /** One JSON record in the OS keychain; the Rust side never interprets it. */
 const KeychainStore = {
-	read: Effect.tryPromise({
-		try: async () => {
-			const core = getTauriCore()
-			if (core === undefined) throw new Error("Tauri core unavailable")
-			return await core.invoke<string | null>("auth_vault_read")
-		},
-		catch: () => unavailable("storage"),
-	}),
-	write: (record: string) =>
-		Effect.tryPromise({
-			try: async () => {
-				const core = getTauriCore()
-				if (core === undefined) throw new Error("Tauri core unavailable")
-				await core.invoke("auth_vault_write", { record })
-			},
-			catch: () => unavailable("storage"),
-		}),
+	read: invokeVault<string | null>("auth_vault_read"),
+	write: (record: string) => invokeVault<void>("auth_vault_write", { record }),
 }
 
 /** Only the registered callback, with exactly its query; anything else is ignored. */
@@ -58,21 +55,33 @@ export const BrowserLive = Layer.effect(
 			}
 		}
 
+		// Without the deep link listener no callback can arrive: `open` then fails at once instead of
+		// waiting out its timeout, and the session itself still reads from the vault.
 		const deepLink = getTauriDeepLink()
-		if (deepLink !== undefined) {
-			yield* Effect.acquireRelease(
-				Effect.promise(() => deepLink.onOpenUrl(capture)),
+		const isListening =
+			deepLink !== undefined &&
+			(yield* Effect.acquireRelease(
+				Effect.tryPromise({ try: () => deepLink.onOpenUrl(capture), catch: () => unavailable() }),
 				(unlisten) => Effect.sync(unlisten),
-			)
-			const initial = yield* Effect.promise(() => deepLink.getCurrent()).pipe(
-				Effect.orElseSucceed(() => null),
-			)
+			).pipe(
+				Effect.as(true),
+				Effect.catchTag("BrowserLoginPlatformError", () =>
+					Effect.logWarning("[desktop-auth] deep link listener unavailable").pipe(Effect.as(false)),
+				),
+			))
+		if (deepLink !== undefined && isListening) {
+			// Best effort: a cold-start callback is a convenience; sign-in can always be started again.
+			const initial = yield* Effect.tryPromise({
+				try: () => deepLink.getCurrent(),
+				catch: () => unavailable(),
+			}).pipe(Effect.orElseSucceed(() => null))
 			if (initial !== null) capture(initial)
 		}
 
 		return BrowserLogin.Browser.of({
 			open: ({ url }) =>
 				Effect.gen(function* () {
+					if (!isListening) return yield* Effect.fail(unavailable())
 					const json = yield* KeychainStore.read
 					if (json === null) return yield* Effect.fail(unavailable("storage"))
 					const record = yield* Schema.decodeEffect(
@@ -145,18 +154,47 @@ const DesktopAuthLive = Layer.effect(
 	Layer.provide(Layer.succeed(FetchHttpClient.RequestInit, { credentials: "omit", redirect: "error" })),
 )
 
-/** Built on first use and kept for the app's life (the deep link listener lives with it). */
-let runtime: ManagedRuntime.ManagedRuntime<DesktopAuthService, unknown> | undefined
+/** The desktop auth runtime could not be built (keychain, crypto or deep link setup failed). */
+export class DesktopAuthUnavailableError extends Schema.TaggedError<DesktopAuthUnavailableError>()(
+	"DesktopAuthUnavailableError",
+	{ cause: Schema.Defect() },
+) {}
 
-export const runDesktopAuth = <A, E>(f: (auth: DesktopAuth) => Effect.Effect<A, E>): Effect.Effect<A, E> =>
+type DesktopAuthRuntime = ManagedRuntime.ManagedRuntime<DesktopAuthService, unknown>
+
+/**
+ * Built on first use and kept for the app's life (the deep link listener lives with it). Only a
+ * runtime that built is kept: after a failed build the next use tries again.
+ */
+const desktopAuthRuntime = SynchronizedRef.makeUnsafe(Option.none<DesktopAuthRuntime>())
+
+const buildRuntime: Effect.Effect<readonly [DesktopAuth, DesktopAuthRuntime], DesktopAuthUnavailableError> =
 	Effect.suspend(() => {
-		runtime ??= ManagedRuntime.make(DesktopAuthLive)
-		const current = runtime
-		return Effect.flatMap(
-			Effect.promise(() => current.runPromise(Effect.service(DesktopAuthService))),
-			f,
+		const runtime: DesktopAuthRuntime = ManagedRuntime.make(DesktopAuthLive)
+		return runtime.contextEffect.pipe(
+			Effect.map((context) => [Context.get(context, DesktopAuthService), runtime] as const),
+			Effect.onExit((exit) => (Exit.isSuccess(exit) ? Effect.void : runtime.disposeEffect)),
+			Effect.catchCause((cause) => Effect.fail(new DesktopAuthUnavailableError({ cause }))),
 		)
 	})
+
+const desktopAuth: Effect.Effect<DesktopAuth, DesktopAuthUnavailableError> = SynchronizedRef.modifyEffect(
+	desktopAuthRuntime,
+	(current) =>
+		Option.match(current, {
+			onSome: (runtime) =>
+				runtime.contextEffect.pipe(
+					Effect.map((context) => [Context.get(context, DesktopAuthService), current] as const),
+					Effect.catchCause((cause) => Effect.fail(new DesktopAuthUnavailableError({ cause }))),
+				),
+			onNone: () =>
+				Effect.map(buildRuntime, ([auth, runtime]) => [auth, Option.some(runtime)] as const),
+		}),
+)
+
+export const runDesktopAuth = <A, E>(
+	f: (auth: DesktopAuth) => Effect.Effect<A, E>,
+): Effect.Effect<A, E | DesktopAuthUnavailableError> => Effect.flatMap(desktopAuth, f)
 
 /** The session credential for API requests (`Authorization: Bearer`), or `null` signed out. */
 export const desktopSessionBearer = (): Promise<string | null> =>

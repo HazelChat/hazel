@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { CustomEmojiId, OrganizationId, OrganizationMemberId } from "@hazel/schema"
-import { Schema } from "effect"
+import { Option, Schema } from "effect"
 import { Command, expectNoOutMessage, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
 import { PageOutMessage } from "../../out-message"
@@ -15,15 +15,11 @@ import {
 	RevokeEmojiPreview,
 	CreateCustomEmoji,
 } from "./update"
-import { errorToast, successToast } from "../../../data/actions"
-import {
-	failureToastFixture,
-	makeShared,
-	organizationId,
-	storyUpdate,
-	userId,
-} from "../../../test/pages-fixtures"
+import { errorToast, reasonToast, successToast } from "../../../data/actions"
+import { makeShared, organizationId, storyUpdate, userId } from "../../../test/pages-fixtures"
 import * as Modal from "../../../ui/modal"
+import * as ConfirmAction from "../../shared/confirm-action"
+import type { CreateFailure } from "./model"
 import { sharedDefaults } from "../../test-shared"
 
 /** Update-loop tests for custom emojis: names, file checks and the delete confirmation. */
@@ -52,10 +48,14 @@ describe("emoji names", () => {
 	})
 
 	test("validation matches the legacy rules", () => {
-		expect(validateEmojiName("")).toBe("Name is required")
-		expect(validateEmojiName("a".repeat(65))).toBe("Name must be 64 characters or less")
-		expect(validateEmojiName("Ship It")).toBe("Only lowercase letters, numbers, hyphens, and underscores")
-		expect(validateEmojiName("ship-it_2")).toBeNull()
+		const errorsOf = (name: string) => {
+			const field = validateEmojiName(name)
+			return field._tag === "Invalid" ? field.errors : []
+		}
+		expect(errorsOf("")).toEqual(["Name is required"])
+		expect(errorsOf("a".repeat(65))).toEqual(["Name must be 64 characters or less"])
+		expect(errorsOf("Ship It")).toEqual(["Only lowercase letters, numbers, hyphens, and underscores"])
+		expect(validateEmojiName("ship-it_2")).toEqual({ _tag: "Valid", value: "ship-it_2" })
 	})
 })
 
@@ -85,35 +85,50 @@ describe("file selection", () => {
 			Message.CreatedPreview({ file, previewUrl: "blob:1" }),
 			shared,
 		).model
-		expect(drafted.draft).toMatchObject({ name: "ship_it", nameError: null })
+		expect(drafted.draft?.name).toEqual({ _tag: "Valid", value: "ship_it" })
 		const edited = update(drafted, Message.ChangedEmojiName({ value: "Ship It" }), shared).model
-		expect(edited.draft).toMatchObject({
-			name: "ship it",
-			nameError: "Only lowercase letters, numbers, hyphens, and underscores",
+		expect(edited.draft?.name).toEqual({
+			_tag: "Invalid",
+			value: "ship it",
+			errors: ["Only lowercase letters, numbers, hyphens, and underscores"],
 		})
 	})
 })
 
 describe("delete confirmation", () => {
-	test("confirming closes the modal and deletes the target", () => {
+	test("confirming deletes the target, and the dialog closes once it succeeds", () => {
 		const open = update(
 			init().model,
 			Message.ClickedDeleteEmoji({ id: shipit, name: "shipit" }),
 			shared,
 		).model
-		expect(open.deleteModal.isOpen).toBe(true)
+		expect(open.deleteConfirm.modal.isOpen).toBe(true)
 		const confirmed = update(open, Message.ClickedConfirmDelete(), shared)
-		expect(confirmed.model).toMatchObject({ deleteTarget: null, deleteModal: { isOpen: false } })
+		expect(confirmed.model.deleteConfirm.state).toEqual({
+			_tag: "Running",
+			target: { id: shipit, name: "shipit" },
+		})
 		expect(confirmed.commands?.[0]).toMatchObject({
 			name: "DeleteCustomEmoji",
 			args: { emojiId: shipit },
 		})
+		expect(update(confirmed.model, Message.ClickedConfirmDelete(), shared).commands ?? []).toHaveLength(0)
+		const deleted = update(confirmed.model, Message.SucceededDeleteEmoji({ name: "shipit" }), shared)
+		expect(deleted.model.deleteConfirm).toMatchObject({
+			state: { _tag: "Closed" },
+			modal: { isOpen: false },
+		})
 	})
 
-	test("failure toasts the legacy message", () => {
-		expect(update(init().model, Message.FailedDeleteEmoji(), shared).outMessage).toMatchObject({
-			toast: { intent: "error", title: "Failed to delete emoji" },
+	test("a missing emoji names itself; other failures get the shared copy", () => {
+		expect(
+			update(init().model, Message.FailedDeleteEmoji({ reason: "NotFound" }), shared).outMessage,
+		).toMatchObject({
+			toast: errorToast("Failed to delete emoji", "It may have already been deleted."),
 		})
+		expect(
+			update(init().model, Message.FailedDeleteEmoji({ reason: "Offline" }), shared).outMessage,
+		).toMatchObject({ toast: reasonToast("Offline") })
 	})
 })
 
@@ -139,12 +154,14 @@ describe("delete failure", () => {
 			message(Message.ClickedDeleteEmoji({ id: shipit, name: "shipit" })),
 			message(Message.ClickedConfirmDelete()),
 			Command.expectExact(DeleteCustomEmoji({ emojiId: shipit, name: "shipit" })),
-			Command.resolve(DeleteCustomEmoji, Message.FailedDeleteEmoji()),
+			Command.resolve(DeleteCustomEmoji, Message.FailedDeleteEmoji({ reason: "NotFound" })),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Failed to delete emoji", description: null },
+					toast: errorToast("Failed to delete emoji", "It may have already been deleted."),
 				}),
 			),
+			// The dialog stays open so the user can retry or cancel.
+			model((current) => expect(current.deleteConfirm.state._tag).toBe("Confirming")),
 		)
 	})
 })
@@ -162,6 +179,8 @@ const restoreTarget = {
 	imageUrl: "https://cdn/old.png",
 	newImageUrl: "https://cdn/new.png",
 }
+/** The draft's name belongs to a deleted emoji: the restore dialog asks. */
+const asking = { ...drafted, restoreConfirm: ConfirmAction.ask(drafted.restoreConfirm, restoreTarget) }
 
 describe("upload draft", () => {
 	test("a picked file previews, focuses the name, and a second pick revokes the first preview", () => {
@@ -202,7 +221,13 @@ describe("save", () => {
 			message(Message.ChangedEmojiName({ value: "" })),
 			message(Message.ClickedSaveEmoji()),
 			Command.expectNone(),
-			model((current) => expect(current.draft?.nameError).toBe("Name is required")),
+			model((current) =>
+				expect(current.draft?.name).toEqual({
+					_tag: "Invalid",
+					value: "",
+					errors: ["Name is required"],
+				}),
+			),
 		)
 	})
 
@@ -217,7 +242,7 @@ describe("save", () => {
 			given(drafted),
 			message(Message.ClickedSaveEmoji()),
 			Command.expectExact(CreateCustomEmoji),
-			model((current) => expect(current.isSaving).toBe(true)),
+			model((current) => expect(current.isCreating).toBe(true)),
 			Command.resolve(
 				CreateCustomEmoji,
 				Message.SucceededCreateEmoji({ name: "ship_it", previewUrl: "blob:1" }),
@@ -226,14 +251,14 @@ describe("save", () => {
 				PageOutMessage.RequestedToast({ toast: successToast("Emoji :ship_it: created") }),
 			),
 			Command.resolve(RevokeEmojiPreview({ previewUrl: "blob:1" }), Message.CompletedRevokePreview()),
-			model((current) => expect(current).toMatchObject({ isSaving: false, draft: null })),
+			model((current) => expect(current).toMatchObject({ isCreating: false, draft: null })),
 		)
 	})
 
 	test("Save while a save is in flight, or without a signed-in user, sends nothing", () => {
 		story(
 			owner,
-			given({ ...drafted, isSaving: true }),
+			given({ ...drafted, isCreating: true }),
 			message(Message.ClickedSaveEmoji()),
 			Command.expectNone(),
 		)
@@ -274,12 +299,26 @@ describe("save", () => {
 			owner,
 			given(drafted),
 			message(Message.ClickedSaveEmoji()),
-			Command.resolve(CreateCustomEmoji, Message.FailedCreateEmoji({ toast: failureToastFixture })),
-			expectOutMessage(PageOutMessage.RequestedToast({ toast: failureToastFixture })),
+			Command.resolve(CreateCustomEmoji, Message.FailedCreateEmoji({ reason: "Unexpected" })),
+			expectOutMessage(PageOutMessage.RequestedToast({ toast: reasonToast("Unexpected") })),
 			model((current) =>
-				expect(current).toMatchObject({ isSaving: false, draft: { name: "ship_it" } }),
+				expect(current).toMatchObject({ isCreating: false, draft: { name: { value: "ship_it" } } }),
 			),
 		)
+	})
+
+	test("each create failure gets its own copy; only a name conflict says the name is taken", () => {
+		const toastFor = (reason: CreateFailure) =>
+			update(drafted, Message.FailedCreateEmoji({ reason }), makeShared()).outMessage
+		expect(toastFor("NameTaken")).toMatchObject({
+			toast: errorToast("Failed to create emoji", "The name is already taken. Please try another."),
+		})
+		expect(toastFor("Offline")).toMatchObject({ toast: reasonToast("Offline") })
+		expect(toastFor("SignedOut")).toMatchObject({ toast: reasonToast("SignedOut") })
+		expect(toastFor("TooLarge")).toMatchObject({
+			toast: errorToast("File too large", "File size must be less than 256KB"),
+		})
+		expect(toastFor("NotConfigured")).toMatchObject({ toast: { title: "Configuration error" } })
 	})
 })
 
@@ -292,7 +331,10 @@ describe("restore a deleted emoji", () => {
 			Command.resolve(CreateCustomEmoji, Message.FoundDeletedEmoji({ target: restoreTarget })),
 			expectNoOutMessage(),
 			model((current) =>
-				expect(current).toMatchObject({ isSaving: false, restoreModal: { isOpen: true } }),
+				expect(current).toMatchObject({
+					isCreating: false,
+					restoreConfirm: { state: { _tag: "Confirming" }, modal: { isOpen: true } },
+				}),
 			),
 			message(Message.ClickedConfirmRestore()),
 			Command.expectExact(
@@ -306,11 +348,7 @@ describe("restore a deleted emoji", () => {
 				}),
 			),
 			model((current) =>
-				expect(current).toMatchObject({
-					isSaving: true,
-					restoreTarget: null,
-					restoreModal: { isOpen: false },
-				}),
+				expect(current.restoreConfirm.state).toEqual({ _tag: "Running", target: restoreTarget }),
 			),
 			Command.resolve(
 				RestoreCustomEmoji,
@@ -320,12 +358,21 @@ describe("restore a deleted emoji", () => {
 				PageOutMessage.RequestedToast({ toast: successToast("Emoji :ship_it: restored") }),
 			),
 			Command.resolve(RevokeEmojiPreview, Message.CompletedRevokePreview()),
-			model((current) => expect(current.draft).toBeNull()),
+			model((current) => {
+				expect(current.draft).toBeNull()
+				expect(current.restoreConfirm).toMatchObject({
+					state: { _tag: "Closed" },
+					modal: { isOpen: false },
+				})
+			}),
 		)
 	})
 
 	test("a second confirm while a restore runs sends nothing", () => {
-		const restoring = { ...drafted, restoreTarget, isSaving: true }
+		const restoring = {
+			...drafted,
+			restoreConfirm: Option.getOrThrow(ConfirmAction.confirm(asking.restoreConfirm))[0],
+		}
 		expect(update(restoring, Message.ClickedConfirmRestore(), makeShared()).commands ?? []).toHaveLength(
 			0,
 		)
@@ -334,22 +381,35 @@ describe("restore a deleted emoji", () => {
 	test("a failed restore keeps the draft and toasts", () => {
 		story(
 			owner,
-			given({ ...drafted, restoreTarget, restoreModal: Modal.open(drafted.restoreModal).model }),
+			given(asking),
 			message(Message.ClickedConfirmRestore()),
-			Command.resolve(RestoreCustomEmoji, Message.FailedRestoreEmoji()),
-			expectOutMessage(PageOutMessage.RequestedToast({ toast: errorToast("Failed to restore emoji") })),
-			model((current) =>
-				expect(current).toMatchObject({ isSaving: false, draft: { previewUrl: "blob:1" } }),
+			Command.resolve(RestoreCustomEmoji, Message.FailedRestoreEmoji({ reason: "NameTaken" })),
+			expectOutMessage(
+				PageOutMessage.RequestedToast({
+					toast: errorToast(
+						"Failed to restore emoji",
+						"Another emoji already uses this name. Please try another.",
+					),
+				}),
 			),
+			model((current) => {
+				expect(current.draft?.previewUrl).toBe("blob:1")
+				// Back to asking, so the user can retry or cancel.
+				expect(current.restoreConfirm.state._tag).toBe("Confirming")
+			}),
 		)
 	})
 
 	test("dismissing the restore dialog forgets the target, so a late confirm sends nothing", () => {
 		story(
 			owner,
-			given({ ...drafted, restoreTarget, restoreModal: Modal.open(drafted.restoreModal).model }),
-			message(Message.GotRestoreModalMessage({ message: Modal.Message.RequestedClose() })),
-			model((current) => expect(current.restoreTarget).toBeNull()),
+			given(asking),
+			message(
+				Message.GotRestoreConfirmMessage({
+					message: ConfirmAction.toModalMessage(Modal.Message.RequestedClose()),
+				}),
+			),
+			model((current) => expect(current.restoreConfirm.state._tag).toBe("Closed")),
 			message(Message.ClickedConfirmRestore()),
 			Command.expectNone(),
 		)

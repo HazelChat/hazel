@@ -1,8 +1,17 @@
+import { Option } from "effect"
 import type { ChildAttribute, Html, HtmlBuilder } from "foldkit/html"
 import { IconArrowPath, IconWarning } from "../../../icons"
 import { button } from "../../../ui/button"
-import { dialog, dialogClose, dialogDescription, dialogFooter, dialogHeader, dialogTitle } from "../../../ui/dialog"
+import {
+	dialog,
+	dialogClose,
+	dialogDescription,
+	dialogFooter,
+	dialogHeader,
+	dialogTitle,
+} from "../../../ui/dialog"
 import * as Modal from "../../../ui/modal"
+import * as ConfirmAction from "../../shared/confirm-action"
 import { Message } from "./message"
 import type { Model } from "./model"
 
@@ -11,8 +20,10 @@ import type { Model } from "./model"
  * inside, so React Aria renders a dialog within the ModalContent's dialog.
  */
 
-const toDeleteMessage = (message: Modal.Message) => Message.GotDeleteModalMessage({ message })
-const toRestoreMessage = (message: Modal.Message) => Message.GotRestoreModalMessage({ message })
+const toDeleteMessage = (message: Modal.Message) =>
+	Message.GotDeleteConfirmMessage({ message: ConfirmAction.toModalMessage(message) })
+const toRestoreMessage = (message: Modal.Message) =>
+	Message.GotRestoreConfirmMessage({ message: ConfirmAction.toModalMessage(message) })
 
 const innerTitleId = (modalId: string) => `${modalId}-inner-title`
 
@@ -34,10 +45,12 @@ const footer = (
 ): Html => dialogFooter(h, [dialogClose(h, closeAttributes, ["Cancel"], "secondary"), confirm])
 
 export const deleteEmojiModal = (h: HtmlBuilder<Message>, model: Model): Html => {
-	const id = model.deleteModal.id
+	const id = model.deleteConfirm.modal.id
+	const target = Option.getOrNull(ConfirmAction.targetOf(model.deleteConfirm))
+	const isDeleting = ConfirmAction.isRunning(model.deleteConfirm)
 	return h.submodel({
 		slotId: id,
-		model: model.deleteModal,
+		model: model.deleteConfirm.modal,
 		view: Modal.view,
 		viewInputs: {
 			toContent: (closeAttributes) => [
@@ -47,14 +60,22 @@ export const deleteEmojiModal = (h: HtmlBuilder<Message>, model: Model): Html =>
 						dialogTitle(h, { id: innerTitleId(id) }, "Delete custom emoji"),
 						dialogDescription(h, [
 							"Are you sure you want to delete ",
-							h.strong([], [":", model.deleteTarget?.name ?? "", ":"]),
+							h.strong([], [":", target?.name ?? "", ":"]),
 							"? Messages that use this emoji will show the text code instead.",
 						]),
 					]),
 					footer(
 						h,
 						closeAttributes,
-						button(h, { intent: "danger", onPress: Message.ClickedConfirmDelete() }, ["Delete emoji"]),
+						button(
+							h,
+							{
+								intent: "danger",
+								isPending: isDeleting,
+								onPress: Message.ClickedConfirmDelete(),
+							},
+							[isDeleting ? "Deleting..." : "Delete emoji"],
+						),
 					),
 				]),
 			],
@@ -77,12 +98,13 @@ const imageTile = (h: HtmlBuilder<Message>, src: string, label: string): Html =>
 	)
 
 export const restoreEmojiModal = (h: HtmlBuilder<Message>, model: Model): Html => {
-	const id = model.restoreModal.id
-	const target = model.restoreTarget
+	const id = model.restoreConfirm.modal.id
+	const target = Option.getOrNull(ConfirmAction.targetOf(model.restoreConfirm))
+	const isRestoring = ConfirmAction.isRunning(model.restoreConfirm)
 	const imagesAreDifferent = target !== null && target.imageUrl !== target.newImageUrl
 	return h.submodel({
 		slotId: id,
-		model: model.restoreModal,
+		model: model.restoreConfirm.modal,
 		view: Modal.view,
 		viewInputs: {
 			toContent: (closeAttributes) => [
@@ -111,9 +133,15 @@ export const restoreEmojiModal = (h: HtmlBuilder<Message>, model: Model): Html =
 					footer(
 						h,
 						closeAttributes,
-						button(h, { intent: "primary", onPress: Message.ClickedConfirmRestore() }, [
-							"Restore with new image",
-						]),
+						button(
+							h,
+							{
+								intent: "primary",
+								isPending: isRestoring,
+								onPress: Message.ClickedConfirmRestore(),
+							},
+							[isRestoring ? "Restoring..." : "Restore with new image"],
+						),
 					),
 				]),
 			],

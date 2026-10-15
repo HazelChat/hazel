@@ -1,13 +1,12 @@
 import { UserId } from "@hazel/schema"
-import { Option, Schema, Stream } from "effect"
+import { Schema, Stream } from "effect"
 import { Dom, Subscription } from "foldkit"
 import type { PageSubscriptionInput } from "../../contract"
+import * as DropZone from "../../shared/drop-zone"
 import { userRowStream } from "../user-stream"
 import { Message } from "./message"
 import type { Model } from "./model"
-import { interaction } from "./update"
-
-const hasFiles = (event: DragEvent) => event.dataTransfer?.types.includes("Files") ?? false
+import { interaction, toDropZoneMessage } from "./update"
 
 const isDraggingCrop = (model: Model) => model.crop._tag === "Ready" && model.crop.image.drag !== null
 
@@ -48,37 +47,8 @@ const page = Subscription.make<PageSubscriptionInput<Model>, Message>()((entry) 
 					: Stream.empty,
 		},
 	),
-	// `useDragDetection`: file drags anywhere on the page.
-	pageDrag: Subscription.persistentEntry(
-		Stream.mergeAll(
-			[
-				Dom.streamFromEventFilterMap({
-					target: document,
-					type: "dragenter",
-					filterMapEvent: (event) =>
-						hasFiles(event)
-							? Option.some(Message.DraggedFilesOverPage({ isEntering: true }))
-							: Option.none(),
-				}),
-				Dom.streamFromEvent({
-					target: document,
-					type: "dragleave",
-					mapEvent: () => Message.DraggedFilesOverPage({ isEntering: false }),
-				}),
-				Dom.streamFromEvent({
-					target: document,
-					type: "drop",
-					mapEvent: () => Message.EndedPageDrag(),
-				}),
-				Dom.streamFromEvent({
-					target: document,
-					type: "dragend",
-					mapEvent: () => Message.EndedPageDrag(),
-				}),
-			],
-			{ concurrency: "unbounded" },
-		),
-	),
+	// `useDragDetection`: file drags anywhere on the page, for the "Drop image" hint.
+	pageDrag: Subscription.persistentEntry(DropZone.pageDragStream(toDropZoneMessage)),
 }))
 
 export const subscriptions = Subscription.aggregate(page, interaction.subscriptions)

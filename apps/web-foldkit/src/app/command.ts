@@ -1,14 +1,15 @@
+import { NotificationId } from "@hazel/schema"
 import { Duration, Effect, Schedule, Schema } from "effect"
 import { Command } from "foldkit"
 import { load, pushUrl, replaceUrl } from "foldkit/navigation"
+import { isRetryableError } from "~/lib/error-messages"
+import { catchCommon } from "../data/actions"
+import { saveSoundSettings, SoundSettings } from "../notification-sound"
 import { HazelRpc } from "../rpc"
 import { applyTheme, ResolvedTheme, saveThemePreference, ThemeCustomization, ThemePreference } from "../theme"
-import { saveSoundSettings, SoundSettings } from "../notification-sound"
-import { deliverNotifications } from "./notification-sinks"
-import { UnauthorizedError } from "@hazel/domain/errors"
-import { NotificationId } from "@hazel/schema"
 import { readSession, signOut } from "./auth"
 import { Message } from "./message"
+import { deliverNotifications } from "./notification-sinks"
 
 export const NavigateInternal = Command.define("NavigateInternal", {
 	args: { url: Schema.String },
@@ -23,6 +24,7 @@ export const ReplaceUrl = Command.define("ReplaceUrl", {
 	execute: ({ url }) => replaceUrl(url).pipe(Effect.as(Message.CompletedReplaceUrl())),
 })
 
+/** A full page load of `href`: another site, or the app itself after sign-out so every cache starts over. */
 export const LoadExternal = Command.define("LoadExternal", {
 	args: { href: Schema.String },
 	messages: [Message.CompletedLoadExternal],
@@ -38,15 +40,22 @@ export const ApplyTheme = Command.define("ApplyTheme", {
 
 export const SaveThemePreference = Command.define("SaveThemePreference", {
 	args: { preference: ThemePreference },
-	messages: [Message.CompletedSaveThemePreference],
+	messages: [Message.CompletedSaveThemePreference, Message.FailedSaveThemePreference],
 	execute: ({ preference }) =>
-		saveThemePreference(preference).pipe(Effect.as(Message.CompletedSaveThemePreference())),
+		saveThemePreference(preference).pipe(
+			Effect.as(Message.CompletedSaveThemePreference()),
+			Effect.catchTag("StorageWriteError", () => Effect.succeed(Message.FailedSaveThemePreference())),
+		),
 })
 
 export const SaveSoundSettings = Command.define("SaveSoundSettings", {
 	args: { settings: SoundSettings },
-	messages: [Message.CompletedSaveSoundSettings],
-	execute: ({ settings }) => saveSoundSettings(settings).pipe(Effect.as(Message.CompletedSaveSoundSettings())),
+	messages: [Message.CompletedSaveSoundSettings, Message.FailedSaveSoundSettings],
+	execute: ({ settings }) =>
+		saveSoundSettings(settings).pipe(
+			Effect.as(Message.CompletedSaveSoundSettings()),
+			Effect.catchTag("StorageWriteError", () => Effect.succeed(Message.FailedSaveSoundSettings())),
+		),
 })
 
 /** `notificationOrchestrator.enqueue(events)`; it skips what it has already processed. */
@@ -57,11 +66,14 @@ export const DeliverNotifications = Command.define("DeliverNotifications", {
 })
 
 /** How long the app waits before asking again after the API did not answer. */
-const RETRY_DELAY = Duration.seconds(10)
+export const RETRY_DELAY = Duration.seconds(10)
 
 const checkSession = readSession.pipe(
 	Effect.map((auth) => Message.ChangedAuth({ auth })),
-	Effect.orElseSucceed(() => Message.FailedCheckSession()),
+	Effect.catchTag("SessionCheckError", ({ reason }) =>
+		Effect.succeed(Message.FailedCheckSession({ reason })),
+	),
+	catchCommon((reason) => Message.FailedCheckSession({ reason })),
 )
 
 /** Whether the API has a session for this browser. */
@@ -83,26 +95,21 @@ export const Reload = Command.define("Reload", {
 })
 
 export const SignOut = Command.define("SignOut", {
-	messages: [Message.CompletedSignOut, Message.FailedSignOut],
+	messages: [Message.SucceededSignOut, Message.FailedSignOut],
 	execute: signOut.pipe(
-		Effect.as(Message.CompletedSignOut()),
-		Effect.catchTag("SignOutError", (error) =>
-			Effect.succeed(Message.FailedSignOut({ reason: error.message })),
-		),
+		Effect.as(Message.SucceededSignOut()),
+		Effect.catchTag("SignOutError", ({ reason }) => Effect.succeed(Message.FailedSignOut({ reason }))),
+		catchCommon((reason) => Message.FailedSignOut({ reason })),
 	),
 })
 
-/** A failed `user.me` other than Unauthorized is retried this often before reporting failure. */
-const retryCurrentUser = Schedule.exponential("500 millis").pipe(Schedule.jittered)
+/** A momentary `user.me` failure is retried in place before it is reported. */
+const retryBlip = Schedule.exponential("500 millis").pipe(Schedule.jittered)
 
 const fetchCurrentUser = Effect.gen(function* () {
 	const client = yield* HazelRpc
 	const user = yield* client("user.me", undefined).pipe(
-		Effect.retry({
-			schedule: retryCurrentUser,
-			times: 3,
-			while: (error) => !UnauthorizedError.is(error),
-		}),
+		Effect.retry({ schedule: retryBlip, times: 2, while: isRetryableError }),
 	)
 	return Message.SucceededFetchCurrentUser({
 		user: {
@@ -115,23 +122,14 @@ const fetchCurrentUser = Effect.gen(function* () {
 			organizationId: user.organizationId ?? null,
 		},
 	})
-}).pipe(
-	Effect.catch((error) =>
-		Effect.succeed(
-			Message.FailedFetchCurrentUser({
-				reason: String(error),
-				isUnauthorized: UnauthorizedError.is(error),
-			}),
-		),
-	),
-)
+}).pipe(catchCommon((reason) => Message.FailedFetchCurrentUser({ reason })))
 
 export const FetchCurrentUser = Command.define("FetchCurrentUser", {
 	messages: [Message.SucceededFetchCurrentUser, Message.FailedFetchCurrentUser],
 	execute: fetchCurrentUser,
 })
 
-/** `user.me` again after a pause, while the shell has a session but no user to show. */
+/** `user.me` again after a pause, while the API keeps failing to answer it. */
 export const RetryFetchCurrentUser = Command.define("RetryFetchCurrentUser", {
 	messages: [Message.SucceededFetchCurrentUser, Message.FailedFetchCurrentUser],
 	execute: Effect.sleep(RETRY_DELAY).pipe(Effect.andThen(fetchCurrentUser)),
