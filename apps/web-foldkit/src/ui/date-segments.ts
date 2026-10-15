@@ -38,6 +38,8 @@ const Placeholder = Schema.Struct({
 export const Model = Schema.Struct({
 	id: Schema.String,
 	kind: Kind,
+	/** The BCP 47 locale the segments are laid out and named in, fixed at init. */
+	locale: Schema.String,
 	isDisabled: Schema.Boolean,
 	isInvalid: Schema.Boolean,
 	values: Values,
@@ -58,13 +60,17 @@ const pad = (value: number, length = 2) => String(value).padStart(length, "0")
 /** A time's placeholder date only fills the Intl formatting input, so a fixed day keeps init pure. */
 const TIME_PLACEHOLDER_DATE = "2000-01-01"
 
+/** The locale a field uses unless its parent passes one (the kit's placeholder table is English). */
+export const DEFAULT_LOCALE = "en-US"
+
 /**
  * `value` is `YYYY-MM-DD` for a date and `HH:MM` for a time. A date's placeholder is `today`
- * (`YYYY-MM-DD`), passed in so init never reads the clock.
+ * (`YYYY-MM-DD`), passed in so init never reads the clock; `locale` likewise never reads the host.
  */
 export const init = (
 	options: {
 		readonly id: string
+		readonly locale?: string
 		readonly value?: string
 		readonly isDisabled?: boolean
 		readonly isInvalid?: boolean
@@ -91,6 +97,7 @@ export const init = (
 	const model: Model = {
 		id: options.id,
 		kind: options.kind,
+		locale: options.locale ?? DEFAULT_LOCALE,
 		isDisabled: options.isDisabled ?? false,
 		isInvalid: options.isInvalid ?? false,
 		values,
@@ -106,15 +113,36 @@ export const init = (
 
 // FORMATTING
 
-const locale = () => (typeof navigator === "undefined" ? "en-US" : navigator.language)
+/** The Intl formatters one locale needs, built once per locale (a pure memo, no app state). */
+export interface Formatters {
+	readonly date: Intl.DateTimeFormat
+	readonly time: Intl.DateTimeFormat
+	readonly monthName: Intl.DateTimeFormat
+	readonly hour: Intl.DateTimeFormat
+	readonly longDate: Intl.DateTimeFormat
+	readonly fieldNames: Intl.DisplayNames
+}
 
-const formatter = (kind: Kind) =>
-	new Intl.DateTimeFormat(locale(), {
-		...(kind === "date"
-			? { year: "numeric", month: "numeric", day: "numeric" }
-			: { hour: "numeric", minute: "2-digit" }),
-		timeZone: "UTC",
-	})
+const formatterCache = new Map<string, Formatters>()
+
+export const formattersFor = (locale: string): Formatters => {
+	const cached = formatterCache.get(locale)
+	if (cached !== undefined) return cached
+	const utc = { timeZone: "UTC" } as const
+	const built: Formatters = {
+		date: new Intl.DateTimeFormat(locale, { year: "numeric", month: "numeric", day: "numeric", ...utc }),
+		time: new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", ...utc }),
+		monthName: new Intl.DateTimeFormat(locale, { month: "long", ...utc }),
+		hour: new Intl.DateTimeFormat(locale, { hour: "numeric", ...utc }),
+		longDate: new Intl.DateTimeFormat(locale, { dateStyle: "long", ...utc }),
+		fieldNames: new Intl.DisplayNames(locale, { type: "dateTimeField" }),
+	}
+	formatterCache.set(locale, built)
+	return built
+}
+
+const formatter = (kind: Kind, locale: string) =>
+	kind === "date" ? formattersFor(locale).date : formattersFor(locale).time
 
 /** IncompleteDate.toValue: fill missing segments from the placeholder, then constrain the day. */
 export const dateValueOf = (model: Model): Date => {
@@ -134,8 +162,8 @@ export const dateValueOf = (model: Model): Date => {
 	return date
 }
 
-export const segmentOrder = (kind: Kind): ReadonlyArray<SegmentType> =>
-	formatter(kind)
+export const segmentOrder = (kind: Kind, locale: string): ReadonlyArray<SegmentType> =>
+	formatter(kind, locale)
 		.formatToParts(new Date(Date.UTC(2000, 0, 1)))
 		.map((part) => part.type)
 		.filter(isSegmentType)
@@ -158,7 +186,7 @@ const daysInDisplayedMonth = (model: Model) => {
 }
 
 const completeValue = (model: Model): string | null => {
-	const isComplete = segmentOrder(model.kind).every((type) => model.values[type] !== null)
+	const isComplete = segmentOrder(model.kind, model.locale).every((type) => model.values[type] !== null)
 	if (!isComplete) return model.committed
 	const date = dateValueOf(model)
 	return model.kind === "date"
@@ -192,9 +220,10 @@ const literal = (text: string): Segment => ({
  */
 export const segmentsOf = (model: Model): ReadonlyArray<Segment> => {
 	const date = dateValueOf(model)
-	const monthName = new Intl.DateTimeFormat(locale(), { month: "long", timeZone: "UTC" }).format(date)
-	const hourText = new Intl.DateTimeFormat(locale(), { hour: "numeric", timeZone: "UTC" }).format(date)
-	return formatter(model.kind)
+	const formatters = formattersFor(model.locale)
+	const monthName = formatters.monthName.format(date)
+	const hourText = formatters.hour.format(date)
+	return formatter(model.kind, model.locale)
 		.formatToParts(date)
 		.flatMap((part): ReadonlyArray<Segment> => {
 			if (part.type === "literal") return [literal(part.value)]
@@ -334,7 +363,7 @@ const cycle = (model: Model, type: SegmentType, amount: number): Model => {
 }
 
 const neighbour = (model: Model, type: SegmentType, offset: number) => {
-	const order = segmentOrder(model.kind)
+	const order = segmentOrder(model.kind, model.locale)
 	return order[order.indexOf(type) + offset]
 }
 
@@ -411,7 +440,7 @@ const focusMovesOf = (result: Update.Return<Model, Message>) =>
 /** The segment holding focus after an update: a FocusSegment target, else the pressed one. */
 const focusedAfter = (model: Model, pressed: SegmentType, result: Update.Return<Model, Message>) => {
 	const target = focusMovesOf(result).at(-1)?.args?.elementId
-	return segmentOrder(model.kind).find((type) => segmentId(model, type) === target) ?? pressed
+	return segmentOrder(model.kind, model.locale).find((type) => segmentId(model, type) === target) ?? pressed
 }
 
 /**
@@ -420,7 +449,7 @@ const focusedAfter = (model: Model, pressed: SegmentType, result: Update.Return<
  */
 const keySegment = (model: Model, pressed: string): SegmentType | undefined => {
 	const name = model.pendingFocusMoves > 0 && model.activeSegment !== null ? model.activeSegment : pressed
-	return segmentOrder(model.kind).find((type) => type === name)
+	return segmentOrder(model.kind, model.locale).find((type) => type === name)
 }
 
 export const update = (model: Model, message: Message): Update.Return<Model, Message> => {

@@ -6,9 +6,9 @@ import { modifyFields } from "foldkit/struct"
 
 /**
  * React Aria's useHover, usePress and useFocusRing/useFocusVisible, as one Submodel.
- * Components read a target's state with `stateOf` and render it with the same
- * `data-hovered`/`data-pressed`/`data-focused`/`data-focus-visible` attributes React Aria
- * emits, so the shared `tailwindcss-react-aria-components` variants style both apps alike.
+ * Components read a target's state with `stateOf` and render it as `data-hovered`/`data-pressed`/
+ * `data-focused`/`data-focus-visible` attributes. Styles use native `hover:`/`focus-visible:` and
+ * Tailwind's `data-*:` variants (e.g. `data-pressed:`) for state CSS cannot see.
  * One Model serves a whole page: at most one target is hovered, pressed or focused at a time.
  */
 
@@ -410,15 +410,3 @@ export const pressStyleAttributes = <ParentMessage>(
 		? [h.Attribute("style", "user-select: none;")]
 		: []
 
-/** Everything a React Aria pressable writes for one target: `data-rac`, handlers and state. */
-export const targetAttributes = <ParentMessage>(
-	h: HtmlBuilder<ParentMessage>,
-	wiring: Wiring<ParentMessage>,
-	target: string,
-	options: TargetOptions = {},
-): ReadonlyArray<Attribute<ParentMessage>> => [
-	h.DataAttribute("rac", ""),
-	...handlers(h, wiring, target, options),
-	...stateAttributes(h, stateOf(wiring.model, target)),
-	...pressStyleAttributes(h, wiring.model, target),
-]

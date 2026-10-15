@@ -208,12 +208,12 @@ export const contextMenuEntries = (facts: MessageFacts, messageId: MessageId): R
 ]
 
 /** The closed "More actions" menu of a message. */
-export const moreMenuFor = (model: Model, messageId: MessageId, facts: MessageFacts): Menu.Model =>
+export const moreMenuFor = (model: Model, messageId: MessageId): Menu.Model =>
 	model.moreMenu !== null && model.moreMenu.messageId === messageId
 		? model.moreMenu.menu
-		: Menu.init({ id: `more-${messageId}`, entries: moreMenuEntries(facts), placement: "bottom end" })
+		: Menu.init({ id: `more-${messageId}`, placement: "bottom end" })
 
-export const update = (model: Model, message: Message, facts: MessageFacts): OverlaysReturn =>
+export const update = (model: Model, message: Message): OverlaysReturn =>
 	Message.match<OverlaysReturn>(message, {
 		// `pointerover` fires for every child entered: within the hovered message only a pending hide changes.
 		PointerEnteredMessage: ({ messageId }) =>
@@ -279,7 +279,7 @@ export const update = (model: Model, message: Message, facts: MessageFacts): Ove
 					}
 		},
 		GotMoreMenuMessage: ({ messageId, message: menuMessage }) => {
-			const result = Menu.update(moreMenuFor(model, messageId, facts), menuMessage)
+			const result = Menu.update(moreMenuFor(model, messageId), menuMessage)
 			return withSelection(
 				mapped(
 					model,
@@ -292,11 +292,7 @@ export const update = (model: Model, message: Message, facts: MessageFacts): Ove
 			)
 		},
 		RightClickedMessage: ({ messageId, offset, crossOffset }) => {
-			const menu = Menu.init({
-				id: "message-context-menu",
-				anchor: "Pointer",
-				entries: contextMenuEntries(facts, messageId),
-			})
+			const menu = Menu.init({ id: "message-context-menu", anchor: "Pointer" })
 			return mapped(
 				model,
 				Menu.update(menu, Menu.Message.PressedContextMenu({ offset, crossOffset })),

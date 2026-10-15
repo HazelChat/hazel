@@ -62,7 +62,6 @@ export const inputElement = <Message>(
 			: [h.Attribute("value", options.defaultValue)]
 	return h.input([
 		h.Class(twMerge(twMerge(...inputStyles), options.className)),
-		h.DataAttribute("rac", ""),
 		h.Attribute("style", ""),
 		...(options.placeholder === undefined ? [] : [h.Placeholder(options.placeholder)]),
 		...(isDisabled ? [h.Disabled(true), h.DataAttribute("disabled", "true")] : []),
@@ -114,7 +113,6 @@ export const inputGroup = <Message>(
 	h.div(
 		[
 			h.Class(twMerge(twMerge(...inputGroupStyles), options.className)),
-			h.DataAttribute("rac", ""),
 			h.DataAttribute("slot", "control"),
 			h.Role(options.role ?? "group"),
 			...(options.isDisabled ? [h.DataAttribute("disabled", "true")] : []),

@@ -1,6 +1,5 @@
 import { tv } from "tailwind-variants"
 
-/** Shared by the React and Foldkit apps: keep this file framework-free. */
 export const choiceBoxStyles = tv({
 	base: "grid [--gutter:--spacing(4)]",
 	variants: {
@@ -55,10 +54,10 @@ export const choiceBoxItemStyles = tv({
 			false: "cursor-default",
 		},
 		isHovered: {
-			true: "not-data-readonly:not-data-focus-visible:not-selected:inset-ring-muted-fg/30",
+			true: "not-data-readonly:not-data-focus-visible:not-data-selected:inset-ring-muted-fg/30",
 		},
 		isFocused: {
-			true: "inset-ring-(--choice-box-active-ring) ring-(--choice-box-ring) ring-3 invalid:ring-danger-subtle-fg/20",
+			true: "inset-ring-(--choice-box-active-ring) ring-(--choice-box-ring) ring-3 data-invalid:ring-danger-subtle-fg/20",
 		},
 		isInvalid: { true: "ring-3 ring-danger-subtle-fg/20" },
 		isOneColumn: {
@@ -79,7 +78,7 @@ export const choiceBoxItemStyles = tv({
 })
 
 export const choiceBoxLabelStyles = [
-	"select-none text-base/6 text-fg group-disabled:opacity-50 sm:text-sm/6",
+	"select-none text-base/6 text-fg group-data-disabled:opacity-50 sm:text-sm/6",
 	"col-start-1 row-start-1",
 	"group-has-data-[slot=icon]:col-start-2",
 	"group-has-data-[slot=avatar]:col-start-2",
@@ -90,7 +89,7 @@ export const choiceBoxDescriptionStyles = [
 	"group-has-data-[slot=icon]:col-start-2",
 	"group-has-data-[slot=avatar]:col-start-2",
 	"text-base/6 text-muted-fg sm:text-sm/6",
-	"group-disabled:opacity-50",
+	"group-data-disabled:opacity-50",
 ]
 
 /** The selection checkbox in multiple selection mode. */

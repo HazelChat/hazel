@@ -6,8 +6,9 @@ import { modifyFields } from "foldkit/struct"
 import { announce } from "./aria/announcer"
 
 /**
- * Port of `components/ui/combo-box.tsx` (React Aria ComboBox, menuTrigger "input") with string
- * items. Focus stays in the input; the list uses virtual focus. The view is `combo-box-view.ts`.
+ * A combo box (input-triggered, string items). Focus stays in the input; the list uses virtual
+ * focus. The parent owns the items: it passes them to `update` and to the view (`combo-box-view.ts`),
+ * so the Model holds only the selection, the typed text and the popup.
  */
 
 // MODEL
@@ -31,7 +32,6 @@ type Open = Extract<typeof Popup.Type, { _tag: "Open" }>
 
 export const Model = Schema.Struct({
 	id: Schema.String,
-	items: Schema.Array(Item),
 	selectedKey: Schema.Option(Schema.String),
 	inputValue: Schema.String,
 	isFocused: Schema.Boolean,
@@ -54,6 +54,7 @@ const labelOf = (items: ReadonlyArray<Item>, key: Option.Option<string>): string
 		() => "",
 	)
 
+/** `items` only seed the input with the selected item's label. */
 export const init = (config: {
 	readonly id: string
 	readonly items: ReadonlyArray<Item>
@@ -63,7 +64,6 @@ export const init = (config: {
 	const selectedKey = Option.fromNullishOr(config.selectedKey)
 	return {
 		id: config.id,
-		items: config.items,
 		selectedKey,
 		inputValue: labelOf(config.items, selectedKey),
 		isFocused: false,
@@ -114,10 +114,8 @@ const normalized = (text: string) =>
 /** useFilter({ sensitivity: "base" }).contains */
 const contains = (text: string, search: string) => normalized(text).includes(normalized(search))
 
-export const visibleItems = (model: Model, open: Open): ReadonlyArray<Item> =>
-	open.isShowingAll
-		? model.items
-		: Array.filter(model.items, (candidate) => contains(candidate.label, model.inputValue))
+export const visibleItems = (model: Model, open: Open, items: ReadonlyArray<Item>): ReadonlyArray<Item> =>
+	open.isShowingAll ? items : Array.filter(items, (candidate) => contains(candidate.label, model.inputValue))
 
 /** ListKeyboardDelegate without wrapping. */
 const stepKey = (items: ReadonlyArray<Item>, from: Option.Option<string>, direction: 1 | -1) => {
@@ -153,14 +151,13 @@ type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage>
 
 const withPopup = (model: Model, popup: Model["popup"]): Model => modifyFields(model, { popup: () => popup })
 
-const closedAndReverted = (model: Model): Model =>
+const closedAndReverted = (model: Model, items: ReadonlyArray<Item>): Model =>
 	modifyFields(withPopup(model, { _tag: "Closed" }), {
-		inputValue: () => labelOf(model.items, model.selectedKey),
+		inputValue: () => labelOf(items, model.selectedKey),
 	})
 
-const openedAll = (model: Model, strategy: "Selected" | "First" | "Last"): Model => {
-	const fallback =
-		strategy === "Last" ? stepKey(model.items, Option.none(), -1) : stepKey(model.items, Option.none(), 1)
+const openedAll = (model: Model, items: ReadonlyArray<Item>, strategy: "Selected" | "First" | "Last"): Model => {
+	const fallback = strategy === "Last" ? stepKey(items, Option.none(), -1) : stepKey(items, Option.none(), 1)
 	const focusedKey =
 		strategy === "Selected" ? model.selectedKey : Option.orElse(model.selectedKey, () => fallback)
 	return withPopup(model, {
@@ -172,24 +169,24 @@ const openedAll = (model: Model, strategy: "Selected" | "First" | "Last"): Model
 	})
 }
 
-const selected = (model: Model, key: string): UpdateReturn => ({
+const selected = (model: Model, items: ReadonlyArray<Item>, key: string): UpdateReturn => ({
 	model: modifyFields(withPopup(model, { _tag: "Closed" }), {
 		selectedKey: () => Option.some(key),
-		inputValue: () => labelOf(model.items, Option.some(key)),
+		inputValue: () => labelOf(items, Option.some(key)),
 	}),
 	outMessage: OutMessage.ChangedSelection({ key }),
 })
 
-const pressedInputKey = (model: Model, key: string): UpdateReturn => {
+const pressedInputKey = (model: Model, allItems: ReadonlyArray<Item>, key: string): UpdateReturn => {
 	if (model.popup._tag === "Closed")
 		return Match.value(key).pipe(
-			Match.when("ArrowDown", () => ({ model: openedAll(model, "First") })),
-			Match.when("ArrowUp", () => ({ model: openedAll(model, "Last") })),
-			Match.when("Escape", () => ({ model: closedAndReverted(model) })),
+			Match.when("ArrowDown", () => ({ model: openedAll(model, allItems, "First") })),
+			Match.when("ArrowUp", () => ({ model: openedAll(model, allItems, "Last") })),
+			Match.when("Escape", () => ({ model: closedAndReverted(model, allItems) })),
 			Match.orElse(() => ({ model })),
 		)
 	const open = model.popup
-	const items = visibleItems(model, open)
+	const items = visibleItems(model, open, allItems)
 	const moved = (direction: 1 | -1) => ({
 		model: withPopup(model, {
 			...open,
@@ -200,11 +197,11 @@ const pressedInputKey = (model: Model, key: string): UpdateReturn => {
 	return Match.value(key).pipe(
 		Match.when("ArrowDown", () => moved(1)),
 		Match.when("ArrowUp", () => moved(-1)),
-		Match.when("Escape", () => ({ model: closedAndReverted(model) })),
+		Match.when("Escape", () => ({ model: closedAndReverted(model, allItems) })),
 		Match.when("Enter", () =>
 			Option.match(open.focusedKey, {
-				onNone: () => ({ model: closedAndReverted(model) }),
-				onSome: (focusedKey) => selected(model, focusedKey),
+				onNone: () => ({ model: closedAndReverted(model, allItems) }),
+				onSome: (focusedKey) => selected(model, allItems, focusedKey),
 			}),
 		),
 		Match.orElse(() => ({ model })),
@@ -221,20 +218,20 @@ export const AnnounceComboBox = Command.define("AnnounceComboBox", {
 const countAnnouncement = (count: number) => `${count} ${count === 1 ? "option" : "options"} available.`
 
 /** useComboBox's live announcements: option count, then (on Apple devices) focus and selection. */
-const announcementsFor = (previous: Model, next: Model): ReadonlyArray<string> => {
+const announcementsFor = (previous: Model, next: Model, items: ReadonlyArray<Item>): ReadonlyArray<string> => {
 	if (next.popup._tag !== "Open") {
 		const isSelectionNew = Option.exists(
 			next.selectedKey,
 			(key) => !Option.contains(previous.selectedKey, key),
 		)
 		return next.isAppleDevice && next.isFocused && isSelectionNew
-			? [`${labelOf(next.items, next.selectedKey)}, selected`]
+			? [`${labelOf(items, next.selectedKey)}, selected`]
 			: []
 	}
 	const open = next.popup
-	const count = visibleItems(next, open).length
+	const count = visibleItems(next, open, items).length
 	const previousCount =
-		previous.popup._tag === "Open" ? visibleItems(previous, previous.popup).length : count
+		previous.popup._tag === "Open" ? visibleItems(previous, previous.popup, items).length : count
 	const didOpen = previous.popup._tag === "Closed" && (Option.isNone(open.focusedKey) || next.isAppleDevice)
 	const previousFocus = previous.popup._tag === "Open" ? previous.popup.focusedKey : Option.none<string>()
 	const focusAnnouncement = Option.filter(
@@ -243,7 +240,7 @@ const announcementsFor = (previous: Model, next: Model): ReadonlyArray<string> =
 	).pipe(
 		Option.map(
 			(key) =>
-				`${labelOf(next.items, Option.some(key))}${Option.contains(next.selectedKey, key) ? ", selected" : ""}`,
+				`${labelOf(items, Option.some(key))}${Option.contains(next.selectedKey, key) ? ", selected" : ""}`,
 		),
 	)
 	return [
@@ -252,8 +249,9 @@ const announcementsFor = (previous: Model, next: Model): ReadonlyArray<string> =
 	]
 }
 
-export const update = (model: Model, message: Message): UpdateReturn => {
-	const result = updateComboBox(model, message)
+/** `items` are the parent's, the same ones its view passes. */
+export const update = (model: Model, message: Message, items: ReadonlyArray<Item>): UpdateReturn => {
+	const result = updateComboBox(model, message, items)
 	// NOTE: pressing an option moves the virtual focus to it before the selection lands.
 	const pressedFocus =
 		message._tag === "ClickedOption" &&
@@ -261,10 +259,10 @@ export const update = (model: Model, message: Message): UpdateReturn => {
 		model.popup._tag === "Open" &&
 		!Option.contains(model.popup.focusedKey, message.key)
 			? [
-					`${labelOf(model.items, Option.some(message.key))}${Option.contains(model.selectedKey, message.key) ? ", selected" : ""}`,
+					`${labelOf(items, Option.some(message.key))}${Option.contains(model.selectedKey, message.key) ? ", selected" : ""}`,
 				]
 			: []
-	const announcements = Array.map([...pressedFocus, ...announcementsFor(model, result.model)], (text) =>
+	const announcements = Array.map([...pressedFocus, ...announcementsFor(model, result.model, items)], (text) =>
 		AnnounceComboBox({ message: text }),
 	)
 	return Array.isReadonlyArrayNonEmpty(announcements)
@@ -272,11 +270,11 @@ export const update = (model: Model, message: Message): UpdateReturn => {
 		: result
 }
 
-const updateComboBox = (model: Model, message: Message): UpdateReturn =>
+const updateComboBox = (model: Model, message: Message, items: ReadonlyArray<Item>): UpdateReturn =>
 	Message.match<UpdateReturn>(message, {
 		ChangedInput: ({ value }) => {
 			const typed = modifyFields(model, { inputValue: () => value })
-			const matches = Array.filter(model.items, (candidate) => contains(candidate.label, value))
+			const matches = Array.filter(items, (candidate) => contains(candidate.label, value))
 			return {
 				model: Array.isReadonlyArrayNonEmpty(matches)
 					? withPopup(typed, {
@@ -290,10 +288,10 @@ const updateComboBox = (model: Model, message: Message): UpdateReturn =>
 			}
 		},
 		FocusedInput: () => ({ model: modifyFields(model, { isFocused: () => true }) }),
-		BlurredInput: () => ({ model: modifyFields(closedAndReverted(model), { isFocused: () => false }) }),
-		PressedInputKey: ({ key }) => pressedInputKey(model, key),
+		BlurredInput: () => ({ model: modifyFields(closedAndReverted(model, items), { isFocused: () => false }) }),
+		PressedInputKey: ({ key }) => pressedInputKey(model, items, key),
 		PressedButton: () => ({
-			model: model.popup._tag === "Open" ? closedAndReverted(model) : openedAll(model, "Selected"),
+			model: model.popup._tag === "Open" ? closedAndReverted(model, items) : openedAll(model, items, "Selected"),
 			commands: [FocusComboBoxInput({ elementId: inputId(model.id) })],
 		}),
 		HoveredOption: ({ key }) =>
@@ -310,8 +308,8 @@ const updateComboBox = (model: Model, message: Message): UpdateReturn =>
 					}
 				: { model },
 		ClickedOption: ({ key }) =>
-			Array.some(model.items, (candidate) => candidate.key === key && !candidate.isDisabled)
-				? selected(model, key)
+			Array.some(items, (candidate) => candidate.key === key && !candidate.isDisabled)
+				? selected(model, items, key)
 				: { model },
 		CompletedFocusInput: () => ({ model }),
 		CompletedPortalComboBox: () => ({ model }),

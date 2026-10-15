@@ -3,7 +3,7 @@ import { Option, Schema, pipe } from "effect"
 import { Route } from "foldkit"
 import { defineRouteUnion, literal, query, restString, schemaSegment, slash, string } from "foldkit/route"
 
-/** Flat route union mirroring the 39 legacy TanStack routes (`apps/web/src/routes`), plus NotFound. */
+/** Flat route union mirroring the 39 legacy TanStack routes, plus NotFound. */
 export const AppRoute = defineRouteUnion({
 	Root: {},
 	SignIn: { splat: Schema.String, redirectUrl: Schema.Option(Schema.String) },

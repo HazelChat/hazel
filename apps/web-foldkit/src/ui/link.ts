@@ -35,7 +35,6 @@ export const link = <Message>(
 		...(isDisabled ? [h.AriaDisabled(true), h.DataAttribute("disabled", "true")] : []),
 		...(interaction
 			? [
-					h.DataAttribute("rac", ""),
 					...Interaction.handlers(h, interaction.wiring, interaction.target, {
 						isHoverDisabled: isDisabled,
 						isPressDisabled: isDisabled,

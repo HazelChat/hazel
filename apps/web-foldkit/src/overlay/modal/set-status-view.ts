@@ -21,6 +21,7 @@ import {
 	Message,
 	type Model,
 	STATUS_PRESETS,
+	expirationItems,
 } from "./set-status-model"
 
 /** The set-status modal's view (legacy `SetStatusModal` markup). */
@@ -101,7 +102,7 @@ export const view = Submodel.defineView<Model, Message, ModalViewInputs>((model,
 		slotId: `${ID}-expiration-select`,
 		model: model.expiration,
 		view: selectView,
-		viewInputs: {},
+		viewInputs: { items: expirationItems(model) },
 		toParentMessage: toExpirationMessage,
 	})
 	return frameView(

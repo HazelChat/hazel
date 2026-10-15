@@ -1,6 +1,6 @@
 import { tv } from "tailwind-variants"
 
-/** SplitPanel class composition, shared by the React and Foldkit apps. */
+/** SplitPanel class composition. */
 
 export const rootStyles = tv({
 	base: "flex h-full w-full overflow-hidden",
