@@ -1,12 +1,13 @@
 # Hazel Chat
 
-A modern, real-time collaborative chat platform built with Effect-TS, ElectricSQL, TanstackDB, React, and PostgreSQL.
+A modern, real-time collaborative chat platform built with Effect-TS, Foldkit, ElectricSQL, TanStack DB, and PostgreSQL.
 
 ## Overview
 
 Hazel Chat is a full-stack chat application featuring:
 
 - **Effect-TS** for type-safe, functional backend programming
+- **Foldkit** for an Elm-style frontend on Effect
 - **Type-safe RPC** for seamless client-server communication
 - **Local-first architecture** with Electric SQL for real-time sync
 - **Distributed workflows** via Effect Cluster for background jobs
@@ -20,19 +21,20 @@ Hazel Chat is a full-stack chat application featuring:
 - **File Attachments** - Share files with Cloudflare R2 storage
 - **Notifications** - Configurable notification system with muting
 - **Team Management** - Organizations with member roles and invitations
-- **Rich Text Editor** - Plate.js powered editor with formatting
+- **Rich Text Editor** - ProseMirror powered editor with formatting
 - **Bot Integration** - Create and manage bots with a simple API
 
 ## Tech Stack
 
 ### Frontend
 
-- **React 19** with TypeScript
+- **Foldkit** (Model / Message / update / view on Effect) with TypeScript
 - **Vite** for fast development and builds
-- **TanStack Router** with file-based routing
-- **TanStack DB**
-- **TailwindCSS v4**
-- **React Aria Components**
+- **Routing** with a flat route union in `src/route.ts`
+- **TanStack DB** collections
+- **TailwindCSS v4** with `tailwind-variants`
+- **`@foldkit/ui`** components
+- **ProseMirror** for the message composer
 - **Electric SQL** for local-first real-time sync
 
 ### Backend
@@ -59,7 +61,7 @@ Hazel Chat is a full-stack chat application featuring:
 
 ```
 ├── apps/
-│   ├── web/                 # React frontend (port 3000)
+│   ├── web-foldkit/         # Foldkit frontend (port 3100)
 │   ├── backend/             # Effect-TS API server (port 3003)
 │   ├── cluster/             # Distributed workflow service (port 3020)
 │   ├── electric-proxy/      # Electric SQL proxy worker
@@ -115,7 +117,7 @@ Hazel Chat is a full-stack chat application featuring:
     ```
 
     This starts the core development stack via Turborepo:
-    - Web: http://localhost:3000
+    - Web: http://localhost:3100
     - Backend: http://localhost:3003
     - Cluster: http://localhost:3020
     - Bot gateway: http://localhost:3034
@@ -189,7 +191,7 @@ Electric SQL provides local-first data synchronization:
 
 - Optimistic updates with automatic conflict resolution
 - Offline support with background sync
-- Reactive queries via TanStack Query integration
+- Reactive queries via TanStack DB collections
 
 ### Workflow System
 
